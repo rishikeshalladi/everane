@@ -1,0 +1,1864 @@
+<!-- File: profile.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MedTracker – Profile</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --danger-color: var(--danger);
+      --success-color: var(--success);
+      --transition: 0.2s ease-in-out;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+      }
+    }
+
+    /* base */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* layout */
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .sidebar-signout {
+      width: 100%;
+      padding: .75rem .9rem;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 1rem;
+    }
+    .sidebar-signout:hover {
+      background: color-mix(in oklab, var(--danger) 85%, black);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(255, 107, 107, .25);
+    }
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 3000 !important;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      pointer-events: auto;
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+    
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 2599;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { 
+        display: flex !important; 
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 2600 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      
+      .sidebar-signout {
+        width: 100% !important;
+        padding: 0.75rem 1rem !important;
+        background: var(--danger) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--radius) !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
+      
+      .sidebar-signout:hover {
+        background: color-mix(in oklab, var(--danger) 85%, black) !important;
+        transform: translateY(-1px) !important;
+      }
+    }
+
+    /* headings */
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    /* cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+
+    .profile-container { max-width: 95%; margin: 0 auto; padding: 1rem; }
+
+    .profile-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 2rem; padding: 1rem; background: var(--surface); border-radius: 12px;
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+    }
+
+    .profile-title { font-size: 1.5rem; font-weight: bold; color: var(--text); margin: 0; }
+
+    .profile-content { margin-top: 2rem; }
+
+    .profile-card { background: var(--surface); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); position: relative; border: 1px solid var(--border); }
+
+    .profile-card h2 { margin-top: 0; font-weight: 700; color: var(--text); font-size: 1.2rem; margin-bottom: 1rem; }
+
+    .profile-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 1.5rem; }
+
+    .form-group { margin-bottom: 1rem; }
+
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 14px; font-size: 1rem;
+      outline: none; background: var(--surface); color: var(--text); transition: border-color var(--transition), box-shadow var(--transition); font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { 
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent); 
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent); 
+    }
+
+    .form-group textarea { resize: vertical; min-height: 80px; }
+
+    .form-group small { font-size: 0.8em; color: var(--muted); }
+
+    .input-wrap { position: relative; }
+    .input-wrap input { padding-right: 3rem; }
+
+    /* Verification UI */
+    .verify-warning {
+      font-size: 1rem;
+      cursor: help;
+      filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .verify-btn {
+      margin-top: 0.5rem;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
+      background: var(--brand);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .verify-btn:hover {
+      background: var(--brand-600);
+    }
+    .verify-btn.verified {
+      background: var(--success);
+      pointer-events: none;
+    }
+    .modal-description {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    #recaptcha-container {
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .actions { margin-top: 2rem; display: flex; justify-content: flex-end; }
+
+    /* buttons */
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary, .btn.btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover, .btn.btn-primary:hover {
+      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
+    }
+    .btn-secondary, .btn.btn-secondary {
+      background: transparent; color: var(--text); border-color: var(--border);
+    }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .btn-danger, .btn.btn-danger {
+      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
+      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(255,107,107,.25);
+    }
+    .btn-danger:hover { filter: brightness(.98); }
+    .btn-success, .btn.btn-success {
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
+      border-color: color-mix(in oklab, var(--success) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(34,197,94,.25);
+    }
+    .btn-success:hover { filter: brightness(1.02); }
+
+    .msg { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; font-size: 0.9rem; }
+    .msg.ok { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.2); }
+    .msg.err { background: rgba(255, 107, 107, 0.1); color: var(--danger); border: 1px solid rgba(255, 107, 107, 0.2); }
+
+    /* Notification reminders dropdown */
+    .notification-reminders { position: relative; }
+    .notification-dropdown { position: relative; display: inline-block; width: 100%; }
+    .notification-dropdown-toggle {
+      width: 100%; padding: 0.7rem 1rem; border-radius: 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-size: 1rem; text-align: left;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; cursor: pointer;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .notification-dropdown-toggle:hover,
+    .notification-dropdown-toggle.open {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .notification-dropdown-toggle span.dropdown-arrow {
+      font-size: 1rem; transition: transform 0.2s ease;
+    }
+    .notification-dropdown-toggle.open span.dropdown-arrow {
+      transform: rotate(-180deg);
+    }
+    .notification-dropdown-menu {
+      position: absolute; inset: auto 0 0 0;
+      transform: translateY(calc(100% + 0.35rem));
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; box-shadow: var(--shadow);
+      padding: 0.3rem; max-height: 260px; overflow-y: auto;
+      display: none; z-index: 1200;
+    }
+    .notification-dropdown-menu.open { display: block; }
+    .notification-option {
+      display: flex; align-items: center; gap: 0.35rem;
+      padding: 0.25rem 0.35rem; border-radius: 10px;
+      cursor: pointer; transition: background 0.15s ease;
+      position: relative;
+    }
+    .notification-option:hover {
+      background: color-mix(in oklab, var(--surface) 90%, transparent);
+    }
+    .notification-option input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+    }
+    .notification-option .checkbox-box {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 95%, transparent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+      flex-shrink: 0;
+      font-size: 0.95rem;
+      color: transparent;
+    }
+    .notification-option input[type="checkbox"]:focus-visible + .checkbox-box {
+      border-color: color-mix(in oklab, var(--brand) 50%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .notification-option input[type="checkbox"]:checked + .checkbox-box {
+      border-color: color-mix(in oklab, var(--brand) 80%, transparent);
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color: #fff;
+      box-shadow: 0 6px 12px rgba(79, 140, 255, 0.25);
+    }
+    .notification-option input[type="checkbox"]:checked + .checkbox-box .checkmark {
+      transform: scale(1);
+      opacity: 1;
+    }
+    .notification-option .checkbox-box .checkmark {
+      transition: transform 0.15s ease, opacity 0.15s ease;
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    .notification-option .notification-label-text {
+      display: inline-flex;
+      align-items: center;
+      line-height: 1.05;
+    }
+    .notification-selected-summary {
+      margin-top: 0.45rem; color: var(--muted); font-size: 0.9rem;
+    }
+    .notification-selected-summary strong { color: var(--text); font-weight: 600; }
+
+    /* Error message styling - just text, no box */
+    .error-message { 
+      color: var(--danger); 
+      font-size: 0.9rem; 
+      margin-top: 0.25rem; 
+      min-height: 1.2em;
+    }
+
+    .full-width { grid-column: 1 / -1; }
+
+    /* modals */
+    .modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(2,6,23,.55);
+      align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      text-align: left;
+      width: 90%; max-width: 400px; position: relative;
+    }
+    .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
+
+    .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { color: var(--text); }
+
+    .password-input-wrap { position: relative; margin-bottom: 1rem; }
+    .password-input-wrap input { padding-right: 3rem; }
+
+    /* Aligned show/hide toggles */
+    .password-toggle {
+      position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+      background: var(--brand); color: white; border: none; border-radius: 8px;
+      cursor: pointer; transition: background var(--transition);
+      display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    }
+    .password-toggle:hover { background: var(--brand-600); }
+    .password-toggle .material-symbols-outlined {
+      font-size: 18px;
+    }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
+
+    /* Reduce spacing between allergies and conditions */
+    .health-info-section .form-group:first-child { margin-bottom: 0.5rem; }
+
+    /* Toast (bottom-right) */
+    .toast-container { position: fixed; right: 1rem; bottom: 1rem; display: grid; gap: 0.5rem; z-index: 1100; }
+    .toast {
+      position: relative; background: var(--surface); color: var(--text);
+      border-left: 4px solid var(--success); border-radius: 10px;
+      padding: 0.75rem 2.5rem 0.75rem 0.75rem; box-shadow: var(--shadow);
+      min-width: 240px; max-width: 360px; animation: toast-in 200ms ease-out;
+    }
+    .toast-title { font-weight: 600; }
+    .toast-close { position: absolute; top: 6px; right: 8px; background: transparent; border: 0; font-size: 1.1rem; cursor: pointer; color: var(--muted); }
+    .toast-close:hover { color: var(--text); }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* scrollbars */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--surface) 80%, var(--border));
+      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+    
+    /* Make calendar icons white */
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) opacity(.85);
+      cursor: pointer;
+    }
+    
+    /* Better select dropdowns */
+    select, option { 
+      background-color: var(--surface); 
+      color: var(--text); 
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 640px) {
+      select {
+        font-size: 16px !important;
+        padding: 0.7rem 0.85rem !important;
+      }
+      
+      select option {
+        background-color: var(--surface);
+        color: var(--text);
+        font-size: 16px;
+      }
+      .container { padding-inline: 1rem; }
+      .content { padding-block: 1.5rem; padding-top: 4.5rem !important; }
+      .profile-container { padding: 0.5rem; max-width: 100%; }
+      
+      h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+      h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+      
+      .profile-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+        align-items: flex-start;
+      }
+      
+      .profile-title { font-size: 1.25rem; }
+      
+      .btn-group {
+        width: 100%;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .card {
+        padding: 0.9rem;
+        border-radius: 16px;
+        margin-bottom: 1rem;
+      }
+      
+      .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+      }
+      
+      .form-group label {
+        font-size: 0.9rem;
+      }
+      
+      .form-group input[type="text"],
+      .form-group input[type="email"],
+      .form-group input[type="tel"],
+      .form-group input[type="password"],
+      .form-group input[type="date"],
+      .form-group textarea {
+        padding: 0.7rem 0.85rem;
+        font-size: 16px;
+        border-radius: 12px;
+      }
+      .notification-dropdown-toggle {
+        padding: 0.65rem 0.85rem;
+        font-size: 16px;
+      }
+      .notification-dropdown-menu {
+        max-height: 220px;
+        border-radius: 12px;
+      }
+      
+      input[type="text"],
+      input[type="email"],
+      input[type="tel"],
+      input[type="password"],
+      input[type="date"],
+      input[type="time"],
+      textarea {
+        font-size: 16px !important;
+      }
+      
+      .input-wrap input {
+        padding-right: 2.75rem !important;
+      }
+      
+      .verify-btn {
+        font-size: 0.8rem;
+        padding: 0.35rem 0.7rem;
+      }
+      
+      .verify-warning {
+        font-size: 0.85rem;
+      }
+      
+      .btn {
+        padding: 0.65rem 0.85rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+      }
+      
+      .btn-sm {
+        padding: 0.45rem 0.65rem;
+        font-size: 0.85rem;
+      }
+      
+      .actions {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .actions .btn {
+        width: 100%;
+      }
+      
+      .modal { padding: 0.5rem; }
+      .modal-content {
+        padding: 1rem;
+        max-width: 95%;
+        border-radius: 16px;
+      }
+      
+      .modal-content h3 {
+        font-size: 1.1rem;
+      }
+      
+      .modal-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .modal-actions .btn {
+        width: 100%;
+      }
+      
+      .password-input-wrap input {
+        padding-right: 2.75rem !important;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="profile.html" class="active" style="display: flex; align-items: center; justify-content: space-between;">
+      <span>Profile</span>
+      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
+    </a>
+  </nav>
+
+  <div class="content">
+    <div class="profile-container">
+      <div class="profile-header">
+        <h1 class="profile-title">Your Profile</h1>
+      </div>
+
+      <div class="profile-content">
+        <div class="profile-card">
+          <h2>Account Information</h2>
+          <form id="profile-form" novalidate>
+            <div class="profile-form">
+              <div class="form-group">
+                <label for="email">Email <span style="color: red;">*</span></label>
+                <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+                <button type="button" id="email-verify-btn" class="verify-btn" onclick="openEmailVerification()" style="display: none;">Verify Email</button>
+                <div id="email-error" class="error-message"></div>
+              </div>
+              <div class="form-group">
+                <label for="name">Name <span style="color: red;">*</span></label>
+                <input id="name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
+                <div id="name-error" class="error-message"></div>
+              </div>
+              <div class="form-group">
+                <label for="password">Password</label>
+                  <input id="password" name="password" type="password" placeholder="••••••••" readonly />
+              </div>
+              <div class="form-group">
+                <label for="phone">Phone Number <small>(optional)</small></label>
+                <input id="phone" name="phone" type="tel" placeholder="+1 (123) 456-7890" />
+                <button type="button" id="phone-verify-btn" class="verify-btn" onclick="openPhoneVerification()" style="display: none;">Verify Phone</button>
+                <div id="phone-error" class="error-message"></div>
+              </div>
+            </div>
+
+            <h2>Personal Information</h2>
+            <div class="profile-form">
+              <div class="form-group">
+                <label for="dob">Date of Birth <small>(optional)</small></label>
+                <input id="dob" name="dob" type="date" />
+              </div>
+              <div class="form-group">
+                <label for="gender">Gender <small>(optional)</small></label>
+                <select id="gender" name="gender">
+                  <option value="">Select…</option>
+                  <option>Female</option>
+                  <option>Male</option>
+                  <option>Non-binary</option>
+                  <option>Prefer not to say</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group" id="gender-other-wrap" style="display:none">
+                <label for="gender-other">Please specify</label>
+                <input id="gender-other" name="gender_other" type="text" placeholder="Self-described" />
+              </div>
+            </div>
+
+            <h2>Health Information</h2>
+            <div class="profile-form health-info-section">
+              <div class="form-group full-width">
+                <label for="allergies">Allergies <small>(optional)</small></label>
+                <textarea id="allergies" name="allergies" placeholder="e.g., penicillin, peanuts"></textarea>
+              </div>
+              <div class="form-group full-width">
+                <label for="conditions">Conditions <small>(optional)</small></label>
+                <textarea id="conditions" name="conditions" placeholder="e.g., hypertension, asthma"></textarea>
+              </div>
+            </div>
+
+            <h2>Preferences</h2>
+            <div class="profile-form">
+              <div class="form-group">
+                <label for="quiet-start">Do‑Not‑Disturb start <small>(optional)</small></label>
+                <input id="quiet-start" name="quiet_start" type="time" />
+              </div>
+              <div class="form-group">
+                <label for="quiet-end">Do‑Not‑Disturb end <small>(optional)</small></label>
+                <input id="quiet-end" name="quiet_end" type="time" />
+              </div>
+              <div class="form-group">
+                <label for="unit">Units <small>(optional)</small></label>
+                <select id="unit" name="units">
+                  <option value="">Select…</option>
+                  <option>mg</option>
+                  <option>mL</option>
+                  <option>tablets</option>
+                  <option>drops</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="tz">Time zone <small>(auto)</small></label>
+                <input id="tz" name="timezone" type="text" readonly />
+              </div>
+            </div>
+
+            <h2>Emergency Contact</h2>
+            <div class="profile-form">
+              <div class="form-group">
+                <label for="emg-name">Emergency contact name <small>(optional)</small></label>
+                <input id="emg-name" name="emg_name" type="text" placeholder="Full name" />
+              </div>
+              <div class="form-group">
+                <label for="emg-phone">Emergency contact phone <small>(optional)</small></label>
+                <input id="emg-phone" name="emg_phone" type="tel" placeholder="(123) 456-7890" />
+                <div id="emg-phone-error" class="error-message"></div>
+              </div>
+            </div>
+
+            <div class="form-group full-width notification-reminders">
+              <label for="notification-dropdown-toggle">Notification reminders <small>(choose as many as you like)</small></label>
+              <div class="notification-dropdown">
+                <button type="button" class="notification-dropdown-toggle" id="notification-dropdown-toggle" aria-haspopup="listbox" aria-expanded="false">
+                  <span id="notification-dropdown-label">Select reminders</span>
+                  <span class="dropdown-arrow">▾</span>
+                </button>
+                <div class="notification-dropdown-menu" id="notification-dropdown-menu" role="listbox" aria-multiselectable="true">
+                  <label class="notification-option">
+                    <input type="checkbox" value="1_day_before" data-label="1 day before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">1 day before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="5_hours_before" data-label="5 hours before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">5 hours before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="3_hours_before" data-label="3 hours before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">3 hours before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="2_hours_before" data-label="2 hours before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">2 hours before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="1_hour_before" data-label="1 hour before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">1 hour before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="30_minutes_before" data-label="30 minutes before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">30 minutes before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="15_minutes_before" data-label="15 minutes before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">15 minutes before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="10_minutes_before" data-label="10 minutes before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">10 minutes before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="5_minutes_before" data-label="5 minutes before">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">5 minutes before</span>
+                  </label>
+                  <label class="notification-option">
+                    <input type="checkbox" value="at_time" data-label="At the time">
+                    <span class="checkbox-box"><span class="checkmark">✓</span></span>
+                    <span class="notification-label-text">At the time</span>
+                  </label>
+                </div>
+              </div>
+              <div class="notification-selected-summary" id="notification-selected-summary">No reminders selected.</div>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+            <div class="actions" style="margin-top: 1rem;">
+              <button type="button" id="sign-out-btn" class="btn-danger" style="padding: 1rem 1.5rem; font-size: 1rem; font-weight: 600;">Sign Out</button>
+            </div>
+            <p id="message" class="msg" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Verification Modal -->
+  <div id="email-verification-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="email-verify-title">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeEmailVerification()" aria-label="Close">&times;</button>
+      <h3 id="email-verify-title">Verify Email</h3>
+      <p class="modal-description">We'll send a verification link to your email address. Click the link in the email to verify your account. <strong>Check your spam folder if you don't see it!</strong></p>
+      <p class="modal-description" style="margin-top: 1rem; font-size: 0.9rem; color: var(--muted);">After clicking the link in your email, click "Check Verification Status" below.</p>
+      
+      <div class="modal-actions">
+        <button type="button" id="email-resend-btn" class="btn-secondary" onclick="resendEmailCode()" disabled>Resend Email (60s)</button>
+        <button type="button" class="btn-primary" onclick="checkEmailVerified()">Check Verification Status</button>
+        </div>
+      <p id="email-verify-message" class="msg" role="status" aria-live="polite"></p>
+      </div>
+      </div>
+
+  <!-- Phone Verification Modal -->
+  <div id="phone-verification-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="phone-verify-title">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closePhoneVerification()" aria-label="Close">&times;</button>
+      <h3 id="phone-verify-title">Verify Phone Number</h3>
+      <p class="modal-description">We'll send a verification code via SMS to your phone number.</p>
+      
+      <div id="recaptcha-container"></div>
+      
+      <div class="form-group">
+        <label for="phone-code">Verification Code</label>
+        <input id="phone-code" type="text" placeholder="Enter 6-digit code" maxlength="6" autocomplete="off" />
+        <div id="phone-code-error" class="error-message" role="alert"></div>
+      </div>
+      
+      <div class="modal-actions">
+        <button type="button" id="phone-resend-btn" class="btn-secondary" onclick="resendPhoneCode()" disabled>Resend Code (60s)</button>
+        <button type="button" class="btn-primary" onclick="verifyPhoneCode()">Verify</button>
+      </div>
+      <p id="phone-verify-message" class="msg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <script>
+    // Close mobile menu when clicking on nav links
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+      if (window.initNotificationReminders) {
+        window.initNotificationReminders();
+      }
+    });
+    
+    /* Why: ensure password modal opens clean with no stale input/errors */
+
+    /* Why: sync button a11y state with input visibility */
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const visible = input.type === 'text';
+      input.type = visible ? 'password' : 'text';
+      if (btn) {
+        if (visible) {
+          // Show password icon (eye open)
+          btn.textContent = '👁️';
+          btn.setAttribute('aria-label', 'Show password');
+        } else {
+          // Hide password icon (crossed out eye)
+          btn.textContent = '🙈';
+          btn.setAttribute('aria-label', 'Hide password');
+        }
+        btn.setAttribute('aria-pressed', String(!visible));
+      }
+    }
+
+    // Toast helper (bottom-right professional toast)
+    function showToast(titleText) {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+      }
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `
+        <div class="toast-title">${titleText}</div>
+        <button class="toast-close" aria-label="Dismiss" title="Dismiss">×</button>
+      `;
+      const remove = () => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 200ms ease';
+        setTimeout(() => toast.remove(), 200);
+      };
+      toast.querySelector('.toast-close').addEventListener('click', remove);
+      container.appendChild(toast);
+      setTimeout(remove, 5000); // auto-dismiss after 10s
+    }
+
+
+    // Notification reminders helpers
+    let notificationDropdownInitialized = false;
+
+    function notificationCheckboxes() {
+      return Array.from(document.querySelectorAll('#notification-dropdown-menu input[type="checkbox"]'));
+    }
+
+    function getCheckboxLabel(value) {
+      const checkbox = document.querySelector(`#notification-dropdown-menu input[value="${value}"]`);
+      return checkbox ? checkbox.dataset.label || checkbox.value : value;
+    }
+
+    function updateNotificationSummary() {
+      const summaryEl = document.getElementById('notification-selected-summary');
+      const labelEl = document.getElementById('notification-dropdown-label');
+      if (!summaryEl || !labelEl) return;
+
+      const selected = window.getSelectedNotificationReminders();
+      if (!selected.length) {
+        summaryEl.textContent = 'No reminders selected.';
+        labelEl.textContent = 'Select reminders';
+        return;
+      }
+
+      const labels = selected.map(getCheckboxLabel);
+      summaryEl.innerHTML = `<strong>Selected:</strong> ${labels.join(', ')}`;
+      labelEl.textContent = `${selected.length} selected`;
+    }
+
+    window.getSelectedNotificationReminders = function() {
+      return notificationCheckboxes()
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+    };
+
+    window.setNotificationReminders = function(selectedValues) {
+      const valueSet = new Set(selectedValues || []);
+      notificationCheckboxes().forEach(cb => {
+        cb.checked = valueSet.has(cb.value);
+      });
+      updateNotificationSummary();
+    };
+
+    window.initNotificationReminders = function() {
+      if (notificationDropdownInitialized) {
+        updateNotificationSummary();
+        return;
+      }
+      notificationDropdownInitialized = true;
+
+      const toggle = document.getElementById('notification-dropdown-toggle');
+      const menu = document.getElementById('notification-dropdown-menu');
+      if (!toggle || !menu) return;
+
+      const closeMenu = () => {
+        menu.classList.remove('open');
+        toggle.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+      };
+
+      toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isOpen = !menu.classList.contains('open');
+        if (isOpen) {
+          menu.classList.add('open');
+          toggle.classList.add('open');
+        } else {
+          closeMenu();
+    }
+        toggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      document.addEventListener('click', (event) => {
+        if (!menu.contains(event.target) && !toggle.contains(event.target)) {
+          closeMenu();
+        }
+      });
+
+      notificationCheckboxes().forEach(cb => {
+        cb.addEventListener('change', () => {
+          updateNotificationSummary();
+        });
+      });
+
+      updateNotificationSummary();
+    };
+
+    // Gender other field
+    const gender = document.getElementById('gender');
+    const gWrap = document.getElementById('gender-other-wrap');
+    gender.addEventListener('change', () => {
+      gWrap.style.display = gender.value === 'other' ? 'block' : 'none';
+    });
+
+    // Timezone auto-fill
+    const tz = document.getElementById('tz');
+    try { tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tz.value = ''; }
+
+    // Load profile data from localStorage
+    function loadProfileData() {
+      const profileData = JSON.parse(localStorage.getItem('userProfile') || '{}');
+      if (profileData.email) document.getElementById('email').value = profileData.email;
+      if (profileData.name) document.getElementById('name').value = profileData.name;
+      if (profileData.password) document.getElementById('password').value = profileData.password;
+      if (profileData.phone) document.getElementById('phone').value = profileData.phone;
+      if (profileData.dob) document.getElementById('dob').value = profileData.dob;
+      if (profileData.gender) {
+        document.getElementById('gender').value = profileData.gender;
+        if (profileData.gender === 'other' && profileData.gender_other) {
+          document.getElementById('gender-other-wrap').style.display = 'block';
+          document.getElementById('gender-other').value = profileData.gender_other;
+        }
+      }
+      if (profileData.allergies) document.getElementById('allergies').value = profileData.allergies;
+      if (profileData.conditions) document.getElementById('conditions').value = profileData.conditions;
+      if (profileData.quiet_start) document.getElementById('quiet-start').value = profileData.quiet_start;
+      if (profileData.quiet_end) document.getElementById('quiet-end').value = profileData.quiet_end;
+      if (profileData.units) document.getElementById('unit').value = profileData.units;
+      if (profileData.emg_name) document.getElementById('emg-name').value = profileData.emg_name;
+      if (profileData.emg_phone) document.getElementById('emg-phone').value = profileData.emg_phone;
+      if (window.setNotificationReminders) {
+        window.setNotificationReminders(profileData.notification_reminders || []);
+      }
+    }
+
+    // Validation functions
+    function validateEmail(email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    }
+
+    function validatePhone(phone) {
+      if (!phone || phone.trim() === '') return true; // Phone is optional
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
+      return phoneRegex.test(cleanPhone);
+    }
+
+    function validateName(name) {
+      return name && name.trim().length >= 2;
+    }
+
+    function clearValidationErrors() {
+      document.getElementById('email-error').textContent = '';
+      document.getElementById('name-error').textContent = '';
+      document.getElementById('phone-error').textContent = '';
+      document.getElementById('emg-phone-error').textContent = '';
+    }
+
+    function showValidationError(fieldId, message) {
+      document.getElementById(fieldId).textContent = message;
+    }
+
+    // Save profile data to localStorage
+    function saveProfileData() {
+      clearValidationErrors();
+      
+      // Clear any existing general error message
+      const message = document.getElementById('message');
+      message.className = 'msg';
+      message.textContent = '';
+      
+      const email = document.getElementById('email').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const emgPhone = document.getElementById('emg-phone').value.trim();
+      
+      let hasErrors = false;
+
+      // Validate required fields
+      if (!email) {
+        showValidationError('email-error', 'Email is required');
+        hasErrors = true;
+      } else if (!validateEmail(email)) {
+        showValidationError('email-error', 'Please enter a valid email address');
+        hasErrors = true;
+      }
+
+      if (!name) {
+        showValidationError('name-error', 'Name is required');
+        hasErrors = true;
+      } else if (!validateName(name)) {
+        showValidationError('name-error', 'Name must be at least 2 characters long');
+        hasErrors = true;
+      }
+
+      if (phone && !validatePhone(phone)) {
+        showValidationError('phone-error', 'Please enter a valid phone number');
+        hasErrors = true;
+      }
+
+      if (emgPhone && !validatePhone(emgPhone)) {
+        showValidationError('emg-phone-error', 'Please enter a valid emergency contact phone number');
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
+        message.className = 'msg err';
+        message.textContent = 'Please fix the errors above before saving.';
+        return;
+      }
+
+      const formData = new FormData(document.getElementById('profile-form'));
+      const profileData = {};
+      for (let [key, value] of formData.entries()) { if (value.trim() !== '') { profileData[key] = value; } }
+      profileData.timezone = document.getElementById('tz').value;
+      profileData.notification_reminders = window.getSelectedNotificationReminders ? window.getSelectedNotificationReminders() : [];
+      localStorage.setItem('userProfile', JSON.stringify(profileData));
+
+      message.className = 'msg ok';
+      message.textContent = 'Profile updated successfully!';
+      setTimeout(() => { message.className = 'msg'; message.textContent = ''; }, 3000);
+    }
+
+    // Real-time validation - clear errors when user starts typing
+    function setupRealTimeValidation() {
+      const emailInput = document.getElementById('email');
+      const nameInput = document.getElementById('name');
+      const phoneInput = document.getElementById('phone');
+      const emgPhoneInput = document.getElementById('emg-phone');
+
+      // Clear errors when user starts typing
+      emailInput.addEventListener('input', () => {
+        if (document.getElementById('email-error').textContent) {
+          document.getElementById('email-error').textContent = '';
+        }
+      });
+
+      nameInput.addEventListener('input', () => {
+        if (document.getElementById('name-error').textContent) {
+          document.getElementById('name-error').textContent = '';
+        }
+      });
+
+      phoneInput.addEventListener('input', () => {
+        if (document.getElementById('phone-error').textContent) {
+          document.getElementById('phone-error').textContent = '';
+        }
+      });
+
+      emgPhoneInput.addEventListener('input', () => {
+        if (document.getElementById('emg-phone-error').textContent) {
+          document.getElementById('emg-phone-error').textContent = '';
+        }
+      });
+    }
+
+    document.getElementById('profile-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      saveProfileData();
+    });
+
+    window.firebaseDataLoaded = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Don't load profile data immediately - wait for Firebase
+      setupRealTimeValidation();
+    });
+  </script>
+
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut, sendEmailVerification, RecaptchaVerifier, PhoneAuthProvider, linkWithCredential, PhoneAuthCredential } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4",
+      measurementId: "G-GGHXPT2Q5L"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // Setup sign out button
+    document.addEventListener('DOMContentLoaded', () => {
+      const signOutBtn = document.getElementById('sign-out-btn');
+      if (signOutBtn) {
+        signOutBtn.addEventListener('click', async () => {
+          try {
+            await signOut(auth);
+            // Clear localStorage
+            localStorage.removeItem('userProfile');
+            localStorage.removeItem('medications');
+            localStorage.removeItem('historyMeds');
+            // Clear all notes
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('note_')) {
+                keysToRemove.push(key);
+              }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            // Redirect to login
+            window.location.href = 'login.html';
+          } catch (error) {
+            console.error('Error signing out:', error);
+            alert('Error signing out: ' + error.message);
+          }
+        });
+      }
+    });
+
+    // Check if user is authenticated and load their profile
+    let authChecked = false;
+    
+    onAuthStateChanged(auth, async (user) => {
+      authChecked = true;
+      
+      if (user) {
+        // User is signed in, load their profile from Firestore
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const profileData = userDoc.data();
+            
+            // Update localStorage with Firebase data + preserve password
+            const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+            const mergedProfile = {...profileData, password: currentProfile.password};
+            localStorage.setItem('userProfile', JSON.stringify(mergedProfile));
+            localStorage.setItem('userId', user.uid);
+            localStorage.setItem('userEmail', profileData.email);
+            
+            // Mark that Firebase data has been loaded
+            window.firebaseDataLoaded = true;
+            
+            // Load the form with Firebase data
+            if (window.loadProfileData) {
+              window.loadProfileData();
+            }
+          } else {
+            // No profile in Firestore - this shouldn't happen if registration worked
+            console.warn('No profile found in Firestore for user:', user.uid);
+            window.firebaseDataLoaded = true;
+            if (window.loadProfileData) {
+              window.loadProfileData();
+            }
+          }
+        } catch (error) {
+          console.error('Error loading profile from Firebase:', error);
+          // Still try to load from localStorage
+          window.firebaseDataLoaded = true;
+          if (window.loadProfileData) {
+            window.loadProfileData();
+          }
+        }
+      } else {
+        // No user signed in, redirect to login
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Fallback: if auth state doesn't change within 2 seconds, check localStorage
+    setTimeout(() => {
+      if (!authChecked) {
+        console.log('Auth state not determined, checking localStorage...');
+        const userProfile = localStorage.getItem('userProfile');
+        const userId = localStorage.getItem('userId');
+        
+        if (userProfile && userId) {
+          console.log('Found user in localStorage, loading profile...');
+          window.firebaseDataLoaded = true;
+          if (window.loadProfileData) {
+            window.loadProfileData();
+          }
+        } else {
+          console.log('No user found, redirecting to login...');
+          window.location.href = 'login.html';
+        }
+      }
+    }, 2000);
+
+    // Override saveProfileData to save to Firebase
+    const originalSaveProfileData = window.saveProfileData;
+    window.saveProfileData = async function() {
+      // Use the original validation logic
+      window.clearValidationErrors();
+      
+      const message = document.getElementById('message');
+      message.className = 'msg';
+      message.textContent = '';
+      
+      const email = document.getElementById('email').value.trim();
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const emgPhone = document.getElementById('emg-phone').value.trim();
+      
+      let hasErrors = false;
+
+      // Validate required fields using original functions
+      if (!email) {
+        window.showValidationError('email-error', 'Email is required');
+        hasErrors = true;
+      } else if (!window.validateEmail(email)) {
+        window.showValidationError('email-error', 'Please enter a valid email address');
+        hasErrors = true;
+      }
+
+      if (!name) {
+        window.showValidationError('name-error', 'Name is required');
+        hasErrors = true;
+      } else if (!window.validateName(name)) {
+        window.showValidationError('name-error', 'Name must be at least 2 characters long');
+        hasErrors = true;
+      }
+
+      if (phone && !window.validatePhone(phone)) {
+        window.showValidationError('phone-error', 'Please enter a valid phone number');
+        hasErrors = true;
+      }
+
+      if (emgPhone && !window.validatePhone(emgPhone)) {
+        window.showValidationError('emg-phone-error', 'Please enter a valid emergency contact phone number');
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
+        message.className = 'msg err';
+        message.textContent = 'Please fix the errors above before saving.';
+        return;
+      }
+
+      // Collect profile data from form
+      const formData = new FormData(document.getElementById('profile-form'));
+      const profileData = {};
+      for (let [key, value] of formData.entries()) { 
+        if (value.trim() !== '') { 
+          profileData[key] = value; 
+        } 
+      }
+      profileData.timezone = document.getElementById('tz').value;
+      profileData.notification_reminders = window.getSelectedNotificationReminders ? window.getSelectedNotificationReminders() : [];
+
+      try {
+        // Show loading
+        message.className = 'msg ok';
+        message.textContent = 'Saving...';
+
+        const user = auth.currentUser;
+        if (user) {
+          // Save to Firestore (without password)
+          const userDocRef = doc(db, "users", user.uid);
+          const firestoreData = {...profileData};
+          delete firestoreData.password;
+          
+          // Use setDoc instead of updateDoc to create document if it doesn't exist
+          await setDoc(userDocRef, firestoreData, { merge: true });
+          
+          // Also update localStorage with password preserved
+          const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          profileData.password = currentProfile.password;
+          localStorage.setItem('userProfile', JSON.stringify(profileData));
+          
+          message.className = 'msg ok';
+          message.textContent = 'Profile updated successfully!';
+        } else {
+          // Fallback to localStorage only
+          localStorage.setItem('userProfile', JSON.stringify(profileData));
+          message.className = 'msg ok';
+          message.textContent = 'Profile updated locally!';
+        }
+        
+        setTimeout(() => { message.className = 'msg'; message.textContent = ''; }, 3000);
+      } catch (error) {
+        console.error('Error saving profile:', error);
+        message.className = 'msg err';
+        message.textContent = 'Error saving profile: ' + error.message;
+        setTimeout(() => { message.className = 'msg'; message.textContent = ''; }, 5000);
+      }
+    };
+
+    // ============ EMAIL & PHONE VERIFICATION ============
+    
+    let emailResendTimer = null;
+    let phoneResendTimer = null;
+    let phoneVerificationId = null;
+    let recaptchaVerifier = null;
+
+    // Check verification status on load
+    function checkVerificationStatus() {
+      const user = auth.currentUser;
+      const warningIcon = document.getElementById('profile-verify-warning');
+      
+      if (user) {
+        let needsVerification = false;
+        
+        // Check email verification
+        if (!user.emailVerified) {
+          needsVerification = true;
+          document.getElementById('email-verify-btn').style.display = 'inline-block';
+        } else {
+          document.getElementById('email-verify-btn').style.display = 'none';
+        }
+
+        // Check phone verification (stored in Firestore)
+        const userDocRef = doc(db, "users", user.uid);
+        getDoc(userDocRef).then(docSnap => {
+          const phoneInput = document.getElementById('phone');
+          const phoneVerified = docSnap.exists() && docSnap.data().phoneVerified;
+          
+          if (phoneInput.value.trim() && !phoneVerified) {
+            needsVerification = true;
+            document.getElementById('phone-verify-btn').style.display = 'inline-block';
+          } else {
+            document.getElementById('phone-verify-btn').style.display = 'none';
+          }
+          
+          // Update sidebar warning icon
+          if (needsVerification) {
+            warningIcon.style.display = 'inline';
+          } else {
+            warningIcon.style.display = 'none';
+          }
+        });
+        
+        // Initial update of sidebar (show if email needs verification)
+        if (needsVerification) {
+          warningIcon.style.display = 'inline';
+        }
+      }
+    }
+
+    // Show phone verification button when phone is entered
+    document.getElementById('phone').addEventListener('input', () => {
+      checkVerificationStatus();
+    });
+
+    // EMAIL VERIFICATION
+    window.openEmailVerification = async function() {
+      const modal = document.getElementById('email-verification-modal');
+      const message = document.getElementById('email-verify-message');
+      
+      message.className = 'msg';
+      message.textContent = '';
+      
+      modal.classList.add('show');
+      
+      // Update timer button status when modal opens
+      updateEmailResendButton();
+      
+      // Check if timer is already running (user already sent email)
+      const endTime = parseInt(localStorage.getItem('emailResendEndTime') || '0');
+      const now = Date.now();
+      if (endTime > now) {
+        // Timer is still running, don't send another email
+        message.className = 'msg ok';
+        message.textContent = 'Verification email already sent. Check your inbox and spam folder. Click the link, then click "Check Verification Status" below.';
+        return;
+      }
+      
+      try {
+        const user = auth.currentUser;
+        if (user && !user.emailVerified) {
+          message.className = 'msg ok';
+          message.textContent = 'Sending verification email...';
+          
+          await sendEmailVerification(user);
+          
+          message.textContent = 'Verification email sent! Check your inbox and spam folder. Click the link, then come back here and click "Check Verification Status".';
+          startEmailResendTimer();
+        }
+      } catch (error) {
+        console.error('Email verification error:', error);
+        message.className = 'msg err';
+        message.textContent = 'Error: ' + error.message;
+      }
+    };
+
+    window.closeEmailVerification = function() {
+      document.getElementById('email-verification-modal').classList.remove('show');
+      if (emailResendTimer) clearInterval(emailResendTimer);
+    };
+
+    window.checkEmailVerified = async function() {
+      const message = document.getElementById('email-verify-message');
+      
+      try {
+        message.className = 'msg ok';
+        message.textContent = 'Checking verification status...';
+        
+        const user = auth.currentUser;
+        await user.reload();
+        
+        if (user.emailVerified) {
+          message.textContent = 'Email verified successfully! ✅';
+          document.getElementById('email-verify-btn').style.display = 'none';
+          checkVerificationStatus();
+          
+          setTimeout(() => {
+            closeEmailVerification();
+          }, 1500);
+        } else {
+          message.className = 'msg err';
+          message.textContent = 'Email not verified yet. Please click the verification link in your email first.';
+        }
+      } catch (error) {
+        console.error('Verification check error:', error);
+        message.className = 'msg err';
+        message.textContent = 'Error: ' + error.message;
+      }
+    };
+
+    window.resendEmailCode = async function() {
+      const message = document.getElementById('email-verify-message');
+      
+      try {
+        message.className = 'msg ok';
+        message.textContent = 'Sending verification email...';
+        
+        const user = auth.currentUser;
+        await sendEmailVerification(user);
+        
+        message.textContent = 'Verification email sent! Check your inbox and spam folder.';
+        startEmailResendTimer();
+      } catch (error) {
+        console.error('Resend error:', error);
+        message.className = 'msg err';
+        message.textContent = 'Error: ' + error.message;
+      }
+    };
+
+    function startEmailResendTimer() {
+      const endTime = Date.now() + 60000; // 60 seconds from now
+      localStorage.setItem('emailResendEndTime', endTime.toString());
+      updateEmailResendButton();
+    }
+    
+    function updateEmailResendButton() {
+      const btn = document.getElementById('email-resend-btn');
+      if (!btn) return;
+      
+      const endTime = parseInt(localStorage.getItem('emailResendEndTime') || '0');
+      const now = Date.now();
+      const timeLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      if (timeLeft > 0) {
+        btn.disabled = true;
+        btn.textContent = `Resend Email (${timeLeft}s)`;
+        
+        // Clear existing timer
+        if (emailResendTimer) clearInterval(emailResendTimer);
+        
+        // Update every second
+        emailResendTimer = setInterval(() => {
+          updateEmailResendButton();
+        }, 1000);
+      } else {
+        if (emailResendTimer) clearInterval(emailResendTimer);
+        btn.disabled = false;
+        btn.textContent = 'Resend Email';
+        localStorage.removeItem('emailResendEndTime');
+      }
+    }
+    
+    // Check timers on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateEmailResendButton();
+      updatePhoneResendButton();
+    });
+
+    // PHONE VERIFICATION
+    window.openPhoneVerification = async function() {
+      const modal = document.getElementById('phone-verification-modal');
+      const message = document.getElementById('phone-verify-message');
+      const codeInput = document.getElementById('phone-code');
+      const phoneInput = document.getElementById('phone').value.trim();
+      
+      if (!phoneInput) {
+        alert('Please enter a phone number first');
+        return;
+      }
+      
+      // Ensure phone number is in E.164 format (+1234567890)
+      let formattedPhone = phoneInput.replace(/\D/g, '');
+      if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
+        formattedPhone = '1' + formattedPhone;
+      }
+      formattedPhone = '+' + formattedPhone;
+      
+      codeInput.value = '';
+      message.className = 'msg';
+      message.textContent = '';
+      
+      modal.classList.add('show');
+      
+      // Update timer button status when modal opens
+      updatePhoneResendButton();
+      
+      // Check if timer is already running (user already sent SMS)
+      const endTime = parseInt(localStorage.getItem('phoneResendEndTime') || '0');
+      const now = Date.now();
+      if (endTime > now && phoneVerificationId) {
+        // Timer is still running and we have a verification ID
+        message.className = 'msg ok';
+        message.textContent = 'Verification code already sent. Check your SMS messages.';
+        return;
+      }
+      
+      try {
+        message.className = 'msg ok';
+        message.textContent = 'Initializing verification...';
+        
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('Not signed in');
+        }
+        
+        // Initialize reCAPTCHA if not already done
+        if (!recaptchaVerifier) {
+          recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'normal',
+            callback: () => {
+              console.log('reCAPTCHA solved');
+            }
+          });
+          await recaptchaVerifier.render();
+        }
+        
+        // Send verification code
+        const phoneProvider = new PhoneAuthProvider(auth);
+        phoneVerificationId = await phoneProvider.verifyPhoneNumber(formattedPhone, recaptchaVerifier);
+        
+        message.textContent = 'Verification code sent via SMS!';
+        startPhoneResendTimer();
+      } catch (error) {
+        console.error('Phone verification error:', error);
+        message.className = 'msg err';
+        message.textContent = 'Error: ' + error.message;
+        
+        // Reset reCAPTCHA on error
+        if (recaptchaVerifier) {
+          recaptchaVerifier.clear();
+          recaptchaVerifier = null;
+        }
+      }
+    };
+
+    window.closePhoneVerification = function() {
+      document.getElementById('phone-verification-modal').classList.remove('show');
+      if (phoneResendTimer) clearInterval(phoneResendTimer);
+    };
+
+    window.verifyPhoneCode = async function() {
+      const message = document.getElementById('phone-verify-message');
+      const codeInput = document.getElementById('phone-code');
+      const code = codeInput.value.trim();
+      
+      if (!code || code.length !== 6) {
+        message.className = 'msg err';
+        message.textContent = 'Please enter a valid 6-digit code';
+        return;
+      }
+      
+      try {
+        message.className = 'msg ok';
+        message.textContent = 'Verifying code...';
+        
+        const user = auth.currentUser;
+        const credential = PhoneAuthProvider.credential(phoneVerificationId, code);
+        
+        // Link phone credential to user account
+        await linkWithCredential(user, credential);
+        
+        // Update Firestore to mark phone as verified
+        const userDocRef = doc(db, "users", user.uid);
+        await setDoc(userDocRef, { phoneVerified: true }, { merge: true });
+        
+        message.textContent = 'Phone verified successfully! ✅';
+        document.getElementById('phone-verify-btn').style.display = 'none';
+        checkVerificationStatus();
+        
+        setTimeout(() => {
+          closePhoneVerification();
+        }, 1500);
+      } catch (error) {
+        console.error('Phone verification error:', error);
+        message.className = 'msg err';
+        
+        if (error.code === 'auth/invalid-verification-code') {
+          message.textContent = 'Invalid code. Please try again.';
+        } else if (error.code === 'auth/code-expired') {
+          message.textContent = 'Code expired. Please request a new one.';
+        } else {
+          message.textContent = 'Error: ' + error.message;
+        }
+      }
+    };
+
+    window.resendPhoneCode = async function() {
+      const message = document.getElementById('phone-verify-message');
+      const phoneInput = document.getElementById('phone').value.trim();
+      
+      let formattedPhone = phoneInput.replace(/\D/g, '');
+      if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
+        formattedPhone = '1' + formattedPhone;
+      }
+      formattedPhone = '+' + formattedPhone;
+      
+      try {
+        message.className = 'msg ok';
+        message.textContent = 'Sending new code...';
+        
+        // Reset reCAPTCHA
+        if (recaptchaVerifier) {
+          recaptchaVerifier.clear();
+          recaptchaVerifier = null;
+        }
+        
+        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'normal'
+        });
+        await recaptchaVerifier.render();
+        
+        const phoneProvider = new PhoneAuthProvider(auth);
+        phoneVerificationId = await phoneProvider.verifyPhoneNumber(formattedPhone, recaptchaVerifier);
+        
+        message.textContent = 'New verification code sent!';
+        startPhoneResendTimer();
+      } catch (error) {
+        console.error('Resend error:', error);
+        message.className = 'msg err';
+        message.textContent = 'Error: ' + error.message;
+      }
+    };
+
+    function startPhoneResendTimer() {
+      const endTime = Date.now() + 60000; // 60 seconds from now
+      localStorage.setItem('phoneResendEndTime', endTime.toString());
+      updatePhoneResendButton();
+    }
+    
+    function updatePhoneResendButton() {
+      const btn = document.getElementById('phone-resend-btn');
+      if (!btn) return;
+      
+      const endTime = parseInt(localStorage.getItem('phoneResendEndTime') || '0');
+      const now = Date.now();
+      const timeLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      if (timeLeft > 0) {
+        btn.disabled = true;
+        btn.textContent = `Resend Code (${timeLeft}s)`;
+        
+        // Clear existing timer
+        if (phoneResendTimer) clearInterval(phoneResendTimer);
+        
+        // Update every second
+        phoneResendTimer = setInterval(() => {
+          updatePhoneResendButton();
+        }, 1000);
+      } else {
+        if (phoneResendTimer) clearInterval(phoneResendTimer);
+        btn.disabled = false;
+        btn.textContent = 'Resend Code';
+        localStorage.removeItem('phoneResendEndTime');
+      }
+    }
+
+    // Call checkVerificationStatus after user data loads
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setTimeout(() => {
+          checkVerificationStatus();
+        }, 1000);
+      }
+    });
+
+  </script>
+</body>
+</html>

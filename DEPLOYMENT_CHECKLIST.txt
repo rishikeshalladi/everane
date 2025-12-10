@@ -1,0 +1,85 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║        MedTracker Email Reminder System - Deployment Checklist       ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+PHASE 1: PREREQUISITES
+□ Firebase CLI installed (npm install -g firebase-tools)
+□ Firebase account created
+□ Firebase project created (in console)
+□ Blaze plan enabled (required for Cloud Functions)
+□ Gmail account with 2FA enabled
+□ Gmail App Password generated
+
+PHASE 2: LOCAL SETUP
+□ Navigated to project directory
+□ Ran: firebase login
+□ Ran: cd functions && npm install
+□ Verified functions/index.js exists
+□ Verified functions/package.json exists
+
+PHASE 3: CONFIGURATION
+□ Set Gmail email: firebase functions:config:set gmail.email="..."
+□ Set Gmail password: firebase functions:config:set gmail.password="..."
+□ Verified config: firebase functions:config:get
+□ Edited timezone in functions/index.js (lines 176 & 270)
+□ Saved changes
+
+PHASE 4: DEPLOYMENT
+□ Ran: firebase deploy --only functions
+□ Deployment successful (no errors)
+□ Functions visible in Firebase Console
+□ sendMedicationReminders deployed
+□ sendLowStockAlerts deployed
+
+PHASE 5: TESTING
+□ Added test medication in app
+□ Set reminder method = Email
+□ Set time = 5 minutes from now
+□ Set days = Today
+□ Waited 5 minutes
+□ Received email successfully
+□ Checked spam folder (if needed)
+□ Verified email format looks good
+
+PHASE 6: MONITORING
+□ Checked logs: firebase functions:log
+□ Viewed function in Firebase Console
+□ Confirmed no errors in logs
+□ Verified execution count increasing
+
+PHASE 7: PRODUCTION
+□ Tested with multiple medications
+□ Tested different time configurations
+□ Tested 30-min advance (custom times)
+□ Tested low stock alert
+□ Verified timezone is correct
+□ All reminders working as expected
+
+TROUBLESHOOTING CHECKLIST
+If emails not received:
+□ Checked firebase functions:log
+□ Verified medication has reminderMethod = 'E'
+□ Verified medication not deleted
+□ Verified today is in daysOfWeek
+□ Verified end date not passed
+□ Checked spam folder
+□ Regenerated Gmail App Password
+□ Redeployed functions
+
+MAINTENANCE
+□ Monitor monthly function invocations
+□ Check email delivery rate
+□ Review logs for errors weekly
+□ Update timezone if needed
+□ Customize email templates (optional)
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║  STATUS: [ ] Not Started  [ ] In Progress  [ ] Complete             ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+Notes:
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________

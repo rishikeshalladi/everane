@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker – Continue Registration</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="hamburger" aria-label="Toggle menu">☰</button>
+
+  <header class="navbar">
+    <div><a href="index.html">Home</a></div>
+  </header>
+  <main style="max-width:400px; margin:4rem auto;">
+    <h1>Continue Registering</h1>
+    <label for="dob">Date of Birth <small>(optional)</small></label>
+    <input id="dob" type="date">
+    <fieldset style="border:none; padding:0; margin:1rem 0;">
+      <legend>Gender <small>(optional)</small></legend>
+      <label><input type="radio" name="gender"> Male</label>
+      <label><input type="radio" name="gender"> Female</label>
+      <label><input type="radio" name="gender"> Other</label>
+    </fieldset>
+    <label for="age">Age <small>(optional)</small></label>
+    <input id="age" type="number" min="0">
+    <button class="btn btn-primary" onclick="location.href='home.html'">Continue</button>
+  </main>
+</body>
+</html>

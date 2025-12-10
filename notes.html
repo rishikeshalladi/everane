@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker – Notes</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --danger-color: var(--danger);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+    }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 5rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1000 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+    }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+    }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+    }
+
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-600)); color: #fff; border: none; }
+    .btn-primary:hover { background: linear-gradient(135deg, var(--brand-600), var(--brand-700)); box-shadow: 0 6px 16px rgba(79,140,255,.25); }
+
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); border-color: color-mix(in oklab, var(--border) 80%, var(--text)); }
+
+    /* === Notes specific === */
+    .notes-container { max-width: 900px; margin: 0 auto; padding: 1rem; }
+    .notes-header {
+      position: relative;
+      display: flex; align-items: center; margin-bottom: 2rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; box-shadow: var(--shadow);
+    }
+    .notes-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin: 0; flex: 1; min-width: 200px; }
+    .notes-nav { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
+
+    .nav-btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: .6rem 1rem; }
+    .nav-btn:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .mini-calendar-picker { position: relative; display: inline-block; }
+    .mini-calendar-btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: .6rem 1rem; min-width: 180px; text-align: center; }
+    .mini-calendar-btn:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .mini-calendar-dropdown {
+      position: absolute; top: 100%; left: 0; background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; display: none; padding: 1rem; min-width: 280px;
+    }
+    .mini-calendar-dropdown.show { display: block !important; }
+    .mini-calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .mini-calendar-title { font-weight: bold; font-size: 0.875rem; }
+    .mini-calendar-nav { display: flex; gap: .25rem; }
+    .mini-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; }
+    .mini-calendar-grid .weekday-mini { font-size: 0.75rem; font-weight: bold; text-align: center; padding: 0.25rem; color: var(--muted); }
+    .mini-calendar-day { padding: .4rem; text-align: center; border-radius: 6px; cursor: pointer; font-size: 0.875rem; }
+    .mini-calendar-day:hover { background: color-mix(in oklab, var(--brand) 12%, transparent); }
+    .mini-calendar-day.today { background: color-mix(in oklab, var(--muted) 20%, transparent); font-weight: bold; }
+    .mini-calendar-day.selected { background: linear-gradient(135deg, var(--brand), var(--brand-600)); color: #fff; font-weight: bold; }
+    .mini-calendar-day.other-month { color: var(--muted); opacity: 0.4; }
+
+    .notes-content { display: flex; flex-direction: column; gap: 1rem; }
+    .note-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .note-card h2 {
+      font-size: 1.2rem;
+      margin: 0 0 .75rem;
+      color: var(--text);
+    }
+    .note-card textarea {
+      width: 100%;
+      min-height: auto;
+      padding: .75rem;
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      resize: none;
+      overflow-y: hidden;
+      transition: border-color 0.2s ease;
+    }
+    .note-card textarea.scrollable {
+      overflow-y: auto;
+    }
+    .note-card textarea:focus {
+      outline: none;
+      border-color: var(--brand);
+      background: var(--surface);
+    }
+    .note-card textarea::placeholder {
+      color: var(--muted);
+    }
+    .no-notes {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    .no-notes h3 {
+      font-size: 1.2rem;
+      margin: 0 0 .5rem;
+    }
+    .no-notes p {
+      font-size: 0.95rem;
+      margin: 0;
+      opacity: 0.7;
+    }
+
+    /* Mobile optimizations */
+    @media (max-width: 900px) {
+      .content {
+        padding-top: 5rem !important;
+      }
+      .notes-container {
+        padding: 0.3rem;
+        max-width: 100%;
+      }
+      .notes-header {
+        padding: 0.3rem;
+        margin-bottom: 0.5rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+      .notes-title {
+        font-size: 1rem;
+        text-align: center;
+        min-width: 0;
+    }
+      .notes-nav {
+        gap: 0;
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+    }
+      .nav-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+        border: none !important;
+        border-radius: 0 !important;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+}
+      #prev-day {
+        flex: 0 0 auto;
+        min-width: 70px;
+        border-right: 1px solid var(--border) !important;
+      }
+      #next-day {
+        flex: 0 0 auto;
+        min-width: 70px;
+        border-right: none !important;
+}
+      .mini-calendar-picker {
+        flex: 1;
+        display: flex;
+      }
+.mini-calendar-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        min-width: 0;
+        width: 100%;
+        border: none !important;
+        border-radius: 0 !important;
+        border-right: 1px solid var(--border) !important;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+}
+      .mini-calendar-dropdown {
+        position: fixed !important;
+        top: 8rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 3500 !important;
+        min-width: 280px !important;
+        max-width: 90vw !important;
+      }
+      .note-card {
+        padding: 0.75rem;
+      }
+      .note-card h2 {
+        font-size: 0.95rem;
+        margin-bottom: 0.5rem;
+      }
+      .note-card textarea {
+        min-height: auto;
+        font-size: 0.9rem;
+        padding: 0.6rem;
+      }
+    }
+</style>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html" class="active">Notes</a>
+    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
+      <span>Profile</span>
+      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
+    </a>
+  </nav>
+
+  <div class="content">
+    <div class="notes-container">
+      <div class="notes-header">
+        <h1 class="notes-title" id="notes-title">Notes (October 25, 2025)</h1>
+        <div class="notes-nav">
+          <button class="nav-btn" id="prev-day">&lt; Previous</button>
+          <div class="mini-calendar-picker">
+            <button class="mini-calendar-btn" id="mini-calendar-btn">October 25, 2025</button>
+            <div class="mini-calendar-dropdown" id="mini-calendar-dropdown">
+              <div class="mini-calendar-header">
+                <button class="nav-btn" id="mini-prev-month">&lt;</button>
+                <span class="mini-calendar-title" id="mini-calendar-title">October 2025</span>
+                <button class="nav-btn" id="mini-next-month">&gt;</button>
+              </div>
+              <div class="mini-calendar-grid" id="mini-calendar-grid">
+                <div class="weekday-mini">S</div>
+                <div class="weekday-mini">M</div>
+                <div class="weekday-mini">T</div>
+                <div class="weekday-mini">W</div>
+                <div class="weekday-mini">T</div>
+                <div class="weekday-mini">F</div>
+                <div class="weekday-mini">S</div>
+              </div>
+            </div>
+          </div>
+          <button class="nav-btn" id="next-day">Next &gt;</button>
+        </div>
+      </div>
+
+      <div class="notes-content" id="notes-content">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Make globally available
+    window.auth = auth;
+    window.db = db;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.collection = collection;
+    window.getDocs = getDocs;
+
+    // Global medications array
+    window.globalMedications = [];
+
+    async function loadMedicationsFromFirebase() {
+      const user = auth.currentUser;
+      if (!user) return [];
+
+      try {
+        const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
+        const medicationsSnapshot = await getDocs(medicationsCollectionRef);
+        const medications = [];
+        
+        medicationsSnapshot.forEach((doc) => {
+          const medData = doc.data();
+          
+          // Only include active medications (not deleted)
+          if (!medData.deletedStatus) {
+            medications.push({
+              id: doc.id,
+              name: medData.name,
+              dosage: medData.dosage,
+              days: medData.daysOfWeek.map(d => d.charAt(0).toUpperCase() + d.slice(1)),
+              timesPerDay: medData.timesPerDay,
+              times: medData.times,
+              startDate: medData.startDate === 'N/A' ? null : medData.startDate,
+              endDate: medData.endDate === 'N/A' ? null : medData.endDate,
+              createdAt: medData.createdAt || null, // Include createdAt for fallback
+              notes: medData.notes || {}
+            });
+          }
+        });
+        
+        return medications;
+      } catch (error) {
+        console.error('[Notes] Error loading medications:', error);
+        return [];
+      }
+    }
+
+    // Wait for auth and load medications, then render
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        window.globalMedications = await loadMedicationsFromFirebase();
+        console.log('[Notes] Loaded medications:', window.globalMedications.length);
+      } else {
+        window.globalMedications = [];
+      }
+      // Trigger initial render
+      if (typeof window.renderNotes === 'function') {
+        window.renderNotes();
+      }
+    });
+
+    // Verification warning
+    onAuthStateChanged(auth, async (user) => {
+      const warningIcon = document.getElementById('profile-verify-warning');
+      if (!warningIcon) return;
+
+      if (user) {
+        let needsVerification = false;
+        if (!user.emailVerified) needsVerification = true;
+
+        try {
+          const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          if (localProfile.phone && !localProfile.phoneVerified) needsVerification = true;
+        } catch (error) {
+          console.log('Could not check localStorage:', error);
+        }
+
+        warningIcon.style.display = needsVerification ? 'inline' : 'none';
+
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          getDoc(userDocRef).then(docSnap => {
+            const profile = docSnap.data() || {};
+            if (profile.phone && !profile.phoneVerified) {
+              warningIcon.style.display = 'inline';
+            }
+          });
+        } catch (error) {
+          console.log('Could not check Firestore:', error);
+        }
+      } else {
+        warningIcon.style.display = 'none';
+      }
+    });
+
+    // Function to save note to Firebase
+    window.saveNoteToFirebase = async function(medName, dateString, doseNumber, noteText) {
+      const user = auth.currentUser;
+      if (!user) {
+        console.warn('[Notes] No user logged in, cannot save to Firestore');
+        return;
+      }
+
+      try {
+        const medication = window.globalMedications.find(m => m.name === medName);
+        if (!medication) {
+          console.error('[Notes] Medication not found:', medName);
+          return;
+        }
+
+        const notes = medication.notes || {};
+        notes[dateString] = [doseNumber, noteText];
+
+        const medDocRef = doc(window.db, "users", user.uid, "medications", medication.id);
+        await setDoc(medDocRef, {
+          notes: notes
+        }, { merge: true });
+        
+        console.log(`[Notes] Saved note for ${medName} on ${dateString}, dose ${doseNumber}`);
+        
+        medication.notes = notes;
+      } catch (error) {
+        console.error('[Notes] Error saving note:', error);
+      }
+    };
+  </script>
+
+  <script>
+    // Close mobile menu when clicking on nav links
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+    });
+
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    function formatDate(date) {
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    }
+
+    function formatDateShort(date) {
+      return `${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    function parseTimeToMinutes(timeString) {
+      if (!timeString) return 0;
+      
+      const time = timeString.trim().toLowerCase();
+      let hour, minute = 0;
+      let isPM = false;
+      
+      if (time.includes('pm')) {
+        isPM = true;
+      }
+      
+      const timeOnly = time.replace(/\s*(am|pm)/, '').trim();
+      
+      if (timeOnly.includes(':') || timeOnly.includes('.')) {
+        const parts = timeOnly.split(/[:.]/);
+        hour = parseInt(parts[0]);
+        minute = parseInt(parts[1]) || 0;
+      } else {
+        hour = parseInt(timeOnly);
+        minute = 0;
+      }
+      
+      if (!time.includes('am') && !time.includes('pm')) {
+        // Already in 24-hour format
+      } else {
+        if (isPM && hour !== 12) {
+          hour += 12;
+        } else if (!isPM && hour === 12) {
+          hour = 0;
+        }
+      }
+      
+      return hour * 60 + minute;
+    }
+
+    function renderNotes() {
+      const notesTitle = document.getElementById('notes-title');
+      const miniCalendarBtn = document.getElementById('mini-calendar-btn');
+      const notesContent = document.getElementById('notes-content');
+
+      notesTitle.textContent = `Notes (${formatDate(currentDate)})`;
+      miniCalendarBtn.textContent = formatDate(currentDate);
+
+      const medications = getMedicationsForDate(currentDate);
+      
+      if (medications.length === 0) {
+        notesContent.innerHTML = `
+          <div class="no-notes">
+            <h3>No medications scheduled for this day</h3>
+            <p>Add medications to see note sections here</p>
+          </div>
+        `;
+        return;
+      }
+
+      const allDoses = [];
+      medications.forEach(med => {
+        if (!med.times || med.times.length === 0 || med.times.every(t => !t)) {
+          const timesPerDay = med.timesPerDay || 1;
+          for (let i = 1; i <= timesPerDay; i++) {
+            allDoses.push({
+              medication: med.name,
+              time: null,
+              dosage: med.dosage,
+              doseNumber: i,
+              sortTime: 0
+            });
+          }
+        } else {
+          const validTimes = med.times.filter(time => time && time.trim() !== '');
+          if (validTimes.length === 0) {
+            const timesPerDay = med.timesPerDay || 1;
+            for (let i = 1; i <= timesPerDay; i++) {
+              allDoses.push({
+                medication: med.name,
+                time: null,
+                dosage: med.dosage,
+                doseNumber: i,
+                sortTime: 0
+              });
+            }
+          } else {
+            validTimes.forEach((time, index) => {
+              allDoses.push({
+                medication: med.name,
+                time: time,
+                dosage: med.dosage,
+                doseNumber: index + 1,
+                sortTime: parseTimeToMinutes(time)
+              });
+            });
+          }
+        }
+      });
+
+      allDoses.sort((a, b) => {
+        if (a.sortTime === 0 && b.sortTime === 0) {
+          return a.medication.localeCompare(b.medication);
+        }
+        if (a.sortTime === 0) return -1;
+        if (b.sortTime === 0) return 1;
+        return a.sortTime - b.sortTime;
+      });
+
+      notesContent.innerHTML = '';
+      allDoses.forEach(dose => {
+        const noteCard = createNoteCard(dose.medication, dose.time, dose.dosage, dose.doseNumber);
+        notesContent.appendChild(noteCard);
+      });
+    }
+
+    // Make renderNotes globally available
+    window.renderNotes = renderNotes;
+
+    function getMedicationsForDate(date) {
+      const medications = window.globalMedications || [];
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateString = date.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Normalize date strings to YYYY-MM-DD format for comparison
+      const normalizeDate = (dateStr) => {
+        if (!dateStr || dateStr === 'N/A') return null;
+        // If it's already in ISO format (YYYY-MM-DD), return as is
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+          return dateStr.split('T')[0]; // Extract just the date part
+        }
+        // If it's in M/d/yyyy format, convert to YYYY-MM-DD
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+          const parts = dateStr.split('/');
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+        // If it's an ISO timestamp, extract date part
+        if (dateStr.includes('T')) {
+          return dateStr.split('T')[0];
+        }
+        return dateStr;
+      };
+      
+      return medications.filter(med => {
+        // Determine effective start date: use startDate if provided, otherwise use createdAt
+        let effectiveStartDate = null;
+        if (med.startDate && med.startDate !== 'N/A') {
+          effectiveStartDate = normalizeDate(med.startDate);
+        } else if (med.createdAt) {
+          // Use createdAt date (extract date from ISO timestamp)
+          const createdDate = new Date(med.createdAt);
+          effectiveStartDate = createdDate.toISOString().split('T')[0];
+        }
+        
+        // If no start date or createdAt, default to today
+        if (!effectiveStartDate) {
+          effectiveStartDate = today;
+        }
+
+        // Check if medication has started
+        if (dateString < effectiveStartDate) {
+          return false; // Medication hasn't started yet
+        }
+
+        // Check end date (normalize for comparison)
+        if (med.endDate && med.endDate !== 'N/A') {
+          const normalizedEndDate = normalizeDate(med.endDate);
+          if (normalizedEndDate && dateString > normalizedEndDate) {
+            return false; // Medication has ended
+          }
+        }
+        
+        // Check if this day of the week is scheduled for this medication
+        return med.days.includes(dayName);
+      });
+    }
+
+    function formatTimeDisplay(timeString) {
+      if (!timeString) return '';
+      
+      const [hours, minutes] = timeString.split(':').map(Number);
+      let displayHour = hours;
+      let period = 'AM';
+      
+      if (hours === 0) {
+        displayHour = 12;
+      } else if (hours === 12) {
+        period = 'PM';
+      } else if (hours > 12) {
+        displayHour = hours - 12;
+        period = 'PM';
+      }
+      
+      const displayMinutes = minutes.toString().padStart(2, '0');
+      return `${displayHour}:${displayMinutes} ${period}`;
+    }
+
+    function createNoteCard(medName, time, dosage, doseNumber) {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      
+      const title = document.createElement('h2');
+      if (time) {
+        const displayTime = formatTimeDisplay(time);
+        title.textContent = `${medName} - Dose ${doseNumber} - ${displayTime}`;
+      } else {
+        title.textContent = `${medName} - Dose ${doseNumber}`;
+      }
+      
+      const textarea = document.createElement('textarea');
+      textarea.rows = 1; // Start with 1 row
+      textarea.placeholder = 'Your notes...';
+      textarea.dataset.medication = medName;
+      textarea.dataset.time = time || 'no-time';
+      textarea.dataset.date = currentDate.toISOString().split('T')[0];
+      textarea.dataset.doseNumber = doseNumber;
+      
+      // Auto-resize function: expands from 1 to 4 rows, then scrolls
+      const autoResize = () => {
+        // Reset height to get accurate scrollHeight
+        textarea.style.height = '1px';
+        textarea.style.maxHeight = 'none';
+        
+        // Get computed styles
+        const computedStyle = getComputedStyle(textarea);
+        const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
+        const paddingTop = parseFloat(computedStyle.paddingTop) || 12;
+        const paddingBottom = parseFloat(computedStyle.paddingBottom) || 12;
+        const padding = paddingTop + paddingBottom;
+        
+        // Calculate heights
+        const scrollHeight = textarea.scrollHeight;
+        const singleLineHeight = lineHeight + padding;
+        const fourLineHeight = (lineHeight * 4) + padding;
+        
+        // Determine new height based on content
+        if (!textarea.value || textarea.value.trim() === '') {
+          // Empty or just whitespace - stay at 1 line
+          textarea.style.height = singleLineHeight + 'px';
+          textarea.style.maxHeight = 'none';
+          textarea.style.overflowY = 'hidden';
+          textarea.classList.remove('scrollable');
+        } else if (scrollHeight <= fourLineHeight) {
+          // Content fits in 4 lines or less - expand to fit content
+          textarea.style.height = scrollHeight + 'px';
+          textarea.style.maxHeight = 'none';
+          textarea.style.overflowY = 'hidden';
+          textarea.classList.remove('scrollable');
+        } else {
+          // Content exceeds 4 lines - cap at 4 lines and enable scrolling
+          textarea.style.height = fourLineHeight + 'px';
+          textarea.style.maxHeight = fourLineHeight + 'px';
+          textarea.style.overflowY = 'auto';
+          textarea.classList.add('scrollable');
+        }
+      };
+      
+      // Load existing notes from medication data
+      const dateString = currentDate.toISOString().split('T')[0];
+      const medication = window.globalMedications.find(m => m.name === medName);
+      if (medication && medication.notes && medication.notes[dateString]) {
+        const noteData = medication.notes[dateString];
+        if (Array.isArray(noteData) && noteData[0] === doseNumber) {
+          textarea.value = noteData[1] || '';
+          // Auto-resize after loading existing content
+          setTimeout(autoResize, 0);
+        }
+      }
+      
+      // Auto-resize on input
+      textarea.addEventListener('input', () => {
+        autoResize();
+      });
+      
+      // Save notes as user types
+      textarea.addEventListener('input', async () => {
+        clearTimeout(window.notesSaveTimeout);
+        window.notesSaveTimeout = setTimeout(async () => {
+          await window.saveNoteToFirebase(medName, dateString, doseNumber, textarea.value);
+        }, 1000);
+      });
+      
+      card.appendChild(title);
+      card.appendChild(textarea);
+      
+      // Initial resize check - run after element is in DOM
+      setTimeout(() => {
+        autoResize();
+      }, 10);
+      
+      return card;
+    }
+
+    let miniCalendarMonth = currentMonth;
+    let miniCalendarYear = currentYear;
+
+    function renderMiniCalendar() {
+      const firstDay = new Date(miniCalendarYear, miniCalendarMonth, 1);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const miniCalendarGrid = document.getElementById('mini-calendar-grid');
+      const miniCalendarTitle = document.getElementById('mini-calendar-title');
+
+      miniCalendarTitle.textContent = `${months[miniCalendarMonth]} ${miniCalendarYear}`;
+
+      const weekdayHeaders = Array.from(miniCalendarGrid.querySelectorAll('.weekday-mini'));
+      miniCalendarGrid.innerHTML = '';
+      weekdayHeaders.forEach(header => miniCalendarGrid.appendChild(header));
+
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = document.createElement('div');
+        dayElement.className = 'mini-calendar-day';
+
+        if (date.getMonth() !== miniCalendarMonth) {
+          dayElement.classList.add('other-month');
+        }
+
+        if (date.toDateString() === new Date().toDateString()) {
+          dayElement.classList.add('today');
+        }
+
+        if (date.toDateString() === currentDate.toDateString()) {
+          dayElement.classList.add('selected');
+        }
+
+        dayElement.textContent = date.getDate();
+
+        dayElement.addEventListener('click', () => {
+          currentDate = date;
+          renderNotes();
+          document.getElementById('mini-calendar-dropdown').classList.remove('show');
+        });
+
+        miniCalendarGrid.appendChild(dayElement);
+      }
+    }
+
+    document.getElementById('prev-day').addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() - 1);
+      renderNotes();
+    });
+
+    document.getElementById('next-day').addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() + 1);
+      renderNotes();
+    });
+
+    document.getElementById('mini-calendar-btn').addEventListener('click', () => {
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      const isVisible = dropdown.classList.contains('show');
+      
+      if (!isVisible) {
+      miniCalendarMonth = currentDate.getMonth();
+      miniCalendarYear = currentDate.getFullYear();
+      renderMiniCalendar();
+      }
+      
+      dropdown.classList.toggle('show');
+    });
+
+    document.getElementById('mini-prev-month').addEventListener('click', () => {
+      miniCalendarMonth--;
+      if (miniCalendarMonth < 0) {
+        miniCalendarMonth = 11;
+        miniCalendarYear--;
+      }
+      renderMiniCalendar();
+    });
+
+    document.getElementById('mini-next-month').addEventListener('click', () => {
+      miniCalendarMonth++;
+      if (miniCalendarMonth > 11) {
+        miniCalendarMonth = 0;
+        miniCalendarYear++;
+      }
+      renderMiniCalendar();
+    });
+
+    document.addEventListener('click', (e) => {
+      const miniCalendarPicker = document.querySelector('.mini-calendar-picker');
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      
+      if (!miniCalendarPicker.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
+
+    // Handle URL parameters for direct navigation from calendar
+    function handleURLParams() {
+      const params = new URLSearchParams(window.location.search);
+      const dateParam = params.get('date');
+      const medicationParam = params.get('medication');
+      const doseParam = params.get('dose');
+      const timeParam = params.get('time');
+      
+      if (dateParam) {
+        const [year, month, day] = dateParam.split('-').map(Number);
+        currentDate = new Date(year, month - 1, day);
+        
+        miniCalendarMonth = currentDate.getMonth();
+        miniCalendarYear = currentDate.getFullYear();
+        
+        renderNotes();
+        
+        if (medicationParam && doseParam) {
+          setTimeout(() => {
+      const noteCards = document.querySelectorAll('.note-card');
+            noteCards.forEach(card => {
+              const textarea = card.querySelector('textarea');
+              if (textarea && 
+                  textarea.dataset.medication === medicationParam && 
+                  parseInt(textarea.dataset.doseNumber) === parseInt(doseParam)) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                textarea.focus();
+                card.style.boxShadow = '0 0 0 3px var(--brand)';
+                card.style.borderRadius = 'var(--radius)';
+        setTimeout(() => {
+                  card.style.boxShadow = '';
+                  card.style.borderRadius = '';
+        }, 3000);
+              }
+            });
+          }, 100);
+        }
+      }
+    }
+
+    handleURLParams();
+    
+    if (!new URLSearchParams(window.location.search).get('date')) {
+      renderNotes();
+    }
+  </script>
+
+<style>
+  .verify-warning {
+    font-size: 1rem;
+    cursor: help;
+    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+</style>
+</body>
+</html>

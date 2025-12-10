@@ -1,0 +1,497 @@
+<!-- File: register.html (two-step) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MedTracker — Register</title>
+  <style>
+    /* --- Reset & tokens (match welcome/login) --- */
+    *,*::before,*::after{box-sizing:border-box}
+    *{margin:0}
+    html:focus-within{scroll-behavior:smooth}
+    body{min-height:100dvh;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    img,svg{display:block;max-width:100%}
+    input,select,textarea,button{font:inherit}
+    a{text-decoration:none;color:inherit}
+
+    :root{
+      --bg:#0b1020; --bg-elev:rgba(255,255,255,0.04);
+      --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6; --accent:#7de2d1; --danger:#ff6b6b;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+    }
+    @media (prefers-color-scheme: light){
+      :root{--bg:#f6f8fc;--surface:#fff;--text:#111827;--muted:#4b5563;--border:rgba(2,6,23,.1);--shadow:0 10px 30px rgba(2,6,23,.08),0 2px 10px rgba(2,6,23,.06)}
+    }
+
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 80% -10%, rgba(79,140,255,0.18), transparent 60%),
+        radial-gradient(800px 500px at -10% 20%, rgba(125,226,209,0.18), transparent 60%),
+        var(--bg);
+    }
+
+    /* --- Navbar (identical to index.html) --- */
+    .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
+    .navbar{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(14px); background:linear-gradient(to bottom, rgba(15,22,41,0.7), rgba(15,22,41,0.4)); border-bottom:1px solid var(--border)}
+    .nav-inner{display:flex; align-items:center; justify-content:space-between; gap:1rem; height:64px}
+    .brand{display:flex; align-items:center; gap:.7rem; font-weight:700}
+    .brand-mark{display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--brand),var(--accent)); box-shadow: var(--shadow)}
+    .brand-title{letter-spacing:.2px}
+
+    .nav-links, .auth{display:flex; align-items:center; gap:1rem}
+    .nav-links a, .auth a{padding:.5rem .75rem; border-radius:10px; color:var(--muted)}
+    .nav-links a:hover, .auth a:hover{color:var(--text); background:var(--bg-elev)}
+
+    .nav-toggle{display:none}
+    .hamburger{display:none; border:1px solid var(--border); border-radius:10px; padding:.5rem; cursor:pointer}
+    .hamburger svg{width:22px;height:22px}
+
+    @media (max-width: 900px){
+      .nav-links{display:none}
+      .auth{display:none}
+      .hamburger{display:flex; align-items:center; justify-content:center}
+      .nav-toggle:checked ~ .mobile-menu{max-height:420px; opacity:1; pointer-events:auto}
+    }
+
+    .mobile-menu{max-height:0; opacity:0; pointer-events:none; overflow:hidden; transition:max-height .35s ease, opacity .35s ease; border-bottom:1px solid var(--border); background:rgba(15,22,41,0.7); backdrop-filter:blur(14px)}
+    .mobile-list{display:grid; gap:.5rem; padding:1rem}
+    .mobile-list a{padding:.8rem; border-radius:12px; color:var(--text); background:var(--bg-elev); border:1px solid var(--border)}
+
+    /* --- Page layout --- */
+    main{max-width:620px;margin:clamp(3rem,8vw,5rem) auto;padding:0 1rem}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.25rem}
+    h1{font-size:clamp(1.6rem,3.5vw,2rem);line-height:1.2;margin-bottom:.5rem}
+    p.lead{color:var(--muted);margin-bottom:1rem}
+
+    /* --- Form --- */
+    .grid{display:grid;grid-template-columns:1fr;gap:.95rem}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:.95rem}
+    @media (max-width:640px){.row{grid-template-columns:1fr}}
+    label{display:block;color:var(--muted);margin-bottom:.35rem}
+    .input-wrap{position:relative}
+    input,select,textarea{width:100%;padding:.9rem 1rem;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text)}
+    textarea{min-height:92px;resize:vertical}
+    input:focus,select:focus,textarea:focus{outline:2px solid transparent;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,140,255,.25)}
+    small{opacity:.85}
+
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.9rem 1rem; border-radius:14px; border:1px solid transparent; cursor:pointer}
+    .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; box-shadow: var(--shadow)}
+    .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
+    .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text)}
+    .btn-ghost:hover{background:var(--bg-elev)}
+
+    .foot{margin-top:1rem;color:var(--muted);font-size:.95rem;text-align:center}
+    .msg{margin-top:.75rem;font-size:.95rem}
+    .msg.ok{color:var(--accent)}
+    .msg.err{color:var(--danger)}
+
+    /* Eye toggle inside inputs */
+    .toggle{position:absolute; right:.5rem; top:50%; transform:translateY(-50%); display:grid; place-items:center; border:1px solid var(--border); border-radius:10px; padding:.35rem .5rem; background:rgba(255,255,255,.06); cursor:pointer}
+    .toggle:focus{outline:2px solid transparent; box-shadow:0 0 0 3px rgba(79,140,255,.25)}
+    .input-wrap input[type="password"], .input-wrap input[type="text"]{padding-right:3rem}
+
+    /* --- Steps --- */
+    .steps{display:flex; align-items:center; gap:.5rem; margin-bottom:1rem}
+    .pill{height:8px; flex:1; background:var(--bg-elev); border-radius:999px; overflow:hidden}
+    .pill > span{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--brand),var(--accent)); transition:width .25s ease}
+    .pill[data-step="1"] > span{width:50%}
+    .pill[data-step="2"] > span{width:100%}
+
+    .step{display:none}
+    .step.active{display:block}
+    .actions{margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;justify-content:space-between}
+  </style>
+</head>
+<body>
+  <!-- Navbar: same markup as index.html -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html" aria-label="MedTracker Home">
+        <span class="brand-mark" aria-hidden="true">🏥</span>
+        <span class="brand-title">MedTracker</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="index.html">Home</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#donate">Donate</a>
+      </nav>
+
+      <nav class="auth" aria-label="Account">
+        <a href="login.html">Log In</a>
+        <a class="btn btn-primary" href="register.html">Register</a>
+      </nav>
+
+      <label for="menu-toggle" class="hamburger" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+      </label>
+      <input class="nav-toggle" type="checkbox" id="menu-toggle" aria-hidden="true" />
+    </div>
+
+    <div id="mobile-menu" class="mobile-menu" role="dialog" aria-modal="false">
+      <div class="container">
+        <div class="mobile-list" role="menu">
+          <a role="menuitem" href="index.html">Home</a>
+          <a role="menuitem" href="index.html#about">About</a>
+          <a role="menuitem" href="index.html#donate">Donate</a>
+          <a role="menuitem" href="login.html">Log In</a>
+          <a role="menuitem" class="btn btn-primary" href="register.html">Register</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card" role="region" aria-labelledby="reg-title">
+      <div class="steps" aria-hidden="true">
+        <div class="pill" id="progress" data-step="1"><span></span></div>
+        <span style="color:var(--muted); font-size:.9rem">Step <strong id="step-num">1</strong> of 2</span>
+      </div>
+
+      <h1 id="reg-title">Register</h1>
+      <p class="lead">Create your account to get started.</p>
+
+      <!-- Step 1: Account -->
+      <form id="form-step1" class="step active" novalidate>
+        <div class="grid">
+          <div>
+            <label for="reg-email">Email</label>
+            <div class="input-wrap">
+              <input id="reg-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+            </div>
+          </div>
+          <div>
+            <label for="reg-name">Name</label>
+            <div class="input-wrap">
+              <input id="reg-name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="reg-pass">Password</label>
+              <div class="input-wrap">
+                <input id="reg-pass" name="password" type="password" placeholder="••••••••" minlength="8" autocomplete="new-password" required />
+                <button type="button" class="toggle" aria-label="Show password" data-target="reg-pass">👁</button>
+              </div>
+            </div>
+            <div>
+              <label for="reg-confirm">Confirm Password</label>
+              <div class="input-wrap">
+                <input id="reg-confirm" name="confirm" type="password" placeholder="••••••••" minlength="8" autocomplete="new-password" required />
+                <button type="button" class="toggle" aria-label="Show password" data-target="reg-confirm">👁</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label for="reg-phone">Phone Number <small>(optional)</small></label>
+            <div class="input-wrap">
+              <input id="reg-phone" name="phone" type="tel" placeholder="(123) 456-7890" />
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <span></span>
+          <button class="btn btn-primary" type="submit">Continue</button>
+        </div>
+        <p id="msg1" class="msg" role="status" aria-live="polite"></p>
+      </form>
+
+      <!-- Step 2: Health prefs (all optional) -->
+      <form id="form-step2" class="step" novalidate>
+        <div class="grid">
+          <div class="row">
+            <div>
+              <label for="dob">DOB <small>(optional)</small></label>
+              <div class="input-wrap"><input id="dob" name="dob" type="date" /></div>
+            </div>
+            <div>
+              <label for="gender">Gender <small>(optional)</small></label>
+              <div class="input-wrap">
+                <select id="gender" name="gender">
+                  <option value="">Select…</option>
+                  <option>Female</option>
+                  <option>Male</option>
+                  <option>Non-binary</option>
+                  <option>Prefer not to say</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="gender-other-wrap" style="display:none">
+            <label for="gender-other">Please specify</label>
+            <div class="input-wrap"><input id="gender-other" name="gender_other" type="text" placeholder="Self-described" /></div>
+          </div>
+
+          <div>
+            <label for="allergies">Allergies <small>(optional)</small></label>
+            <textarea id="allergies" name="allergies" placeholder="e.g., penicillin, peanuts"></textarea>
+          </div>
+
+          <div>
+            <label for="conditions">Conditions <small>(optional)</small></label>
+            <textarea id="conditions" name="conditions" placeholder="e.g., hypertension, asthma"></textarea>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="quiet-start">Do‑Not‑Disturb start <small>(optional)</small></label>
+              <div class="input-wrap"><input id="quiet-start" name="quiet_start" type="time" /></div>
+            </div>
+            <div>
+              <label for="quiet-end">Do‑Not‑Disturb end <small>(optional)</small></label>
+              <div class="input-wrap"><input id="quiet-end" name="quiet_end" type="time" /></div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="unit">Units <small>(optional)</small></label>
+              <div class="input-wrap">
+                <select id="unit" name="units">
+                  <option value="">Select…</option>
+                  <option>mg</option>
+                  <option>mL</option>
+                  <option>tablets</option>
+                  <option>drops</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="tz">Time zone <small>(auto)</small></label>
+              <div class="input-wrap"><input id="tz" name="timezone" type="text" readonly /></div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="emg-name">Emergency contact name <small>(optional)</small></label>
+              <div class="input-wrap"><input id="emg-name" name="emg_name" type="text" placeholder="Full name" /></div>
+            </div>
+            <div>
+              <label for="emg-phone">Emergency contact phone <small>(optional)</small></label>
+              <div class="input-wrap"><input id="emg-phone" name="emg_phone" type="tel" placeholder="(123) 456-7890" /></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-ghost" type="button" id="back">Back</button>
+          <button class="btn btn-primary" type="submit">Finish</button>
+        </div>
+        <p id="msg2" class="msg" role="status" aria-live="polite"></p>
+      </form>
+
+      <p class="foot">Already have an account? <a class="link" href="login.html">Log in</a></p>
+    </div>
+  </main>
+
+  <script>
+    // Password toggles
+    document.querySelectorAll('.toggle').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const id = btn.getAttribute('data-target');
+        const input = document.getElementById(id);
+        const visible = input.type === 'text';
+        input.type = visible ? 'password' : 'text';
+        btn.setAttribute('aria-label', visible ? 'Show password' : 'Hide password');
+      });
+    });
+
+    // Step logic
+    const step1 = document.getElementById('form-step1');
+    const step2 = document.getElementById('form-step2');
+    const progress = document.getElementById('progress');
+    const stepNum = document.getElementById('step-num');
+
+    step1.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const msg = document.getElementById('msg1');
+      msg.className = 'msg';
+      const email = step1.email.value.trim();
+      const name  = step1.name.value.trim();
+      const pw    = step1.password.value;
+      const cf    = step1.confirm.value;
+      if (!email || !name || !pw || !cf){ msg.classList.add('err'); msg.textContent = 'Please fill all required fields.'; return; }
+      if (pw.length < 8){ msg.classList.add('err'); msg.textContent = 'Password must be at least 8 characters.'; return; }
+      if (pw !== cf){ msg.classList.add('err'); msg.textContent = 'Passwords do not match.'; return; }
+      // advance
+      step1.classList.remove('active');
+      step2.classList.add('active');
+      progress.setAttribute('data-step','2');
+      stepNum.textContent = '2';
+      document.getElementById('reg-title').textContent = 'A few optional details';
+      document.querySelector('.lead').textContent = 'These help with reminders and safety — skip anything you don\'t want to share.';
+      
+    });
+
+    document.getElementById('back').addEventListener('click', ()=>{
+      step2.classList.remove('active');
+      step1.classList.add('active');
+      progress.setAttribute('data-step','1');
+      stepNum.textContent = '1';
+      document.getElementById('reg-title').textContent = 'Register';
+      document.querySelector('.lead').textContent = 'Create your account to get started.';
+      
+    });
+
+    // Finish - save profile data and redirect
+    step2.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      // Collect all form data from both steps
+      const profileData = {};
+      
+      // Step 1 data
+      profileData.email = step1.email.value.trim();
+      profileData.name = step1.name.value.trim();
+      profileData.password = step1.password.value;
+      profileData.phone = step1.phone.value.trim();
+      
+      // Step 2 data
+      profileData.dob = step2.dob.value;
+      profileData.gender = step2.gender.value;
+      profileData.gender_other = step2.gender_other.value;
+      profileData.allergies = step2.allergies.value;
+      profileData.conditions = step2.conditions.value;
+      profileData.quiet_start = step2.quiet_start.value;
+      profileData.quiet_end = step2.quiet_end.value;
+      profileData.units = step2.unit.value;
+      profileData.timezone = step2.tz.value;
+      profileData.emg_name = step2.emg_name.value;
+      profileData.emg_phone = step2.emg_phone.value;
+      
+      // Save to localStorage
+      localStorage.setItem('userProfile', JSON.stringify(profileData));
+      
+      // Redirect to home page (this is the old handler - Firebase handles redirect now)
+      // window.location.href = 'home.html';
+    });
+
+    // Gender other field
+    const gender = document.getElementById('gender');
+    const gWrap = document.getElementById('gender-other-wrap');
+    gender.addEventListener('change', ()=>{
+      gWrap.style.display = gender.value === 'other' ? 'block' : 'none';
+    });
+
+    // Timezone auto-fill
+    const tz = document.getElementById('tz');
+    try { tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tz.value = ''; }
+
+    // Mobile menu aria-expanded (match index.html)
+    const toggle = document.getElementById('menu-toggle');
+    const label = document.querySelector('label[for="menu-toggle"]');
+    if (toggle && label){
+      toggle.addEventListener('change', () => label.setAttribute('aria-expanded', toggle.checked ? 'true' : 'false'));
+    }
+</script>
+
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4",
+      measurementId: "G-GGHXPT2Q5L"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Override the form submission to use Firebase
+    const step2Form = document.getElementById('form-step2');
+    
+    step2Form.onsubmit = null; // Remove old handler
+    step2Form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const msg = document.getElementById('msg2');
+      msg.className = 'msg';
+      msg.textContent = '';
+      
+      // Collect all form data
+      const step1 = document.getElementById('form-step1');
+      const profileData = {
+        email: step1.email.value.trim(),
+        name: step1.name.value.trim(),
+        phone: step1.phone.value.trim(),
+        dob: step2Form.dob.value,
+        gender: step2Form.gender.value,
+        gender_other: step2Form.gender_other.value,
+        allergies: step2Form.allergies.value,
+        conditions: step2Form.conditions.value,
+        quiet_start: step2Form.quiet_start.value,
+        quiet_end: step2Form.quiet_end.value,
+        units: step2Form.unit.value,
+        timezone: step2Form.tz.value,
+        emg_name: step2Form.emg_name.value,
+        emg_phone: step2Form.emg_phone.value
+      };
+      
+      const password = step1.password.value;
+      
+      try {
+        // Show loading
+        msg.classList.add('ok');
+        msg.textContent = 'Creating your account...';
+        
+        // 1. Create Firebase Auth user
+        const userCredential = await createUserWithEmailAndPassword(auth, profileData.email, password);
+        const userId = userCredential.user.uid;
+        
+        // 2. Save profile to Firestore (without password)
+        const firestoreData = {...profileData};
+        delete firestoreData.password; // Don't save password to Firestore
+        
+        console.log('Saving to Firestore:', firestoreData);
+        await setDoc(doc(db, "users", userId), firestoreData);
+        console.log('Successfully saved to Firestore');
+        
+        // 3. Save to localStorage for offline access (include password for now)
+        localStorage.setItem('userProfile', JSON.stringify({...profileData, password}));
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('userEmail', profileData.email);
+        
+        // 4. Success - redirect to login with success message
+        msg.textContent = 'Account created! Redirecting to login...';
+        setTimeout(() => {
+          window.location.href = 'login.html?registered=true';
+        }, 1500);
+        
+      } catch (error) {
+        console.error('Registration error:', error);
+        msg.classList.add('err');
+        
+        // User-friendly error messages
+        if (error.code === 'auth/email-already-in-use') {
+          msg.textContent = 'This email is already registered. Please log in instead.';
+        } else if (error.code === 'auth/invalid-email') {
+          msg.textContent = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/weak-password') {
+          msg.textContent = 'Password should be at least 6 characters.';
+        } else {
+          msg.textContent = 'Registration failed: ' + error.message;
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>

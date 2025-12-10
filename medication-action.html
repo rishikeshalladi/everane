@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker – Log Dose</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <button class="hamburger" aria-label="Toggle menu">☰</button>
+  </header>
+
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+  <div class="content">
+    <h1>Pill Name</h1>
+    <button class="btn btn-success">Taken</button>
+    <button class="btn btn-danger">Not Taken</button>
+
+    <label for="dose-notes">Notes <small>(optional)</small></label>
+    <textarea id="dose-notes" rows="4"></textarea>
+
+    <button class="btn btn-primary">Submit</button>
+  </div>
+<script>
+  const sidebar = document.querySelector('.sidebar');
+  document.querySelector('.hamburger')
+    .addEventListener('click', () => sidebar.classList.toggle('open'));
+  document.querySelectorAll('.sidebar a')
+    .forEach(link => link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) sidebar.classList.remove('open');
+    }));
+</script>
+
+</body>
+</html>

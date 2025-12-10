@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker – Notes</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --primary-color:#4f8cff;
+      --secondary-color:#3c74f7;
+      --accent-color:#7de2d1;
+      --accent-hover:#2b63e6;
+      --danger-color:#ff6b6b;
+      --success-color:#22c55e;
+      --bg-light:#0b1020;
+      --text-color:#e7ebf3;
+      --input-border:rgba(255,255,255,0.12);
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+      --radius: 8px;
+      --transition: 0.2s ease-in-out;
+    }
+
+    /* base */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .notes-container {
+      max-width: 95%;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #0f1629;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .notes-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--text-color);
+      margin: 0;
+    }
+
+    .notes-nav {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .nav-btn {
+      background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+      color: var(--text-color);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background var(--transition), transform 0.1s, box-shadow 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+    }
+
+    .nav-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-btn:disabled {
+      background: color-mix(in oklab, #b1bad4 60%, transparent);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .mini-calendar-picker {
+      position: relative;
+      display: inline-block;
+    }
+
+    .mini-calendar-btn {
+      background: color-mix(in oklab, #0f1629 92%, transparent);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      min-width: 120px;
+      text-align: center;
+      transition: background var(--transition);
+    }
+
+    .mini-calendar-btn:hover {
+      background: color-mix(in oklab, #0f1629 88%, transparent);
+    }
+
+    .mini-calendar-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: #0f1629;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      display: none;
+      padding: 1rem;
+      min-width: 280px;
+    }
+
+    .mini-calendar-dropdown.show {
+      display: block;
+    }
+
+    .mini-calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .mini-calendar-title {
+      font-weight: bold;
+      font-size: 0.875rem;
+    }
+
+    .mini-calendar-nav {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .mini-nav-btn {
+      background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+      color: var(--text-color);
+      border: none;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: background var(--transition);
+    }
+
+    .mini-nav-btn:hover {
+      background: var(--accent-hover);
+    }
+
+    .mini-calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .mini-weekday {
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      padding: 0.25rem;
+    }
+
+    .mini-day {
+      text-align: center;
+      padding: 0.25rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background var(--transition);
+    }
+
+    .mini-day:hover {
+      background: color-mix(in oklab, #0f1629 92%, transparent);
+      color: var(--text-color);
+    }
+
+    .mini-day.selected {
+      background: color-mix(in oklab, #0f1629 92%, transparent);
+      color: var(--text-color);
+    }
+
+    .mini-day.selected:hover {
+      background: color-mix(in oklab, #0f1629 86%, transparent);
+    }
+
+    .mini-day.other-month {
+      color: color-mix(in oklab, #b1bad4 60%, transparent);
+    }
+
+    .notes-content {
+      margin-top: 2rem;
+    }
+
+    .note-card {
+      background: #0f1629;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      border-radius: var(--radius);
+      box-shadow: 0 6px 18px var(--shadow);
+      position: relative;
+    }
+
+    .note-card h2 {
+      margin-top: 0;
+      font-weight: 600;
+      color: var(--text-color);
+      font-size: 1.1rem;
+    }
+
+    .note-card textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      font-size: 1rem;
+      outline: none;
+      background: #0f1629;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    .note-card textarea:focus {
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-color) 25%, transparent);
+    }
+
+    .no-notes {
+      text-align: center;
+      padding: 3rem;
+      color: #b1bad4;
+      font-style: italic;
+    }
+
+    .no-notes h3 {
+      margin-bottom: 1rem;
+      color: var(--text-color);
+    }
+
+/* === Sidebar positioning fix only === */
+.content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+.sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, #0f1629 88%, transparent);
+      border-right: 1px solid var(--input-border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+.sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: #b1bad4;
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+.sidebar a:hover { color: var(--text-color); border-color: var(--input-border); background: color-mix(in oklab, #0f1629 92%, transparent); transform: translateY(-1px); }
+.sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+@media (max-width: 900px) {
+      .sidebar {
+        position: sticky; top: 0; width: auto; inset: unset;
+        padding: .5rem; border-right: none; border-bottom: 1px solid var(--input-border);
+        flex-direction: row; flex-wrap: wrap; gap: .5rem;
+      }
+      .content { margin-left: 0; }
+      .sidebar a { flex: 1 1 auto; text-align: center; }
+    }
+
+
+
+/* === Readability fixes on dark theme === */
+.selected-date, .note-date, .note-header, .note-header span, .note-header .date-text {
+  color: var(--text-color) !important;
+}
+/* Inputs & textarea text should be white; keep placeholders muted */
+input[type="text"], input[type="search"], input[type="date"], textarea, .note-input, .note-textarea {
+  color: var(--text-color) !important;
+  background: #0f1629;
+  border: 1px solid var(--input-border);
+}
+input::placeholder, textarea::placeholder {
+  color: color-mix(in oklab, #b1bad4 60%, transparent);
+}
+
+/* Ensure the date button text is readable on dark */
+.mini-calendar-btn {
+  color: var(--text-color) !important;
+  border: 1px solid var(--input-border);
+  background: color-mix(in oklab, #0f1629 92%, transparent);
+}
+.mini-calendar-btn:hover {
+  background: color-mix(in oklab, #0f1629 86%, transparent);
+  color: var(--text-color);
+}
+
+</style>
+</head>
+
+<body>
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html" class="active">Notes</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="notes-container">
+      <div class="notes-header">
+        <h1 class="notes-title" id="notes-title">Notes (July 11, 2025)</h1>
+        <div class="notes-nav">
+          <button class="nav-btn" id="prev-day">&lt; Previous Day</button>
+          <div class="mini-calendar-picker">
+            <button class="mini-calendar-btn" id="mini-calendar-btn">July 11, 2025</button>
+            <div class="mini-calendar-dropdown" id="mini-calendar-dropdown">
+              <div class="mini-calendar-header">
+                <div class="mini-calendar-title" id="mini-calendar-title">July 2025</div>
+                <div class="mini-calendar-nav">
+                  <button class="mini-nav-btn" id="mini-prev">&lt;</button>
+                  <button class="mini-nav-btn" id="mini-next">&gt;</button>
+                </div>
+              </div>
+              <div class="mini-calendar-grid" id="mini-calendar-grid">
+                <!-- Will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          <button class="nav-btn" id="next-day">Next Day &gt;</button>
+        </div>
+      </div>
+
+      <div class="notes-content" id="notes-content">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    function formatDate(date) {
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    }
+
+    function formatDateShort(date) {
+      return `${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+
+    function parseTimeToMinutes(timeString) {
+      if (!timeString) return 0;
+      
+      // Handle various time formats
+      const time = timeString.trim().toLowerCase();
+      
+      // Extract hour and minute
+      let hour, minute = 0;
+      let isPM = false;
+      
+      // Check for AM/PM (for user-entered times)
+      if (time.includes('pm')) {
+        isPM = true;
+      }
+      
+      // Remove AM/PM and extract numbers
+      const timeOnly = time.replace(/\s*(am|pm)/, '').trim();
+      
+      // Handle different formats: "12:00", "12", "12:30", "12.30"
+      if (timeOnly.includes(':') || timeOnly.includes('.')) {
+        const parts = timeOnly.split(/[:.]/);
+        hour = parseInt(parts[0]);
+        minute = parseInt(parts[1]) || 0;
+      } else {
+        hour = parseInt(timeOnly);
+        minute = 0;
+      }
+      
+      // If no AM/PM specified and hour is 0-23, assume 24-hour format
+      if (!time.includes('am') && !time.includes('pm')) {
+        // Already in 24-hour format, no conversion needed
+      } else {
+        // Convert to 24-hour format for 12-hour input
+        if (isPM && hour !== 12) {
+          hour += 12;
+        } else if (!isPM && hour === 12) {
+          hour = 0;
+        }
+      }
+      
+      // Convert to minutes since midnight
+      return hour * 60 + minute;
+    }
+
+    function renderNotes() {
+      const notesTitle = document.getElementById('notes-title');
+      const miniCalendarBtn = document.getElementById('mini-calendar-btn');
+      const notesContent = document.getElementById('notes-content');
+
+      notesTitle.textContent = `Notes (${formatDate(currentDate)})`;
+      miniCalendarBtn.textContent = formatDate(currentDate);
+
+      // Get medications for the current date
+      const medications = getMedicationsForDate(currentDate);
+      
+      if (medications.length === 0) {
+        notesContent.innerHTML = `
+          <div class="no-notes">
+            <h3>No medications scheduled for this day</h3>
+            <p>Add medications to see note sections here</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Create dose objects for sorting
+      const allDoses = [];
+      medications.forEach(med => {
+        // If no times are set, create doses based on timesPerDay
+        if (!med.times || med.times.length === 0 || med.times.every(t => !t)) {
+          const timesPerDay = med.timesPerDay || 1;
+          for (let i = 1; i <= timesPerDay; i++) {
+            allDoses.push({
+              medication: med.name,
+              time: null,
+              dosage: med.dosage,
+              doseNumber: i,
+              sortTime: 0 // No time medications go first
+            });
+          }
+        } else {
+          // Show medication for each time (filter out blank times)
+          const validTimes = med.times.filter(time => time && time.trim() !== '');
+          if (validTimes.length === 0) {
+            // If all times are empty, create doses based on timesPerDay
+            const timesPerDay = med.timesPerDay || 1;
+            for (let i = 1; i <= timesPerDay; i++) {
+              allDoses.push({
+                medication: med.name,
+                time: null,
+                dosage: med.dosage,
+                doseNumber: i,
+                sortTime: 0
+              });
+            }
+          } else {
+            validTimes.forEach((time, index) => {
+              allDoses.push({
+                medication: med.name,
+                time: time,
+                dosage: med.dosage,
+                doseNumber: index + 1,
+                sortTime: parseTimeToMinutes(time)
+              });
+            });
+          }
+        }
+      });
+
+      // Sort doses by time (no-time medications first, then by time)
+      allDoses.sort((a, b) => {
+        if (a.sortTime === 0 && b.sortTime === 0) {
+          // Both have no time, sort by medication name
+          return a.medication.localeCompare(b.medication);
+        }
+        if (a.sortTime === 0) return -1; // No time goes first
+        if (b.sortTime === 0) return 1;  // No time goes first
+        return a.sortTime - b.sortTime; // Sort by time
+      });
+
+      // Generate note cards in sorted order
+      notesContent.innerHTML = '';
+      allDoses.forEach(dose => {
+        const noteCard = createNoteCard(dose.medication, dose.time, dose.dosage, dose.doseNumber);
+        notesContent.appendChild(noteCard);
+      });
+    }
+
+    function getMedicationsForDate(date) {
+      const medications = JSON.parse(localStorage.getItem('medications') || '[]');
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateString = date.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      return medications.filter(med => {
+        // Check if medication is active on this date
+        const startDate = med.startDate || today; // Default to today if no start date
+        if (dateString < startDate) {
+          return false; // Medication hasn't started yet
+        }
+        if (med.endDate && dateString > med.endDate) {
+          return false; // Medication has ended (only if end date is set)
+        }
+        
+        // Check if this day of the week is scheduled for this medication
+        return med.days.includes(dayName);
+      });
+    }
+
+    function formatTimeDisplay(timeString) {
+      if (!timeString) return '';
+      
+      // Convert 24-hour format to 12-hour format for display
+      const [hours, minutes] = timeString.split(':').map(Number);
+      let displayHour = hours;
+      let period = 'AM';
+      
+      if (hours === 0) {
+        displayHour = 12;
+      } else if (hours === 12) {
+        period = 'PM';
+      } else if (hours > 12) {
+        displayHour = hours - 12;
+        period = 'PM';
+      }
+      
+      const displayMinutes = minutes.toString().padStart(2, '0');
+      return `${displayHour}:${displayMinutes} ${period}`;
+    }
+
+    function createNoteCard(medName, time, dosage, doseNumber) {
+      const card = document.createElement('div');
+      card.className = 'note-card';
+      
+      const title = document.createElement('h2');
+      if (time) {
+        const displayTime = formatTimeDisplay(time);
+        title.textContent = `${medName} - Dose ${doseNumber} - ${displayTime}`;
+      } else {
+        title.textContent = `${medName} - Dose ${doseNumber}`;
+      }
+      
+      const textarea = document.createElement('textarea');
+      textarea.rows = 4;
+      textarea.placeholder = 'Your notes...';
+      textarea.dataset.medication = medName;
+      textarea.dataset.time = time || 'no-time';
+      textarea.dataset.date = currentDate.toISOString().split('T')[0];
+      textarea.dataset.doseNumber = doseNumber;
+      
+      // Load existing notes if any
+      const noteKey = `${medName}_${time || 'no-time'}_${currentDate.toISOString().split('T')[0]}_${doseNumber}`;
+      const existingNote = localStorage.getItem(`note_${noteKey}`);
+      if (existingNote) {
+        textarea.value = existingNote;
+      }
+      
+      // Save notes as user types
+      textarea.addEventListener('input', () => {
+        localStorage.setItem(`note_${noteKey}`, textarea.value);
+      });
+      
+      card.appendChild(title);
+      card.appendChild(textarea);
+      
+      return card;
+    }
+
+    let miniCalendarMonth = currentMonth;
+    let miniCalendarYear = currentYear;
+
+    function renderMiniCalendar() {
+      const firstDay = new Date(miniCalendarYear, miniCalendarMonth, 1);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const miniCalendarGrid = document.getElementById('mini-calendar-grid');
+      const miniCalendarTitle = document.getElementById('mini-calendar-title');
+
+      miniCalendarTitle.textContent = formatDateShort(new Date(miniCalendarYear, miniCalendarMonth, 1));
+
+      // Add weekday headers
+      miniCalendarGrid.innerHTML = '';
+      const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      weekdays.forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'mini-weekday';
+        dayHeader.textContent = day;
+        miniCalendarGrid.appendChild(dayHeader);
+      });
+
+      // Add calendar days
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = document.createElement('div');
+        dayElement.className = 'mini-day';
+        dayElement.textContent = date.getDate();
+
+        const isCurrentMonth = date.getMonth() === miniCalendarMonth;
+        const isSelected = date.toDateString() === currentDate.toDateString();
+
+        if (!isCurrentMonth) {
+          dayElement.classList.add('other-month');
+        }
+        if (isSelected) {
+          dayElement.classList.add('selected');
+        }
+
+        dayElement.addEventListener('click', () => {
+          currentDate = date;
+          renderNotes();
+          document.getElementById('mini-calendar-dropdown').classList.remove('show');
+        });
+
+        miniCalendarGrid.appendChild(dayElement);
+      }
+    }
+
+    // Event listeners
+    document.getElementById('prev-day').addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() - 1);
+      renderNotes();
+    });
+
+    document.getElementById('next-day').addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() + 1);
+      renderNotes();
+    });
+
+    document.getElementById('mini-calendar-btn').addEventListener('click', () => {
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      dropdown.classList.toggle('show');
+      miniCalendarMonth = currentDate.getMonth();
+      miniCalendarYear = currentDate.getFullYear();
+      renderMiniCalendar();
+    });
+
+    document.getElementById('mini-prev').addEventListener('click', () => {
+      miniCalendarMonth--;
+      if (miniCalendarMonth < 0) {
+        miniCalendarMonth = 11;
+        miniCalendarYear--;
+      }
+      renderMiniCalendar();
+    });
+
+    document.getElementById('mini-next').addEventListener('click', () => {
+      miniCalendarMonth++;
+      if (miniCalendarMonth > 11) {
+        miniCalendarMonth = 0;
+        miniCalendarYear++;
+      }
+      renderMiniCalendar();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      const btn = document.getElementById('mini-calendar-btn');
+      if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
+
+    // Listen for medication changes and update notes
+    function updateNotesOnMedicationChange() {
+      renderNotes();
+    }
+
+    // Set up storage event listener for cross-tab updates
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'medications') {
+        updateNotesOnMedicationChange();
+      }
+    });
+
+    // Handle URL parameters for navigation from calendar
+    function handleURLParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetDate = urlParams.get('date');
+      const targetMedication = urlParams.get('medication');
+      const targetDose = urlParams.get('dose');
+      const targetTime = urlParams.get('time');
+      
+      if (targetDate) {
+        // Parse date string in local timezone to avoid timezone issues
+        const [year, month, day] = targetDate.split('-').map(Number);
+        const newDate = new Date(year, month - 1, day); // month is 0-indexed
+        currentDate = newDate;
+        
+        // Update the mini calendar month/year to match
+        miniCalendarMonth = currentDate.getMonth();
+        miniCalendarYear = currentDate.getFullYear();
+        
+        renderNotes();
+        
+        // If we have specific medication and dose info, scroll to it
+        if (targetMedication && targetDose) {
+          setTimeout(() => {
+            scrollToDose(targetMedication, parseInt(targetDose), targetTime);
+          }, 100); // Small delay to ensure DOM is rendered
+        }
+      }
+    }
+
+    function scrollToDose(medicationName, doseNumber, time) {
+      // Find the note card for this specific dose
+      const noteCards = document.querySelectorAll('.note-card');
+      let targetCard = null;
+      
+      for (let card of noteCards) {
+        const title = card.querySelector('h2').textContent;
+        const decodedMedication = decodeURIComponent(medicationName);
+        const decodedTime = time && time !== 'no-time' ? decodeURIComponent(time) : null;
+        
+        // Check if this card matches the target medication and dose
+        if (title.includes(decodedMedication) && title.includes(`Dose ${doseNumber}`)) {
+          // If time is specified, also check for time match
+          if (!decodedTime || title.includes(decodedTime)) {
+            targetCard = card;
+            break;
+          }
+        }
+      }
+      
+      if (targetCard) {
+        // Scroll to the target card
+        targetCard.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        
+        // Add a temporary highlight effect
+        targetCard.style.backgroundColor = '#1e3a8a';
+        targetCard.style.border = '2px solid #3b82f6';
+        targetCard.style.borderRadius = '8px';
+        
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+          targetCard.style.backgroundColor = '';
+          targetCard.style.border = '';
+          targetCard.style.borderRadius = '';
+        }, 3000);
+      }
+    }
+
+    // Handle URL parameters first, then initialize notes
+    handleURLParams();
+    
+    // If no URL params, initialize with current date
+    if (!new URLSearchParams(window.location.search).get('date')) {
+      renderNotes();
+    }
+  </script>
+</body>
+</html>

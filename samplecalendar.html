@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker – Calendar</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      /* compatibility var */
+      --danger-color: var(--danger);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+      }
+    }
+
+    /* base */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* layout */
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    @media (max-width: 900px) {
+      .sidebar {
+        position: sticky; top: 0; width: auto; inset: unset;
+        padding: .5rem; border-right: none; border-bottom: 1px solid var(--border);
+        flex-direction: row; flex-wrap: wrap; gap: .5rem;
+      }
+      .content { margin-left: 0; }
+      .sidebar a { flex: 1 1 auto; text-align: center; }
+    }
+
+    /* headings */
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    /* cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+
+    /* buttons */
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary, .btn.btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover, .btn.btn-primary:hover {
+      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
+    }
+    .btn-secondary, .btn.btn-secondary {
+      background: transparent; color: var(--text); border-color: var(--border);
+    }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .btn-danger, .btn.btn-danger {
+      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
+      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(255,107,107,.25);
+    }
+    .btn-danger:hover { filter: brightness(.98); }
+    .btn-success, .btn.btn-success {
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
+      border-color: color-mix(in oklab, var(--success) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(34,197,94,.25);
+    }
+    .btn-success:hover { filter: brightness(1.02); }
+
+    /* modals */
+    .modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(2,6,23,.55);
+      align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      text-align: left;
+    }
+    .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
+
+    /* forms */
+    .form-group { text-align: left; margin-bottom: 1rem; }
+    .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
+    .form-group input[type="date"], .form-group input[type="number"] {
+      width: 100%;
+      padding: .8rem 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+    .form-group input:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
+
+    /* helpful utilities */
+    .muted, .lead { color: var(--muted); }
+
+    /* scrollbars */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--surface) 80%, var(--border));
+      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* === Calendar specific (adapted to dark surface) === */
+    .calendar-container{max-width:95%; margin:0 auto; padding:1rem}
+    .calendar-header{position:relative;
+      display:flex; align-items:center; margin-bottom:2rem;
+      padding:1rem; background:var(--surface); border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow);
+    }
+    .calendar-title{font-size:1.5rem; font-weight:800; color:var(--text); margin:0; cursor:pointer; flex:1; min-width:200px;}
+    .calendar-nav{display:flex; gap:.5rem; align-items:center; flex-shrink:0;}
+
+    /* visible, themed calendar nav buttons */
+    .nav-btn{background:transparent; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:.6rem 1rem}
+    .nav-btn:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
+    .mini-calendar-picker{position:relative; display:inline-block}
+    .mini-calendar-btn{background:transparent; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:.6rem 1rem; min-width:140px; text-align:center}
+    .mini-calendar-btn:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
+    .mini-calendar-dropdown{
+      position:absolute; top:100%; left:0; background:var(--surface); color:var(--text);
+      border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; display:none; padding:1rem; min-width:280px;
+    }
+    .mini-calendar-dropdown.show{display:block !important}
+    .mini-calendar-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem}
+    .mini-calendar-title{font-weight:bold; font-size:0.875rem}
+    .mini-calendar-nav{display:flex; gap:.25rem}
+    .mini-nav-btn{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:var(--text); border:none; border-radius:4px; padding:.25rem .5rem; cursor:pointer; font-size:.75rem; transition:background .2s}
+    .mini-nav-btn:hover{background:var(--brand-700)}
+    .mini-calendar-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px}
+    .mini-weekday{text-align:center; font-size:.7rem; font-weight:bold; color:var(--accent); padding:.25rem}
+    .mini-day{text-align:center; padding:.25rem; font-size:.75rem; cursor:pointer; border-radius:4px; transition:background .2s}
+    .mini-day:hover{background: color-mix(in oklab, var(--surface) 92%, transparent); color:var(--text)}
+    .mini-day.selected{background: color-mix(in oklab, var(--surface) 92%, transparent); color:var(--text)}
+    .mini-day.selected:hover{background: color-mix(in oklab, var(--surface) 86%, transparent)}
+    .mini-day.other-month{color: color-mix(in oklab, var(--muted) 60%, transparent)}
+
+    /* main grid */
+    .calendar-grid{background:var(--surface); border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden}
+    .calendar-weekdays{display:grid; grid-template-columns:repeat(7,1fr); background: linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; font-weight:700}
+    .weekday{padding:1rem .5rem; text-align:center; font-size:.9rem}
+    .calendar-days{display:grid; grid-template-columns:repeat(7,1fr)}
+    .calendar-day{min-height:120px; padding:.5rem; border:1px solid var(--border); position:relative; background: color-mix(in oklab, var(--surface) 96%, transparent); transition:background .2s}
+    .calendar-day.other-month{background: color-mix(in oklab, var(--surface) 88%, transparent); color:var(--muted)}
+    .calendar-day.today{background: color-mix(in oklab, var(--brand) 18%, transparent); outline:1px solid color-mix(in oklab, var(--brand) 45%, transparent)}
+    .calendar-day:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
+    .day-number{font-size:.9rem; font-weight:700; margin-bottom:.25rem}
+
+    /* checklist items inside days */
+    .medication-checklist{margin-top:.25rem}
+    .medication-item{
+      display:flex; align-items:center; justify-content:space-between;
+      background: color-mix(in oklab, var(--surface) 96%, transparent); border-radius:8px; padding:.25rem .5rem; margin-bottom:.25rem; font-size:.75rem;
+      border:1px solid color-mix(in oklab, var(--border) 60%, transparent); min-height:2rem;
+    }
+    .medication-info{flex:1; min-width:0}
+    .medication-name{font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:.1rem; line-height:1.2}
+    .medication-time{font-size:.7rem; color:var(--muted)}
+    .medication-plus{
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color:#fff; border:1px solid transparent;
+      border-radius:8px; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-left:.25rem;
+      transition:transform .1s, box-shadow .2s; line-height:1; position:relative; box-shadow:0 2px 6px rgba(34,197,94,.25);
+    }
+    .medication-plus:hover{transform:translateY(-1px); box-shadow:0 4px 10px rgba(34,197,94,.35)}
+    .medication-plus::before, .medication-plus::after{
+      content:''; position:absolute; background:#fff; border-radius:1px;
+    }
+    .medication-plus::before{width:2px; height:12px}
+    .medication-plus::after{width:12px; height:2px}
+
+
+</style>
+</head>
+<body>
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html" class="active">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <h1 class="calendar-title" id="calendar-title">July 2025</h1>
+                 <div class="calendar-nav">
+           <button class="nav-btn" id="prev-month">&lt; Previous</button>
+           <button class="nav-btn" id="today-btn">Today</button>
+           <div class="mini-calendar-picker">
+            <button class="mini-calendar-btn" id="mini-calendar-btn">July 2025</button>
+            <div class="mini-calendar-dropdown" id="mini-calendar-dropdown">
+              <div class="mini-calendar-header">
+                <div class="mini-calendar-title" id="mini-calendar-title">July 2025</div>
+                <div class="mini-calendar-nav">
+                  <button class="mini-nav-btn" id="mini-prev">&lt;</button>
+                  <button class="mini-nav-btn" id="mini-next">&gt;</button>
+                </div>
+              </div>
+              <div class="mini-calendar-grid" id="mini-calendar-grid">
+                <!-- Will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+          <button class="nav-btn" id="next-month">Next &gt;</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid">
+        <div class="calendar-weekdays">
+          <div class="weekday">Sun</div>
+          <div class="weekday">Mon</div>
+          <div class="weekday">Tue</div>
+          <div class="weekday">Wed</div>
+          <div class="weekday">Thu</div>
+          <div class="weekday">Fri</div>
+          <div class="weekday">Sat</div>
+        </div>
+        <div class="calendar-days" id="calendar-days">
+          <!-- Will be populated by JavaScript -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    function renderCalendar() {
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const lastDay = new Date(currentYear, currentMonth + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const calendarDays = document.getElementById('calendar-days');
+      const calendarTitle = document.getElementById('calendar-title');
+      const miniCalendarBtn = document.getElementById('mini-calendar-btn');
+
+      calendarTitle.textContent = `${months[currentMonth]} ${currentYear}`;
+      miniCalendarBtn.textContent = `${months[currentMonth]} ${currentYear}`;
+
+      calendarDays.innerHTML = '';
+
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+
+        const isCurrentMonth = date.getMonth() === currentMonth;
+        const isToday = date.toDateString() === new Date().toDateString();
+
+        if (!isCurrentMonth) {
+          dayElement.classList.add('other-month');
+        }
+        if (isToday) {
+          dayElement.classList.add('today');
+        }
+
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = date.getDate();
+
+        dayElement.appendChild(dayNumber);
+
+        // Add medication checklist for this day
+        if (isCurrentMonth) {
+          const medications = getMedicationsForDate(date);
+          if (medications.length > 0) {
+            const checklist = createMedicationChecklist(medications, date);
+            dayElement.appendChild(checklist);
+          } 
+        }
+
+        calendarDays.appendChild(dayElement);
+      }
+    }
+
+    function getMedicationsForDate(date) {
+      const medications = JSON.parse(localStorage.getItem('medications') || '[]');
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateString = date.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      return medications.filter(med => {
+        // Check if medication is active on this date
+        const startDate = med.startDate || today; // Default to today if no start date
+        if (dateString < startDate) {
+          return false; // Medication hasn't started yet
+        }
+        if (med.endDate && dateString > med.endDate) {
+          return false; // Medication has ended (only if end date is set)
+        }
+        
+        // Check if this day of the week is scheduled for this medication
+        return med.days.includes(dayName);
+      });
+    }
+
+    function createMedicationChecklist(medications, date) {
+      const checklist = document.createElement('div');
+      checklist.className = 'medication-checklist';
+      
+      medications.forEach(med => {
+        // If no times are set, show medication without time
+        if (!med.times || med.times.length === 0 || med.times.every(t => !t)) {
+          const timesPerDay = med.timesPerDay || 1;
+          for (let i = 1; i <= timesPerDay; i++) {
+            const medItem = createMedicationItem(med.name, null, i, date);
+            checklist.appendChild(medItem);
+          }
+        } else {
+          // Show medication for each time (filter out blank times)
+          const validTimes = med.times.filter(time => time && time.trim() !== '');
+          if (validTimes.length === 0) {
+            // If all times are empty, create doses based on timesPerDay
+            const timesPerDay = med.timesPerDay || 1;
+            for (let i = 1; i <= timesPerDay; i++) {
+              const medItem = createMedicationItem(med.name, null, i, date);
+              checklist.appendChild(medItem);
+            }
+          } else {
+            validTimes.forEach((time, index) => {
+              const medItem = createMedicationItem(med.name, time, index + 1, date);
+              checklist.appendChild(medItem);
+            });
+          }
+        }
+      });
+      
+      return checklist;
+    }
+
+    function convertTo12Hour(time24) {
+      if (!time24) return time24;
+      
+      // Check if it's already in 12-hour format (contains AM/PM)
+      if (time24.includes('AM') || time24.includes('PM')) {
+        return time24;
+      }
+      
+      // Parse 24-hour time (HH:MM format)
+      const [hours, minutes] = time24.split(':');
+      const hour24 = parseInt(hours, 10);
+      
+      if (hour24 === 0) {
+        return `12:${minutes} AM`;
+      } else if (hour24 < 12) {
+        return `${hour24}:${minutes} AM`;
+      } else if (hour24 === 12) {
+        return `12:${minutes} PM`;
+      } else {
+        return `${hour24 - 12}:${minutes} PM`;
+      }
+    }
+
+    function createMedicationItem(name, time, doseNumber, date) {
+      const medItem = document.createElement('div');
+      medItem.className = 'medication-item';
+      
+      const medInfo = document.createElement('div');
+      medInfo.className = 'medication-info';
+      
+      const medName = document.createElement('div');
+      medName.className = 'medication-name';
+      medName.textContent = `${name} - Dose ${doseNumber}`;
+      
+      medInfo.appendChild(medName);
+      
+      // Only add time if it exists
+      if (time) {
+        const medTime = document.createElement('div');
+        medTime.className = 'medication-time';
+        medTime.textContent = convertTo12Hour(time);
+        medInfo.appendChild(medTime);
+      }
+      
+      const plusBtn = document.createElement('button');
+      plusBtn.className = 'medication-plus';
+      plusBtn.title = 'Go to notes for this dose';
+      
+      // Add click handler to navigate to notes page
+      plusBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Create date string in local timezone to avoid timezone issues
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        
+        const timeParam = time ? encodeURIComponent(time) : 'no-time';
+        const url = `notes.html?date=${dateString}&medication=${encodeURIComponent(name)}&dose=${doseNumber}&time=${timeParam}`;
+        
+        // Navigate to the notes page
+        window.location.href = url;
+      });
+      
+      medItem.appendChild(medInfo);
+      medItem.appendChild(plusBtn);
+      
+      return medItem;
+    }
+
+    let miniCalendarMonth = currentMonth;
+    let miniCalendarYear = currentYear;
+
+    function renderMiniCalendar() {
+      const firstDay = new Date(miniCalendarYear, miniCalendarMonth, 1);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const miniCalendarGrid = document.getElementById('mini-calendar-grid');
+      const miniCalendarTitle = document.getElementById('mini-calendar-title');
+
+      miniCalendarTitle.textContent = `${months[miniCalendarMonth]} ${miniCalendarYear}`;
+
+      // Add weekday headers
+      miniCalendarGrid.innerHTML = '';
+      const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      weekdays.forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'mini-weekday';
+        dayHeader.textContent = day;
+        miniCalendarGrid.appendChild(dayHeader);
+      });
+
+      // Add calendar days
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = document.createElement('div');
+        dayElement.className = 'mini-day';
+        dayElement.textContent = date.getDate();
+
+        const isCurrentMonth = date.getMonth() === miniCalendarMonth;
+        const isSelected = date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+
+        if (!isCurrentMonth) {
+          dayElement.classList.add('other-month');
+        }
+        if (isSelected) {
+          dayElement.classList.add('selected');
+        }
+
+        dayElement.addEventListener('click', () => {
+          currentMonth = date.getMonth();
+          currentYear = date.getFullYear();
+          renderCalendar();
+          document.getElementById('mini-calendar-dropdown').classList.remove('show');
+        });
+
+        miniCalendarGrid.appendChild(dayElement);
+      }
+    }
+
+    // Event listeners
+    document.getElementById('prev-month').addEventListener('click', () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      renderCalendar();
+    });
+
+    document.getElementById('next-month').addEventListener('click', () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      renderCalendar();
+    });
+
+    document.getElementById('today-btn').addEventListener('click', () => {
+      const today = new Date();
+      currentMonth = today.getMonth();
+      currentYear = today.getFullYear();
+      renderCalendar();
+    });
+
+    document.getElementById('mini-calendar-btn').addEventListener('click', () => {
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      dropdown.classList.toggle('show');
+      miniCalendarMonth = currentMonth;
+      miniCalendarYear = currentYear;
+      renderMiniCalendar();
+    });
+
+    document.getElementById('mini-prev').addEventListener('click', () => {
+      miniCalendarMonth--;
+      if (miniCalendarMonth < 0) {
+        miniCalendarMonth = 11;
+        miniCalendarYear--;
+      }
+      renderMiniCalendar();
+    });
+
+    document.getElementById('mini-next').addEventListener('click', () => {
+      miniCalendarMonth++;
+      if (miniCalendarMonth > 11) {
+        miniCalendarMonth = 0;
+        miniCalendarYear++;
+      }
+      renderMiniCalendar();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      const btn = document.getElementById('mini-calendar-btn');
+      if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
+
+    // Initialize calendar
+    
+    renderCalendar();
+  </script>
+</body>
+</html>

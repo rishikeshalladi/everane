@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MedTracker – Home</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      /* compatibility var */
+      --danger-color: var(--danger);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+      }
+    }
+
+    /* base */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* layout */
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+    
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      
+      .sidebar-signout {
+        width: 100% !important;
+        padding: 0.75rem 1rem !important;
+        background: var(--danger) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--radius) !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
+      
+      .sidebar-signout:hover {
+        background: color-mix(in oklab, var(--danger) 85%, black) !important;
+        transform: translateY(-1px) !important;
+      }
+    }
+
+    /* headings */
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    /* list */
+    #med-list { max-height: 70vh; overflow-y: auto; display: grid; gap: 1rem; }
+
+    /* cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+      transition: background-color 0.3s ease;
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+    
+    /* Flash animations for taken/not taken feedback */
+    .card.flash-green {
+      animation: flashGreen 1s ease-out;
+    }
+    .card.flash-red {
+      animation: flashRed 1s ease-out;
+    }
+    
+    @keyframes flashGreen {
+      0% { background-color: var(--surface); }
+      20% { background-color: color-mix(in oklab, var(--success) 40%, var(--surface)); }
+      100% { background-color: var(--surface); }
+    }
+    
+    @keyframes flashRed {
+      0% { background-color: var(--surface); }
+      20% { background-color: color-mix(in oklab, var(--danger) 40%, var(--surface)); }
+      100% { background-color: var(--surface); }
+    }
+
+    /* buttons */
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary, .btn.btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover, .btn.btn-primary:hover {
+      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
+    }
+    .btn-secondary, .btn.btn-secondary {
+      background: transparent; color: var(--text); border-color: var(--border);
+    }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .btn-danger, .btn.btn-danger {
+      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
+      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(255,107,107,.25);
+    }
+    .btn-danger:hover { filter: brightness(.98); }
+    .btn-success, .btn.btn-success {
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
+      border-color: color-mix(in oklab, var(--success) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(34,197,94,.25);
+    }
+    .btn-success:hover { filter: brightness(1.02); }
+
+    .home-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .agenda-btn {
+      background: linear-gradient(135deg, var(--accent), #63cbb8);
+      color: #0b1020;
+      padding: 0.65rem 1.1rem;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      box-shadow: 0 10px 25px rgba(125, 226, 209, 0.35);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .agenda-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    .agenda-btn::before {
+      content: "🗓️";
+      font-size: 1rem;
+    }
+
+    /* modals */
+    .modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(2,6,23,.55);
+      align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      text-align: left;
+    }
+    .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
+
+    /* Agenda modal */
+    .agenda-modal .modal-content {
+      max-width: 720px;
+      width: 95%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 2rem;
+    }
+
+    .agenda-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .agenda-title-group h3 {
+      font-size: 1.6rem;
+      margin: 0;
+    }
+
+    .agenda-title-group p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .agenda-close {
+      appearance: none;
+      border: none;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .agenda-close:hover {
+      background: color-mix(in oklab, var(--surface) 86%, transparent);
+      transform: rotate(6deg);
+      color: var(--text);
+    }
+
+    .agenda-list {
+      flex: 1;
+      overflow-y: auto;
+      border-radius: 16px;
+      border: 1px solid color-mix(in oklab, var(--border) 120%, transparent);
+      background: color-mix(in oklab, var(--surface) 94%, transparent);
+      padding: 1rem 1.2rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .agenda-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 1.05rem;
+      padding: 2rem 1rem;
+    }
+
+    .agenda-entry {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.85rem 1rem;
+      background: color-mix(in oklab, var(--surface) 97%, transparent);
+      border-radius: 14px;
+      border: 1px solid color-mix(in oklab, var(--border) 130%, transparent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .agenda-entry-time {
+      min-width: 110px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: color-mix(in oklab, var(--brand) 80%, white 20%);
+    }
+
+    .agenda-entry-name {
+      flex: 1;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .agenda-entry-dose {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .agenda-footer {
+      margin-top: 0.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid color-mix(in oklab, var(--border) 140%, transparent);
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    /* stock list items */
+    .bottle-item {
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s ease, transform .1s ease;
+    }
+    .bottle-item:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .bottle-item small { color: var(--muted); }
+    
+    .bottle-info {
+      flex: 1;
+      margin-right: 1rem;
+    }
+    
+    .delete-bottle-btn {
+      min-width: 80px;
+      min-height: 44px; /* iOS recommended touch target */
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+    
+    .delete-bottle-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+    
+    .delete-bottle-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .delete-icon {
+      font-size: 1rem;
+    }
+    
+    .delete-text {
+      font-size: 0.875rem;
+    }
+
+    /* forms */
+    .form-group { text-align: left; margin-bottom: 1rem; }
+    .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
+    .form-group input[type="date"], .form-group input[type="number"] {
+      width: 100%;
+      padding: .8rem 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+    .form-group input:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
+
+    /* helpful utilities */
+    .muted, .lead { color: var(--muted); }
+
+    /* scrollbars */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--surface) 80%, var(--border));
+      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+    
+    /* Make calendar icons white */
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) opacity(.85);
+      cursor: pointer;
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 640px) {
+      .container { padding-inline: 1rem; }
+      .content { padding-block: 1.5rem; padding-top: 4.5rem; }
+      
+      h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+      h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+
+      .home-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .agenda-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .agenda-modal .modal-content {
+        max-height: 90vh;
+        padding: 1.5rem;
+      }
+
+      .agenda-entry {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .agenda-entry-time {
+        min-width: auto;
+      }
+      
+      .card {
+        padding: 0.9rem;
+        border-radius: 16px;
+      }
+      .card p {
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      .card > div[style*="display:flex"] {
+        gap: 0.4rem !important;
+        margin-top: 0.75rem !important;
+      }
+      
+      .btn {
+        padding: .6rem .8rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+      }
+      .btn-sm {
+        padding: .4rem .6rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        flex: 1 1 calc(50% - 0.2rem);
+        min-width: fit-content;
+      }
+      
+      #med-list { gap: 0.75rem; }
+      
+      .modal { padding: 0.5rem; }
+      .modal-content {
+        padding: 1rem;
+        border-radius: 16px;
+        max-width: 100% !important;
+      }
+      .modal-content h3 { font-size: 1.1rem; }
+      
+      .bottle-item {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+      }
+      
+      .bottle-info {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+      }
+      
+      .delete-bottle-btn {
+        width: 100%;
+        min-height: 48px; /* Larger touch target for mobile */
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.2);
+      }
+      
+      .delete-bottle-btn:active {
+        transform: scale(0.98);
+        box-shadow: 0 1px 4px rgba(255, 107, 107, 0.3);
+      }
+      
+      .delete-icon {
+        font-size: 1.1rem;
+      }
+      
+      .delete-text {
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      
+      .form-group input[type="date"],
+      .form-group input[type="number"] {
+        padding: .7rem .85rem;
+        font-size: 16px;
+      }
+      
+      input[type="date"],
+      input[type="number"],
+      input[type="text"],
+      select {
+        font-size: 16px !important;
+      }
+      
+      select option {
+        background-color: var(--surface);
+        color: var(--text);
+        font-size: 16px;
+      }
+      
+      .form-group label {
+        font-size: 0.9rem;
+      }
+    }
+</style>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html" class="active">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
+      <span>Profile</span>
+      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
+    </a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <div class="home-header">
+      <h1>Home</h1>
+        <button class="btn agenda-btn" id="open-agenda-btn">Agenda</button>
+      </div>
+      <div id="med-list"></div>
+      <div style="text-align:center; margin-top:2rem;">
+        <button class="btn-primary" onclick="location.href='add-medication.html'">
+          + Add Medication
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="confirm-modal" class="modal">
+    <div class="modal-content">
+      <p>Are you sure you want to delete this medication?<br>
+         <small>(It will still appear in History.)</small></p>
+      <button id="confirm-yes" class="btn btn-sm btn-primary">Yes</button>
+      <button id="confirm-no"  class="btn btn-sm btn-secondary">No</button>
+    </div>
+  </div>
+
+  <!-- Stock Modal -->
+  <div id="stock-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px; width: 95%;">
+      <h3>Stock for <span id="stock-med-name"></span></h3>
+      <div id="stock-list" style="max-height: 400px; overflow-y: auto; margin: 1rem 0;"></div>
+      <div style="display:flex; gap:0.5rem; justify-content:center; margin-top:1rem;">
+        <button id="stock-add-btn" class="btn btn-sm btn-primary">+ Add Bottle</button>
+        <button id="stock-close-btn" class="btn btn-sm btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add‑Bottle Modal -->
+  <div id="stock-add-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3>Add Bottle for <span id="stock-add-med-name"></span></h3>
+      <div class="form-group">
+        <label>Expiration Date <span style="color: red;">*</span></label>
+        <input type="date" id="stock-add-exp" required>
+        <div id="stock-add-exp-error" class="error-message"></div>
+      </div>
+      <div class="form-group">
+        <label>Quantity <small>(optional)</small></label>
+        <input type="number" id="stock-add-qty" min="0" placeholder="e.g., 30 pills">
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:1rem;">
+        <button id="stock-add-back"  class="btn btn-sm btn-secondary">Back</button>
+        <button id="stock-add-save" class="btn btn-sm btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Bottle Confirmation Modal -->
+  <div id="delete-bottle-modal" class="modal">
+    <div class="modal-content">
+      <p>Are you sure you want to delete this bottle?<br>
+         <small>(This action cannot be undone.)</small></p>
+      <button id="delete-bottle-yes" class="btn btn-sm btn-danger">Delete</button>
+      <button id="delete-bottle-no" class="btn btn-sm btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Agenda Modal -->
+  <div id="agenda-modal" class="modal agenda-modal">
+    <div class="modal-content">
+      <div class="agenda-header">
+        <div class="agenda-title-group">
+          <h3>Today’s Agenda</h3>
+          <p id="agenda-date"></p>
+        </div>
+        <button class="agenda-close" id="agenda-close" aria-label="Close agenda">&times;</button>
+      </div>
+      <div class="agenda-list" id="agenda-list"></div>
+      <div class="agenda-footer">
+        Automatic daily agenda emails are sent at 9:00 AM Pacific.
+      </div>
+    </div>
+  </div>
+
+<script>
+      document.addEventListener('DOMContentLoaded', () => {
+      // Close mobile menu when clicking on nav links
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+      
+      let pendingDeleteIndex = null;
+      let currentStockMedId = null;
+      let pendingDeleteBottleIndex = null;
+
+
+    function confirmDelete(medId) {
+      pendingDeleteIndex = medId;
+      document.getElementById('confirm-modal').classList.add('show');
+    }
+    
+    // Make confirmDelete globally available
+    window.confirmDelete = confirmDelete;
+
+    document.getElementById('confirm-yes')
+            .addEventListener('click', async () => {
+      try {
+        const user = window.auth.currentUser;
+        if (!user) return;
+
+        console.log('[Home] Deleting medication with ID:', pendingDeleteIndex);
+
+        // Update the medication in Firebase to set deletedStatus: true
+        const medDocRef = doc(window.db, "users", user.uid, "medications", pendingDeleteIndex);
+        await setDoc(medDocRef, { deletedStatus: true }, { merge: true });
+
+        console.log('[Home] Medication marked as deleted in Firebase');
+
+        document.getElementById('confirm-modal').classList.remove('show');
+      window.renderList();
+      if (!window.__medListRefreshInterval) {
+        window.__medListRefreshInterval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            window.renderList();
+          }
+        }, 60 * 1000);
+      }
+      } catch (error) {
+        console.error('Error during delete:', error);
+        alert('Error deleting medication: ' + error.message);
+      }
+    });
+
+    document.getElementById('confirm-no')
+            .addEventListener('click', () => {
+      document.getElementById('confirm-modal').classList.remove('show');
+    });
+
+    // Stock Management Functions
+    window.openStock = async function(medId) {
+      try {
+        currentStockMedId = medId;
+        const user = window.auth.currentUser;
+        if (!user) {
+          console.error('No user logged in for stock view');
+          return;
+        }
+
+        // Get the specific medication from Firebase using the ID
+        const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) {
+          console.error('Medication not found:', medId);
+          return;
+        }
+        
+        const medData = medDoc.data();
+        
+        // Convert bottles from Firebase format to object format
+        const med = {
+          id: medDoc.id,
+          name: medData.name,
+          bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+            const parts = bottleStr.split('/');
+            if (parts.length >= 2) {
+              // Format: "12/14/2025/83" or "3/15/2026/30"
+              const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
+              if (dateMatch) {
+                return {
+                  expiration: dateMatch[1],
+                  quantity: dateMatch[2] === 'N/A' ? null : parseInt(dateMatch[2])
+                };
+              }
+            }
+            return null;
+          }).filter(Boolean) : []
+        };
+
+      document.getElementById('stock-med-name').textContent = med.name;
+        renderStockList(med);
+      document.getElementById('stock-modal').classList.add('show');
+      } catch (error) {
+        console.error('Error opening stock:', error);
+      }
+    }
+
+    async function renderStockList(med) {
+      const stockList = document.getElementById('stock-list');
+      
+      // If no med parameter provided, reload from Firebase
+      if (!med) {
+        const user = window.auth.currentUser;
+        if (!user || !currentStockMedId) return;
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) return;
+        
+        const medData = medDoc.data();
+        med = {
+          bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+            const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
+            if (dateMatch) {
+              return {
+                expiration: dateMatch[1],
+                quantity: dateMatch[2] === 'N/A' ? null : parseInt(dateMatch[2])
+              };
+            }
+            return null;
+          }).filter(Boolean) : []
+        };
+      }
+      
+      if (!med || !med.bottles || med.bottles.length === 0) {
+        stockList.innerHTML = '<p style="text-align:center;color:#666;padding:2rem;">No bottles added yet.</p>';
+        return;
+      }
+
+      // Sort bottles by expiration date (earliest first)
+      const sortedBottles = [...med.bottles].sort((a, b) => new Date(a.expiration) - new Date(b.expiration));
+      
+      stockList.innerHTML = '';
+      sortedBottles.forEach((bottle, index) => {
+        const bottleEl = document.createElement('div');
+        bottleEl.className = 'bottle-item';
+        bottleEl.innerHTML = `
+          <div class="bottle-info">
+            <strong>Bottle #${index + 1}</strong><br>
+            <small>Expires: ${bottle.expiration}</small><br>
+            <small>Amount: ${bottle.quantity || 'N/A'}</small>
+          </div>
+          <button class="btn btn-sm btn-danger delete-bottle-btn" data-index="${index}">
+            <span class="delete-icon">🗑️</span>
+            <span class="delete-text">Delete</span>
+          </button>
+        `;
+        bottleEl.querySelector('.delete-bottle-btn')
+            .addEventListener('click', () => confirmDeleteBottle(index));
+        stockList.appendChild(bottleEl);
+      });
+    }
+
+    function confirmDeleteBottle(bottleIndex) {
+      pendingDeleteBottleIndex = bottleIndex;
+      document.getElementById('delete-bottle-modal').classList.add('show');
+    }
+    
+    // Make confirmDeleteBottle globally available
+    window.confirmDeleteBottle = confirmDeleteBottle;
+
+    // Stock Modal Event Listeners
+    document.getElementById('stock-add-btn')
+            .addEventListener('click', async () => {
+      const user = window.auth.currentUser;
+      if (!user) return;
+      
+      // Get medication from Firebase
+      const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+      const medDoc = await getDoc(medDocRef);
+      
+      if (!medDoc.exists()) return;
+      
+      const med = medDoc.data();
+      document.getElementById('stock-add-med-name').textContent = med.name;
+      document.getElementById('stock-add-exp').value = '';
+      document.getElementById('stock-add-qty').value = '';
+      document.getElementById('stock-add-exp-error').textContent = '';
+      document.getElementById('stock-modal').classList.remove('show');
+      document.getElementById('stock-add-modal').classList.add('show');
+    });
+
+    document.getElementById('stock-close-btn')
+            .addEventListener('click', () => {
+      document.getElementById('stock-modal').classList.remove('show');
+    });
+
+    document.getElementById('stock-add-back')
+            .addEventListener('click', () => {
+      document.getElementById('stock-add-modal').classList.remove('show');
+      document.getElementById('stock-modal').classList.add('show');
+    });
+
+    document.getElementById('stock-add-save')
+.addEventListener('click', async () => {
+      const expDate = document.getElementById('stock-add-exp').value;
+      const quantity = document.getElementById('stock-add-qty').value;
+      const errorEl = document.getElementById('stock-add-exp-error');
+      
+      // Clear previous error
+      errorEl.textContent = '';
+      
+      // Validate required fields
+      if (!expDate) {
+        errorEl.textContent = 'Expiration date is required';
+        return;
+      }
+
+      try {
+        const user = window.auth.currentUser;
+        if (!user || !currentStockMedId) return;
+        
+        // Get current medication from Firebase
+        const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+        const medDoc = await getDoc(medDocRef);
+      
+        if (!medDoc.exists()) return;
+        
+        const medData = medDoc.data();
+        
+        // Add new bottle in Firebase format: "MM/DD/YYYY/quantity"
+        const bottles = medData.bottles || [];
+        const newBottle = `${expDate}/${quantity || 'N/A'}`;
+        bottles.push(newBottle);
+        
+        // Update Firebase
+        await setDoc(medDocRef, {
+          bottles: bottles,
+          stock: bottles.length
+        }, { merge: true });
+        
+        console.log('[Home] Added bottle to medication:', currentStockMedId);
+      
+      // Close add modal and return to stock modal
+      document.getElementById('stock-add-modal').classList.remove('show');
+      document.getElementById('stock-modal').classList.add('show');
+        
+        // Reload stock list
+        await renderStockList();
+      } catch (error) {
+        console.error('Error adding bottle:', error);
+        errorEl.textContent = 'Error adding bottle: ' + error.message;
+      }
+    });
+
+    // Delete Bottle Modal Event Listeners
+    document.getElementById('delete-bottle-yes')
+            .addEventListener('click', async () => {
+      try {
+        const user = window.auth.currentUser;
+        if (!user || !currentStockMedId) return;
+        
+        // Get current medication from Firebase
+        const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) return;
+        
+        const medData = medDoc.data();
+        const bottles = medData.bottles || [];
+        
+        // Remove bottle by index
+        bottles.splice(pendingDeleteBottleIndex, 1);
+        
+        // Update Firebase
+        await setDoc(medDocRef, {
+          bottles: bottles,
+          stock: bottles.length
+        }, { merge: true });
+        
+        console.log('[Home] Deleted bottle from medication:', currentStockMedId);
+        
+      document.getElementById('delete-bottle-modal').classList.remove('show');
+        await renderStockList();
+      } catch (error) {
+        console.error('Error deleting bottle:', error);
+      }
+    });
+
+    document.getElementById('delete-bottle-no')
+            .addEventListener('click', () => {
+      document.getElementById('delete-bottle-modal').classList.remove('show');
+    });
+
+    // renderList is now called automatically after Firebase is ready
+  });
+</script>
+
+<style>
+  .verify-warning {
+    font-size: 1rem;
+    cursor: help;
+    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+</style>
+
+<script type="module">
+  // Import Firebase SDKs for verification check
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+    authDomain: "medtracker-8c467.firebaseapp.com",
+    projectId: "medtracker-8c467",
+    storageBucket: "medtracker-8c467.firebasestorage.app",
+    messagingSenderId: "847799899373",
+    appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+  };
+
+  // Initialize Firebase only if not already initialized
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  
+  const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  const formatTime12h = (time24) => {
+    if (!time24) return '';
+    const [hoursStr, minutesStr] = time24.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return time24;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  let currentMedications = [];
+  let currentAgendaEntries = [];
+
+  const agendaModal = document.getElementById('agenda-modal');
+  const openAgendaBtn = document.getElementById('open-agenda-btn');
+  const closeAgendaBtn = document.getElementById('agenda-close');
+  const agendaListEl = document.getElementById('agenda-list');
+  const agendaDateEl = document.getElementById('agenda-date');
+
+  const buildAgendaEntries = (medications) => {
+    const entries = [];
+    const now = new Date();
+    const todayIndex = now.getDay();
+
+    medications.forEach(med => {
+      const allowedDays = med.days && med.days.length ? med.days.map(d => d.toLowerCase()) : weekdaysConst;
+      if (!allowedDays.includes(weekdaysConst[todayIndex])) return;
+
+      const times = Array.isArray(med.times) && med.times.length ? [...med.times].filter(Boolean).sort() : [null];
+      times.forEach((timeStr, idx) => {
+        entries.push({
+          time: timeStr,
+          name: med.name,
+          dosage: med.dosage,
+          doseNumber: idx + 1,
+          totalDoses: times.length
+        });
+      });
+    });
+
+    entries.sort((a, b) => {
+      if (a.time === b.time) {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+
+    return entries;
+  };
+
+  const renderAgendaEntries = () => {
+    if (!agendaListEl) return;
+    if (!currentAgendaEntries.length) {
+      agendaListEl.innerHTML = `<div class="agenda-empty">No medications scheduled for today.</div>`;
+      return;
+    }
+
+    agendaListEl.innerHTML = currentAgendaEntries.map(entry => {
+      const timeLabel = entry.time ? formatTime12h(entry.time) : 'Any time';
+      const doseLabel = entry.totalDoses > 1 ? `Dose ${entry.doseNumber}` : 'Single dose';
+      const dosageLabel = entry.dosage ? `<div class="agenda-entry-dose">${entry.dosage}</div>` : '';
+      return `
+        <div class="agenda-entry">
+          <div class="agenda-entry-time">${timeLabel}</div>
+          <div>
+            <div class="agenda-entry-name">${entry.name} · ${doseLabel}</div>
+            ${dosageLabel}
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  const openAgendaModal = () => {
+    if (!agendaModal) return;
+    const now = new Date();
+    if (agendaDateEl) {
+      agendaDateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+    renderAgendaEntries();
+    agendaModal.classList.add('show');
+  };
+
+  const closeAgendaModal = () => {
+    if (!agendaModal) return;
+    agendaModal.classList.remove('show');
+  };
+
+  if (openAgendaBtn) {
+    openAgendaBtn.addEventListener('click', () => {
+      if (!currentAgendaEntries.length) {
+        currentAgendaEntries = buildAgendaEntries(currentMedications);
+      }
+      openAgendaModal();
+    });
+  }
+
+  if (closeAgendaBtn) {
+    closeAgendaBtn.addEventListener('click', closeAgendaModal);
+  }
+
+  if (agendaModal) {
+    agendaModal.addEventListener('click', (event) => {
+      if (event.target === agendaModal) {
+        closeAgendaModal();
+      }
+    });
+  }
+
+  // Make auth, db, and Firebase functions globally available
+  window.auth = auth;
+  window.db = db;
+  window.collection = collection;
+  window.getDocs = getDocs;
+  window.doc = doc;
+  window.getDoc = getDoc;
+  window.setDoc = setDoc;
+  window.deleteDoc = deleteDoc;
+  
+  // Define renderList function inside the module
+  async function renderList() {
+    try {
+      console.log('[Home] renderList() called');
+      const listEl = document.getElementById('med-list');
+      const user = window.auth.currentUser;
+      
+      console.log('[Home] Current user in renderList:', user ? `User: ${user.email}` : 'No user');
+      console.log('[Home] window.auth available:', !!window.auth);
+      
+      if (!window.auth) {
+        console.log('[Home] Auth not ready yet, retrying in 100ms');
+        setTimeout(window.renderList, 100);
+        return;
+      }
+      
+      if (!user) {
+        console.log('[Home] No user found, showing login message');
+        listEl.innerHTML = '<p style="text-align:center;color:#666">Please log in to view medications.</p>';
+        return;
+      }
+
+      // Load medications directly from Firebase
+      const medicationsCollectionRef = collection(window.db, "users", user.uid, "medications");
+      const medicationsSnapshot = await getDocs(medicationsCollectionRef);
+      const medications = [];
+      
+        medicationsSnapshot.forEach((doc) => {
+          const medData = doc.data();
+          
+          // Only show medications that are not deleted
+          if (!medData.deletedStatus) {
+            medications.push({
+              id: doc.id,
+              name: medData.name,
+              dosage: medData.dosage,
+              days: medData.daysOfWeek,
+              timesPerDay: medData.timesPerDay,
+              times: medData.times,
+              startDate: medData.startDate === 'N/A' ? null : medData.startDate,
+              endDate: medData.endDate === 'N/A' ? null : medData.endDate,
+              reminder: medData.reminderMethod === 'E' ? 'Email' : 
+                       medData.reminderMethod === 'S' ? 'SMS' : 'None',
+              bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+                const parts = bottleStr.split('/');
+                if (parts.length >= 4) {
+                  return {
+                    expiration: `${parts[0]}/${parts[1]}/${parts[2]}`,
+                    quantity: parts[3] === 'N/A' ? null : parseInt(parts[3])
+                  };
+                }
+                return null;
+              }).filter(Boolean) : []
+            });
+          }
+        });
+
+      listEl.innerHTML = '';
+
+      if (!medications.length) {
+        listEl.innerHTML = '<p style="text-align:center;color:#666">No medications yet.</p>';
+        return;
+      }
+
+      const now = new Date();
+
+      const getWeekdayIndex = (dayName) => weekdaysConst.indexOf(dayName.toLowerCase());
+
+      const computeNextDosage = (medication) => {
+        const allowedDays = medication.days && medication.days.length ? medication.days.map(d => d.toLowerCase()) : weekdaysConst;
+        const times = Array.isArray(medication.times) ? medication.times.filter(Boolean) : [];
+
+        const candidates = [];
+        for (let offset = 0; offset < 7; offset++) {
+          const candidateDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+          const weekdayName = weekdaysConst[candidateDate.getDay()];
+          if (!allowedDays.includes(weekdayName)) continue;
+
+          if (times.length > 0) {
+            const sortedTimes = [...times].sort();
+            sortedTimes.forEach((timeStr, index) => {
+              const [h, m] = timeStr.split(':').map(Number);
+              if (Number.isNaN(h) || Number.isNaN(m)) return;
+              const candidateDateTime = new Date(candidateDate);
+              candidateDateTime.setHours(h, m, 0, 0);
+              candidates.push({ dateTime: candidateDateTime, timeStr, weekday: weekdayName, doseNumber: index + 1, totalDoses: sortedTimes.length });
+            });
+          } else {
+            candidates.push({ dateTime: candidateDate, timeStr: null, weekday: weekdayName, doseNumber: 1, totalDoses: 1 });
+          }
+        }
+
+        if (!candidates.length) {
+          return 'N/A';
+        }
+
+        candidates.sort((a, b) => a.dateTime - b.dateTime);
+        const upcoming = candidates.find(c => c.dateTime >= now) || candidates[0];
+
+        if (upcoming.timeStr) {
+          return `${formatTime12h(upcoming.timeStr)} on ${upcoming.weekday.charAt(0).toUpperCase() + upcoming.weekday.slice(1)}`;
+        }
+
+        return upcoming.weekday.charAt(0).toUpperCase() + upcoming.weekday.slice(1);
+      };
+
+      // Function to determine current dose based on complex logic
+      const determineCurrentDose = (medication) => {
+        const allowedDays = medication.days && medication.days.length ? medication.days.map(d => d.toLowerCase()) : weekdaysConst;
+        const times = Array.isArray(medication.times) ? medication.times.filter(Boolean) : [];
+
+        // Build all dose candidates for today and yesterday
+        const candidates = [];
+        for (let offset = -1; offset < 7; offset++) {
+          const candidateDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+          const weekdayName = weekdaysConst[candidateDate.getDay()];
+          if (!allowedDays.includes(weekdayName)) continue;
+
+          if (times.length > 0) {
+            const sortedTimes = [...times].sort();
+            sortedTimes.forEach((timeStr, index) => {
+              const [h, m] = timeStr.split(':').map(Number);
+              if (Number.isNaN(h) || Number.isNaN(m)) return;
+              const candidateDateTime = new Date(candidateDate);
+              candidateDateTime.setHours(h, m, 0, 0);
+              candidates.push({ 
+                dateTime: candidateDateTime, 
+                timeStr, 
+                weekday: weekdayName, 
+                doseNumber: index + 1, 
+                totalDoses: sortedTimes.length 
+              });
+            });
+          } else {
+            candidates.push({ 
+              dateTime: candidateDate, 
+              timeStr: null, 
+              weekday: weekdayName, 
+              doseNumber: 1, 
+              totalDoses: 1 
+            });
+          }
+        }
+
+        if (!candidates.length) {
+          return null;
+        }
+
+        // Sort by dateTime
+        candidates.sort((a, b) => a.dateTime - b.dateTime);
+
+        // Find next dose (first dose >= now)
+        const nextDose = candidates.find(c => c.dateTime >= now);
+        
+        // Find previous dose (last dose < now)
+        const previousDoses = candidates.filter(c => c.dateTime < now);
+        const previousDose = previousDoses.length > 0 ? previousDoses[previousDoses.length - 1] : null;
+
+        // If no next dose, use the first candidate (wraps around)
+        if (!nextDose) {
+          return candidates[0];
+        }
+
+        // If no previous dose, use next dose
+        if (!previousDose) {
+          return nextDose;
+        }
+
+        // Calculate time differences in minutes
+        const timeToNext = (nextDose.dateTime - now) / (1000 * 60);
+        const timeSincePrevious = (now - previousDose.dateTime) / (1000 * 60);
+        const timeBetweenDoses = (nextDose.dateTime - previousDose.dateTime) / (1000 * 60);
+
+        // Rule 1: If within 45 minutes of previous dose, use previous dose
+        if (timeSincePrevious <= 45) {
+          return previousDose;
+        }
+
+        // Rule 2: If next and previous doses are less than 1.5 hours (90 minutes) apart,
+        // use whichever is closer to current time
+        if (timeBetweenDoses < 90) {
+          return timeToNext < timeSincePrevious ? nextDose : previousDose;
+        }
+
+        // Default: use next dose
+        return nextDose;
+      };
+
+      // Store current dose for each medication (will be set when "Taken" is clicked)
+      const medicationCurrentDoses = new Map();
+
+      medications.forEach((med) => {
+        // Calculate per week and per day
+        const perWeek = (med.days ? med.days.length : 0) * (med.timesPerDay || 0);
+        const perDay = med.timesPerDay || 0;
+        
+        // Calculate next dosage
+        const nextDosage = computeNextDosage(med);
+        
+        // Determine current dose automatically
+        const currentDose = determineCurrentDose(med);
+        
+        // Build current dose display
+        let currentDoseDisplay = '';
+        if (currentDose) {
+          const timeDisplay = currentDose.timeStr ? formatTime12h(currentDose.timeStr) : 'Any time';
+          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay}, Dose #${currentDose.doseNumber}`;
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.medicationId = med.id;
+        
+        card.innerHTML = `
+          <h2>${med.name}</h2>
+          <p>
+            <strong>Per Week:</strong> ${perWeek} dosage${perWeek !== 1 ? 's' : ''}<br>
+            <strong>Per Day:</strong> ${perDay} dosage${perDay !== 1 ? 's' : ''}<br>
+            <strong>Next Dosage:</strong> ${nextDosage}${currentDoseDisplay}
+          </p>
+          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-success taken-btn">Taken</button>
+            <button class="btn btn-sm btn-danger not-taken-btn">Not Taken</button>
+            <button class="btn btn-sm btn-secondary" onclick="location.href='add-medication.html?edit=${med.id}'">Edit</button>
+            <button class="btn btn-sm btn-secondary" onclick="openStock('${med.id}')">Stock</button>
+            <button class="btn btn-sm btn-secondary delete-btn">Delete</button>
+          </div>
+        `;
+        
+        // Function to save/update dose in Firebase
+        // Returns true if status changed, false if it's the same
+        const saveDoseToFirebase = async (medicationId, doseNumber, date, taken) => {
+          try {
+            const user = window.auth.currentUser;
+            if (!user) {
+              console.error('[Home] No user logged in');
+              return false;
+            }
+
+            const medDocRef = doc(window.db, "users", user.uid, "medications", medicationId);
+            const medDoc = await getDoc(medDocRef);
+            
+            if (!medDoc.exists()) {
+              console.error('[Home] Medication not found:', medicationId);
+              return false;
+            }
+
+            const medData = medDoc.data();
+            // Convert array to object if it's still an array (for migration)
+            let doses = medData.doses || {};
+            if (Array.isArray(doses)) {
+              // Migrate old array format to new object format
+              const dosesObj = {};
+              doses.forEach(dose => {
+                const key = `${String(dose.date || '')}_${Number(dose.doseNumber || 0)}`;
+                dosesObj[key] = {
+                  date: String(dose.date || ''),
+                  doseNumber: Number(dose.doseNumber || 0),
+                  taken: Boolean(dose.taken)
+                };
+              });
+              doses = dosesObj;
+              console.log('[Home] Migrated doses from array to object format');
+            }
+            
+            // Check if an entry already exists for this dose# and date
+            const dateStr = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            // Ensure doseNumber is a number for comparison
+            const doseNum = Number(doseNumber);
+            const doseKey = `${dateStr}_${doseNum}`;
+            
+            console.log('[Home] Looking for existing entry with key:', doseKey);
+            console.log('[Home] Current doses object:', doses);
+            
+            // Check if status is changing
+            const existingEntry = doses[doseKey];
+            const statusChanged = !existingEntry || existingEntry.taken !== taken;
+            
+            // Use object instead of array (Firestore doesn't support nested arrays)
+            // This structure makes it collapsible in Firebase console
+            const newDoseEntry = {
+              date: dateStr,
+              doseNumber: doseNum,
+              taken: taken
+            };
+
+            const exists = doses.hasOwnProperty(doseKey);
+            doses[doseKey] = newDoseEntry;
+
+            if (exists) {
+              console.log('[Home] Updated existing dose entry:', newDoseEntry);
+            } else {
+              console.log('[Home] Added new dose entry:', newDoseEntry);
+            }
+
+            // Save to Firebase - remove doseStatus and doseHistory if they exist (cleanup old data)
+            const updateData = { doses: doses };
+            if (medData.doseStatus !== undefined) {
+              updateData.doseStatus = deleteField();
+              console.log('[Home] Removing old doseStatus field');
+            }
+            if (medData.doseHistory !== undefined) {
+              updateData.doseHistory = deleteField();
+              console.log('[Home] Removing old doseHistory field');
+            }
+            
+            await setDoc(medDocRef, updateData, { merge: true });
+            console.log('[Home] Saved doses to Firebase for medication:', medicationId);
+            return statusChanged;
+          } catch (error) {
+            console.error('[Home] Error saving dose to Firebase:', error);
+            alert('Error saving dose: ' + error.message);
+            return false;
+          }
+        };
+
+        // Function to trigger flash animation
+        const triggerFlash = (cardElement, color) => {
+          // Remove any existing flash classes
+          cardElement.classList.remove('flash-green', 'flash-red');
+          // Force reflow to restart animation
+          void cardElement.offsetWidth;
+          // Add the flash class
+          cardElement.classList.add(`flash-${color}`);
+          // Remove the class after animation completes
+          setTimeout(() => {
+            cardElement.classList.remove(`flash-${color}`);
+          }, 1000);
+        };
+
+        // Add event listener for "Taken" button
+        const takenBtn = card.querySelector('.taken-btn');
+        if (takenBtn) {
+          takenBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Home] Taken button clicked for:', med.name);
+            
+            const currentDose = determineCurrentDose(med);
+            if (currentDose) {
+              const today = new Date();
+              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, today, true);
+              
+              // Only flash if status actually changed
+              if (statusChanged) {
+                triggerFlash(card, 'green');
+              }
+            } else {
+              console.warn('[Home] Could not determine current dose for:', med.name);
+              alert('Could not determine current dose. Please check medication times and days.');
+            }
+          });
+        }
+
+        // Add event listener for "Not Taken" button
+        const notTakenBtn = card.querySelector('.not-taken-btn');
+        if (notTakenBtn) {
+          notTakenBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Home] Not Taken button clicked for:', med.name);
+            
+            const currentDose = determineCurrentDose(med);
+            if (currentDose) {
+              const today = new Date();
+              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, today, false);
+              
+              // Only flash if status actually changed
+              if (statusChanged) {
+                triggerFlash(card, 'red');
+              }
+            } else {
+              console.warn('[Home] Could not determine current dose for:', med.name);
+              alert('Could not determine current dose. Please check medication times and days.');
+            }
+          });
+        }
+        
+        card.querySelector('.delete-btn')
+            .addEventListener('click', () => confirmDelete(med.id));
+        listEl.appendChild(card);
+      });
+
+      currentMedications = medications;
+      currentAgendaEntries = buildAgendaEntries(medications);
+      if (agendaModal && agendaModal.classList.contains('show')) {
+        renderAgendaEntries();
+      }
+      window.currentMedications = currentMedications;
+    } catch (error) {
+      console.error('Error in renderList:', error);
+      document.getElementById('med-list').innerHTML = '<p style="text-align:center;color:red;">Error loading medications: ' + error.message + '</p>';
+    }
+  }
+  
+  // Make renderList globally available
+  window.renderList = renderList;
+
+  console.log('[Home] Verification check initialized');
+  
+  // Load medications immediately after Firebase is ready
+  window.renderList();
+
+  // Check if user is already signed in
+  const currentUser = auth.currentUser;
+  console.log('[Home] Current user check:', currentUser ? `User: ${currentUser.email}` : 'No user signed in');
+
+  // Check verification status
+  onAuthStateChanged(auth, async (user) => {
+    console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
+    
+    const warningIcon = document.getElementById('profile-verify-warning');
+    
+    if (!warningIcon) {
+      console.warn('[Home] Warning icon not found!');
+      return;
+    }
+
+    if (user) {
+      let needsVerification = false;
+
+      // Check email verification (this is always available)
+      console.log('[Home] Email verified:', user.emailVerified);
+      if (!user.emailVerified) {
+        needsVerification = true;
+      }
+
+      // Check localStorage first for phone verification status
+      try {
+        const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        console.log('[Home] Local phone:', localProfile.phone, 'Local phone verified:', localProfile.phoneVerified);
+        
+        // If phone exists in localStorage but not verified, show warning
+        if (localProfile.phone && !localProfile.phoneVerified) {
+          needsVerification = true;
+        }
+        
+        // Also check Firestore as backup (but don't wait for it)
+        const userDocRef = doc(db, "users", user.uid);
+        getDoc(userDocRef).then(docSnap => {
+          const profile = docSnap.data() || {};
+          console.log('[Home] Firestore phone:', profile.phone, 'Firestore phone verified:', profile.phoneVerified);
+          
+          // Update localStorage with latest data
+          if (profile.phone !== undefined) {
+            localProfile.phone = profile.phone;
+          }
+          if (profile.phoneVerified !== undefined) {
+            localProfile.phoneVerified = profile.phoneVerified;
+          }
+          localStorage.setItem('userProfile', JSON.stringify(localProfile));
+          
+          // Re-check verification status
+          let newNeedsVerification = false;
+          if (!user.emailVerified) newNeedsVerification = true;
+          if (localProfile.phone && !localProfile.phoneVerified) newNeedsVerification = true;
+          
+          if (newNeedsVerification !== needsVerification) {
+            warningIcon.style.display = newNeedsVerification ? 'inline' : 'none';
+            console.log('[Home] Updated verification status:', newNeedsVerification);
+          }
+        }).catch(error => {
+          console.error('[Home] Error checking Firestore:', error);
+        });
+        
+      } catch (error) {
+        console.error('[Home] Error checking localStorage:', error);
+      }
+
+      // Update warning icon immediately (based on email + localStorage)
+      console.log('[Home] Needs verification:', needsVerification);
+      if (needsVerification) {
+        warningIcon.style.display = 'inline';
+      } else {
+        warningIcon.style.display = 'none';
+      }
+
+      // Refresh the display
+      console.log('[Home] User authenticated, calling renderList()');
+      if (user && user.uid) {
+        await window.renderList();
+      } else {
+        console.log('[Home] User not properly authenticated, skipping renderList()');
+      }
+    } else {
+      // No user, hide warning and clear data
+      warningIcon.style.display = 'none';
+      localStorage.removeItem('medications');
+      localStorage.removeItem('historyMeds');
+    }
+  });
+
+  // ============ FIRESTORE MEDICATION SYNC ============
+  // (Data loading is now handled in the combined onAuthStateChanged listener above)
+  
+  // Helper function to save medications to Firestore (NEW STRUCTURE)
+  window.saveMedicationsToFirestore = async function(medications) {
+    const user = auth.currentUser;
+    if (!user) {
+      console.warn('[Home] No user logged in, cannot save to Firestore');
+      return;
+    }
+
+    try {
+      console.log('[Home] Saving medications to Firestore (new structure):', medications.length, 'items');
+      
+      // Save each medication as a separate document
+      for (let i = 0; i < medications.length; i++) {
+        const med = medications[i];
+        const medId = med.id || `med_${Date.now()}_${i}`;
+        const medDocRef = doc(db, "users", user.uid, "medications", medId);
+        
+        // Collect notes as a Map: {date: {dose: message}}
+        const notes = {};
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('note_')) {
+            const noteValue = localStorage.getItem(key);
+            if (noteValue && noteValue.trim()) {
+              const dateStr = key.replace('note_', '');
+              const noteDate = new Date(dateStr).toLocaleDateString();
+              const lines = noteValue.split('\n').filter(line => line.trim());
+              lines.forEach((line, index) => {
+                const dose = index + 1;
+                if (!notes[noteDate]) {
+                  notes[noteDate] = {};
+                }
+                notes[noteDate][dose] = line.trim();
+              });
+            }
+          }
+        });
+
+        // Format dates as mm/dd/yyyy
+        const formatDate = (dateStr) => {
+          if (!dateStr) return 'N/A';
+          return new Date(dateStr).toLocaleDateString();
+        };
+
+        // Format reminder method
+        let reminderMethod = 'N';
+        if (med.reminder === 'Email') reminderMethod = 'E';
+        else if (med.reminder === 'SMS') reminderMethod = 'S';
+
+        // Format bottles as array
+        const stock = med.bottles ? med.bottles.length : 0;
+        const bottles = [];
+        if (med.bottles && med.bottles.length > 0) {
+          med.bottles.forEach((bottle) => {
+            const expDate = formatDate(bottle.expiration);
+            const quantity = bottle.quantity || 'N/A';
+            bottles.push(`${expDate}/${quantity}`);
+          });
+        }
+
+        // Get existing medication data to preserve doses field
+        const existingMedDoc = await getDoc(medDocRef);
+        const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
+        
+        const medData = {
+          name: med.name || '',
+          dosage: med.dosage || 0,
+          daysOfWeek: med.days || [],
+          timesPerDay: med.timesPerDay || 0,
+          times: med.times || [],
+          startDate: formatDate(med.startDate),
+          endDate: formatDate(med.endDate),
+          reminderMethod: reminderMethod,
+          stock: stock,
+          bottles: bottles,
+          deletedStatus: med.deletedStatus || false,
+          notes: notes,
+          doses: existingData.doses || {}, // Preserve existing doses field
+          id: medId,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Remove doseStatus and doseHistory if they exist
+        const updateData = { ...medData };
+        if (existingData.doseStatus !== undefined) {
+          updateData.doseStatus = deleteField();
+        }
+        if (existingData.doseHistory !== undefined) {
+          updateData.doseHistory = deleteField();
+        }
+        
+        await setDoc(medDocRef, updateData);
+        console.log(`[Home] Saved medication: ${med.name} (ID: ${medId})`);
+      }
+      
+      console.log('[Home] ✅ All medications saved to Firestore successfully!');
+    } catch (error) {
+      console.error('[Home] Error saving medications:', error);
+      console.error('[Home] Error details:', error.message);
+    }
+  };
+
+  // Helper function to save history to Firestore
+  window.saveHistoryToFirestore = async function(history) {
+    const user = auth.currentUser;
+    if (!user) {
+      console.warn('[Home] No user logged in, cannot save to Firestore');
+      return;
+    }
+
+    try {
+      const histDocRef = doc(db, "users", user.uid, "data", "history");
+      await setDoc(histDocRef, {
+        history: history,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.log('[Home] History saved to Firestore:', history.length, 'items');
+    } catch (error) {
+      console.error('[Home] Error saving history:', error);
+    }
+  };
+
+  // ============ MEDICATION DATA LOGGER (EVERY 5 SECONDS) ============
+  
+  function logAllMedicationData() {
+    console.log('='.repeat(80));
+    console.log('📊 MEDICATION DATA LOG - ' + new Date().toLocaleTimeString());
+    console.log('='.repeat(80));
+    
+    // Get medications and history from localStorage
+    const meds = JSON.parse(localStorage.getItem('medications') || '[]');
+    const history = JSON.parse(localStorage.getItem('historyMeds') || '[]');
+    
+    // Combine active medications (deletedStatus: false) with history (deletedStatus: true)
+    const allMedications = [
+      ...meds.map(med => ({ ...med, deletedStatus: false })),
+      ...history.map(med => ({ ...med, deletedStatus: true }))
+    ];
+    
+    if (allMedications.length === 0) {
+      console.log('No medications found.');
+      return;
+    }
+    
+    allMedications.forEach((med, index) => {
+      console.log(`\n💊 MEDICATION #${index + 1}:`);
+      console.log(`   name: "${med.name || ''}"`);
+      console.log(`   dosage: ${med.dosage || 'N/A'}`);
+      console.log(`   days of week: [${(med.days || []).map(day => `"${day}"`).join(', ')}]`);
+      console.log(`   timesperday: ${med.timesPerDay || 'N/A'}`);
+      
+      // Format times - show all slots up to timesPerDay
+      const timesPerDay = med.timesPerDay || 1;
+      for (let i = 0; i < timesPerDay; i++) {
+        const time = (med.times && med.times[i]) ? med.times[i] : 'N/A';
+        console.log(`      time${i + 1}: ${time}`);
+      }
+      
+      // Format dates
+      const startDate = med.startDate ? new Date(med.startDate).toLocaleDateString() : 'N/A';
+      const endDate = med.endDate ? new Date(med.endDate).toLocaleDateString() : 'N/A';
+      console.log(`   startdate: ${startDate}`);
+      console.log(`   enddate: ${endDate}`);
+      
+      // Format reminder method
+      let reminderMethod = 'N';
+      if (med.reminder === 'Email') reminderMethod = 'E';
+      else if (med.reminder === 'SMS') reminderMethod = 'S';
+      console.log(`   remindermethod: ${reminderMethod}`);
+      
+      // Format stock/bottles
+      console.log(`   stock: ${med.bottles ? med.bottles.length : 0}`);
+      if (med.bottles && med.bottles.length > 0) {
+        med.bottles.forEach((bottle, i) => {
+          const expDate = bottle.expiration ? new Date(bottle.expiration).toLocaleDateString() : 'N/A';
+          const quantity = bottle.quantity || 'N/A';
+          console.log(`      bottle#${i + 1}: ${expDate}/${quantity}`);
+        });
+      }
+      
+      // Deleted status
+      console.log(`   deletedStatus: ${med.deletedStatus ? 'True' : 'False'}`);
+      
+      // Format notes (get from localStorage)
+      const notes = [];
+      if (!med.deletedStatus) {
+        // Only show notes for active medications
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('note_')) {
+            const noteValue = localStorage.getItem(key);
+            if (noteValue && noteValue.trim()) {
+              // Extract date from key (note_YYYY-MM-DD format)
+              const dateStr = key.replace('note_', '');
+              const noteDate = new Date(dateStr).toLocaleDateString();
+              
+              // Try to extract medication and dose from note content
+              const lines = noteValue.split('\n').filter(line => line.trim());
+              lines.forEach(line => {
+                // Look for medication name in the note
+                const medName = med.name || 'Unknown';
+                notes.push(`${noteDate}, ${medName}, 1, ${line.trim()}`);
+              });
+            }
+          }
+        });
+      }
+      
+      console.log(`   notes: ${notes.length}`);
+      notes.forEach((note, i) => {
+        console.log(`      note#${i + 1}: ${note}`);
+      });
+      
+      console.log('   ' + '-'.repeat(50));
+    });
+    
+    console.log(`\n📈 SUMMARY: ${allMedications.filter(m => !m.deletedStatus).length} active, ${allMedications.filter(m => m.deletedStatus).length} deleted`);
+    console.log('='.repeat(80));
+  }
+  
+  // ============ MEDICATION LOGGER (TRIGGERED BY HOME BUTTON CLICK) ============
+  // TODO: REMOVE THIS SECTION AFTER TESTING
+  
+  console.log('🔧 Medication logger script is running...');
+  
+  // Find the Home link in the sidebar and add click listener
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM loaded, looking for Home link...');
+    const homeLink = document.querySelector('nav.sidebar a[href="home.html"]');
+    if (homeLink) {
+      console.log('✅ Home link found! Adding click listener...');
+      homeLink.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent page navigation
+        console.log('🏠 Home button clicked - printing Firebase hierarchy');
+        
+        // Print the EXACT hierarchy from Firebase
+        const user = auth.currentUser;
+        if (user) {
+          const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
+          getDocs(medicationsCollectionRef).then((snapshot) => {
+            console.log('🔥 FIREBASE HIERARCHY FROM DATABASE:');
+            console.log('='.repeat(80));
+            
+            if (snapshot.empty) {
+              console.log('No medications found in Firebase');
+            } else {
+              snapshot.forEach((doc) => {
+                const medData = doc.data();
+                console.log(`\n💊 MEDICATION: ${medData.name}`);
+                console.log('name:', medData.name);
+                console.log('dosage:', medData.dosage);
+                console.log('daysOfWeek:', medData.daysOfWeek);
+                console.log('timesPerDay:', medData.timesPerDay);
+                console.log('times:', medData.times);
+                console.log('startDate:', medData.startDate);
+                console.log('endDate:', medData.endDate);
+                console.log('reminderMethod:', medData.reminderMethod);
+                console.log('stock:', medData.stock);
+                console.log('bottles:', medData.bottles);
+                console.log('deletedStatus:', medData.deletedStatus);
+                console.log('notes:', medData.notes);
+                console.log('='.repeat(50));
+              });
+            }
+            console.log('='.repeat(80));
+          }).catch(error => {
+            console.error('Error loading from Firebase:', error);
+          });
+        } else {
+          console.log('No user logged in');
+        }
+      });
+    } else {
+      console.log('❌ Home link not found in sidebar');
+      // Let's see what links ARE in the sidebar
+      const allLinks = document.querySelectorAll('nav.sidebar a');
+      console.log('Available links in sidebar:', allLinks);
+      allLinks.forEach((link, i) => {
+        console.log(`Link ${i}:`, link.href, link.textContent);
+      });
+    }
+  });
+  
+</script>
+
+</body>
+</html>
