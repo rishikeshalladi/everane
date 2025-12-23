@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MedTracker — Tutorial Popup</title>
+
+  <style>
+    /* ----- Theme (matches your MedTracker vibe) ----- */
+    :root{
+      --bg:#0b1020;
+      --surface:#0f1629;
+      --text:#e7ebf3;
+      --muted:#b1bad4;
+      --border:rgba(255,255,255,0.12);
+
+      --brand:#4f8cff;
+      --brand-600:#3c74f7;
+      --brand-700:#2b63e6;
+
+      --radius:18px;
+      --shadow:0 20px 60px rgba(0,0,0,.45);
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(79,140,255,0.18), transparent 60%),
+        radial-gradient(800px 500px at -10% 20%, rgba(125,226,209,0.16), transparent 60%),
+        var(--bg);
+      padding: 24px;
+    }
+
+    .wrap{
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 24px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 40px rgba(0,0,0,.25);
+    }
+
+    h1{ margin:0 0 8px; font-size: clamp(1.4rem, 3vw, 1.9rem); }
+    p{ margin:0 0 18px; color: var(--muted); line-height:1.6; }
+
+    /* ----- Button ----- */
+    .btn{
+      appearance:none;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: .85rem 1rem;
+      font-weight: 700;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      gap:.55rem;
+      color:#fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 24px rgba(79,140,255,.30);
+      transition: transform .06s ease, filter .2s ease;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn:hover{ filter: brightness(1.03); }
+    .btn span.icon{ font-size: 1.05rem; }
+
+    /* ----- Overlay ----- */
+    .tutorial-overlay{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.62);
+      display: none;
+      z-index: 5000;
+
+      /* baseline: bottom sheet vibe */
+      align-items: flex-end;
+      justify-content: center;
+
+      padding: 12px;
+    }
+    .tutorial-overlay.show{ display:flex; }
+
+    /* ----- Modal (NOT full screen) ----- */
+    .tutorial-modal{
+      position: relative;
+      width: min(980px, 96vw);
+
+      /* Keep space around modal on all devices */
+      max-height: min(78vh, 760px);
+
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+
+      transform: translateY(14px);
+      opacity: 0;
+      transition: transform .18s ease, opacity .18s ease;
+    }
+    .tutorial-overlay.show .tutorial-modal{
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Make it feel centered on desktop/tablet */
+    @media (min-width: 700px){
+      .tutorial-overlay{
+        align-items: center; /* center modal instead of bottom sheet */
+        padding: 18px;
+      }
+      .tutorial-modal{
+        max-height: min(80vh, 820px);
+      }
+    }
+
+    /* ----- Header (optional) ----- */
+    .tutorial-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 14px 14px 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+    .tutorial-title{
+      font-weight: 800;
+      letter-spacing: .2px;
+      font-size: 1rem;
+      margin:0;
+    }
+    .tutorial-sub{
+      margin:0;
+      font-size: .9rem;
+      color: var(--muted);
+    }
+
+    /* Close button */
+    .tutorial-close{
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 18px;
+      display:grid;
+      place-items:center;
+      transition: background .2s ease, transform .06s ease;
+      flex: 0 0 auto;
+    }
+    .tutorial-close:hover{ background: rgba(255,255,255,0.10); }
+    .tutorial-close:active{ transform: translateY(1px); }
+
+    /* ----- Frame area ----- */
+    .tutorial-body{
+      padding: 12px;
+    }
+
+    /* Responsive iframe wrapper: keeps Canva aspect ratio and fits screen */
+    .tutorial-frame{
+      width: 100%;
+      /* Canva carousel is close to 4:5 */
+      aspect-ratio: 4 / 5;
+      max-height: calc(min(78vh, 760px) - 120px); /* keep room for header/footer */
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #081022;
+    }
+
+    .tutorial-frame iframe{
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display:block;
+    }
+
+    /* On wide screens, make it less tall so it doesn't dominate */
+    @media (min-width: 900px){
+      .tutorial-frame{
+        aspect-ratio: 16 / 10; /* better fit on desktop, still readable */
+        max-height: calc(min(80vh, 820px) - 120px);
+      }
+    }
+
+    /* On small phones, keep it a "sheet" and avoid covering everything */
+    @media (max-width: 420px){
+      .tutorial-modal{
+        width: 96vw;
+        max-height: 72vh; /* leaves space above */
+        border-radius: 16px;
+      }
+      .tutorial-frame{
+        aspect-ratio: 4 / 6; /* taller for phone readability */
+        max-height: calc(72vh - 120px);
+      }
+    }
+
+    /* ----- Footer ----- */
+    .tutorial-footer{
+      padding: 10px 14px 14px;
+      border-top: 1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+
+    .tutorial-footer a{
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .tutorial-footer a:hover{
+      color: var(--text);
+      text-decoration: underline;
+    }
+
+    .hint{
+      font-size: .9rem;
+      color: var(--muted);
+      margin:0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>MedTracker Tutorial Popup</h1>
+    <p>Click the button to open your Canva tutorial inside a responsive popup.</p>
+
+    <button id="openTutorial" class="btn">
+      <span class="icon">📘</span>
+      Open Tutorial
+    </button>
+  </div>
+
+  <!-- Overlay + Popup -->
+  <div id="tutorialOverlay" class="tutorial-overlay" aria-hidden="true">
+    <div class="tutorial-modal" role="dialog" aria-modal="true" aria-label="Tutorial Popup">
+      <div class="tutorial-header">
+        <div>
+          <p class="tutorial-title">Tutorial</p>
+          <p class="tutorial-sub">How to use MedTracker</p>
+        </div>
+        <button class="tutorial-close" id="closeTutorial" aria-label="Close tutorial">✕</button>
+      </div>
+
+      <div class="tutorial-body">
+        <div class="tutorial-frame">
+          <iframe
+            loading="lazy"
+            src="https://www.canva.com/design/DAG76KdfJ-g/KVoNPMHGeQFvXkxli4HItg/view?embed"
+            allowfullscreen="allowfullscreen"
+            allow="fullscreen"
+            title="MedTracker Tutorial"
+          ></iframe>
+        </div>
+      </div>
+
+      <div class="tutorial-footer">
+        <p class="hint">Tip: Tap outside the popup or press ESC to close.</p>
+        <a
+          href="https://www.canva.com/design/DAG76KdfJ-g/KVoNPMHGeQFvXkxli4HItg/view?utm_content=DAG76KdfJ-g&utm_campaign=designshare&utm_medium=embeds&utm_source=link"
+          target="_blank"
+          rel="noopener"
+        >
+          Open in Canva
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const openBtn = document.getElementById("openTutorial");
+    const overlay = document.getElementById("tutorialOverlay");
+    const closeBtn = document.getElementById("closeTutorial");
+
+    function openTutorial() {
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+      // prevent background scroll
+      document.body.style.overflow = "hidden";
+      // focus close for accessibility
+      closeBtn.focus();
+    }
+
+    function closeTutorial() {
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      openBtn.focus();
+    }
+
+    openBtn.addEventListener("click", openTutorial);
+    closeBtn.addEventListener("click", closeTutorial);
+
+    // Click outside modal to close
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeTutorial();
+    });
+
+    // ESC to close
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.classList.contains("show")) {
+        closeTutorial();
+      }
+    });
+  </script>
+</body>
+</html>

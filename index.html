@@ -11,6 +11,7 @@
     /* --- Modern CSS Reset (lean) --- */
     *,*::before,*::after{box-sizing:border-box}
     *{margin:0}
+    html{scroll-behavior:smooth}
     html:focus-within{scroll-behavior:smooth}
     html,body{height:100%; overflow-x:hidden}
     body{line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -39,9 +40,15 @@
 
     @media (prefers-color-scheme: light){
       :root{
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
-        --bg-elev: rgba(2,6,23,0.04);
+        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#1e293b; --border:rgba(15,23,42,0.2);
+        --bg-elev: rgba(15,23,42,0.08);
         --shadow: 0 10px 30px rgba(2,6,23,0.08), 0 2px 10px rgba(2,6,23,0.06);
+        /* Improved contrast for better readability */
+        --text-strong: #020617;
+        --muted-strong: #0f172a;
+        /* Success/verified colors - darker green for better contrast */
+        --success: #059669;
+        --success-light: #10b981;
       }
     }
 
@@ -68,6 +75,10 @@
 
     /* --- Navbar --- */
     .navbar{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(14px); background:linear-gradient(to bottom, rgba(15,22,41,0.7), rgba(15,22,41,0.4)); border-bottom:1px solid var(--border)}
+    
+    @media (prefers-color-scheme: light){
+      .navbar{background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.9)); border-bottom:1px solid var(--border)}
+    }
     .nav-inner{display:flex; align-items:center; justify-content:space-between; gap:1rem; height:64px}
     .brand{display:flex; align-items:center; gap:.7rem; font-weight:700}
     .brand-mark{display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--brand),var(--accent)); box-shadow: var(--shadow)}
@@ -77,12 +88,16 @@
       .nav-inner{height:56px}
       .brand-mark{width:32px; height:32px; font-size:1.1rem}
       .brand-title{font-size:.95rem}
-      .hamburger{display:none!important}
     }
 
     .nav-links, .auth{display:flex; align-items:center; gap:1rem}
     .nav-links a, .auth a{padding:.5rem .75rem; border-radius:10px; color:var(--muted)}
     .nav-links a:hover, .auth a:hover{color:var(--text); background:var(--bg-elev)}
+    
+    @media (prefers-color-scheme: light){
+      .nav-links a, .auth a{color:var(--text-strong); font-weight:500}
+      .nav-links a:hover, .auth a:hover{color:var(--brand-600); background:rgba(79,140,255,0.1)}
+    }
 
     /* Mobile nav */
     .nav-toggle{display:none}
@@ -93,12 +108,17 @@
       .nav-links{display:none}
       .auth{display:none}
       .hamburger{display:flex; align-items:center; justify-content:center}
-      .nav-toggle:checked ~ .mobile-menu{max-height:420px; opacity:1; pointer-events:auto}
     }
 
     .mobile-menu{max-height:0; opacity:0; pointer-events:none; overflow:hidden; transition:max-height .35s ease, opacity .35s ease; border-bottom:1px solid var(--border); background:rgba(15,22,41,0.7); backdrop-filter:blur(14px)}
     .mobile-list{display:grid; gap:.5rem; padding:1rem}
     .mobile-list a{padding:.8rem; border-radius:12px; color:var(--text); background:var(--bg-elev); border:1px solid var(--border); font-size:.95rem}
+    
+    @media (prefers-color-scheme: light){
+      .mobile-menu{background:rgba(255,255,255,0.98); border-bottom:1px solid var(--border)}
+      .mobile-list a{color:var(--text-strong); background:var(--surface); font-weight:500}
+      .mobile-list a:hover{color:var(--brand-600); background:rgba(79,140,255,0.1)}
+    }
     
     @media (max-width: 640px){
       .mobile-list a{padding:.7rem; font-size:.9rem}
@@ -186,6 +206,10 @@
 
     /* --- Footer --- */
     footer{border-top:1px solid var(--border); background:rgba(15,22,41,0.35)}
+    
+    @media (prefers-color-scheme: light){
+      footer{background:rgba(248,250,252,0.8)}
+    }
     .footer-grid{display:grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap:2rem}
     .footer-grid a{color:var(--muted)}
     .footer-grid a:hover{color:var(--text)}
@@ -373,11 +397,115 @@
   <script>
     // Update copyright year; no external dependencies.
     (function(){ const y = document.getElementById('y'); if (y) y.textContent = new Date().getFullYear(); })();
-    // Reflect mobile menu expanded state for a11y.
+    
+    // Smooth scroll for anchor links (handles both #about and index.html#about)
+    function smoothScrollToHash(hash) {
+      const targetId = hash.substring(1); // Remove the #
+      const targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        targetElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }
+    
+    // Handle same-page anchor links (like #about)
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href === '#' || href === '#!') return; // Skip empty anchors
+        
+        const targetElement = document.getElementById(href.substring(1));
+        if (targetElement) {
+          e.preventDefault();
+          smoothScrollToHash(href);
+        }
+      });
+    });
+    
+    // Handle cross-page anchor links (like index.html#about) - only if we're on index.html
+    if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/' || window.location.pathname.endsWith('/')) {
+      document.querySelectorAll('a[href*="index.html#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          const href = this.getAttribute('href');
+          const hashMatch = href.match(/#(.+)$/);
+          if (hashMatch) {
+            const hash = '#' + hashMatch[1];
+            const targetElement = document.getElementById(hashMatch[1]);
+            if (targetElement) {
+              e.preventDefault();
+              // Update URL without reload
+              window.history.pushState(null, '', hash);
+              smoothScrollToHash(hash);
+            }
+          }
+        });
+      });
+    }
+    
+    // Handle hash in URL on page load (for links from other pages like index.html#about)
+    if (window.location.hash) {
+      window.addEventListener('load', () => {
+        const hash = window.location.hash.substring(1);
+        const targetElement = document.getElementById(hash);
+        if (targetElement) {
+          setTimeout(() => {
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }, 100); // Small delay to ensure page is fully loaded
+        }
+      });
+    }
+    
+    // Mobile menu toggle functionality
     const toggle = document.getElementById('menu-toggle');
     const label = document.querySelector('label[for="menu-toggle"]');
-    if (toggle && label){
-      toggle.addEventListener('change', () => label.setAttribute('aria-expanded', toggle.checked ? 'true' : 'false'));
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (toggle && label && mobileMenu){
+      toggle.addEventListener('change', () => {
+        const isChecked = toggle.checked;
+        label.setAttribute('aria-expanded', isChecked ? 'true' : 'false');
+        if (isChecked) {
+          mobileMenu.style.maxHeight = '420px';
+          mobileMenu.style.opacity = '1';
+          mobileMenu.style.pointerEvents = 'auto';
+        } else {
+          mobileMenu.style.maxHeight = '0';
+          mobileMenu.style.opacity = '0';
+          mobileMenu.style.pointerEvents = 'none';
+        }
+      });
+      
+      // Close menu when any link is clicked
+      const mobileLinks = mobileMenu.querySelectorAll('a');
+      mobileLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          const href = link.getAttribute('href');
+          const hashMatch = href ? href.match(/#(.+)$/) : null;
+          
+          // Close menu first
+          toggle.checked = false;
+          toggle.dispatchEvent(new Event('change'));
+          
+          // If it's an anchor link on the same page, smooth scroll after menu closes
+          if (hashMatch && (href.startsWith('#') || href.includes('index.html#'))) {
+            e.preventDefault();
+            const targetId = hashMatch[1];
+            setTimeout(() => {
+              const targetElement = document.getElementById(targetId);
+              if (targetElement) {
+                if (href.includes('index.html#')) {
+                  window.history.pushState(null, '', '#' + targetId);
+                }
+                smoothScrollToHash('#' + targetId);
+              }
+            }, 300); // Wait for menu animation to complete
+          }
+        });
+      });
     }
   </script>
 </body>

@@ -6,20 +6,25 @@
   <title>MedTracker – Calendar</title>
   <link rel="stylesheet" href="styles.css">
   <style>
+    /* Default to light mode */
     :root {
-      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
       --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
-      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --radius:20px; --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
       --container:1200px;
       /* compatibility var */
       --danger-color: var(--danger);
+      /* Improved contrast for better readability */
+      --text-strong: #020617;
+      --muted-strong: #334155;
     }
 
-    @media (prefers-color-scheme: light) {
+    /* Dark mode override */
+    @media (prefers-color-scheme: dark) {
       :root {
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
-        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+        --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+        --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
       }
     }
 
@@ -389,7 +394,7 @@
       padding: 1rem;
       max-width: 90vw;
       width: 100%;
-      max-height: 70vh;
+      max-height: 90vh;
       overflow-y: auto;
       box-shadow: var(--shadow);
     }
@@ -653,10 +658,9 @@
     <a href="history.html">History</a>
     <a href="calendar.html" class="active">Calendar</a>
     <a href="notes.html">Notes</a>
-    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
-      <span>Profile</span>
-      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
-    </a>
+    <a href="stats.html">Stats</a>
+    <a href="profile.html">Profile</a>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -729,6 +733,7 @@
           <p><strong id="dose-med-name">Medication</strong></p>
           <p id="dose-date-time">Date & Time</p>
           <p id="dose-number">Dose #1</p>
+          <p id="dose-taken-time" style="display: none; color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem;"></p>
         </div>
         <div class="dose-status-buttons">
           <button class="btn-taken" id="dose-taken-btn">✓ Taken</button>
@@ -768,8 +773,13 @@
 
     // Global medications array
     window.globalMedications = [];
+    
+    // Cache for loaded date ranges (to avoid reloading)
+    window.loadedDoseRanges = new Set(); // Format: "medId:YYYY-MM" for calendar
+    window.loadedNoteDays = new Set(); // Format: "medId:YYYY-MM-DD" for notes
 
-    async function loadMedicationsFromFirebase() {
+    // Global medication loading function - loads metadata only (no doses/notes)
+    window.loadMedicationsFromFirebase = async function() {
       const user = auth.currentUser;
       if (!user) return [];
 
@@ -793,7 +803,8 @@
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
               createdAt: medData.createdAt || null, // Include createdAt for fallback
-              doses: medData.doses || {}, // Load doses data for status checking
+              doses: {}, // Initialize empty - will be loaded on demand
+              notes: {}, // Initialize empty - will be loaded on demand
             });
           }
         });
@@ -803,15 +814,72 @@
         console.error('[Calendar] Error loading medications:', error);
         return [];
       }
-    }
+    };
 
-    // Wait for auth and load medications, then render
+    // Load doses for a specific month range (for calendar)
+    window.loadDosesForMonth = async function(year, month) {
+      const user = auth.currentUser;
+      if (!user || !window.globalMedications) return;
+
+      // Calculate date range for the month
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDateStr = firstDay.toISOString().split('T')[0]; // YYYY-MM-DD
+      const endDateStr = lastDay.toISOString().split('T')[0];
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`; // YYYY-MM
+
+      try {
+        // Load doses for each medication that hasn't been loaded for this month
+        for (const med of window.globalMedications) {
+          const rangeKey = `${med.id}:${monthKey}`;
+          if (window.loadedDoseRanges.has(rangeKey)) {
+            continue; // Already loaded
+          }
+
+          try {
+            const medDocRef = doc(db, "users", user.uid, "medications", med.id);
+            const medDoc = await getDoc(medDocRef);
+            
+            if (medDoc.exists()) {
+              const medData = medDoc.data();
+              const allDoses = medData.doses || {};
+              
+              // Filter doses for this month only
+              const monthDoses = {};
+              Object.keys(allDoses).forEach(key => {
+                const doseDate = key.split('_')[0]; // Extract date from "YYYY-MM-DD_doseNumber"
+                if (doseDate >= startDateStr && doseDate <= endDateStr) {
+                  monthDoses[key] = allDoses[key];
+                }
+              });
+              
+              // Merge into medication's doses object
+              med.doses = { ...med.doses, ...monthDoses };
+              window.loadedDoseRanges.add(rangeKey);
+              
+              console.log(`[Calendar] Loaded doses for ${med.name} in ${monthKey}:`, Object.keys(monthDoses).length);
+            }
+          } catch (error) {
+            console.error(`[Calendar] Error loading doses for ${med.name}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('[Calendar] Error loading doses for month:', error);
+      }
+    };
+
+    // Wait for auth and load medications (metadata only), then render
     onAuthStateChanged(auth, async (user) => {
       if (user) {
-        window.globalMedications = await loadMedicationsFromFirebase();
-        console.log('[Calendar] Loaded medications:', window.globalMedications.length);
+        window.globalMedications = await window.loadMedicationsFromFirebase();
+        console.log('[Calendar] Loaded medication metadata:', window.globalMedications.length);
+        
+        // Load doses for current month
+        const now = new Date();
+        await window.loadDosesForMonth(now.getFullYear(), now.getMonth());
       } else {
         window.globalMedications = [];
+        window.loadedDoseRanges.clear();
       }
       // Trigger initial render
       if (typeof window.renderCalendar === 'function') {
@@ -819,39 +887,6 @@
       }
     });
 
-    // Verification warning
-    onAuthStateChanged(auth, async (user) => {
-      const warningIcon = document.getElementById('profile-verify-warning');
-      if (!warningIcon) return;
-
-      if (user) {
-        let needsVerification = false;
-        if (!user.emailVerified) needsVerification = true;
-
-        try {
-          const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-          if (localProfile.phone && !localProfile.phoneVerified) needsVerification = true;
-        } catch (error) {
-          console.log('Could not check localStorage:', error);
-        }
-
-        warningIcon.style.display = needsVerification ? 'inline' : 'none';
-
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          getDoc(userDocRef).then(docSnap => {
-            const profile = docSnap.data() || {};
-            if (profile.phone && !profile.phoneVerified) {
-              warningIcon.style.display = 'inline';
-            }
-          });
-        } catch (error) {
-          console.log('Could not check Firestore:', error);
-        }
-      } else {
-        warningIcon.style.display = 'none';
-      }
-    });
   </script>
 
   <script>
@@ -920,7 +955,7 @@
 
         // Add medication checklist for this day
         if (isCurrentMonth) {
-          const medications = getMedicationsForDate(date);
+          const medications = window.getMedicationsForDate(date);
           if (medications.length > 0) {
             const checklist = createMedicationChecklist(medications, date);
             dayElement.appendChild(checklist);
@@ -948,7 +983,8 @@
     // Make renderCalendar globally available
     window.renderCalendar = renderCalendar;
 
-    function getMedicationsForDate(date) {
+    // Global function to get medications for a date - used by both calendar.html and notes.html
+    window.getMedicationsForDate = function(date) {
       // Use globalMedications from Firebase instead of localStorage
       const medications = window.globalMedications || [];
       const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
@@ -993,6 +1029,17 @@
           effectiveStartDate = today;
         }
 
+        // Check if there are any doses for this date (to show historical doses even if before startDate)
+        const hasDosesForDate = med.doses && Object.keys(med.doses).some(key => {
+          const doseDate = key.split('_')[0];
+          return doseDate === dateString;
+        });
+        
+        // If there are doses for this date, show it (to display historical doses)
+        if (hasDosesForDate) {
+          return med.days.includes(dayName);
+        }
+        
         // Check if medication has started
         if (dateString < effectiveStartDate) {
           return false; // Medication hasn't started yet
@@ -1009,7 +1056,7 @@
         // Check if this day of the week is scheduled for this medication
         return med.days.includes(dayName);
       });
-    }
+    };
 
     function createMedicationChecklist(medications, date) {
       const checklist = document.createElement('div');
@@ -1109,22 +1156,34 @@
       
       // Check dose status from Firebase
       let statusClass = 'status-grey'; // Default: no status
-      if (medication && medication.doses) {
-        const dateStr = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-        const doseKey = `${dateStr}_${doseNumber}`;
-        const doseEntry = medication.doses[doseKey];
-        
-        if (doseEntry) {
-          if (doseEntry.taken === true) {
-            statusClass = 'status-green';
-          } else if (doseEntry.taken === false) {
-            statusClass = 'status-red';
+      let hasExistingDoseEntry = false;
+      if (medication && medication.doses && typeof medication.doses === 'object') {
+        try {
+          // Get date string in local timezone (not UTC) to avoid day shifts
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`; // Format as YYYY-MM-DD
+          const doseKey = `${dateStr}_${doseNumber}`;
+          const doseEntry = medication.doses[doseKey];
+          
+          if (doseEntry && typeof doseEntry === 'object') {
+            hasExistingDoseEntry = true; // Mark that we have an explicit dose entry
+            if (doseEntry.taken === true) {
+              statusClass = 'status-green';
+            } else if (doseEntry.taken === false) {
+              statusClass = 'status-red';
+            }
           }
+        } catch (error) {
+          console.error('[Calendar] Error checking dose status:', error);
+          // Default to grey if there's an error
         }
       }
       
-      // Auto-mark as red if more than 45 minutes past scheduled time (and not explicitly taken)
-      if (statusClass !== 'status-green' && time) {
+      // Auto-mark as red if more than 45 minutes past scheduled time (ONLY if no existing dose entry)
+      // This preserves user's explicit taken/not taken choices when editing start dates
+      if (!hasExistingDoseEntry && statusClass !== 'status-green' && time) {
         const now = new Date();
         const [hours, minutes] = time.split(':').map(Number);
         const doseDateTime = new Date(date);
@@ -1322,9 +1381,11 @@
 
         dayElement.textContent = date.getDate();
 
-        dayElement.addEventListener('click', () => {
+        dayElement.addEventListener('click', async () => {
           currentMonth = date.getMonth();
           currentYear = date.getFullYear();
+          // Load doses for the selected month before rendering
+          await window.loadDosesForMonth(currentYear, currentMonth);
           renderCalendar();
           document.getElementById('mini-calendar-dropdown').classList.remove('show');
         });
@@ -1333,28 +1394,34 @@
       }
     }
 
-    document.getElementById('prev-month').addEventListener('click', () => {
+    document.getElementById('prev-month').addEventListener('click', async () => {
       currentMonth--;
       if (currentMonth < 0) {
         currentMonth = 11;
         currentYear--;
       }
+      // Load doses for the new month before rendering
+      await window.loadDosesForMonth(currentYear, currentMonth);
       renderCalendar();
     });
 
-    document.getElementById('next-month').addEventListener('click', () => {
+    document.getElementById('next-month').addEventListener('click', async () => {
       currentMonth++;
       if (currentMonth > 11) {
         currentMonth = 0;
         currentYear++;
       }
+      // Load doses for the new month before rendering
+      await window.loadDosesForMonth(currentYear, currentMonth);
       renderCalendar();
     });
 
-    document.getElementById('today-btn').addEventListener('click', () => {
+    document.getElementById('today-btn').addEventListener('click', async () => {
       const today = new Date();
       currentMonth = today.getMonth();
       currentYear = today.getFullYear();
+      // Load doses for current month before rendering
+      await window.loadDosesForMonth(currentYear, currentMonth);
       renderCalendar();
     });
 
@@ -1371,21 +1438,25 @@
       dropdown.classList.toggle('show');
     });
 
-    document.getElementById('mini-prev-month').addEventListener('click', () => {
+    document.getElementById('mini-prev-month').addEventListener('click', async () => {
       miniCalendarMonth--;
       if (miniCalendarMonth < 0) {
         miniCalendarMonth = 11;
         miniCalendarYear--;
       }
+      // Load doses for the mini calendar month
+      await window.loadDosesForMonth(miniCalendarYear, miniCalendarMonth);
       renderMiniCalendar();
     });
 
-    document.getElementById('mini-next-month').addEventListener('click', () => {
+    document.getElementById('mini-next-month').addEventListener('click', async () => {
       miniCalendarMonth++;
       if (miniCalendarMonth > 11) {
         miniCalendarMonth = 0;
         miniCalendarYear++;
       }
+      // Load doses for the mini calendar month
+      await window.loadDosesForMonth(miniCalendarYear, miniCalendarMonth);
       renderMiniCalendar();
     });
 
@@ -1438,6 +1509,119 @@
       
       doseNumEl.textContent = `Dose #${doseNumber}`;
       
+      // Check if dose is already taken and show taken time
+      const takenTimeEl = document.getElementById('dose-taken-time');
+      if (medication && medication.doses) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStrKey = `${year}-${month}-${day}`;
+        const doseKey = `${dateStrKey}_${doseNumber}`;
+        const doseEntry = medication.doses[doseKey];
+        
+        if (doseEntry && doseEntry.taken === true && doseEntry.takenAt) {
+          const takenDate = new Date(doseEntry.takenAt);
+          const takenTimeStr = takenDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          });
+          takenTimeEl.textContent = `Taken at ${takenTimeStr}`;
+          takenTimeEl.style.display = 'block';
+        } else {
+          takenTimeEl.style.display = 'none';
+        }
+      } else {
+        takenTimeEl.style.display = 'none';
+      }
+      
+      // Helper function to update stock based on dose status change
+      const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+        if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
+          console.log('[Calendar] No bottles to update stock for');
+          return medData.bottles || [];
+        }
+
+        // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
+        let stockChange = 0;
+        if (previousTaken !== true && newTaken === true) {
+          // Going from not-taken (or null) to taken: subtract dosage
+          stockChange = -dosage;
+        } else if (previousTaken === true && newTaken === false) {
+          // Going from taken to not-taken: add dosage back
+          stockChange = dosage;
+        }
+        // If status doesn't change or goes from not-taken to not-taken: no change
+
+        if (stockChange === 0) {
+          console.log('[Calendar] No stock change needed (status unchanged or not-taken to not-taken)');
+          return medData.bottles;
+        }
+
+        console.log(`[Calendar] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
+
+        // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
+        const now = new Date();
+        const parsedBottles = medData.bottles.map((bottleStr, index) => {
+          const parts = bottleStr.split('/');
+          if (parts.length < 3) return null;
+          
+          const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
+          const expirationDate = new Date(expirationStr);
+          const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
+          
+          return {
+            index,
+            expiration: expirationDate,
+            quantity: quantity,
+            original: bottleStr
+          };
+        }).filter(b => b !== null);
+
+        // Sort by expiration date (earliest first)
+        parsedBottles.sort((a, b) => a.expiration - b.expiration);
+
+        // Find the first bottle that hasn't expired and has quantity
+        let activeBottle = parsedBottles.find(b => 
+          b.expiration >= now && (b.quantity === null || b.quantity > 0)
+        );
+
+        // If no unexpired bottle, use the earliest one (even if expired)
+        if (!activeBottle && parsedBottles.length > 0) {
+          activeBottle = parsedBottles[0];
+        }
+
+        if (!activeBottle) {
+          console.log('[Calendar] No active bottle found to update');
+          return medData.bottles;
+        }
+
+        console.log(`[Calendar] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
+
+        // Update the quantity
+        const newBottles = [...medData.bottles];
+        const bottleParts = newBottles[activeBottle.index].split('/');
+        
+        if (bottleParts.length >= 4) {
+          let newQuantity = activeBottle.quantity;
+          if (newQuantity === null) {
+            // If quantity was N/A, we can't track it, so don't update
+            console.log('[Calendar] Bottle quantity is N/A, cannot update stock');
+            return medData.bottles;
+          }
+          
+          newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+          
+          // Rebuild bottle string with updated quantity
+          const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
+          newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
+          
+          console.log(`[Calendar] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
+        }
+
+        return newBottles;
+      };
+
       // Handler to save dose to Firebase
       const saveDose = async (taken) => {
         console.log('[Calendar] saveDose called with taken:', taken);
@@ -1478,36 +1662,71 @@
             doses = dosesObj;
           }
           
-          const dateStrKey = date.toISOString().split('T')[0];
+          // Get date string in local timezone (not UTC) to avoid day shifts
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateStrKey = `${year}-${month}-${day}`;
           const doseNum = Number(doseNumber);
           const doseKey = `${dateStrKey}_${doseNum}`;
           
+          console.log('[Calendar] Saving dose for date:', dateStrKey, 'dose:', doseNum, 'taken:', taken);
+          
           // Check if status is changing
           const existingEntry = doses[doseKey];
+          const previousTaken = existingEntry ? existingEntry.taken : undefined;
           const statusChanged = !existingEntry || existingEntry.taken !== taken;
           
+          // Preserve existing takenAt timestamp if already taken, or set new one if marking as taken
           const newDoseEntry = {
             date: dateStrKey,
             doseNumber: doseNum,
-            taken: taken
+            taken: taken,
+            // Add timestamp when marked as taken, preserve existing if already taken
+            takenAt: taken 
+              ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
+              : null
           };
           
           doses[doseKey] = newDoseEntry;
           
+          // Update stock based on dose status change
+          const dosage = Number(medData.dosage) || 0;
+          const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
+          
           // Save to Firebase
-          const updateData = { doses: doses };
-          if (medData.doseStatus !== undefined) {
+          const updateData = { 
+            doses: doses,
+            bottles: updatedBottles
+          };
+          // Remove old fields if they exist (using deleteField from Firestore)
+          if (medData.doseStatus !== undefined && window.deleteField) {
             updateData.doseStatus = window.deleteField();
           }
-          if (medData.doseHistory !== undefined) {
+          if (medData.doseHistory !== undefined && window.deleteField) {
             updateData.doseHistory = window.deleteField();
           }
           
           await window.setDoc(medDocRef, updateData, { merge: true });
-          console.log('[Calendar] Saved dose to Firebase:', medication.id);
+          console.log('[Calendar] Saved dose and updated stock to Firebase:', medication.id);
           
-          // Update medication object
-          medication.doses = doses;
+          // Update medication object in globalMedications array
+          // doses from Firebase contains ALL doses, so we can replace the entire object
+          const medIndex = window.globalMedications.findIndex(m => m.id === medication.id);
+          if (medIndex !== -1) {
+            // Update the medication in globalMedications (this is what getMedicationsForDate uses)
+            window.globalMedications[medIndex].doses = doses;
+            window.globalMedications[medIndex].bottles = updatedBottles;
+            // Also update the local medication reference (in case it's used elsewhere)
+            medication.doses = doses;
+            medication.bottles = updatedBottles;
+            console.log('[Calendar] Updated medication doses in globalMedications:', medication.id, 'dose count:', Object.keys(doses).length);
+          } else {
+            console.warn('[Calendar] Medication not found in globalMedications:', medication.id);
+            // If medication not found in globalMedications, just update the local reference
+            medication.doses = doses;
+            medication.bottles = updatedBottles;
+          }
           
           return statusChanged;
         } catch (error) {
@@ -1538,19 +1757,20 @@
         console.log('[Calendar] Taken button clicked');
         e.preventDefault();
         e.stopPropagation();
-        const statusChanged = await saveDose(true);
-        console.log('[Calendar] Status changed:', statusChanged);
-        if (statusChanged) {
-          triggerFlash('green');
-        }
-        closeDoseStatusModal();
-        
-        // Reload medications and refresh calendar to update all views
-        const user = window.auth.currentUser;
-        if (user) {
-          window.globalMedications = await loadMedicationsFromFirebase();
+        try {
+          const statusChanged = await saveDose(true);
+          console.log('[Calendar] Status changed:', statusChanged);
+          if (statusChanged) {
+            triggerFlash('green');
+          }
+          closeDoseStatusModal();
+          
+          // Just re-render the calendar - medication object is already updated
           renderCalendar();
           console.log('[Calendar] Calendar re-rendered after marking as taken');
+        } catch (error) {
+          console.error('[Calendar] Error in taken button handler:', error);
+          alert('Error updating dose: ' + error.message);
         }
       });
       
@@ -1559,19 +1779,20 @@
         console.log('[Calendar] Not Taken button clicked');
         e.preventDefault();
         e.stopPropagation();
-        const statusChanged = await saveDose(false);
-        console.log('[Calendar] Status changed:', statusChanged);
-        if (statusChanged) {
-          triggerFlash('red');
-        }
-        closeDoseStatusModal();
-        
-        // Reload medications and refresh calendar to update all views
-        const user = window.auth.currentUser;
-        if (user) {
-          window.globalMedications = await loadMedicationsFromFirebase();
+        try {
+          const statusChanged = await saveDose(false);
+          console.log('[Calendar] Status changed:', statusChanged);
+          if (statusChanged) {
+            triggerFlash('red');
+          }
+          closeDoseStatusModal();
+          
+          // Just re-render the calendar - medication object is already updated
           renderCalendar();
           console.log('[Calendar] Calendar re-rendered after marking as not taken');
+        } catch (error) {
+          console.error('[Calendar] Error in not taken button handler:', error);
+          alert('Error updating dose: ' + error.message);
         }
       });
       
@@ -1588,12 +1809,6 @@
   </script>
 
 <style>
-  .verify-warning {
-    font-size: 1rem;
-    cursor: help;
-    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
-    animation: pulse 2s ease-in-out infinite;
-  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }

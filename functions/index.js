@@ -17,11 +17,28 @@ admin.initializeApp();
 const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
 
+// Verify email configuration
+if (!gmailEmail || !gmailPassword) {
+  console.error('⚠️ EMAIL CONFIGURATION MISSING:');
+  console.error(`  gmailEmail: ${gmailEmail ? 'SET' : 'MISSING'}`);
+  console.error(`  gmailPassword: ${gmailPassword ? 'SET' : 'MISSING'}`);
+  console.error('  Email sending will fail. Please configure Gmail credentials.');
+}
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: gmailEmail,
     pass: gmailPassword // Use App Password, not regular password
+  }
+});
+
+// Verify transporter is configured
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('❌ EMAIL TRANSPORTER VERIFICATION FAILED:', error);
+  } else {
+    console.log('✅ Email transporter verified successfully');
   }
 });
 
@@ -58,21 +75,23 @@ function getReminderTimes(med) {
  * @param {Object} med - Medication object
  * @returns {boolean}
  */
-const TIME_ZONE = 'America/Los_Angeles';
-const WINDOW_MINUTES = 5; // Increased from 1 to 5 to ensure we don't miss reminders
+const DEFAULT_TIME_ZONE = 'America/Los_Angeles'; // Fallback if user timezone not set
+const WINDOW_MINUTES = 1; // Window for sending reminders - 1 minute to catch exact time (function runs every 1 minute)
 const EXPIRATION_ALERT_DAYS = 7;
 
-function getNowInZone() {
-  return DateTime.now().setZone(TIME_ZONE);
+function getNowInZone(userTimezone = null) {
+  const tz = userTimezone || DEFAULT_TIME_ZONE;
+  return DateTime.now().setZone(tz);
 }
 
-function parseEndDate(dateStr) {
+function parseEndDate(dateStr, userTimezone = null) {
   if (!dateStr || dateStr === 'N/A') return null;
-  const parsed = DateTime.fromFormat(dateStr, 'M/d/yyyy', { zone: TIME_ZONE });
+  const tz = userTimezone || DEFAULT_TIME_ZONE;
+  const parsed = DateTime.fromFormat(dateStr, 'M/d/yyyy', { zone: tz });
   if (parsed.isValid) {
     return parsed.endOf('day');
   }
-  const isoParsed = DateTime.fromISO(dateStr, { zone: TIME_ZONE });
+  const isoParsed = DateTime.fromISO(dateStr, { zone: tz });
   return isoParsed.isValid ? isoParsed.endOf('day') : null;
 }
 
@@ -81,45 +100,95 @@ function shouldSendReminderToday(med, nowDateTime = getNowInZone()) {
   const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const todayName = weekdays[weekdayIndex];
   
+  console.log(`  shouldSendReminderToday for ${med.name}:`);
+  console.log(`    Today is: ${todayName} (weekday index: ${weekdayIndex})`);
+  
   // Check if medication is deleted
   if (med.deletedStatus === true) {
-    console.log(`  -> Skipping ${med.name} (deleted)`);
+    console.log(`    -> Skipping ${med.name} (deleted)`);
     return false;
   }
   
   // Check if end date has passed
-  const endDate = parseEndDate(med.endDate);
+  // Note: parseEndDate will use the timezone from nowDateTime
+  const userTimezone = nowDateTime.zoneName;
+  const endDate = parseEndDate(med.endDate, userTimezone);
   if (endDate && nowDateTime > endDate) {
-    console.log(`  -> Skipping ${med.name} (end date ${endDate.toISODate()} has passed, now ${nowDateTime.toISODate()})`);
+    console.log(`    -> Skipping ${med.name} (end date ${endDate.toISODate()} has passed, now ${nowDateTime.toISODate()})`);
     return false;
   }
   
   // Check if today is in the selected days
-  if (med.daysOfWeek && med.daysOfWeek.length > 0) {
-    const todaySelected = med.daysOfWeek.some(day => 
-      day.toLowerCase() === todayName
-    );
+  // Normalize daysOfWeek - handle both array of strings and array of numbers
+  const daysOfWeek = med.daysOfWeek || med.days || [];
+  if (daysOfWeek.length > 0) {
+    // Convert to lowercase strings for comparison
+    const normalizedDays = daysOfWeek.map(day => {
+      if (typeof day === 'number') {
+        // Convert number (0-6) to day name
+        return weekdays[day % 7];
+      }
+      return String(day).toLowerCase();
+    });
+    
+    const todaySelected = normalizedDays.includes(todayName);
+    console.log(`    daysOfWeek: ${JSON.stringify(daysOfWeek)} -> normalized: ${JSON.stringify(normalizedDays)}`);
+    console.log(`    todaySelected: ${todaySelected}`);
+    
     if (!todaySelected) {
-      console.log(`  -> Skipping ${med.name} (not scheduled for ${todayName})`);
+      console.log(`    -> Skipping ${med.name} (not scheduled for ${todayName})`);
       return false; // Not scheduled for today
     }
+  } else {
+    console.log(`    -> No daysOfWeek specified, assuming all days`);
   }
   
   // Check stock (if empty, only send refill alert - not implemented in this version)
   // For now, we'll send reminders even if stock is low
   
+  console.log(`    -> PASSED: Should send reminder today`);
   return true;
 }
 
 function parseBottleRecord(bottleStr) {
-  if (!bottleStr || typeof bottleStr !== 'string') return null;
+  if (!bottleStr || typeof bottleStr !== 'string') {
+    console.log(`  parseBottleRecord: Invalid input - not a string: ${typeof bottleStr}`);
+    return null;
+  }
+  
   const parts = bottleStr.split('/');
-  if (parts.length < 3) return null;
+  if (parts.length < 3) {
+    console.log(`  parseBottleRecord: Invalid format - not enough parts: ${parts.length}`);
+    return null;
+  }
+  
   const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
-  const expiration = DateTime.fromFormat(expirationStr, 'M/d/yyyy', { zone: TIME_ZONE });
-  if (!expiration.isValid) return null;
+  console.log(`  parseBottleRecord: Parsing expiration date: "${expirationStr}"`);
+  
+  // Note: parseBottleExpiration is called from getBottleAlertsForUser which receives nowDateTime
+  // The timezone should be passed from the caller, but for backward compatibility, use DEFAULT_TIME_ZONE
+  // Try M/d/yyyy format first (e.g., "12/14/2025")
+  let expiration = DateTime.fromFormat(expirationStr, 'M/d/yyyy', { zone: DEFAULT_TIME_ZONE });
+  
+  // If that fails, try MM/dd/yyyy format (e.g., "12/14/2025" with padding)
+  if (!expiration.isValid) {
+    expiration = DateTime.fromFormat(expirationStr, 'MM/dd/yyyy', { zone: DEFAULT_TIME_ZONE });
+  }
+  
+  // If that fails, try ISO format (YYYY-MM-DD)
+  if (!expiration.isValid) {
+    expiration = DateTime.fromISO(expirationStr, { zone: DEFAULT_TIME_ZONE });
+  }
+  
+  if (!expiration.isValid) {
+    console.log(`  parseBottleRecord: Could not parse date "${expirationStr}"`);
+    return null;
+  }
+  
   const quantityPart = parts[3];
   const quantity = quantityPart && quantityPart !== 'N/A' ? Number(quantityPart) : null;
+  
+  console.log(`  parseBottleRecord: Successfully parsed - expiration: ${expiration.toISODate()}, quantity: ${quantity}`);
   return { expiration, quantity };
 }
 
@@ -256,6 +325,121 @@ function getReminderOption(key) {
   return REMINDER_OPTIONS[key] || REMINDER_OPTIONS.at_time;
 }
 
+/**
+ * Determines the current dose for a medication (same logic as home screen)
+ * Only sends reminders for the current dose, not future doses
+ * @param {Object} med - Medication object
+ * @param {DateTime} nowDateTime - Current date/time
+ * @returns {Object|null} - Current dose object with {timeStr, doseNumber} or null
+ */
+function determineCurrentDoseForEmail(med, nowDateTime = getNowInZone()) {
+  const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const weekdayIndex = nowDateTime.weekday % 7; // Luxon weekday: Monday=1 ... Sunday=7 -> convert to 0-based Sunday
+  const todayName = weekdaysConst[weekdayIndex];
+  
+  // Get allowed days - handle both string and number formats
+  let allowedDays = weekdaysConst; // Default to all days
+  const daysOfWeek = med.daysOfWeek || med.days || [];
+  if (daysOfWeek.length > 0) {
+    allowedDays = daysOfWeek.map(d => {
+      if (typeof d === 'number') {
+        // Convert number (0-6) to day name
+        return weekdaysConst[d % 7];
+      }
+      return String(d).toLowerCase();
+    });
+  }
+  
+  // Get times
+  const times = Array.isArray(med.times) && med.times.length > 0 
+    ? med.times.filter(Boolean).sort()
+    : [];
+  
+  // Build all dose candidates for today and yesterday
+  const candidates = [];
+  for (let offset = -1; offset < 7; offset++) {
+    const candidateDate = nowDateTime.plus({ days: offset });
+    const candidateWeekdayIndex = candidateDate.weekday % 7;
+    const weekdayName = weekdaysConst[candidateWeekdayIndex];
+    
+    if (!allowedDays.includes(weekdayName)) continue;
+    
+    if (times.length > 0) {
+      times.forEach((timeStr, index) => {
+        const [h, m] = timeStr.split(':').map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) return;
+        
+        const candidateDateTime = candidateDate.set({
+          hour: h,
+          minute: m,
+          second: 0,
+          millisecond: 0
+        });
+        
+        candidates.push({
+          dateTime: candidateDateTime,
+          timeStr: timeStr,
+          weekday: weekdayName,
+          doseNumber: index + 1,
+          totalDoses: times.length
+        });
+      });
+    } else {
+      // No times specified - use start of day
+      candidates.push({
+        dateTime: candidateDate.startOf('day'),
+        timeStr: null,
+        weekday: weekdayName,
+        doseNumber: 1,
+        totalDoses: 1
+      });
+    }
+  }
+  
+  if (candidates.length === 0) {
+    return null;
+  }
+  
+  // Sort by dateTime
+  candidates.sort((a, b) => a.dateTime.toMillis() - b.dateTime.toMillis());
+  
+  // Find next dose (first dose >= now)
+  const nextDose = candidates.find(c => c.dateTime >= nowDateTime);
+  
+  // Find previous dose (last dose < now)
+  const previousDoses = candidates.filter(c => c.dateTime < nowDateTime);
+  const previousDose = previousDoses.length > 0 ? previousDoses[previousDoses.length - 1] : null;
+  
+  // If no next dose, use the first candidate (wraps around)
+  if (!nextDose) {
+    return candidates[0];
+  }
+  
+  // If no previous dose, use next dose
+  if (!previousDose) {
+    return nextDose;
+  }
+  
+  // Calculate time differences in minutes
+  const timeToNext = nextDose.dateTime.diff(nowDateTime, 'minutes').minutes;
+  const timeSincePrevious = nowDateTime.diff(previousDose.dateTime, 'minutes').minutes;
+  const timeBetweenDoses = nextDose.dateTime.diff(previousDose.dateTime, 'minutes').minutes;
+  
+  // Rule 1: If within 45 minutes of previous dose, use previous dose
+  if (timeSincePrevious <= 45) {
+    return previousDose;
+  }
+  
+  // Rule 2: If next and previous doses are less than 1.5 hours (90 minutes) apart,
+  // use whichever is closer to current time
+  if (timeBetweenDoses < 90) {
+    return timeToNext < timeSincePrevious ? nextDose : previousDose;
+  }
+  
+  // Default: use next dose
+  return nextDose;
+}
+
 function shouldSendOffsetReminder(reminderTime, offsetMinutes, nowDateTime = getNowInZone()) {
   if (!reminderTime) return false;
   const targetDateTime = computeTargetDateTime(reminderTime, offsetMinutes, nowDateTime);
@@ -264,15 +448,29 @@ function shouldSendOffsetReminder(reminderTime, offsetMinutes, nowDateTime = get
     return false;
   }
 
+  // Calculate the difference between now and target time
+  const diffMinutes = nowDateTime.diff(targetDateTime, 'minutes').minutes;
+  
+  // For advance reminders (negative offset like -60 for 1 hour before):
+  // targetDateTime = reminderTime - 60 minutes (e.g., if reminder is 2:00 PM, target is 1:00 PM)
+  // We want to send when now is within WINDOW_MINUTES of the target (e.g., between 1:00-1:05 PM)
+  // So diffMinutes should be >= 0 (now is at or past target) and < WINDOW_MINUTES (within window)
+  
+  // For at-time reminders (offset = 0):
+  // targetDateTime = reminderTime (e.g., 2:00 PM)
+  // We want to send when now is within WINDOW_MINUTES of target (e.g., between 2:00-2:05 PM)
+  // So diffMinutes should be >= 0 and < WINDOW_MINUTES
+  
   if (offsetMinutes <= 0) {
-    // For "at time" or "before" reminders (negative or zero offset)
+    // Advance reminders (negative) or at-time (zero)
+    // Check if we're within the window after the target time
     if (nowDateTime < targetDateTime) {
+      // Too early - haven't reached the target time yet
       console.log(`  -> shouldSendOffsetReminder: Too early for ${reminderTime} [offset=${offsetMinutes}], now=${nowDateTime.toISO()}, target=${targetDateTime.toISO()}`);
       return false;
     }
-    const diffMinutes = nowDateTime.diff(targetDateTime, 'minutes').minutes;
     const shouldSend = diffMinutes >= 0 && diffMinutes < WINDOW_MINUTES;
-    console.log(`  -> shouldSendOffsetReminder: ${reminderTime} [offset=${offsetMinutes}], diff=${diffMinutes.toFixed(1)}min, shouldSend=${shouldSend}`);
+    console.log(`  -> shouldSendOffsetReminder: ${reminderTime} [offset=${offsetMinutes}], diff=${diffMinutes.toFixed(1)}min, shouldSend=${shouldSend}, now=${nowDateTime.toFormat('HH:mm')}, target=${targetDateTime.toFormat('HH:mm')}`);
     return shouldSend;
   }
 
@@ -281,7 +479,6 @@ function shouldSendOffsetReminder(reminderTime, offsetMinutes, nowDateTime = get
     console.log(`  -> shouldSendOffsetReminder: Too late for ${reminderTime} [offset=${offsetMinutes}], now=${nowDateTime.toISO()}, target=${targetDateTime.toISO()}`);
     return false;
   }
-  const diffMinutes = targetDateTime.diff(nowDateTime, 'minutes').minutes;
   const shouldSend = diffMinutes >= 0 && diffMinutes < WINDOW_MINUTES;
   console.log(`  -> shouldSendOffsetReminder: ${reminderTime} [offset=${offsetMinutes}], diff=${diffMinutes.toFixed(1)}min, shouldSend=${shouldSend}`);
   return shouldSend;
@@ -398,7 +595,18 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
                 ${scheduleItemsHtml}
               </div>
             </div>
-            <p style="margin-top:24px;">This agenda includes every dose scheduled for today. Tap “Taken” in MedTracker after each medication so we can keep your history up to date.</p>
+            ${bottleAlerts.length > 0 ? `
+              <div style="margin-top:24px; padding:20px; background:#fff3cd; border:1px solid #ffc107; border-radius:16px;">
+                <h3 style="margin:0 0 12px 0; color:#856404; font-size:18px;">⚠️ Bottle Expiration Alerts</h3>
+                ${bottleAlerts.map(alert => `
+                  <div style="margin-bottom:12px; padding:12px; background:white; border-radius:12px; border:1px solid #ffc107;">
+                    <div style="font-weight:600; color:#856404; margin-bottom:4px;">${alert.medName}</div>
+                    <div style="color:#856404; font-size:15px;">${alert.message}</div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+            <p style="margin-top:24px;">This agenda includes every dose scheduled for today. Tap "Taken" in MedTracker after each medication so we can keep your history up to date.</p>
             <a href="http://localhost:8000/home.html" class="cta">Open MedTracker</a>
           </div>
           <div class="footer">
@@ -416,11 +624,18 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
     return `${timeLabel} — ${doseLabel} · ${entry.name}${entry.dosage ? ` (${entry.dosage})` : ''}`;
   }).join('\n');
 
+  const textBottleAlerts = bottleAlerts.length > 0 ? [
+    '',
+    'BOTTLE EXPIRATION ALERTS:',
+    ...bottleAlerts.map(alert => `  ${alert.medName}: ${alert.message}`),
+    ''
+  ].join('\n') : '';
+
   const textBody = [
-    `Today’s Medication Agenda – ${formattedDate}`,
+    `Today's Medication Agenda – ${formattedDate}`,
     '',
     textSchedule,
-    '',
+    textBottleAlerts,
     'This agenda includes every dose scheduled for today. Remember to mark each medication as taken inside MedTracker after you complete it.',
     '',
     'MedTracker'
@@ -446,13 +661,282 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
  * @param {string} offsetKey - Which reminder preference triggered this email
  * @param {Array} alerts - Array of {med, alertType} objects for alerts
  */
-async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKey = 'at_time', alerts = [], todaysSchedule = []) {
+/**
+ * Sends email notification for missed doses
+ * @param {string} userEmail - User's email address
+ * @param {Array} missedDoses - Array of {med, reminderTime, doseNumber, scheduledDateTime} objects
+ */
+async function sendMissedDoseEmail(userEmail, missedDoses) {
+  if (missedDoses.length === 0) return;
+  
+  const nowDateTime = getNowInZone();
+  const time12 = format12Hour(missedDoses[0].reminderTime);
+  const subject = missedDoses.length === 1 
+    ? `Missed Dose: ${missedDoses[0].med.name}`
+    : `Missed Doses: ${missedDoses.length} medications`;
+  
+  const styles = `
+    body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
+    .wrapper { width:100%; padding:24px 0; }
+    .container { width:90%; max-width:640px; margin:0 auto; background:white; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12); }
+    .header { background:linear-gradient(135deg,#ef4444,#dc2626); padding:32px 28px; color:white; text-align:center; }
+    .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
+    .header p { margin:12px 0 0; font-size:17px; font-weight:500; opacity:0.92; }
+    .content { background:#f9f9f9; padding:32px 28px; line-height:1.7; font-size:18px; }
+    .content-section { margin-bottom:24px; }
+    .section-title { font-size:20px; font-weight:700; margin:0 0 14px; color:#244066; letter-spacing:0.3px; }
+    .med-info { background:white; padding:24px 24px 20px; border-radius:18px; margin-bottom:18px; border-left:5px solid #ef4444; box-shadow:0 6px 18px rgba(239,68,68,0.12); }
+    .med-name { font-size:20px; font-weight:700; color:#23407a; margin:0 0 10px; }
+    .dose-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+    .dose-chip { display:inline-flex; align-items:center; padding:6px 14px; background:#fee2e2; color:#991b1b; border-radius:999px; font-weight:600; letter-spacing:0.3px; }
+    .time-badge { display:inline-flex; align-items:center; padding:6px 14px; border-radius:999px; background:#ef4444; color:white; font-weight:600; letter-spacing:0.3px; }
+    .detail { margin:8px 0; font-size:16px; color:#44506b; }
+    .label { font-weight:700; color:#1f2933; }
+    .warning-box { background:#fef2f2; padding:22px; border-radius:18px; margin-bottom:18px; border-left:5px solid #ef4444; color:#991b1b; box-shadow:0 6px 18px rgba(239,68,68,0.16); }
+    .warning-title { font-size:18px; font-weight:700; margin:0 0 8px; }
+    .cta-wrap { text-align:center; margin-top:30px; }
+    .cta { display:inline-block; padding:14px 32px; border-radius:14px; background:#ef4444; color:white; font-weight:700; letter-spacing:0.5px; text-decoration:none; box-shadow:0 12px 24px rgba(239,68,68,0.28); }
+    .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
+  `;
+  
+  const medSections = missedDoses.map(({ med, reminderTime, doseNumber, scheduledDateTime }) => {
+    const time12 = format12Hour(reminderTime);
+    const doseLabel = missedDoses.length > 1 ? `Dose #${doseNumber}` : 'Scheduled dose';
+    const minutesLate = Math.floor(nowDateTime.diff(scheduledDateTime, 'minutes').minutes);
+    
+    return `
+      <div class="med-info">
+        <p class="med-name">${med.name}</p>
+        <div class="dose-row">
+          <span class="dose-chip">${doseLabel}</span>
+          <span class="time-badge">${time12}</span>
+        </div>
+        <div class="detail"><span class="label">Dosage:</span> ${med.dosage || 'N/A'}</div>
+        <div class="detail"><span class="label">Scheduled time:</span> ${time12}</div>
+        <div class="detail"><span class="label">Time since scheduled:</span> ${minutesLate} minutes</div>
+      </div>
+    `;
+  }).join('');
+  
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>${styles}</style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h1>⚠️ Missed Dose${missedDoses.length > 1 ? 's' : ''}</h1>
+            <p>You missed ${missedDoses.length === 1 ? 'a dose' : 'some doses'}. Please review below.</p>
+          </div>
+          <div class="content">
+            <div class="warning-box">
+              <p class="warning-title">⚠️ Missed Medication${missedDoses.length > 1 ? 's' : ''}</p>
+              <div>We noticed you haven't marked ${missedDoses.length === 1 ? 'this dose' : 'these doses'} as taken. ${missedDoses.length === 1 ? 'It' : 'They'} ${missedDoses.length === 1 ? 'has' : 'have'} been automatically marked as "Not Taken".</div>
+              <div style="margin-top: 12px;">If this is a mistake and you did take ${missedDoses.length === 1 ? 'it' : 'them'}, please update the status in MedTracker.</div>
+            </div>
+            <div class="content-section">
+              <h2 class="section-title">Missed ${missedDoses.length === 1 ? 'Dose' : 'Doses'}</h2>
+              ${medSections}
+            </div>
+            <div class="cta-wrap">
+              <a class="cta" href="http://localhost:8000/home.html">Update in MedTracker</a>
+            </div>
+          </div>
+          <div class="footer">
+            This is an automated notification from MedTracker.<br/>
+            Doses are automatically marked as "Not Taken" if not marked within 45 minutes of the scheduled time.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const textLines = [];
+  textLines.push(`Missed Dose${missedDoses.length > 1 ? 's' : ''} Notification`);
+  textLines.push('');
+  textLines.push(`We noticed you haven't marked ${missedDoses.length === 1 ? 'this dose' : 'these doses'} as taken. ${missedDoses.length === 1 ? 'It' : 'They'} ${missedDoses.length === 1 ? 'has' : 'have'} been automatically marked as "Not Taken".`);
+  textLines.push('');
+  textLines.push('MISSED DOSES:');
+  missedDoses.forEach(({ med, reminderTime, doseNumber, scheduledDateTime }) => {
+    const time12 = format12Hour(reminderTime);
+    const minutesLate = Math.floor(nowDateTime.diff(scheduledDateTime, 'minutes').minutes);
+    textLines.push(`${med.name} - Dose #${doseNumber}`);
+    textLines.push(`Scheduled: ${time12}`);
+    textLines.push(`Time since scheduled: ${minutesLate} minutes`);
+    textLines.push('');
+  });
+  textLines.push('If this is a mistake and you did take the medication, please update the status in MedTracker.');
+  textLines.push('');
+  textLines.push('MedTracker');
+  
+  const textBody = textLines.join('\n');
+  
+  const mailOptions = {
+    from: `MedTracker <${gmailEmail}>`,
+    to: userEmail,
+    subject,
+    text: textBody,
+    html: htmlBody
+  };
+  
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Missed dose email sent to ${userEmail} for ${missedDoses.length} dose(s)`);
+  } catch (error) {
+    console.error('Error sending missed dose email:', error);
+    throw error;
+  }
+}
+
+/**
+ * Checks for missed doses and automatically marks them as "not taken"
+ * @param {string} userId - User ID
+ * @param {string} userEmail - User email
+ * @param {QuerySnapshot} medicationsSnapshot - Medications snapshot
+ * @param {DateTime} nowDateTime - Current date/time
+ * @param {Firestore} db - Firestore database instance
+ */
+async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, nowDateTime, db) {
+  const missedDoses = [];
+  const updates = {}; // Track which medications need updates
+  
+  for (const medDoc of medicationsSnapshot.docs) {
+    const rawData = medDoc.data();
+    
+    // Normalize medication data
+    const med = {
+      id: medDoc.id,
+      name: rawData.name || '',
+      dosage: rawData.dosage || '',
+      daysOfWeek: rawData.daysOfWeek || rawData.days || [],
+      times: Array.isArray(rawData.times) ? rawData.times.filter(Boolean) : [],
+      timesPerDay: rawData.timesPerDay || 0,
+      reminderMethod: rawData.reminderMethod || 'N',
+      deletedStatus: rawData.deletedStatus === true,
+      doses: rawData.doses || {}
+    };
+    
+    // Skip if deleted or not email reminders (E, ES, or Email)
+    if (med.deletedStatus || (med.reminderMethod !== 'E' && med.reminderMethod !== 'ES' && med.reminderMethod !== 'Email')) {
+      continue;
+    }
+    
+    // Check if medication should send reminder today
+    if (!shouldSendReminderToday(med, nowDateTime)) {
+      continue;
+    }
+    
+    // Determine the current dose (same logic as reminder sending)
+    const currentDose = determineCurrentDoseForEmail(med, nowDateTime);
+    if (!currentDose) {
+      continue; // No current dose found
+    }
+    
+    // Only check the current dose for missed status
+    const reminderTime = currentDose.timeStr;
+    if (!reminderTime) {
+      continue; // No time specified, skip
+    }
+    
+    const [reminderHour, reminderMinute] = reminderTime.split(':').map(Number);
+    if (Number.isNaN(reminderHour) || Number.isNaN(reminderMinute)) {
+      continue;
+    }
+    
+    // Calculate scheduled date/time for this dose
+    const scheduledDateTime = nowDateTime.set({
+      hour: reminderHour,
+      minute: reminderMinute,
+      second: 0,
+      millisecond: 0
+    });
+    
+    // If scheduled time is in the future, skip
+    if (scheduledDateTime > nowDateTime) {
+      continue;
+    }
+    
+    // Check if 45+ minutes have passed
+    const minutesPast = nowDateTime.diff(scheduledDateTime, 'minutes').minutes;
+    if (minutesPast < 45) {
+      continue; // Not yet 45 minutes past
+    }
+    
+    // Check if dose is already marked
+    const todayIso = nowDateTime.toISODate();
+    const doseKey = `${todayIso}_${currentDose.doseNumber}`;
+    const doseEntry = med.doses[doseKey];
+    
+    if (doseEntry && (doseEntry.taken === true || doseEntry.taken === false)) {
+      continue; // Already marked, skip
+    }
+    
+    // This dose is missed - mark as not taken
+    console.log(`[Missed Dose] Marking ${med.name} dose #${currentDose.doseNumber} at ${reminderTime} as not taken (${Math.floor(minutesPast)} minutes late)`);
+    
+    if (!updates[med.id]) {
+      updates[med.id] = {
+        medDocRef: db.collection('users').doc(userId).collection('medications').doc(med.id),
+        doses: { ...med.doses }
+      };
+    }
+    
+    // Mark as not taken
+    updates[med.id].doses[doseKey] = {
+      date: todayIso,
+      doseNumber: currentDose.doseNumber,
+      taken: false,
+      takenAt: null,
+      autoMarked: true // Flag to indicate this was auto-marked
+    };
+    
+    missedDoses.push({
+      med,
+      reminderTime,
+      doseNumber: currentDose.doseNumber,
+      scheduledDateTime
+    });
+  }
+  
+  // Save all updates to Firebase
+  for (const [medId, update] of Object.entries(updates)) {
+    try {
+      await update.medDocRef.set({
+        doses: update.doses
+      }, { merge: true });
+      console.log(`[Missed Dose] Updated ${update.medDocRef.id} with auto-marked doses`);
+    } catch (error) {
+      console.error(`[Missed Dose] Error updating ${medId}:`, error);
+    }
+  }
+  
+  // Send email if there are missed doses
+  if (missedDoses.length > 0) {
+    try {
+      await sendMissedDoseEmail(userEmail, missedDoses);
+    } catch (error) {
+      console.error('[Missed Dose] Error sending email:', error);
+    }
+  }
+}
+
+async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKey = 'at_time', alerts = [], todaysSchedule = [], bottleAlerts = [], userTimezone = null) {
   const time12 = format12Hour(reminderTime);
   const option = getReminderOption(offsetKey);
   const isAtTime = offsetKey === 'at_time';
-  const nowDateTime = getNowInZone();
+  // Get user's timezone for display (default to system timezone if not provided)
+  const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
+  const nowDateTime = getNowInZone(displayTimezone);
   const todayIndex = nowDateTime.weekday % 7;
   const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  
+  // Format timezone abbreviation for display (e.g., "PST", "EST")
+  const timezoneAbbr = nowDateTime.toFormat('ZZZZ'); // e.g., "PST", "EST"
 
   // Build subject line
   let subject;
@@ -518,9 +1002,24 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
   const headerTitle = isAtTime
     ? `Medication ${totalItems > 1 ? 'Reminders' : 'Reminder'}${alerts.length > 0 ? ' & Alerts' : ''}`
     : `Upcoming Medication Reminder${meds.length > 1 ? 's' : ''}`;
-  const headerSubtitle = isAtTime
-    ? (meds.length > 0 ? `It’s time to take your medication${meds.length > 1 ? 's' : ''}.` : 'Please review the following alerts.')
-    : option.headerLine || 'Here’s your upcoming medication schedule.';
+  // Check if any medications are already taken
+  const hasTakenMeds = meds.some(med => med._isAlreadyTaken === true);
+  const hasUntakenMeds = meds.some(med => med._isAlreadyTaken !== true);
+  
+  let headerSubtitle;
+  if (isAtTime) {
+    if (hasTakenMeds && hasUntakenMeds) {
+      headerSubtitle = `Some medications are already taken. Review your schedule below. (${time12} ${timezoneAbbr})`;
+    } else if (hasTakenMeds && !hasUntakenMeds) {
+      headerSubtitle = `All medications for this time have already been taken. (${time12} ${timezoneAbbr})`;
+    } else {
+      headerSubtitle = meds.length > 0 ? `It's time to take your medication${meds.length > 1 ? 's' : ''} at ${time12} ${timezoneAbbr}.` : 'Please review the following alerts.';
+    }
+  } else {
+    // For advance reminders, show when the medication is scheduled
+    const scheduledTimeText = meds.length > 0 && reminderTime ? ` (scheduled for ${time12} ${timezoneAbbr})` : '';
+    headerSubtitle = (option.headerLine || 'Here\'s your upcoming medication schedule.') + scheduledTimeText;
+  }
 
   const medSections = meds.map((med, index) => {
     const scheduleEntry = findScheduleEntry(med.id);
@@ -530,21 +1029,25 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
     const scheduledTime = scheduleEntry && scheduleEntry.time
       ? format12Hour(scheduleEntry.time)
       : time12;
+    const isAlreadyTaken = med._isAlreadyTaken === true;
 
     if (isAtTime) {
-      addTodaysText(`${doseLabel}: ${scheduledTime} – ${med.name}`);
+      const takenText = isAlreadyTaken ? ' (Already Taken)' : '';
+      addTodaysText(`${doseLabel}: ${scheduledTime} – ${med.name}${takenText}`);
     }
 
     return `
-      <div class="med-info">
-        <p class="med-name">${med.name}</p>
+      <div class="med-info" style="${isAlreadyTaken ? 'border-left-color: #10b981; background: #f0fdf4;' : ''}">
+        <p class="med-name">${med.name}${isAlreadyTaken ? ' <span style="color: #10b981; font-size: 16px;">✓ Already Taken</span>' : ''}</p>
         <div class="dose-row">
           <span class="dose-chip">${doseLabel}</span>
-          <span class="time-badge">${scheduledTime}</span>
+          <span class="time-badge">${scheduledTime} ${timezoneAbbr}</span>
         </div>
         <div class="detail"><span class="label">Dosage:</span> ${med.dosage || 'N/A'}</div>
-        <div class="detail"><span class="label">Reminder time:</span> ${scheduledTime}</div>
+        <div class="detail"><span class="label">Scheduled time:</span> ${scheduledTime} ${timezoneAbbr}</div>
+        ${!isAtTime ? `<div class="detail"><span class="label">Reminder sent:</span> ${nowDateTime.toFormat('h:mm a ZZZZ')}</div>` : ''}
         ${med.stock ? `<div class="detail"><span class="label">Bottles in stock:</span> ${med.stock}</div>` : ''}
+        ${isAlreadyTaken ? '<div class="detail" style="margin-top: 12px; padding: 12px; background: #d1fae5; border-radius: 8px; color: #065f46;"><strong>✓ This medication was already marked as taken.</strong> No action needed.</div>' : ''}
       </div>
     `;
   }).join('');
@@ -595,7 +1098,7 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
       <div class="schedule-card">
         <h2 class="section-title" style="margin-bottom:12px;">Today’s Full Schedule</h2>
         ${sortedSchedule.map(entry => {
-          const displayTime = entry.time ? format12Hour(entry.time) : 'Any time';
+          const displayTime = entry.time ? `${format12Hour(entry.time)} ${timezoneAbbr}` : 'Any time';
           const doseLabel = entry.doseNumber ? `Dose ${entry.doseNumber}` : 'Scheduled dose';
           const itemText = `${doseLabel}: ${displayTime} – ${entry.name}`;
           addTodaysText(itemText);
@@ -607,7 +1110,13 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 
   let closingHtmlLine = '';
   if (isAtTime && meds.length > 0) {
-    closingHtmlLine = `<p class="closing-note">✅ Please tap “Taken” in MedTracker after each dose so we can keep your history up to date.</p>`;
+    if (hasTakenMeds && !hasUntakenMeds) {
+      closingHtmlLine = `<p class="closing-note">✅ All medications for this time have already been taken. No action needed.</p>`;
+    } else if (hasTakenMeds && hasUntakenMeds) {
+      closingHtmlLine = `<p class="closing-note">✅ Some medications are already taken. Please mark the remaining ones as "Taken" in MedTracker.</p>`;
+    } else {
+      closingHtmlLine = `<p class="closing-note">✅ Please tap "Taken" in MedTracker after each dose so we can keep your history up to date.</p>`;
+    }
   } else if (!isAtTime && option.bodyNoteHtml) {
     closingHtmlLine = `<p class="closing-note">${option.bodyNoteHtml}</p>`;
   }
@@ -632,6 +1141,7 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
           <div class="header">
             <h1>${headerTitle}</h1>
             <p>${headerSubtitle}</p>
+            ${reminderTime ? `<p style="margin-top: 8px; font-size: 16px; opacity: 0.9;">⏰ ${isAtTime ? 'Time: ' : 'Scheduled for: '}${time12} ${timezoneAbbr}</p>` : ''}
           </div>
           <div class="content">
             ${remindersSection || '<div class="content-section"><p>No reminders to show.</p></div>'}
@@ -661,10 +1171,15 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
     textLines.push('REMINDERS:');
     meds.forEach((med, index) => {
       const doseLabel = meds.length > 1 ? `Dose ${index + 1}` : 'Scheduled dose';
-      textLines.push(`${doseLabel}: ${med.name}`);
-      textLines.push(`Time: ${time12}`);
+      const isAlreadyTaken = med._isAlreadyTaken === true;
+      textLines.push(`${doseLabel}: ${med.name}${isAlreadyTaken ? ' (Already Taken ✓)' : ''}`);
+      textLines.push(`Time: ${time12} ${timezoneAbbr}`);
       if (med.dosage) textLines.push(`Dosage: ${med.dosage}`);
-      textLines.push('Instructions: Take with water unless directed otherwise.');
+      if (isAlreadyTaken) {
+        textLines.push('Status: This medication was already marked as taken. No action needed.');
+      } else {
+        textLines.push('Instructions: Take with water unless directed otherwise.');
+      }
       textLines.push('');
     });
   }
@@ -708,10 +1223,27 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Combined reminder email sent to ${userEmail} (${meds.length} reminders, ${alerts.length} alerts) [offset=${offsetKey}]`);
+    console.log(`[sendCombinedReminderEmail] Attempting to send email:`);
+    console.log(`  To: ${userEmail}`);
+    console.log(`  Subject: ${subject}`);
+    console.log(`  From: ${gmailEmail}`);
+    console.log(`  Medications: ${meds.length}`);
+    console.log(`  Alerts: ${alerts.length}`);
+    
+    if (!gmailEmail || !gmailPassword) {
+      throw new Error('Email configuration missing - cannot send email');
+    }
+    
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ Combined reminder email sent successfully to ${userEmail}`);
+    console.log(`  Message ID: ${result.messageId}`);
+    console.log(`  Response: ${result.response}`);
+    return result;
   } catch (error) {
-    console.error('Error sending combined email:', error);
+    console.error('❌ Error sending combined email:', error);
+    console.error(`  Error code: ${error.code}`);
+    console.error(`  Error command: ${error.command}`);
+    console.error(`  Error response: ${error.response}`);
     throw error;
   }
 }
@@ -812,12 +1344,10 @@ MedTracker
  */
 exports.sendMedicationReminders = functions.pubsub
   .schedule('every 1 minutes') // Run every minute for tighter timing
-  .timeZone('America/Los_Angeles') // Seattle - Pacific Time
+  .timeZone('UTC') // Use UTC for schedule, then convert to each user's timezone
   .onRun(async (context) => {
     console.log('Starting medication reminder check...');
-    console.log('Current time:', new Date().toISOString());
-    const nowDateTime = getNowInZone();
-    console.log('Current Pacific time:', nowDateTime.toISO());
+    console.log('Current UTC time:', new Date().toISOString());
     
     const db = admin.firestore();
     
@@ -838,6 +1368,13 @@ exports.sendMedicationReminders = functions.pubsub
           continue;
         }
         
+        // Wrap each user in try/catch like daily agenda does
+        try {
+          // Get user's timezone (default to Pacific if not set)
+          const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
+          const userNowDateTime = getNowInZone(userTimezone);
+          console.log(`User timezone: ${userTimezone}, current time: ${userNowDateTime.toISO()}`);
+        
         // Get all medications for this user (we'll filter deleted ones in code)
         const medicationsSnapshot = await db
           .collection('users')
@@ -845,7 +1382,12 @@ exports.sendMedicationReminders = functions.pubsub
           .collection('medications')
           .get();
         
-        console.log(`Found ${medicationsSnapshot.size} active medications for user ${userId}`);
+        console.log(`Found ${medicationsSnapshot.size} medications for user ${userId}`);
+        
+        if (medicationsSnapshot.size === 0) {
+          console.log(`  -> No medications found, skipping user ${userId}`);
+          continue;
+        }
         
         // Determine reminder preferences from profile with defaults
         const rawPreferences = Array.isArray(userData.notification_reminders) ? userData.notification_reminders : [];
@@ -857,7 +1399,7 @@ exports.sendMedicationReminders = functions.pubsub
         
         // Get last sent reminders to prevent duplicates
         const lastSentReminders = userData.lastSentReminders || {};
-        const todayIso = nowDateTime.toISODate();
+        const todayIso = userNowDateTime.toISODate();
 
         // Group medications by actual send window (preference + time)
         const sendGroups = {}; // key => { meds: [], reminderTime, offsetKey }
@@ -866,46 +1408,100 @@ exports.sendMedicationReminders = functions.pubsub
         const scheduleKeys = new Set();
         
         for (const medDoc of medicationsSnapshot.docs) {
-          const med = { id: medDoc.id, ...medDoc.data() };
+          const rawData = medDoc.data();
           
-          console.log(`Checking medication: ${med.name}, reminderMethod: ${med.reminderMethod}, deletedStatus: ${med.deletedStatus}`);
-        console.log(`  Raw daysOfWeek: ${JSON.stringify(med.daysOfWeek || med.days)}`);
-        console.log(`  Raw times: ${JSON.stringify(med.times)}`);
-        console.log(`  timesPerDay: ${med.timesPerDay}, reminderMethod: ${med.reminderMethod}`);
+          // Normalize medication data to handle different formats
+          const med = {
+            id: medDoc.id,
+            name: rawData.name || '',
+            dosage: rawData.dosage || '',
+            // Handle both daysOfWeek and days fields (daysOfWeek is preferred)
+            daysOfWeek: rawData.daysOfWeek || rawData.days || [],
+            times: Array.isArray(rawData.times) ? rawData.times.filter(Boolean) : [],
+            timesPerDay: rawData.timesPerDay || 0,
+            startDate: rawData.startDate || null,
+            endDate: rawData.endDate || null,
+            reminderMethod: rawData.reminderMethod || 'N',
+            bottles: Array.isArray(rawData.bottles) ? rawData.bottles : [],
+            stock: rawData.stock || (Array.isArray(rawData.bottles) ? rawData.bottles.length : 0),
+            deletedStatus: rawData.deletedStatus === true,
+            doses: rawData.doses || {}
+          };
+          
+          // Comprehensive logging
+          console.log(`\n=== Checking medication: ${med.name} ===`);
+          console.log(`  ID: ${med.id}`);
+          console.log(`  reminderMethod: "${med.reminderMethod}" (type: ${typeof med.reminderMethod})`);
+          console.log(`  deletedStatus: ${med.deletedStatus}`);
+          console.log(`  daysOfWeek: ${JSON.stringify(med.daysOfWeek)} (length: ${med.daysOfWeek.length})`);
+          console.log(`  times: ${JSON.stringify(med.times)} (length: ${med.times.length})`);
+          console.log(`  timesPerDay: ${med.timesPerDay}`);
+          console.log(`  startDate: "${med.startDate}"`);
+          console.log(`  endDate: "${med.endDate}"`);
+          console.log(`  bottles: ${JSON.stringify(med.bottles)} (length: ${med.bottles.length})`);
+          console.log(`  stock: ${med.stock}`);
           
           // Skip if medication is deleted
           if (med.deletedStatus === true) {
-            console.log(`Skipping ${med.name} - medication is deleted`);
+            console.log(`  -> SKIPPING: Medication is deleted`);
             continue;
           }
           
           // Skip if reminder method is not Email
-          if (med.reminderMethod !== 'E') {
-            console.log(`Skipping ${med.name} - reminder method is not Email`);
+          // Handle both 'E' and 'Email' formats
+          const isEmailReminder = med.reminderMethod === 'E' || med.reminderMethod === 'ES' || med.reminderMethod === 'Email';
+          if (!isEmailReminder) {
+            console.log(`  -> SKIPPING: Reminder method is "${med.reminderMethod}", not Email`);
             continue;
           }
+          
+          console.log(`  -> PASSED: Email reminders enabled`);
           
           // Check for alerts (no bottles or out of stock)
           if (!med.bottles || med.bottles.length === 0) {
             alertMeds.push({ med, alertType: 'noBottles' });
+            console.log(`  -> Added to alerts: no bottles`);
           } else if (med.stock === 0) {
             alertMeds.push({ med, alertType: 'outOfStock' });
+            console.log(`  -> Added to alerts: out of stock`);
           }
           
-          // Check if medication should send reminder today
-          const shouldSend = shouldSendReminderToday(med, nowDateTime);
-          console.log(`Should send reminder for ${med.name} today? ${shouldSend}`);
+          // Check if medication should send reminder today (using user's timezone)
+          const shouldSendToday = shouldSendReminderToday(med, userNowDateTime);
           
-          if (!shouldSend) {
+          if (!shouldSendToday) {
+            console.log(`  -> SKIPPING: Not scheduled for today or other conditions not met`);
+            console.log(`  -> DEBUG: daysOfWeek=${JSON.stringify(med.daysOfWeek)}, endDate=${med.endDate}, deletedStatus=${med.deletedStatus}`);
             continue;
           }
           
-          // Get reminder times for this medication
+          // Determine the current dose (only send reminders for current dose, not future doses)
+          const currentDose = determineCurrentDoseForEmail(med, userNowDateTime);
+          if (!currentDose) {
+            console.log(`  -> SKIPPING: No current dose found for ${med.name}`);
+            console.log(`  -> DEBUG: times=${JSON.stringify(med.times)}, timesPerDay=${med.timesPerDay}, daysOfWeek=${JSON.stringify(med.daysOfWeek)}`);
+            continue;
+          }
+          
+          console.log(`  -> Current dose: ${currentDose.timeStr || 'any time'}, dose #${currentDose.doseNumber}, scheduled for: ${currentDose.dateTime.toFormat('yyyy-MM-dd HH:mm')}`);
+          
+          // Check if current dose is already taken
+          const todayIsoDate = userNowDateTime.toISODate(); // Format: YYYY-MM-DD
+          const doseKey = `${todayIsoDate}_${currentDose.doseNumber}`;
+          const doseEntry = med.doses && med.doses[doseKey] ? med.doses[doseKey] : null;
+          const isAlreadyTaken = doseEntry && doseEntry.taken === true;
+          
+          if (isAlreadyTaken) {
+            console.log(`  -> Dose already taken (key: ${doseKey})`);
+          } else {
+            console.log(`  -> Dose not yet taken (key: ${doseKey})`);
+          }
+          
+          // Get all reminder times for schedule display
           const reminderTimes = getReminderTimes(med);
-          console.log(`Reminder times for ${med.name}: ${JSON.stringify(reminderTimes)}`);
           const sortedReminderTimes = [...reminderTimes].sort();
-          let previousDoseDateTime = null;
-
+          
+          // Add to today's schedule for display
           const scheduleTimes = sortedReminderTimes.length > 0 ? sortedReminderTimes : [null];
           scheduleTimes.forEach((timeStr, scheduleIndex) => {
             const key = `${med.id}|${timeStr || 'any'}`;
@@ -921,67 +1517,96 @@ exports.sendMedicationReminders = functions.pubsub
               });
             }
           });
-
-          for (const reminderTime of sortedReminderTimes) {
-            const [reminderHour, reminderMinute] = reminderTime.split(':').map(Number);
-            if (Number.isNaN(reminderHour) || Number.isNaN(reminderMinute)) {
-              console.warn(`Skipping invalid reminder time "${reminderTime}" for ${med.name}`);
-              continue;
-            }
-            
-            const doseDateTime = nowDateTime.set({
-              hour: reminderHour,
-              minute: reminderMinute,
-              second: 0,
-              millisecond: 0
-            });
-            
+          
+          // Only send reminders for the CURRENT dose's time
+          const reminderTime = currentDose.timeStr;
+          if (!reminderTime) {
+            // If no time specified, treat as "any time" - only send at-time reminders
             for (const preference of reminderPreferences) {
+              if (preference !== 'at_time') continue; // Skip advance reminders for "any time" doses
+              
               const option = getReminderOption(preference);
-              const targetDateTime = computeTargetDateTime(reminderTime, option.minutes, nowDateTime);
+              const targetDateTime = computeTargetDateTime('09:00', option.minutes, userNowDateTime); // Use 9 AM as default
               
-              if (!targetDateTime) {
-                continue;
-              }
+              if (!targetDateTime) continue;
               
-              if (previousDoseDateTime) {
-                const previousDoseDayStart = previousDoseDateTime.startOf('day');
-                if (targetDateTime >= previousDoseDayStart && targetDateTime <= previousDoseDateTime) {
-                  console.log(`Skipping ${med.name} at ${reminderTime} [offset=${preference}] because target ${targetDateTime.toISO()} overlaps previous dose at ${previousDoseDateTime.toISO()}`);
-                  continue;
-                }
-              }
-              
-              const shouldSend = shouldSendOffsetReminder(reminderTime, option.minutes, nowDateTime);
+              const shouldSend = shouldSendOffsetReminder('09:00', option.minutes, userNowDateTime);
               
               if (shouldSend) {
-                // Check if we've already sent this reminder today
-                const reminderKey = `${med.id}|${reminderTime}|${preference}|${todayIso}`;
+                const reminderKey = `${med.id}|any|${preference}|${todayIso}`;
                 if (lastSentReminders[reminderKey]) {
-                  console.log(`Skipping ${med.name} at ${reminderTime} [offset=${preference}] - already sent today`);
+                  console.log(`Skipping ${med.name} [any time, offset=${preference}] - already sent today`);
                   continue;
                 }
                 
-                const groupKey = `${preference}|${reminderTime}`;
+                const groupKey = `${preference}|09:00`;
                 if (!sendGroups[groupKey]) {
-                  sendGroups[groupKey] = { meds: [], reminderTime, offsetKey: preference, reminderKeys: [] };
+                  sendGroups[groupKey] = { meds: [], reminderTime: '09:00', offsetKey: preference, reminderKeys: [] };
                 }
                 sendGroups[groupKey].meds.push(med);
                 sendGroups[groupKey].reminderKeys.push(reminderKey);
-                console.log(`Queued ${med.name} for ${reminderTime} [offset=${preference}]`);
+                console.log(`Queued ${med.name} for any time [offset=${preference}]`);
               }
             }
+            continue;
+          }
+          
+          // Validate reminder time
+          const [reminderHour, reminderMinute] = reminderTime.split(':').map(Number);
+          if (Number.isNaN(reminderHour) || Number.isNaN(reminderMinute)) {
+            console.warn(`Skipping invalid reminder time "${reminderTime}" for ${med.name}`);
+            continue;
+          }
+          
+          // Send reminders only for the current dose's time
+          for (const preference of reminderPreferences) {
+            // If dose is already taken, skip all advance reminders
+            // Only send "already taken" email at the actual time
+            if (isAlreadyTaken && preference !== 'at_time') {
+              console.log(`  -> Skipping ${preference} reminder for ${med.name} - dose already taken`);
+              continue;
+            }
             
-            if (!previousDoseDateTime || doseDateTime > previousDoseDateTime) {
-              previousDoseDateTime = doseDateTime;
+            const option = getReminderOption(preference);
+            const targetDateTime = computeTargetDateTime(reminderTime, option.minutes, userNowDateTime);
+            
+            if (!targetDateTime) {
+              console.log(`  -> Skipping ${preference} reminder for ${med.name} - invalid targetDateTime`);
+              continue;
+            }
+            
+            const shouldSend = shouldSendOffsetReminder(reminderTime, option.minutes, userNowDateTime);
+            console.log(`  -> Checking ${preference} reminder for ${med.name} at ${reminderTime}: shouldSend=${shouldSend}, offset=${option.minutes}min, now=${userNowDateTime.toFormat('HH:mm')}, target=${targetDateTime.toFormat('HH:mm')}`);
+            
+            if (shouldSend) {
+              // Check if we've already sent this reminder today
+              const reminderKey = `${med.id}|${reminderTime}|${preference}|${todayIso}`;
+              if (lastSentReminders[reminderKey]) {
+                console.log(`  -> Skipping ${med.name} at ${reminderTime} [offset=${preference}] - already sent today`);
+                continue;
+              }
+              
+              // Mark medication as already taken for at_time reminders
+              const medWithTakenStatus = { ...med, _isAlreadyTaken: isAlreadyTaken };
+              
+              const groupKey = `${preference}|${reminderTime}`;
+              if (!sendGroups[groupKey]) {
+                sendGroups[groupKey] = { meds: [], reminderTime, offsetKey: preference, reminderKeys: [] };
+              }
+              sendGroups[groupKey].meds.push(medWithTakenStatus);
+              sendGroups[groupKey].reminderKeys.push(reminderKey);
+              console.log(`  -> Queued ${med.name} for ${reminderTime} [offset=${preference}] (current dose${isAlreadyTaken ? ', already taken' : ''})`);
             }
           }
         }
         
         // Send grouped emails (include alerts if offset is at_time at 09:00)
         let sentAtTimeNineAM = false;
-        for (const group of Object.values(sendGroups)) {
+        console.log(`\n=== EMAIL SENDING PHASE ===`);
+        console.log(`Total send groups: ${Object.keys(sendGroups).length}`);
+        for (const [groupKey, group] of Object.entries(sendGroups)) {
           if (!group || group.meds.length === 0) {
+            console.log(`Skipping empty group: ${groupKey}`);
             continue;
           }
           
@@ -990,39 +1615,96 @@ exports.sendMedicationReminders = functions.pubsub
             sentAtTimeNineAM = true;
           }
           
-          console.log(`Sending combined reminder email for ${group.meds.length} medications at ${group.reminderTime} [offset=${group.offsetKey}]${includeAlerts.length > 0 ? ` (with ${includeAlerts.length} alerts)` : ''}`);
-          await sendCombinedReminderEmail(userEmail, group.meds, group.reminderTime, group.offsetKey, includeAlerts, todaysSchedule);
-          
-          // Mark reminders as sent to prevent duplicates
-          if (group.reminderKeys) {
-            group.reminderKeys.forEach(key => {
-              lastSentReminders[key] = nowDateTime.toISO();
-            });
+          try {
+            console.log(`\n>>> ATTEMPTING TO SEND EMAIL <<<`);
+            console.log(`  Group key: ${groupKey}`);
+            console.log(`  Medications: ${group.meds.length}`);
+            console.log(`  Reminder time: ${group.reminderTime}`);
+            console.log(`  Offset: ${group.offsetKey}`);
+            console.log(`  Alerts: ${includeAlerts.length}`);
+            console.log(`  User email: ${userEmail}`);
+            console.log(`  Reminder keys: ${JSON.stringify(group.reminderKeys)}`);
+            
+            // Get bottle alerts for this user
+            const bottleAlerts = await getBottleAlertsForUser(userId, userNowDateTime);
+            
+            await sendCombinedReminderEmail(userEmail, group.meds, group.reminderTime, group.offsetKey, includeAlerts, todaysSchedule, bottleAlerts, userTimezone);
+            
+            console.log(`✅ SUCCESS: Email sent to ${userEmail} for ${group.meds.length} medications at ${group.reminderTime} [offset=${group.offsetKey}]`);
+            
+            // Mark reminders as sent to prevent duplicates
+            if (group.reminderKeys) {
+              group.reminderKeys.forEach(key => {
+                lastSentReminders[key] = userNowDateTime.toISO();
+                console.log(`  Marked reminder as sent: ${key}`);
+              });
+            }
+          } catch (error) {
+            console.error(`❌ FAILED to send reminder email to ${userEmail} for ${group.reminderTime} [offset=${group.offsetKey}]:`, error);
+            console.error(`  Error details:`, error.message);
+            console.error(`  Stack trace:`, error.stack);
+            // Continue with other groups even if one fails
           }
+        }
+        
+        if (Object.keys(sendGroups).length === 0) {
+          console.log(`No emails to send - no send groups created`);
         }
         
         // Update lastSentReminders in user document
         if (Object.keys(lastSentReminders).length > 0) {
-          // Clean up old entries (older than 2 days)
-          const twoDaysAgo = nowDateTime.minus({ days: 2 }).toISODate();
-          Object.keys(lastSentReminders).forEach(key => {
-            const keyDate = key.split('|')[3]; // Extract date from key
-            if (keyDate && keyDate < twoDaysAgo) {
-              delete lastSentReminders[key];
-            }
-          });
-          
-          await db.collection('users').doc(userId).set({
-            lastSentReminders: lastSentReminders
-          }, { merge: true });
+          try {
+            // Clean up old entries (older than 2 days)
+            const twoDaysAgo = userNowDateTime.minus({ days: 2 }).toISODate();
+            Object.keys(lastSentReminders).forEach(key => {
+              const keyDate = key.split('|')[3]; // Extract date from key
+              if (keyDate && keyDate < twoDaysAgo) {
+                delete lastSentReminders[key];
+              }
+            });
+            
+            await db.collection('users').doc(userId).set({
+              lastSentReminders: lastSentReminders
+            }, { merge: true });
+          } catch (error) {
+            console.error(`Failed to update lastSentReminders for ${userId}:`, error);
+          }
         }
         
         // If it's around 9 AM and we have alerts but no at-time reminders, send alerts-only email
-        if (!sentAtTimeNineAM && alertMeds.length > 0 && shouldSendOffsetReminder('09:00', REMINDER_OPTIONS.at_time.minutes, nowDateTime)) {
-          console.log(`Sending alerts-only email for ${alertMeds.length} medications at 09:00`);
-          await sendCombinedReminderEmail(userEmail, [], '09:00', 'at_time', alertMeds, todaysSchedule);
+        if (!sentAtTimeNineAM && alertMeds.length > 0 && shouldSendOffsetReminder('09:00', REMINDER_OPTIONS.at_time.minutes, userNowDateTime)) {
+          try {
+            console.log(`Sending alerts-only email for ${alertMeds.length} medications at 09:00`);
+            const bottleAlerts = await getBottleAlertsForUser(userId, userNowDateTime);
+            await sendCombinedReminderEmail(userEmail, [], '09:00', 'at_time', alertMeds, todaysSchedule, bottleAlerts, userTimezone);
+          } catch (error) {
+            console.error(`Failed to send alerts-only email to ${userEmail}:`, error);
+          }
         }
+        
+        // Check for missed doses (45+ minutes past scheduled time, not marked)
+        try {
+          await checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, userNowDateTime, db);
+        } catch (error) {
+          console.error(`Failed to check missed doses for ${userId}:`, error);
+        }
+        
+        // Summary log
+        console.log(`\n=== SUMMARY FOR USER ${userId} ===`);
+        console.log(`  Email: ${userEmail}`);
+        console.log(`  Timezone: ${userTimezone}`);
+        console.log(`  Current time: ${userNowDateTime.toFormat('yyyy-MM-dd HH:mm:ss')}`);
+        console.log(`  Medications checked: ${medicationsSnapshot.size}`);
+        console.log(`  Send groups created: ${Object.keys(sendGroups).length}`);
+        console.log(`  Alerts found: ${alertMeds.length}`);
+        console.log(`  Emails queued: ${Object.values(sendGroups).reduce((sum, g) => sum + (g.meds ? g.meds.length : 0), 0)}`);
+        console.log(`===================================\n`);
+      } catch (error) {
+        console.error(`❌ Error processing reminders for user ${userId} (${userEmail}):`, error);
+        console.error(`  Error stack:`, error.stack);
+        // Continue with next user even if this one fails
       }
+    }
       
       console.log('Medication reminder check completed');
       return null;
@@ -1045,13 +1727,10 @@ exports.sendLowStockAlerts = functions.pubsub
   });
 
 exports.sendDailyAgenda = functions.pubsub
-  .schedule('0 9 * * *')
-  .timeZone(TIME_ZONE)
+  .schedule('every 1 minutes') // Run every minute to check each user's 9 AM in their timezone
+  .timeZone('UTC') // Use UTC for the schedule, then convert to user timezone
   .onRun(async (context) => {
     console.log('sendDailyAgenda: Function started');
-    const now = getNowInZone();
-    const todayIso = now.toISODate();
-    console.log(`sendDailyAgenda: Current date is ${todayIso}, time is ${now.toISO()}`);
     const usersSnapshot = await admin.firestore().collection('users').get();
     console.log(`sendDailyAgenda: Found ${usersSnapshot.size} users`);
 
@@ -1062,22 +1741,37 @@ exports.sendDailyAgenda = functions.pubsub
         continue;
       }
 
+      // Get user's timezone (default to Pacific if not set)
+      const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
+      const userNow = getNowInZone(userTimezone);
+      const todayIso = userNow.toISODate();
+      
+      // Only send agenda if it's 9:00 AM in the user's timezone (within 5-minute window)
+      const currentHour = userNow.hour;
+      const currentMinute = userNow.minute;
+      if (currentHour !== 9 || currentMinute > 4) {
+        // Not 9:00-9:04 AM in user's timezone, skip
+        continue;
+      }
+
+      console.log(`sendDailyAgenda: Checking ${userEmail} (timezone: ${userTimezone}, time: ${userNow.toISO()})`);
+
       if (userData.lastAgendaSentDate === todayIso) {
         console.log(`Agenda already sent today for ${userEmail}, skipping`);
         continue;
       }
 
       try {
-        const scheduleEntries = await buildTodaysSchedule(userDoc.id, now);
+        const scheduleEntries = await buildTodaysSchedule(userDoc.id, userNow);
         if (!scheduleEntries.length) {
           console.log(`No schedule entries for ${userEmail} today, skipping`);
           continue;
         }
 
-        const bottleAlerts = await getBottleAlertsForUser(userDoc.id, now);
+        const bottleAlerts = await getBottleAlertsForUser(userDoc.id, userNow);
         await sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts);
         await userDoc.ref.set({ lastAgendaSentDate: todayIso }, { merge: true });
-        console.log(`Daily agenda sent to ${userEmail}`);
+        console.log(`Daily agenda sent to ${userEmail} at 9:00 AM ${userTimezone}`);
       } catch (error) {
         console.error(`Failed to send daily agenda for ${userEmail}`, error);
       }
@@ -1099,12 +1793,15 @@ exports.sendAgendaEmail = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'User profile not found.');
   }
 
-  const userEmail = userDoc.data().email;
+  const userData = userDoc.data();
+  const userEmail = userData.email;
   if (!userEmail) {
     throw new functions.https.HttpsError('failed-precondition', 'Please add an email address to your profile before sending your agenda.');
   }
 
-  const now = getNowInZone();
+  // Get user's timezone (default to Pacific if not set)
+  const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
+  const now = getNowInZone(userTimezone);
   const scheduleEntries = await buildTodaysSchedule(uid, now);
   if (!scheduleEntries.length) {
     throw new functions.https.HttpsError('not-found', 'No medications scheduled for today.');
@@ -1115,5 +1812,213 @@ exports.sendAgendaEmail = functions.https.onCall(async (data, context) => {
   await userRef.set({ lastAgendaSentDate: now.toISODate() }, { merge: true });
 
   return { status: 'success' };
+});
+
+/**
+ * Sends email verification code for registration
+ * @param {string} email - User's email address
+ * @param {string} code - 6-digit verification code
+ */
+async function sendEmailVerificationCode(email, code) {
+  const styles = `
+    body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
+    .wrapper { width:100%; padding:24px 0; }
+    .container { width:90%; max-width:640px; margin:0 auto; background:white; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12); }
+    .header { background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:32px 28px; color:white; text-align:center; }
+    .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
+    .content { padding:32px 28px; line-height:1.7; font-size:18px; background:#f9f9f9; }
+    .code-box { background:white; border:2px solid #3f6ff5; border-radius:16px; padding:32px; text-align:center; margin:24px 0; }
+    .code { font-size:48px; font-weight:700; letter-spacing:8px; color:#3f6ff5; font-family:monospace; }
+    .instructions { color:#44506b; margin:20px 0; font-size:16px; }
+    .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
+    .warning { background:#fff8f0; padding:18px; border-radius:12px; margin:20px 0; border-left:4px solid #f59b45; color:#543210; font-size:15px; }
+  `;
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>${styles}</style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h1>Verify Your Email</h1>
+            <p>MedTracker Registration</p>
+          </div>
+          <div class="content">
+            <p>Thank you for registering with MedTracker! Please use the verification code below to complete your registration:</p>
+            <div class="code-box">
+              <div class="code">${code}</div>
+            </div>
+            <p class="instructions">Enter this code in the registration form to verify your email address.</p>
+            <div class="warning">
+              <strong>⚠️ Security Notice:</strong> This code will expire in 10 minutes. If you didn't request this code, please ignore this email.
+            </div>
+            <p>If you have any questions, please contact our support team.</p>
+          </div>
+          <div class="footer">
+            This is an automated message from MedTracker.<br/>
+            Please do not reply to this email.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textBody = `
+Verify Your Email - MedTracker Registration
+
+Thank you for registering with MedTracker! Please use the verification code below to complete your registration:
+
+${code}
+
+Enter this code in the registration form to verify your email address.
+
+⚠️ Security Notice: This code will expire in 10 minutes. If you didn't request this code, please ignore this email.
+
+If you have any questions, please contact our support team.
+
+---
+This is an automated message from MedTracker.
+Please do not reply to this email.
+  `;
+
+  const mailOptions = {
+    from: `MedTracker <${gmailEmail}>`,
+    to: email,
+    subject: `MedTracker: Email Verification Code`,
+    text: textBody,
+    html: htmlBody
+  };
+
+  await transporter.sendMail(mailOptions);
+  console.log(`Verification email sent to ${email}`);
+}
+
+/**
+ * Cloud Function to send email verification code
+ * POST /sendEmailVerificationCode
+ * Body: { email: string }
+ */
+exports.sendEmailVerificationCode = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { email } = req.body;
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: 'Valid email address is required' });
+      return;
+    }
+
+    // Generate 6-digit verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store code in Firestore with 10-minute expiration
+    const db = admin.firestore();
+    const verificationRef = db.collection('emailVerifications').doc();
+    await verificationRef.set({
+      email: email.toLowerCase(),
+      code: code,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 10 * 60 * 1000)) // 10 minutes
+    });
+
+    // Send email
+    await sendEmailVerificationCode(email, code);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Verification email sent',
+      // For testing only - remove in production
+      code: code
+    });
+
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    res.status(500).json({ error: 'Failed to send verification email: ' + error.message });
+  }
+});
+
+/**
+ * Cloud Function to verify email code
+ * POST /verifyEmailCode
+ * Body: { email: string, code: string }
+ */
+exports.verifyEmailCode = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      res.status(400).json({ error: 'Email and code are required' });
+      return;
+    }
+
+    // Find verification record
+    const db = admin.firestore();
+    const verificationsSnapshot = await db.collection('emailVerifications')
+      .where('email', '==', email.toLowerCase())
+      .where('code', '==', code)
+      .limit(1)
+      .get();
+
+    if (verificationsSnapshot.empty) {
+      res.status(400).json({ error: 'Invalid verification code' });
+      return;
+    }
+
+    const verification = verificationsSnapshot.docs[0].data();
+    const expiresAt = verification.expiresAt.toDate();
+
+    // Check if code has expired
+    if (new Date() > expiresAt) {
+      res.status(400).json({ error: 'Verification code has expired' });
+      return;
+    }
+
+    // Mark as verified and delete the verification record
+    await verificationsSnapshot.docs[0].ref.delete();
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Email verified successfully' 
+    });
+
+  } catch (error) {
+    console.error('Error verifying email code:', error);
+    res.status(500).json({ error: 'Failed to verify code: ' + error.message });
+  }
 });
 

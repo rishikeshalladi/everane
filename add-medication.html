@@ -17,8 +17,11 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
         --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+        /* Improved contrast for better readability */
+        --text-strong: #020617;
+        --muted-strong: #334155;
       }
     }
 
@@ -268,6 +271,8 @@
       box-shadow: var(--shadow);
       padding: 1.25rem;
       text-align: left;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
 
@@ -533,10 +538,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     <a href="history.html">History</a>
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
-    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
-      <span>Profile</span>
-      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
-    </a>
+    <a href="stats.html">Stats</a>
+    <a href="profile.html">Profile</a>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -591,6 +595,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               <option>None</option>
               <option>Email</option>
               <option>SMS</option>
+              <option>Email + SMS</option>
             </select>
             <div id="reminder-error" class="error-message"></div>
           </div>
@@ -603,6 +608,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         <!-- STEP 3 -->
         <div id="step-3" class="form-step">
           <h2>Add Bottles</h2>
+          <p>Add the expiration date and number of pills left of each bottle.</p>
+          <p>If you don't add a bottle, you will receive a reminder to add one.</p>
           <div id="bottles-list"></div>
           <button type="button" id="add-bottle" class="btn-secondary btn-sm">+ Add Bottle</button>
           <div class="wizard-nav">
@@ -789,7 +796,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       return ok;
     }
 
-    // Validate Step 2
+    // Validate Step 2
     function valid2(){
       clearErr('reminder-error');
       const rem = document.getElementById('reminder').value;
@@ -886,7 +893,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             startDate: medData.startDate === 'N/A' ? null : medData.startDate,
             endDate: medData.endDate === 'N/A' ? null : medData.endDate,
             reminder: medData.reminderMethod === 'E' ? 'Email' : 
-                     medData.reminderMethod === 'S' ? 'SMS' : 'None',
+                     medData.reminderMethod === 'S' ? 'SMS' : 
+                     medData.reminderMethod === 'ES' ? 'Email + SMS' : 'None',
             bottles: medData.bottles ? medData.bottles.map(bottleStr => {
               const parts = bottleStr.split('/');
               if (parts.length >= 4) {
@@ -959,10 +967,42 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       });
       console.log('[Add-Medication] Set days:', med.days);
       
-      // Set dates
-      document.getElementById('start-date').value = med.startDate || '';
-      document.getElementById('end-date').value = med.endDate || '';
-      console.log('[Add-Medication] Set dates - start:', med.startDate, 'end:', med.endDate);
+      // Convert date format from M/d/yyyy to YYYY-MM-DD for HTML date inputs
+      const convertDateForInput = (dateStr) => {
+        if (!dateStr || dateStr === 'N/A' || dateStr === '') return '';
+        // If already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+          return dateStr;
+        }
+        // If in M/d/yyyy format, convert to YYYY-MM-DD
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+          const parts = dateStr.split('/');
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+        // Try parsing as Date object
+        try {
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
+        } catch (e) {
+          console.warn('[Add-Medication] Could not parse date:', dateStr);
+        }
+        return '';
+      };
+      
+      // Set dates (convert format for HTML date inputs)
+      const startDateValue = convertDateForInput(med.startDate);
+      const endDateValue = convertDateForInput(med.endDate);
+      document.getElementById('start-date').value = startDateValue;
+      document.getElementById('end-date').value = endDateValue;
+      console.log('[Add-Medication] Set dates - start:', med.startDate, '->', startDateValue, 'end:', med.endDate, '->', endDateValue);
       
       // Set reminder
       if (renewIdx === null) {
@@ -995,8 +1035,15 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       const dosage      = +document.getElementById('dosage').value;
       const timesPerDay = +timesInput.value;
       const days        = [...tg.querySelectorAll('.toggle-btn.active')].map(b=>b.dataset.day.toLowerCase());
-      const times       = [...timePickers.querySelectorAll('input[type="time"]')]
+      let times       = [...timePickers.querySelectorAll('input[type="time"]')]
                             .map(i=>i.value).filter(v=>v);
+      // Sort times chronologically (HH:MM format)
+      times.sort((a, b) => {
+        const [aHour, aMin] = a.split(':').map(Number);
+        const [bHour, bMin] = b.split(':').map(Number);
+        if (aHour !== bHour) return aHour - bHour;
+        return aMin - bMin;
+      });
       const perWeek     = `${days.length * timesPerDay} times a week`;
       const perDay      = `${timesPerDay} times a day`;
       let nextDosage;
@@ -1007,10 +1054,21 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         const offset = idxs.map(i=>((i-today+7)%7)).sort((a,b)=>a-b)[0];
         nextDosage = offset===0 ? days[0] : weekdaysConst[(today+offset)%7];
       }
-      // Part 2
-      const startDate = document.getElementById('start-date').value||null;
+      // Part 2
+      let startDate = document.getElementById('start-date').value||null;
       const endDate   = document.getElementById('end-date').value  ||null;
       const reminder  = document.getElementById('reminder').value;
+      
+      // If no start date provided, set to today (for new medications, edits, and renewals)
+      if (!startDate) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        startDate = `${year}-${month}-${day}`;
+        console.log('[Add-Medication] No start date provided, setting to today:', startDate);
+      }
+      
       // Build and save
       const med = {name,dosage,days,timesPerDay,times,perWeek,perDay,nextDosage,
                    startDate,endDate,reminder,bottles};
@@ -1035,15 +1093,37 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         
         const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
         
-        // Convert to Firebase format
+        // Convert to Firebase format (MM/DD/YYYY)
         const formatDate = (dateStr) => {
-          if (!dateStr) return 'N/A';
-          return new Date(dateStr).toLocaleDateString();
+          if (!dateStr || dateStr === 'N/A') return 'N/A';
+          
+          // If it's already in MM/DD/YYYY format, return as is
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+            return dateStr;
+          }
+          
+          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
+          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const year = dateObj.getFullYear();
+            return `${month}/${day}/${year}`;
+          }
+          
+          // For other formats, try to parse and convert
+          const dateObj = new Date(dateStr);
+          if (isNaN(dateObj.getTime())) return 'N/A';
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          const year = dateObj.getFullYear();
+          return `${month}/${day}/${year}`;
         };
 
         let reminderMethod = 'N';
         if (med.reminder === 'Email') reminderMethod = 'E';
         else if (med.reminder === 'SMS') reminderMethod = 'S';
+        else if (med.reminder === 'Email + SMS') reminderMethod = 'ES';
 
         const bottles = [];
         if (med.bottles && med.bottles.length > 0) {
@@ -1070,7 +1150,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           notes: {} // Preserve existing notes from Firebase
         };
         
-        // Get existing data to preserve createdAt and notes
+        // Get existing data to preserve createdAt, notes, and doses
         try {
           const existingDoc = await getDoc(medDocRef);
           if (existingDoc.exists()) {
@@ -1078,6 +1158,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             // Preserve notes if they exist
             if (existingData.notes) {
               medData.notes = existingData.notes;
+            }
+            // Preserve doses - keep all historical dose data when editing
+            if (existingData.doses) {
+              medData.doses = existingData.doses;
+              console.log('[Add-Medication] Preserved existing doses history:', Object.keys(existingData.doses).length, 'entries');
             }
             // Preserve createdAt - it should only be set when first creating the medication
             if (existingData.createdAt) {
@@ -1088,7 +1173,26 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           console.warn('[Add-Medication] Could not retrieve existing data:', error);
         }
         
-        await setDoc(medDocRef, medData);
+        // Remove doseStatus and doseHistory if they exist
+        const updateData = { ...medData };
+        try {
+          const existingDoc = await getDoc(medDocRef);
+          if (existingDoc.exists()) {
+            const existingData = existingDoc.data();
+            if (existingData.doseStatus !== undefined) {
+              updateData.doseStatus = deleteField();
+              console.log('[Add-Medication] Removing old doseStatus field');
+            }
+            if (existingData.doseHistory !== undefined) {
+              updateData.doseHistory = deleteField();
+              console.log('[Add-Medication] Removing old doseHistory field');
+            }
+          }
+        } catch (error) {
+          console.warn('[Add-Medication] Could not check for old fields:', error);
+        }
+        
+        await setDoc(medDocRef, updateData);
         console.log(`[Add-Medication] Updated medication: ${med.name} (ID: ${editIdx})`);
       } else if (renewIdx !== null) {
         // Renew medication - update in Firebase and set deletedStatus: false
@@ -1106,10 +1210,31 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         
         console.log('[Add-Medication] Renewing medication with ID:', renewMedId);
         
-        // Format dates properly
+        // Format dates properly (MM/DD/YYYY)
         const formatDate = (dateStr) => {
-          if (!dateStr) return 'N/A';
-          return new Date(dateStr).toLocaleDateString();
+          if (!dateStr || dateStr === 'N/A') return 'N/A';
+          
+          // If it's already in MM/DD/YYYY format, return as is
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+            return dateStr;
+          }
+          
+          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
+          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const year = dateObj.getFullYear();
+            return `${month}/${day}/${year}`;
+          }
+          
+          // For other formats, try to parse and convert
+          const dateObj = new Date(dateStr);
+          if (isNaN(dateObj.getTime())) return 'N/A';
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          const year = dateObj.getFullYear();
+          return `${month}/${day}/${year}`;
         };
         
         // Prepare medication data for Firebase
@@ -1122,7 +1247,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           startDate: formatDate(med.startDate),
           endDate: formatDate(med.endDate),
           reminderMethod: med.reminder === 'Email' ? 'E' : 
-                         med.reminder === 'SMS' ? 'S' : 'N',
+                         med.reminder === 'SMS' ? 'S' : 
+                         med.reminder === 'Email + SMS' ? 'ES' : 'N',
           bottles: (med.bottles || []).map(bottle => {
             const expDate = formatDate(bottle.expiration);
             const quantity = bottle.quantity || 'N/A';
@@ -1136,7 +1262,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         // Update the medication in Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", renewMedId);
         
-        // Get existing data to preserve createdAt and notes
+        // Get existing data to preserve createdAt, notes, and doses
         try {
           const existingDoc = await getDoc(medDocRef);
           if (existingDoc.exists()) {
@@ -1144,6 +1270,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             // Preserve notes if they exist
             if (existingData.notes) {
               medData.notes = existingData.notes;
+            }
+            // Preserve doses - keep all historical dose data when renewing
+            if (existingData.doses) {
+              medData.doses = existingData.doses;
+              console.log('[Add-Medication] Preserved existing doses history:', Object.keys(existingData.doses).length, 'entries');
             }
             // Preserve createdAt - use the original creation date when renewing
             if (existingData.createdAt) {
@@ -1154,7 +1285,26 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           console.warn('[Add-Medication] Could not retrieve existing data:', error);
         }
         
-        await setDoc(medDocRef, medData);
+        // Remove doseStatus and doseHistory if they exist
+        const updateData = { ...medData };
+        try {
+          const existingDoc = await getDoc(medDocRef);
+          if (existingDoc.exists()) {
+            const existingData = existingDoc.data();
+            if (existingData.doseStatus !== undefined) {
+              updateData.doseStatus = deleteField();
+              console.log('[Add-Medication] Removing old doseStatus field');
+            }
+            if (existingData.doseHistory !== undefined) {
+              updateData.doseHistory = deleteField();
+              console.log('[Add-Medication] Removing old doseHistory field');
+            }
+          }
+        } catch (error) {
+          console.warn('[Add-Medication] Could not check for old fields:', error);
+        }
+        
+        await setDoc(medDocRef, updateData);
         console.log(`[Add-Medication] Renewed medication: ${med.name} (ID: ${renewMedId}), set deletedStatus to false`);
         
 // Clean up temporary data
@@ -1169,11 +1319,40 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         
         console.log('[Add-Medication] Adding new medication:', med.name);
         
-        // Format dates properly
+        // Format dates properly (MM/DD/YYYY)
         const formatDate = (dateStr) => {
-          if (!dateStr) return 'N/A';
-          return new Date(dateStr).toLocaleDateString();
+          if (!dateStr || dateStr === 'N/A') return 'N/A';
+          
+          // If it's already in MM/DD/YYYY format, return as is
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+            return dateStr;
+          }
+          
+          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
+          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const year = dateObj.getFullYear();
+            return `${month}/${day}/${year}`;
+          }
+          
+          // For other formats, try to parse and convert
+          const dateObj = new Date(dateStr);
+          if (isNaN(dateObj.getTime())) return 'N/A';
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          const year = dateObj.getFullYear();
+          return `${month}/${day}/${year}`;
         };
+        
+        // Sort times chronologically before saving
+        const sortedTimes = (med.times || []).slice().sort((a, b) => {
+          const [aHour, aMin] = a.split(':').map(Number);
+          const [bHour, bMin] = b.split(':').map(Number);
+          if (aHour !== bHour) return aHour - bHour;
+          return aMin - bMin;
+        });
         
         // Prepare medication data for Firebase
         const medData = {
@@ -1181,11 +1360,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           dosage: parseInt(med.dosage) || 0,
           daysOfWeek: med.days || [],
           timesPerDay: parseInt(med.timesPerDay) || 0,
-          times: med.times || [],
+          times: sortedTimes,
           startDate: formatDate(med.startDate),
           endDate: formatDate(med.endDate),
           reminderMethod: med.reminder === 'Email' ? 'E' : 
-                         med.reminder === 'SMS' ? 'S' : 'N',
+                         med.reminder === 'SMS' ? 'S' : 
+                         med.reminder === 'Email + SMS' ? 'ES' : 'N',
           bottles: (med.bottles || []).map(bottle => {
             const expDate = formatDate(bottle.expiration);
             const quantity = bottle.quantity || 'N/A';
@@ -1221,17 +1401,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
     });
 
+
     // constant
     const weekdaysConst = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   </script>
 
 <style>
-  .verify-warning {
-    font-size: 1rem;
-    cursor: help;
-    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
-    animation: pulse 2s ease-in-out infinite;
-  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
@@ -1243,47 +1418,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
   onAuthStateChanged(window.auth, async (user) => {
     console.log('[Add-Medication] Auth state changed:', user ? `User: ${user.email}` : 'No user');
-    
-    const warningIcon = document.getElementById('profile-verify-warning');
-    if (!warningIcon) {
-      console.warn('[Add-Medication] Warning icon not found!');
-      return;
-    }
-
-    if (user) {
-      let needsVerification = false;
-      console.log('[Add-Medication] Email verified:', user.emailVerified);
-      if (!user.emailVerified) needsVerification = true;
-
-      // Check localStorage first (instant)
-      try {
-        const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-        console.log('[Add-Medication] Local phone:', localProfile.phone, 'Local phone verified:', localProfile.phoneVerified);
-        if (localProfile.phone && !localProfile.phoneVerified) needsVerification = true;
-      } catch (error) {
-        console.log('[Add-Medication] Could not check localStorage:', error);
-      }
-
-      // Update warning immediately
-      console.log('[Add-Medication] Needs verification:', needsVerification);
-      warningIcon.style.display = needsVerification ? 'inline' : 'none';
-
-      // Check Firestore in background and update if needed
-      try {
-        const userDocRef = doc(window.db, "users", user.uid);
-        getDoc(userDocRef).then(docSnap => {
-          const profile = docSnap.data() || {};
-          console.log('[Add-Medication] Firestore phone:', profile.phone, 'Firestore phone verified:', profile.phoneVerified);
-          if (profile.phone && !profile.phoneVerified) {
-            warningIcon.style.display = 'inline';
-          }
-        });
-      } catch (error) {
-        console.log('[Add-Medication] Could not check Firestore:', error);
-      }
-    } else {
-      warningIcon.style.display = 'none';
-    }
   });
 
   // ============ FIRESTORE MEDICATION SYNC HELPERS ============
@@ -1325,16 +1459,38 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           }
         });
 
-        // Format dates as mm/dd/yyyy
+        // Format dates as MM/DD/YYYY
         const formatDate = (dateStr) => {
-          if (!dateStr) return 'N/A';
-          return new Date(dateStr).toLocaleDateString();
+          if (!dateStr || dateStr === 'N/A') return 'N/A';
+          
+          // If it's already in MM/DD/YYYY format, return as is
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+            return dateStr;
+          }
+          
+          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
+          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            const year = dateObj.getFullYear();
+            return `${month}/${day}/${year}`;
+          }
+          
+          // For other formats, try to parse and convert
+          const dateObj = new Date(dateStr);
+          if (isNaN(dateObj.getTime())) return 'N/A';
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          const year = dateObj.getFullYear();
+          return `${month}/${day}/${year}`;
         };
 
         // Format reminder method
         let reminderMethod = 'N';
         if (med.reminder === 'Email') reminderMethod = 'E';
         else if (med.reminder === 'SMS') reminderMethod = 'S';
+        else if (med.reminder === 'Email + SMS') reminderMethod = 'ES';
 
         // Format bottles as array
         const stock = med.bottles ? med.bottles.length : 0;
@@ -1351,12 +1507,20 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         const existingMedDoc = await getDoc(medDocRef);
         const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
         
+        // Sort times chronologically before saving
+        const sortedTimes = (med.times || []).slice().sort((a, b) => {
+          const [aHour, aMin] = a.split(':').map(Number);
+          const [bHour, bMin] = b.split(':').map(Number);
+          if (aHour !== bHour) return aHour - bHour;
+          return aMin - bMin;
+        });
+        
         const medData = {
           name: med.name || '',
           dosage: med.dosage || 0,
           daysOfWeek: med.days || [],
           timesPerDay: med.timesPerDay || 0,
-          times: med.times || [],
+          times: sortedTimes,
           startDate: formatDate(med.startDate),
           endDate: formatDate(med.endDate),
           reminderMethod: reminderMethod,

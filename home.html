@@ -18,8 +18,11 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
         --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+        /* Improved contrast for better readability */
+        --text-strong: #020617;
+        --muted-strong: #334155;
       }
     }
 
@@ -311,6 +314,8 @@
       box-shadow: var(--shadow);
       padding: 1.25rem;
       text-align: left;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
 
@@ -318,7 +323,8 @@
     .agenda-modal .modal-content {
       max-width: 720px;
       width: 95%;
-      max-height: 85vh;
+      max-height: 90vh;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 1rem;
@@ -656,10 +662,9 @@
     <a href="history.html">History</a>
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
-    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
-      <span>Profile</span>
-      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
-    </a>
+    <a href="stats.html">Stats</a>
+    <a href="profile.html">Profile</a>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -978,8 +983,15 @@
         const medData = medDoc.data();
         
         // Add new bottle in Firebase format: "MM/DD/YYYY/quantity"
+        // Convert date from YYYY-MM-DD (date input) to MM/DD/YYYY (Firebase format)
+        const dateObj = new Date(expDate + 'T00:00:00'); // Add time to avoid timezone issues
+        const month = dateObj.getMonth() + 1;
+        const day = dateObj.getDate();
+        const year = dateObj.getFullYear();
+        const formattedDate = `${month}/${day}/${year}`;
+        
         const bottles = medData.bottles || [];
-        const newBottle = `${expDate}/${quantity || 'N/A'}`;
+        const newBottle = `${formattedDate}/${quantity || 'N/A'}`;
         bottles.push(newBottle);
         
         // Update Firebase
@@ -990,12 +1002,12 @@
         
         console.log('[Home] Added bottle to medication:', currentStockMedId);
       
-      // Close add modal and return to stock modal
-      document.getElementById('stock-add-modal').classList.remove('show');
-      document.getElementById('stock-modal').classList.add('show');
-        
-        // Reload stock list
+        // Reload stock list from Firebase
         await renderStockList();
+        
+        // Close add modal and return to stock modal
+        document.getElementById('stock-add-modal').classList.remove('show');
+        document.getElementById('stock-modal').classList.add('show');
       } catch (error) {
         console.error('Error adding bottle:', error);
         errorEl.textContent = 'Error adding bottle: ' + error.message;
@@ -1046,12 +1058,6 @@
 </script>
 
 <style>
-  .verify-warning {
-    font-size: 1rem;
-    cursor: help;
-    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
-    animation: pulse 2s ease-in-out infinite;
-  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
@@ -1408,7 +1414,8 @@
         let currentDoseDisplay = '';
         if (currentDose) {
           const timeDisplay = currentDose.timeStr ? formatTime12h(currentDose.timeStr) : 'Any time';
-          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay}, Dose #${currentDose.doseNumber}`;
+          const weekdayDisplay = currentDose.weekday ? currentDose.weekday.charAt(0).toUpperCase() + currentDose.weekday.slice(1) : '';
+          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay}${weekdayDisplay ? ` on ${weekdayDisplay}` : ''}, Dose #${currentDose.doseNumber}`;
         }
         
         const card = document.createElement('div');
@@ -1432,6 +1439,93 @@
         `;
         
         // Function to save/update dose in Firebase
+        // Helper function to update stock based on dose status change
+        const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+          if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
+            console.log('[Home] No bottles to update stock for');
+            return medData.bottles || [];
+          }
+
+          // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
+          let stockChange = 0;
+          if (previousTaken !== true && newTaken === true) {
+            // Going from not-taken (or null) to taken: subtract dosage
+            stockChange = -dosage;
+          } else if (previousTaken === true && newTaken === false) {
+            // Going from taken to not-taken: add dosage back
+            stockChange = dosage;
+          }
+          // If status doesn't change or goes from not-taken to not-taken: no change
+
+          if (stockChange === 0) {
+            console.log('[Home] No stock change needed (status unchanged or not-taken to not-taken)');
+            return medData.bottles;
+          }
+
+          console.log(`[Home] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
+
+          // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
+          const now = new Date();
+          const parsedBottles = medData.bottles.map((bottleStr, index) => {
+            const parts = bottleStr.split('/');
+            if (parts.length < 3) return null;
+            
+            const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
+            const expirationDate = new Date(expirationStr);
+            const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
+            
+            return {
+              index,
+              expiration: expirationDate,
+              quantity: quantity,
+              original: bottleStr
+            };
+          }).filter(b => b !== null);
+
+          // Sort by expiration date (earliest first)
+          parsedBottles.sort((a, b) => a.expiration - b.expiration);
+
+          // Find the first bottle that hasn't expired and has quantity
+          let activeBottle = parsedBottles.find(b => 
+            b.expiration >= now && (b.quantity === null || b.quantity > 0)
+          );
+
+          // If no unexpired bottle, use the earliest one (even if expired)
+          if (!activeBottle && parsedBottles.length > 0) {
+            activeBottle = parsedBottles[0];
+          }
+
+          if (!activeBottle) {
+            console.log('[Home] No active bottle found to update');
+            return medData.bottles;
+          }
+
+          console.log(`[Home] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
+
+          // Update the quantity
+          const newBottles = [...medData.bottles];
+          const bottleParts = newBottles[activeBottle.index].split('/');
+          
+          if (bottleParts.length >= 4) {
+            let newQuantity = activeBottle.quantity;
+            if (newQuantity === null) {
+              // If quantity was N/A, we can't track it, so don't update
+              console.log('[Home] Bottle quantity is N/A, cannot update stock');
+              return medData.bottles;
+            }
+            
+            newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+            
+            // Rebuild bottle string with updated quantity
+            const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
+            newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
+            
+            console.log(`[Home] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
+          }
+
+          return newBottles;
+        };
+
         // Returns true if status changed, false if it's the same
         const saveDoseToFirebase = async (medicationId, doseNumber, date, taken) => {
           try {
@@ -1478,14 +1572,20 @@
             
             // Check if status is changing
             const existingEntry = doses[doseKey];
+            const previousTaken = existingEntry ? existingEntry.taken : undefined;
             const statusChanged = !existingEntry || existingEntry.taken !== taken;
             
             // Use object instead of array (Firestore doesn't support nested arrays)
             // This structure makes it collapsible in Firebase console
+            // Preserve existing takenAt timestamp if already taken, or set new one if marking as taken
             const newDoseEntry = {
               date: dateStr,
               doseNumber: doseNum,
-              taken: taken
+              taken: taken,
+              // Add timestamp when marked as taken, preserve existing if already taken
+              takenAt: taken 
+                ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
+                : null
             };
 
             const exists = doses.hasOwnProperty(doseKey);
@@ -1497,8 +1597,15 @@
               console.log('[Home] Added new dose entry:', newDoseEntry);
             }
 
+            // Update stock based on dose status change
+            const dosage = Number(medData.dosage) || 0;
+            const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
+
             // Save to Firebase - remove doseStatus and doseHistory if they exist (cleanup old data)
-            const updateData = { doses: doses };
+            const updateData = { 
+              doses: doses,
+              bottles: updatedBottles
+            };
             if (medData.doseStatus !== undefined) {
               updateData.doseStatus = deleteField();
               console.log('[Home] Removing old doseStatus field');
@@ -1509,7 +1616,7 @@
             }
             
             await setDoc(medDocRef, updateData, { merge: true });
-            console.log('[Home] Saved doses to Firebase for medication:', medicationId);
+            console.log('[Home] Saved doses and updated stock to Firebase for medication:', medicationId);
             return statusChanged;
           } catch (error) {
             console.error('[Home] Error saving dose to Firebase:', error);
@@ -1542,12 +1649,58 @@
             
             const currentDose = determineCurrentDose(med);
             if (currentDose) {
-              const today = new Date();
-              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, today, true);
+              // Use the dateTime from currentDose, which contains the correct date for this dose
+              const doseDate = new Date(currentDose.dateTime);
+              // Reset time to midnight to get just the date part for the key
+              doseDate.setHours(0, 0, 0, 0);
               
-              // Only flash if status actually changed
+              // Check if already marked as taken before saving
+              const user = window.auth.currentUser;
+              let alreadyTaken = false;
+              if (user) {
+                try {
+                  const medDocRef = doc(window.db, "users", user.uid, "medications", med.id);
+                  const medDoc = await getDoc(medDocRef);
+                  if (medDoc.exists()) {
+                    const medData = medDoc.data();
+                    const doses = medData.doses || {};
+                    const dateStr = doseDate.toISOString().split('T')[0];
+                    const doseKey = `${dateStr}_${currentDose.doseNumber}`;
+                    const existingEntry = doses[doseKey];
+                    if (existingEntry && existingEntry.taken === true) {
+                      alreadyTaken = true;
+                      console.log('[Home] Medication already marked as taken, not opening notes');
+                    }
+                  }
+                } catch (error) {
+                  console.error('[Home] Error checking existing status:', error);
+                }
+              }
+              
+              // Mark as taken in Firebase and flash green
+              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, true);
+              
+              // Flash green if status changed
               if (statusChanged) {
                 triggerFlash(card, 'green');
+              }
+              
+              // Only navigate to notes if it wasn't already taken
+              if (!alreadyTaken) {
+                // Get date string in local timezone for URL
+                const year = doseDate.getFullYear();
+                const month = String(doseDate.getMonth() + 1).padStart(2, '0');
+                const day = String(doseDate.getDate()).padStart(2, '0');
+                const dateString = `${year}-${month}-${day}`;
+                
+                // Build URL with parameters
+                const timeParam = currentDose.timeStr ? encodeURIComponent(currentDose.timeStr) : 'no-time';
+                const url = `medication-action.html?medication=${encodeURIComponent(med.name)}&dose=${currentDose.doseNumber}&time=${timeParam}&date=${dateString}&medId=${encodeURIComponent(med.id)}`;
+                
+                // Wait a moment for the flash to be visible, then navigate
+                setTimeout(() => {
+                  window.location.href = url;
+                }, 400);
               }
             } else {
               console.warn('[Home] Could not determine current dose for:', med.name);
@@ -1566,8 +1719,11 @@
             
             const currentDose = determineCurrentDose(med);
             if (currentDose) {
-              const today = new Date();
-              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, today, false);
+              // Use the dateTime from currentDose, which contains the correct date for this dose
+              const doseDate = new Date(currentDose.dateTime);
+              // Reset time to midnight to get just the date part for the key
+              doseDate.setHours(0, 0, 0, 0);
+              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, false);
               
               // Only flash if status actually changed
               if (statusChanged) {
@@ -1612,73 +1768,8 @@
   // Check verification status
   onAuthStateChanged(auth, async (user) => {
     console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
-    
-    const warningIcon = document.getElementById('profile-verify-warning');
-    
-    if (!warningIcon) {
-      console.warn('[Home] Warning icon not found!');
-      return;
-    }
 
     if (user) {
-      let needsVerification = false;
-
-      // Check email verification (this is always available)
-      console.log('[Home] Email verified:', user.emailVerified);
-      if (!user.emailVerified) {
-        needsVerification = true;
-      }
-
-      // Check localStorage first for phone verification status
-      try {
-        const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-        console.log('[Home] Local phone:', localProfile.phone, 'Local phone verified:', localProfile.phoneVerified);
-        
-        // If phone exists in localStorage but not verified, show warning
-        if (localProfile.phone && !localProfile.phoneVerified) {
-          needsVerification = true;
-        }
-        
-        // Also check Firestore as backup (but don't wait for it)
-        const userDocRef = doc(db, "users", user.uid);
-        getDoc(userDocRef).then(docSnap => {
-          const profile = docSnap.data() || {};
-          console.log('[Home] Firestore phone:', profile.phone, 'Firestore phone verified:', profile.phoneVerified);
-          
-          // Update localStorage with latest data
-          if (profile.phone !== undefined) {
-            localProfile.phone = profile.phone;
-          }
-          if (profile.phoneVerified !== undefined) {
-            localProfile.phoneVerified = profile.phoneVerified;
-          }
-          localStorage.setItem('userProfile', JSON.stringify(localProfile));
-          
-          // Re-check verification status
-          let newNeedsVerification = false;
-          if (!user.emailVerified) newNeedsVerification = true;
-          if (localProfile.phone && !localProfile.phoneVerified) newNeedsVerification = true;
-          
-          if (newNeedsVerification !== needsVerification) {
-            warningIcon.style.display = newNeedsVerification ? 'inline' : 'none';
-            console.log('[Home] Updated verification status:', newNeedsVerification);
-          }
-        }).catch(error => {
-          console.error('[Home] Error checking Firestore:', error);
-        });
-        
-      } catch (error) {
-        console.error('[Home] Error checking localStorage:', error);
-      }
-
-      // Update warning icon immediately (based on email + localStorage)
-      console.log('[Home] Needs verification:', needsVerification);
-      if (needsVerification) {
-        warningIcon.style.display = 'inline';
-      } else {
-        warningIcon.style.display = 'none';
-      }
-
       // Refresh the display
       console.log('[Home] User authenticated, calling renderList()');
       if (user && user.uid) {
@@ -1687,8 +1778,7 @@
         console.log('[Home] User not properly authenticated, skipping renderList()');
       }
     } else {
-      // No user, hide warning and clear data
-      warningIcon.style.display = 'none';
+      // No user, clear data
       localStorage.removeItem('medications');
       localStorage.removeItem('historyMeds');
     }
@@ -1980,5 +2070,657 @@
   
 </script>
 
+  <!-- First-time User Help Popup -->
+  <div id="first-time-popup" class="first-time-popup" style="display: none;">
+    <div class="popup-progress-bar">
+      <div class="popup-progress-fill"></div>
+    </div>
+    <button class="popup-close-btn" id="close-first-time-popup">×</button>
+    <div class="popup-content-wrapper">
+      <p class="popup-main-text">Confused or need help on using this app?</p>
+      <p class="popup-sub-text">This guide can be found in profile</p>
+      <button class="popup-watch-btn" id="open-help-modal-from-popup">Click to watch</button>
+    </div>
+  </div>
+
+  <!-- Help Modal with Canva Embed -->
+  <div id="help-modal" class="help-modal">
+    <div class="help-modal-content">
+      <button class="help-modal-close" id="close-help-modal">×</button>
+      <h2 class="help-modal-title">How to Use MedTracker</h2>
+      <div class="help-modal-slideshow">
+        <div class="slideshow-container">
+          <div class="slide active" data-slide="0">
+            <img src="slideshow/1.png" alt="Slide 1: Check Your Home Screen" class="slide-image">
+          </div>
+          <div class="slide" data-slide="1">
+            <img src="slideshow/2.png" alt="Slide 2: Add Your Bottles" class="slide-image">
+          </div>
+          <div class="slide" data-slide="2">
+            <img src="slideshow/3.png" alt="Slide 3: Check Calendar For Your History" class="slide-image">
+          </div>
+          <div class="slide" data-slide="3">
+            <img src="slideshow/4.png" alt="Slide 4: Access This Guide In Profile" class="slide-image">
+          </div>
+          <div class="slide" data-slide="4">
+            <img src="slideshow/5.png" alt="Slide 5: Click A Medication To Change It" class="slide-image">
+          </div>
+          <div class="slide" data-slide="5">
+            <img src="slideshow/6.png" alt="Slide 6: Mark A Dose When You Take It" class="slide-image">
+          </div>
+          <div class="slide" data-slide="6">
+            <img src="slideshow/7.png" alt="Slide 7: Add Notes (Optional)" class="slide-image">
+          </div>
+          <div class="slide" data-slide="7">
+            <img src="slideshow/8.png" alt="Slide 8: Choose Your Doses" class="slide-image">
+          </div>
+          <div class="slide" data-slide="8">
+            <img src="slideshow/9.png" alt="Slide 9: Add Your First Medication" class="slide-image">
+          </div>
+          <div class="slide" data-slide="9">
+            <img src="slideshow/10.png" alt="Slide 10: Get Alerts For Stock/Expiration" class="slide-image">
+          </div>
+        </div>
+        <button class="nav-arrow nav-arrow-left" id="nav-left" aria-label="Previous slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button class="nav-arrow nav-arrow-right" id="nav-right" aria-label="Next slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="finish-btn" id="finish-btn" style="display: none;">Finish</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* First-time User Popup Styles */
+    .first-time-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      max-width: calc(100vw - 40px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.2);
+      padding: 1.25rem;
+      z-index: 10000;
+      animation: slideInUp 0.3s ease-out;
+      overflow: hidden;
+    }
+
+    @keyframes slideInUp {
+      from {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .popup-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      overflow: hidden;
+    }
+
+    .popup-progress-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--success);
+      animation: progressBar 10s linear forwards;
+      transform-origin: left;
+    }
+
+    @keyframes progressBar {
+      from {
+        transform: scaleX(1);
+      }
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    .popup-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+    }
+
+    .popup-close-btn:hover {
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      color: var(--text);
+    }
+
+    .popup-content-wrapper {
+      padding-top: 0.5rem;
+    }
+
+    .popup-main-text {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-sub-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 1rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-watch-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+    }
+
+    .popup-watch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .popup-watch-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Help Modal Styles */
+    .help-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      z-index: 20000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .help-modal.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .help-modal-content {
+      position: relative;
+      width: 90vw;
+      height: auto;
+      max-height: 90vh;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      animation: slideInScale 0.3s ease-out;
+    }
+
+    @keyframes slideInScale {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .help-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: color-mix(in oklab, var(--surface) 90%, var(--border));
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+
+    .help-modal-close:hover {
+      background: var(--danger);
+      color: white;
+      transform: rotate(90deg);
+    }
+
+    .help-modal-title {
+      padding: 1rem 1.5rem;
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .help-modal-slideshow {
+      flex: 0 0 auto;
+      position: relative;
+      width: 100%;
+      height: 60vh;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .slideshow-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .slide.active {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    .slide-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .finish-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 48px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s ease;
+      opacity: 0.8;
+    }
+
+    .nav-arrow:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.5);
+      opacity: 1;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .nav-arrow:active {
+      transform: translateY(-50%) scale(0.95);
+    }
+
+    .nav-arrow-left {
+      left: 10px;
+    }
+
+    .nav-arrow-right {
+      right: 10px;
+    }
+
+    .nav-arrow svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .first-time-popup {
+        width: calc(100vw - 40px);
+        bottom: 15px;
+        right: 15px;
+        left: 15px;
+        max-width: none;
+      }
+
+      .help-modal-content {
+        width: 90vw;
+        height: auto;
+        max-height: 95vh;
+        margin: 0;
+        border-radius: var(--radius);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .help-modal-title {
+        padding: 0.75rem 1rem;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+      }
+
+      .help-modal-slideshow {
+        width: 100%;
+        height: 60vh;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .slideshow-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide-image {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+      }
+
+      .popup-main-text {
+        font-size: 0.95rem;
+      }
+
+      .popup-sub-text {
+        font-size: 0.8rem;
+      }
+    }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .finish-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-arrow {
+        width: 56px;
+        height: 56px;
+        opacity: 0.9;
+      }
+
+      .nav-arrow-left {
+        left: 5px;
+      }
+
+      .nav-arrow-right {
+        right: 5px;
+      }
+
+      .nav-arrow svg {
+        width: 24px;
+        height: 24px;
+      }
+    }
+  </style>
+
+  <script>
+    // First-time user popup logic
+    (function() {
+      const popup = document.getElementById('first-time-popup');
+      const closeBtn = document.getElementById('close-first-time-popup');
+      const watchBtn = document.getElementById('open-help-modal-from-popup');
+      const helpModal = document.getElementById('help-modal');
+      const closeModalBtn = document.getElementById('close-help-modal');
+      
+      // Check if user has seen the popup before
+      const hasSeenPopup = localStorage.getItem('hasSeenFirstTimePopup');
+      
+      // Show popup if first time
+      if (!hasSeenPopup) {
+        // Wait a bit after page load to show popup
+        setTimeout(() => {
+          popup.style.display = 'block';
+          
+          // Auto-hide after 10 seconds (progress bar handles this visually)
+          setTimeout(() => {
+            hidePopup();
+          }, 10000);
+        }, 1500);
+      }
+
+      function hidePopup() {
+        popup.style.animation = 'slideInUp 0.3s ease-out reverse';
+        setTimeout(() => {
+          popup.style.display = 'none';
+          localStorage.setItem('hasSeenFirstTimePopup', 'true');
+        }, 300);
+      }
+
+      // Slideshow navigation - declare variables first
+      let currentSlide = 0;
+      const totalSlides = 10;
+      const slides = document.querySelectorAll('.slide');
+      const navLeft = document.getElementById('nav-left');
+      const navRight = document.getElementById('nav-right');
+      const finishBtn = document.getElementById('finish-btn');
+
+      function openHelpModal() {
+        helpModal.classList.add('show');
+        // Reset to first slide when opening
+        currentSlide = 0;
+        updateSlideshow();
+      }
+
+      function closeHelpModal() {
+        helpModal.classList.remove('show');
+      }
+
+      function updateSlideshow() {
+        // Update slide visibility
+        slides.forEach((slide, index) => {
+          if (index === currentSlide) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        });
+
+        // Show/hide navigation buttons
+        if (currentSlide === 0) {
+          navLeft.style.display = 'none';
+        } else {
+          navLeft.style.display = 'flex';
+        }
+
+        if (currentSlide === totalSlides - 1) {
+          navRight.style.display = 'none';
+          finishBtn.style.display = 'block';
+        } else {
+          navRight.style.display = 'flex';
+          finishBtn.style.display = 'none';
+        }
+      }
+
+      if (navLeft) {
+        navLeft.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (currentSlide > 0) {
+            currentSlide--;
+            updateSlideshow();
+          }
+        });
+      }
+
+      if (navRight) {
+        navRight.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            updateSlideshow();
+          }
+        });
+      }
+
+      if (finishBtn) {
+        finishBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeHelpModal();
+        });
+      }
+
+      // Initialize slideshow and preload images
+      const slideImages = document.querySelectorAll('.slide-image');
+      slideImages.forEach((img, index) => {
+        img.onerror = function() {
+          console.error(`[Home] Failed to load slide ${index + 1}:`, img.src);
+          this.style.display = 'none';
+        };
+        img.onload = function() {
+          console.log(`[Home] Successfully loaded slide ${index + 1}`);
+        };
+      });
+      
+      updateSlideshow();
+
+      // Event listeners
+      if (closeBtn) closeBtn.addEventListener('click', hidePopup);
+      if (watchBtn) watchBtn.addEventListener('click', () => {
+        hidePopup();
+        openHelpModal();
+      });
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
+      
+      // Close modal on background click
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+          closeHelpModal();
+        }
+      });
+
+      // Make functions globally available for profile page
+      window.openHelpModal = openHelpModal;
+      window.closeHelpModal = closeHelpModal;
+    })();
+  </script>
 </body>
 </html>

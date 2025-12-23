@@ -3,41 +3,506 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MedTracker – Log Dose</title>
+  <title>MedTracker – Medication Action</title>
   <link rel="stylesheet" href="styles.css">
-</head>
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --danger-color: var(--danger);
+    }
 
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
+        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+        /* Improved contrast for better readability */
+        --text-strong: #020617;
+        --muted-strong: #334155;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 5rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1000 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+    }
+
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+
+    .action-header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .dose-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .dose-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .dose-date {
+      font-size: 1rem;
+      color: var(--muted);
+    }
+
+    .notes-section {
+      margin-top: 2rem;
+    }
+
+    .notes-section h2 {
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .note-textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color 0.2s ease;
+    }
+
+    .note-textarea:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+    }
+
+    .note-textarea::placeholder {
+      color: var(--muted);
+    }
+
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary { 
+      background: linear-gradient(135deg, var(--brand), var(--brand-600)); 
+      color: #fff; 
+      border: none; 
+    }
+    .btn-primary:hover { 
+      background: linear-gradient(135deg, var(--brand-600), var(--brand-700)); 
+      box-shadow: 0 6px 16px rgba(79,140,255,.25); 
+    }
+  </style>
+</head>
 <body>
-  <header class="topbar">
-    <button class="hamburger" aria-label="Toggle menu">☰</button>
-  </header>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
 
   <nav class="sidebar">
     <a href="home.html">Home</a>
     <a href="history.html">History</a>
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
+    <a href="stats.html">Stats</a>
     <a href="profile.html">Profile</a>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
+
   <div class="content">
-    <h1>Pill Name</h1>
-    <button class="btn btn-success">Taken</button>
-    <button class="btn btn-danger">Not Taken</button>
+    <div class="container">
+      <div class="action-header">
+        <h1>Medication Action</h1>
+      </div>
 
-    <label for="dose-notes">Notes <small>(optional)</small></label>
-    <textarea id="dose-notes" rows="4"></textarea>
+      <div class="card">
+        <div class="dose-info">
+          <div class="dose-name" id="dose-name">Loading...</div>
+          <div class="dose-date" id="dose-date">Loading...</div>
+        </div>
 
-    <button class="btn btn-primary">Submit</button>
+        <div class="notes-section">
+          <h2>Notes</h2>
+          <textarea 
+            class="note-textarea" 
+            placeholder="Add your notes here..."
+            id="dose-notes"
+          ></textarea>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; margin-top: 2rem;">
+        <button class="btn btn-primary" id="submit-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">
+          Submit
+        </button>
+      </div>
+    </div>
   </div>
-<script>
-  const sidebar = document.querySelector('.sidebar');
-  document.querySelector('.hamburger')
-    .addEventListener('click', () => sidebar.classList.toggle('open'));
-  document.querySelectorAll('.sidebar a')
-    .forEach(link => link.addEventListener('click', () => {
-      if (window.innerWidth <= 768) sidebar.classList.remove('open');
-    }));
-</script>
 
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Make globally available
+    window.auth = auth;
+    window.db = db;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.getDoc = getDoc;
+
+    // Format time display
+    function formatTimeDisplay(timeString) {
+      if (!timeString || timeString === 'no-time') return '';
+      
+      const [hours, minutes] = timeString.split(':').map(Number);
+      let displayHour = hours;
+      let period = 'AM';
+      
+      if (hours === 0) {
+        displayHour = 12;
+      } else if (hours === 12) {
+        period = 'PM';
+      } else if (hours > 12) {
+        displayHour = hours - 12;
+        period = 'PM';
+      }
+      
+      const displayMinutes = minutes.toString().padStart(2, '0');
+      return `${displayHour}:${displayMinutes} ${period}`;
+    }
+
+    // Format date display
+    function formatDate(dateString) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    }
+
+    // Load and display medication info from URL parameters
+    function loadMedicationInfo() {
+      const params = new URLSearchParams(window.location.search);
+      const medicationName = params.get('medication');
+      const doseNumber = params.get('dose');
+      const time = params.get('time');
+      const dateString = params.get('date');
+      const medId = params.get('medId');
+
+      if (!medicationName || !doseNumber || !dateString || !medId) {
+        console.error('[Medication-Action] Missing required parameters');
+        document.getElementById('dose-name').textContent = 'Error: Missing information';
+        return;
+      }
+
+      // Display medication name, dose number, and time
+      const timeDisplay = time && time !== 'no-time' ? formatTimeDisplay(time) : '';
+      const doseNameText = `${medicationName} - Dose #${doseNumber}${timeDisplay ? ` - ${timeDisplay}` : ''}`;
+      document.getElementById('dose-name').textContent = doseNameText;
+      document.getElementById('dose-date').textContent = formatDate(dateString);
+
+      // Store for later use
+      window.currentMedication = {
+        name: medicationName,
+        doseNumber: parseInt(doseNumber),
+        time: time,
+        date: dateString,
+        id: medId
+      };
+
+      // Load existing notes
+      loadExistingNotes(medId, dateString, parseInt(doseNumber));
+    }
+
+    // Load existing notes from Firebase
+    async function loadExistingNotes(medId, dateString, doseNumber) {
+      const user = auth.currentUser;
+      if (!user) {
+        console.warn('[Medication-Action] No user logged in');
+        return;
+      }
+
+      try {
+        const medDocRef = doc(db, "users", user.uid, "medications", medId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (medDoc.exists()) {
+          const medData = medDoc.data();
+          const notes = medData.notes || {};
+          
+          // Check if there's a note for this date and dose
+          if (notes[dateString]) {
+            const noteData = notes[dateString];
+            // Notes are stored as [doseNumber, noteText]
+            if (Array.isArray(noteData) && noteData[0] === doseNumber) {
+              document.getElementById('dose-notes').value = noteData[1] || '';
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Medication-Action] Error loading notes:', error);
+      }
+    }
+
+    // Save notes to Firebase
+    async function saveNotes() {
+      const user = auth.currentUser;
+      if (!user) {
+        alert('You must be logged in to save notes.');
+        return;
+      }
+
+      if (!window.currentMedication) {
+        alert('Error: Medication information not found.');
+        return;
+      }
+
+      const noteText = document.getElementById('dose-notes').value.trim();
+      const { name, id, date, doseNumber } = window.currentMedication;
+
+      try {
+        const medDocRef = doc(db, "users", user.uid, "medications", id);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) {
+          alert('Medication not found.');
+          return;
+        }
+
+        const medData = medDoc.data();
+        const notes = medData.notes || {};
+        
+        // Save note in the same format as notes.html: [doseNumber, noteText]
+        notes[date] = [doseNumber, noteText];
+
+        await setDoc(medDocRef, {
+          notes: notes
+        }, { merge: true });
+
+        console.log(`[Medication-Action] Saved note for ${name} on ${date}, dose ${doseNumber}`);
+        
+        // Don't change taken/not taken status here - that's handled by the "Taken"/"Not Taken" buttons
+        // Just save the notes and navigate back
+
+        // Navigate back to home
+        window.location.href = 'home.html';
+      } catch (error) {
+        console.error('[Medication-Action] Error saving notes:', error);
+        alert('Error saving notes. Please try again.');
+      }
+    }
+
+    // Wait for auth, then load info
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loadMedicationInfo();
+      } else {
+        window.location.href = 'index.html';
+      }
+    });
+
+    // Submit button handler
+    document.addEventListener('DOMContentLoaded', () => {
+      // Close mobile menu when clicking on nav links
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+
+      // Submit button
+      const submitBtn = document.getElementById('submit-btn');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await saveNotes();
+        });
+      }
+    });
+</script>
 </body>
 </html>

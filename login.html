@@ -33,7 +33,7 @@
       --container: 1200px;      /* <- width token that sets spacing */
     }
     @media (prefers-color-scheme: light){
-      :root{ --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1); --bg-elev: rgba(2,6,23,0.04); --shadow: 0 10px 30px rgba(2,6,23,0.08), 0 2px 10px rgba(2,6,23,0.06); }
+      :root{ --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15); --bg-elev: rgba(15,23,42,0.06); --shadow: 0 10px 30px rgba(2,6,23,0.08), 0 2px 10px rgba(2,6,23,0.06); --text-strong: #020617; --muted-strong: #334155; }
     }
 
     /* --- Base --- */
@@ -69,7 +69,6 @@
       .nav-links{display:none}
       .auth{display:none}
       .hamburger{display:flex; align-items:center; justify-content:center}
-      .nav-toggle:checked ~ .mobile-menu{max-height:420px; opacity:1; pointer-events:auto}
     }
 
     .mobile-menu{max-height:0; opacity:0; pointer-events:none; overflow:hidden; transition:max-height .35s ease, opacity .35s ease; border-bottom:1px solid var(--border); background:rgba(15,22,41,0.7); backdrop-filter:blur(14px)}
@@ -177,7 +176,7 @@
 
       <form id="login-form" action="#" method="post" novalidate>
         <div class="field">
-          <label for="login-identifier">Email or Username</label>
+          <label for="login-identifier">Email</label>
           <div class="input-wrap">
             <input id="login-identifier" name="identifier" type="text" placeholder="you@example.com" autocomplete="username" required />
           </div>
@@ -238,11 +237,33 @@
       });
     })();
 
-    // Reflect mobile menu expanded state for a11y (same behavior as index.html)
+    // Mobile menu toggle functionality
     const toggle = document.getElementById('menu-toggle');
     const label = document.querySelector('label[for="menu-toggle"]');
-    if (toggle && label){
-      toggle.addEventListener('change', () => label.setAttribute('aria-expanded', toggle.checked ? 'true' : 'false'));
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (toggle && label && mobileMenu){
+      toggle.addEventListener('change', () => {
+        const isChecked = toggle.checked;
+        label.setAttribute('aria-expanded', isChecked ? 'true' : 'false');
+        if (isChecked) {
+          mobileMenu.style.maxHeight = '420px';
+          mobileMenu.style.opacity = '1';
+          mobileMenu.style.pointerEvents = 'auto';
+        } else {
+          mobileMenu.style.maxHeight = '0';
+          mobileMenu.style.opacity = '0';
+          mobileMenu.style.pointerEvents = 'none';
+        }
+      });
+      
+      // Close menu when any link is clicked
+      const mobileLinks = mobileMenu.querySelectorAll('a');
+      mobileLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          toggle.checked = false;
+          toggle.dispatchEvent(new Event('change'));
+        });
+      });
     }
   </script>
 

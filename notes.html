@@ -17,9 +17,12 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
         --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
-    }
+        /* Improved contrast for better readability */
+        --text-strong: #020617;
+        --muted-strong: #334155;
+      }
     }
 
     * { box-sizing: border-box; }
@@ -387,10 +390,9 @@
     <a href="history.html">History</a>
     <a href="calendar.html">Calendar</a>
     <a href="notes.html" class="active">Notes</a>
-    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
-      <span>Profile</span>
-      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
-    </a>
+    <a href="stats.html">Stats</a>
+    <a href="profile.html">Profile</a>
+    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -454,92 +456,135 @@
     window.collection = collection;
     window.getDocs = getDocs;
 
-    // Global medications array
-    window.globalMedications = [];
-
-    async function loadMedicationsFromFirebase() {
-      const user = auth.currentUser;
-      if (!user) return [];
-
-      try {
-        const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
-        const medicationsSnapshot = await getDocs(medicationsCollectionRef);
-        const medications = [];
-        
-        medicationsSnapshot.forEach((doc) => {
-          const medData = doc.data();
-          
-          // Only include active medications (not deleted)
-          if (!medData.deletedStatus) {
-            medications.push({
-              id: doc.id,
-              name: medData.name,
-              dosage: medData.dosage,
-              days: medData.daysOfWeek.map(d => d.charAt(0).toUpperCase() + d.slice(1)),
-              timesPerDay: medData.timesPerDay,
-              times: medData.times,
-              startDate: medData.startDate === 'N/A' ? null : medData.startDate,
-              endDate: medData.endDate === 'N/A' ? null : medData.endDate,
-              createdAt: medData.createdAt || null, // Include createdAt for fallback
-              notes: medData.notes || {}
-            });
-          }
-        });
-        
-        return medications;
-      } catch (error) {
-        console.error('[Notes] Error loading medications:', error);
-        return [];
-      }
+    // Global medications array - will be populated by calendar's loading function
+    if (!window.globalMedications) {
+      window.globalMedications = [];
+    }
+    
+    // Initialize cache for loaded note days if not already initialized
+    if (!window.loadedNoteDays) {
+      window.loadedNoteDays = new Set(); // Format: "medId:YYYY-MM-DD"
     }
 
-    // Wait for auth and load medications, then render
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        window.globalMedications = await loadMedicationsFromFirebase();
-        console.log('[Notes] Loaded medications:', window.globalMedications.length);
-      } else {
-        window.globalMedications = [];
-      }
-      // Trigger initial render
-      if (typeof window.renderNotes === 'function') {
-        window.renderNotes();
-      }
-    });
-
-    // Verification warning
-    onAuthStateChanged(auth, async (user) => {
-      const warningIcon = document.getElementById('profile-verify-warning');
-      if (!warningIcon) return;
-
-      if (user) {
-        let needsVerification = false;
-        if (!user.emailVerified) needsVerification = true;
+    // Use calendar.html's medication loading function if available, otherwise define it
+    // This ensures notes.html always uses the same logic as calendar.html
+    // Note: This will load metadata only (no doses/notes) - doses/notes loaded on demand
+    if (!window.loadMedicationsFromFirebase) {
+      window.loadMedicationsFromFirebase = async function() {
+        const user = auth.currentUser;
+        if (!user) return [];
 
         try {
-          const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-          if (localProfile.phone && !localProfile.phoneVerified) needsVerification = true;
-        } catch (error) {
-          console.log('Could not check localStorage:', error);
-        }
-
-        warningIcon.style.display = needsVerification ? 'inline' : 'none';
-
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          getDoc(userDocRef).then(docSnap => {
-            const profile = docSnap.data() || {};
-            if (profile.phone && !profile.phoneVerified) {
-              warningIcon.style.display = 'inline';
+          const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
+          const medicationsSnapshot = await getDocs(medicationsCollectionRef);
+          const medications = [];
+          
+          medicationsSnapshot.forEach((doc) => {
+            const medData = doc.data();
+            
+            // Only include active medications (not deleted)
+            if (!medData.deletedStatus) {
+              medications.push({
+                id: doc.id,
+                name: medData.name,
+                dosage: medData.dosage,
+                days: medData.daysOfWeek.map(d => d.charAt(0).toUpperCase() + d.slice(1)),
+                timesPerDay: medData.timesPerDay,
+                times: medData.times,
+                startDate: medData.startDate === 'N/A' ? null : medData.startDate,
+                endDate: medData.endDate === 'N/A' ? null : medData.endDate,
+                createdAt: medData.createdAt || null,
+                doses: {}, // Initialize empty - will be loaded on demand
+                notes: {} // Initialize empty - will be loaded on demand
+              });
             }
           });
+          
+          return medications;
         } catch (error) {
-          console.log('Could not check Firestore:', error);
+          console.error('[Notes] Error loading medications:', error);
+          return [];
         }
-      } else {
-        warningIcon.style.display = 'none';
+      };
+    }
+
+    // Load doses and notes for a specific day (for notes page)
+    window.loadDosesAndNotesForDay = async function(date) {
+      const user = auth.currentUser;
+      if (!user || !window.globalMedications) return;
+
+      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD
+
+      try {
+        // Load doses and notes for each medication that hasn't been loaded for this day
+        for (const med of window.globalMedications) {
+          const dayKey = `${med.id}:${dateString}`;
+          if (window.loadedNoteDays.has(dayKey)) {
+            continue; // Already loaded
+          }
+
+          try {
+            const medDocRef = doc(db, "users", user.uid, "medications", med.id);
+            const medDoc = await getDoc(medDocRef);
+            
+            if (medDoc.exists()) {
+              const medData = medDoc.data();
+              const allDoses = medData.doses || {};
+              const allNotes = medData.notes || {};
+              
+              // Filter doses for this day only
+              const dayDoses = {};
+              Object.keys(allDoses).forEach(key => {
+                const doseDate = key.split('_')[0]; // Extract date from "YYYY-MM-DD_doseNumber"
+                if (doseDate === dateString) {
+                  dayDoses[key] = allDoses[key];
+                }
+              });
+              
+              // Get notes for this day
+              const dayNotes = {};
+              if (allNotes[dateString]) {
+                dayNotes[dateString] = allNotes[dateString];
+              }
+              
+              // Merge into medication's doses and notes objects
+              med.doses = { ...med.doses, ...dayDoses };
+              med.notes = { ...med.notes, ...dayNotes };
+              window.loadedNoteDays.add(dayKey);
+              
+              console.log(`[Notes] Loaded doses and notes for ${med.name} on ${dateString}`);
+            }
+          } catch (error) {
+            console.error(`[Notes] Error loading doses/notes for ${med.name}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('[Notes] Error loading doses and notes for day:', error);
       }
+    };
+
+    // Wait for auth and load medications (metadata only), then render
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        window.globalMedications = await window.loadMedicationsFromFirebase();
+        console.log('[Notes] Loaded medication metadata:', window.globalMedications.length);
+        
+        // Load doses and notes for current day
+        const now = new Date();
+        await window.loadDosesAndNotesForDay(now);
+      } else {
+        window.globalMedications = [];
+        if (window.loadedNoteDays) {
+          window.loadedNoteDays.clear();
+        }
+      }
+      // Handle URL parameters after medications are loaded
+      // Add a small delay to ensure renderNotes is defined
+      setTimeout(() => {
+        handleURLParams();
+      }, 100);
     });
+
 
     // Function to save note to Firebase
     window.saveNoteToFirebase = async function(medName, dateString, doseNumber, noteText) {
@@ -566,7 +611,14 @@
         
         console.log(`[Notes] Saved note for ${medName} on ${dateString}, dose ${doseNumber}`);
         
+        // Update local cache
         medication.notes = notes;
+        
+        // Mark this day as loaded in cache
+        const dayKey = `${medication.id}:${dateString}`;
+        if (window.loadedNoteDays) {
+          window.loadedNoteDays.add(dayKey);
+        }
       } catch (error) {
         console.error('[Notes] Error saving note:', error);
       }
@@ -637,15 +689,24 @@
       return hour * 60 + minute;
     }
 
-    function renderNotes() {
+    async function renderNotes() {
       const notesTitle = document.getElementById('notes-title');
       const miniCalendarBtn = document.getElementById('mini-calendar-btn');
       const notesContent = document.getElementById('notes-content');
 
+      if (!notesTitle || !miniCalendarBtn || !notesContent) {
+        console.warn('[Notes] DOM elements not ready yet');
+        return;
+      }
+
       notesTitle.textContent = `Notes (${formatDate(currentDate)})`;
       miniCalendarBtn.textContent = formatDate(currentDate);
 
-      const medications = getMedicationsForDate(currentDate);
+      // Load doses and notes for the current day before rendering
+      await window.loadDosesAndNotesForDay(currentDate);
+
+      const medications = window.getMedicationsForDate(currentDate);
+      console.log('[Notes] Rendering notes for date:', currentDate.toISOString().split('T')[0], 'Found medications:', medications.length);
       
       if (medications.length === 0) {
         notesContent.innerHTML = `
@@ -716,66 +777,72 @@
     // Make renderNotes globally available
     window.renderNotes = renderNotes;
 
-    function getMedicationsForDate(date) {
-      const medications = window.globalMedications || [];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      const dateString = date.toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Normalize date strings to YYYY-MM-DD format for comparison
-      const normalizeDate = (dateStr) => {
-        if (!dateStr || dateStr === 'N/A') return null;
-        // If it's already in ISO format (YYYY-MM-DD), return as is
-        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-          return dateStr.split('T')[0]; // Extract just the date part
-        }
-        // If it's in M/d/yyyy format, convert to YYYY-MM-DD
-        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-          const parts = dateStr.split('/');
-          const month = parts[0].padStart(2, '0');
-          const day = parts[1].padStart(2, '0');
-          const year = parts[2];
-          return `${year}-${month}-${day}`;
-        }
-        // If it's an ISO timestamp, extract date part
-        if (dateStr.includes('T')) {
-          return dateStr.split('T')[0];
-        }
-        return dateStr;
-      };
-      
-      return medications.filter(med => {
-        // Determine effective start date: use startDate if provided, otherwise use createdAt
-        let effectiveStartDate = null;
-        if (med.startDate && med.startDate !== 'N/A') {
-          effectiveStartDate = normalizeDate(med.startDate);
-        } else if (med.createdAt) {
-          // Use createdAt date (extract date from ISO timestamp)
-          const createdDate = new Date(med.createdAt);
-          effectiveStartDate = createdDate.toISOString().split('T')[0];
-        }
+    // Use calendar.html's getMedicationsForDate function if available, otherwise define it
+    // This ensures notes.html always uses the same logic as calendar.html
+    if (!window.getMedicationsForDate) {
+      window.getMedicationsForDate = function(date) {
+        const medications = window.globalMedications || [];
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+        const dateString = date.toISOString().split('T')[0];
+        const today = new Date().toISOString().split('T')[0];
         
-        // If no start date or createdAt, default to today
-        if (!effectiveStartDate) {
-          effectiveStartDate = today;
-        }
+        return medications.filter(med => {
+          // Normalize date strings to YYYY-MM-DD format for comparison
+          const normalizeDate = (dateStr) => {
+            if (!dateStr || dateStr === 'N/A') return null;
+            if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+              return dateStr.split('T')[0];
+            }
+            if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+              const parts = dateStr.split('/');
+              const month = parts[0].padStart(2, '0');
+              const day = parts[1].padStart(2, '0');
+              const year = parts[2];
+              return `${year}-${month}-${day}`;
+            }
+            if (dateStr.includes('T')) {
+              return dateStr.split('T')[0];
+            }
+            return dateStr;
+          };
 
-        // Check if medication has started
-        if (dateString < effectiveStartDate) {
-          return false; // Medication hasn't started yet
-        }
-
-        // Check end date (normalize for comparison)
-        if (med.endDate && med.endDate !== 'N/A') {
-          const normalizedEndDate = normalizeDate(med.endDate);
-          if (normalizedEndDate && dateString > normalizedEndDate) {
-            return false; // Medication has ended
+          // Determine effective start date: use startDate if provided, otherwise use createdAt
+          let effectiveStartDate = null;
+          if (med.startDate && med.startDate !== 'N/A') {
+            effectiveStartDate = normalizeDate(med.startDate);
+          } else if (med.createdAt) {
+            const createdDate = new Date(med.createdAt);
+            effectiveStartDate = createdDate.toISOString().split('T')[0];
           }
-        }
-        
-        // Check if this day of the week is scheduled for this medication
-        return med.days.includes(dayName);
-      });
+          
+          if (!effectiveStartDate) {
+            effectiveStartDate = today;
+          }
+
+          // Check if there are any doses for this date (to show historical doses even if before startDate)
+          const hasDosesForDate = med.doses && Object.keys(med.doses).some(key => {
+            const doseDate = key.split('_')[0];
+            return doseDate === dateString;
+          });
+          
+          if (hasDosesForDate) {
+            return med.days.includes(dayName);
+          }
+          
+          if (dateString < effectiveStartDate) {
+            return false;
+          }
+
+          if (med.endDate && med.endDate !== 'N/A') {
+            const normalizedEndDate = normalizeDate(med.endDate);
+            if (normalizedEndDate && dateString > normalizedEndDate) {
+              return false;
+            }
+          }
+          
+          return med.days.includes(dayName);
+        });
+      };
     }
 
     function formatTimeDisplay(timeString) {
@@ -815,7 +882,12 @@
       textarea.placeholder = 'Your notes...';
       textarea.dataset.medication = medName;
       textarea.dataset.time = time || 'no-time';
-      textarea.dataset.date = currentDate.toISOString().split('T')[0];
+      // Use local date string to avoid timezone issues (match medication-action.html format)
+      const noteYear = currentDate.getFullYear();
+      const noteMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const noteDay = String(currentDate.getDate()).padStart(2, '0');
+      const dateStringForDataset = `${noteYear}-${noteMonth}-${noteDay}`;
+      textarea.dataset.date = dateStringForDataset;
       textarea.dataset.doseNumber = doseNumber;
       
       // Auto-resize function: expands from 1 to 4 rows, then scrolls
@@ -859,10 +931,13 @@
       };
       
       // Load existing notes from medication data
-      const dateString = currentDate.toISOString().split('T')[0];
+      // Use local date string to avoid timezone issues (match medication-action.html format)
+      const dateString = dateStringForDataset;
+      
       const medication = window.globalMedications.find(m => m.name === medName);
       if (medication && medication.notes && medication.notes[dateString]) {
         const noteData = medication.notes[dateString];
+        // Notes are stored as [doseNumber, noteText]
         if (Array.isArray(noteData) && noteData[0] === doseNumber) {
           textarea.value = noteData[1] || '';
           // Auto-resize after loading existing content
@@ -932,9 +1007,9 @@
 
         dayElement.textContent = date.getDate();
 
-        dayElement.addEventListener('click', () => {
+        dayElement.addEventListener('click', async () => {
           currentDate = date;
-          renderNotes();
+          await renderNotes();
           document.getElementById('mini-calendar-dropdown').classList.remove('show');
         });
 
@@ -942,14 +1017,14 @@
       }
     }
 
-    document.getElementById('prev-day').addEventListener('click', () => {
+    document.getElementById('prev-day').addEventListener('click', async () => {
       currentDate.setDate(currentDate.getDate() - 1);
-      renderNotes();
+      await renderNotes();
     });
 
-    document.getElementById('next-day').addEventListener('click', () => {
+    document.getElementById('next-day').addEventListener('click', async () => {
       currentDate.setDate(currentDate.getDate() + 1);
-      renderNotes();
+      await renderNotes();
     });
 
     document.getElementById('mini-calendar-btn').addEventListener('click', () => {
@@ -993,7 +1068,14 @@
     });
 
     // Handle URL parameters for direct navigation from calendar
-    function handleURLParams() {
+    async function handleURLParams() {
+      // Make sure renderNotes is defined before calling it
+      if (typeof window.renderNotes !== 'function') {
+        console.warn('[Notes] renderNotes not yet defined, waiting...');
+        setTimeout(handleURLParams, 100);
+        return;
+      }
+      
       const params = new URLSearchParams(window.location.search);
       const dateParam = params.get('date');
       const medicationParam = params.get('medication');
@@ -1004,48 +1086,73 @@
         const [year, month, day] = dateParam.split('-').map(Number);
         currentDate = new Date(year, month - 1, day);
         
+        console.log('[Notes] Setting date from URL:', dateParam, '->', currentDate);
+        console.log('[Notes] Medications loaded:', window.globalMedications.length);
+        
+        // Load doses and notes for the date from URL
+        await window.loadDosesAndNotesForDay(currentDate);
+        
         miniCalendarMonth = currentDate.getMonth();
         miniCalendarYear = currentDate.getFullYear();
         
-        renderNotes();
+        // Render mini calendar to update the display
+        if (typeof renderMiniCalendar === 'function') {
+          renderMiniCalendar();
+        }
+        
+        // Render notes for the selected date
+        await renderNotes();
+        
+        // Remove URL parameters after handling them (so navigation works normally)
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, '', 'notes.html');
+        }
         
         if (medicationParam && doseParam) {
           setTimeout(() => {
-      const noteCards = document.querySelectorAll('.note-card');
+            const noteCards = document.querySelectorAll('.note-card');
+            let highlighted = false;
+            
             noteCards.forEach(card => {
               const textarea = card.querySelector('textarea');
               if (textarea && 
                   textarea.dataset.medication === medicationParam && 
                   parseInt(textarea.dataset.doseNumber) === parseInt(doseParam)) {
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                textarea.focus();
-                card.style.boxShadow = '0 0 0 3px var(--brand)';
-                card.style.borderRadius = 'var(--radius)';
-        setTimeout(() => {
-                  card.style.boxShadow = '';
-                  card.style.borderRadius = '';
-        }, 3000);
+                // Also check time if provided (handle both 'no-time' and actual time)
+                const timeMatches = !timeParam || 
+                                    (timeParam === 'no-time' && textarea.dataset.time === 'no-time') ||
+                                    (timeParam !== 'no-time' && textarea.dataset.time === decodeURIComponent(timeParam));
+                
+                if (timeMatches && !highlighted) {
+                  highlighted = true;
+                  
+                  // Add light blue background highlight
+                  card.style.backgroundColor = 'rgba(79, 140, 255, 0.2)'; // Light blue background
+                  card.style.transition = 'background-color 0.3s ease';
+                  
+                  // Scroll into view and focus
+                  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  setTimeout(() => {
+                    textarea.focus();
+                  }, 300);
+                  
+                  // Remove highlight after 3 seconds (temporary)
+                  setTimeout(() => {
+                    card.style.backgroundColor = '';
+                  }, 3000);
+                }
               }
             });
-          }, 100);
+          }, 200);
         }
+      } else {
+        // No URL params, just render normally
+        renderNotes();
       }
-    }
-
-    handleURLParams();
-    
-    if (!new URLSearchParams(window.location.search).get('date')) {
-      renderNotes();
     }
   </script>
 
 <style>
-  .verify-warning {
-    font-size: 1rem;
-    cursor: help;
-    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
-    animation: pulse 2s ease-in-out infinite;
-  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }

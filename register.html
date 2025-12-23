@@ -1,4 +1,4 @@
-<!-- File: register.html (two-step) -->
+<!-- File: register.html (four-step with verification) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +23,7 @@
       --container:1200px;
     }
     @media (prefers-color-scheme: light){
-      :root{--bg:#f6f8fc;--surface:#fff;--text:#111827;--muted:#4b5563;--border:rgba(2,6,23,.1);--shadow:0 10px 30px rgba(2,6,23,.08),0 2px 10px rgba(2,6,23,.06)}
+      :root{--bg:#f8fafc;--surface:#fff;--text:#0f172a;--muted:#1e293b;--border:rgba(15,23,42,.2);--shadow:0 10px 30px rgba(2,6,23,.08),0 2px 10px rgba(2,6,23,.06);--text-strong:#020617;--muted-strong:#0f172a;--success:#059669;--success-light:#10b981}
     }
 
     body{
@@ -38,6 +38,9 @@
     /* --- Navbar (identical to index.html) --- */
     .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
     .navbar{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(14px); background:linear-gradient(to bottom, rgba(15,22,41,0.7), rgba(15,22,41,0.4)); border-bottom:1px solid var(--border)}
+    @media (prefers-color-scheme: light){
+      .navbar{background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.9)); border-bottom:1px solid var(--border)}
+    }
     .nav-inner{display:flex; align-items:center; justify-content:space-between; gap:1rem; height:64px}
     .brand{display:flex; align-items:center; gap:.7rem; font-weight:700}
     .brand-mark{display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--brand),var(--accent)); box-shadow: var(--shadow)}
@@ -55,7 +58,6 @@
       .nav-links{display:none}
       .auth{display:none}
       .hamburger{display:flex; align-items:center; justify-content:center}
-      .nav-toggle:checked ~ .mobile-menu{max-height:420px; opacity:1; pointer-events:auto}
     }
 
     .mobile-menu{max-height:0; opacity:0; pointer-events:none; overflow:hidden; transition:max-height .35s ease, opacity .35s ease; border-bottom:1px solid var(--border); background:rgba(15,22,41,0.7); backdrop-filter:blur(14px)}
@@ -79,11 +81,14 @@
     input:focus,select:focus,textarea:focus{outline:2px solid transparent;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,140,255,.25)}
     small{opacity:.85}
 
-    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.9rem 1rem; border-radius:14px; border:1px solid transparent; cursor:pointer}
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.9rem 1rem; border-radius:14px; border:1px solid transparent; cursor:pointer; font-size:1rem}
     .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; box-shadow: var(--shadow)}
     .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
+    .btn-primary:disabled{opacity:0.5; cursor:not-allowed}
     .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text)}
     .btn-ghost:hover{background:var(--bg-elev)}
+    .btn-secondary{background:var(--bg-elev); border:1px solid var(--border); color:var(--text)}
+    .btn-secondary:hover{background:rgba(255,255,255,0.08)}
 
     .foot{margin-top:1rem;color:var(--muted);font-size:.95rem;text-align:center}
     .msg{margin-top:.75rem;font-size:.95rem}
@@ -95,12 +100,26 @@
     .toggle:focus{outline:2px solid transparent; box-shadow:0 0 0 3px rgba(79,140,255,.25)}
     .input-wrap input[type="password"], .input-wrap input[type="text"]{padding-right:3rem}
 
+    /* Verification status */
+    .verification-status{display:flex; align-items:center; gap:.5rem; padding:.75rem; border-radius:12px; margin-top:.5rem}
+    .verification-status.verified{background:rgba(125,226,209,0.1); border:1px solid var(--accent); color:var(--accent)}
+    @media (prefers-color-scheme: light){
+      .verification-status.verified{background:rgba(5,150,105,0.12); border:1px solid var(--success); color:var(--success); font-weight:500}
+    }
+    .verification-status.pending{background:rgba(255,193,7,0.1); border:1px solid #ffc107; color:#ffc107}
+    .verification-status.error{background:rgba(255,107,107,0.1); border:1px solid var(--danger); color:var(--danger)}
+
+    /* reCAPTCHA container */
+    #recaptcha-container{margin-top:1rem; display:flex; justify-content:center}
+
     /* --- Steps --- */
     .steps{display:flex; align-items:center; gap:.5rem; margin-bottom:1rem}
     .pill{height:8px; flex:1; background:var(--bg-elev); border-radius:999px; overflow:hidden}
     .pill > span{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--brand),var(--accent)); transition:width .25s ease}
-    .pill[data-step="1"] > span{width:50%}
-    .pill[data-step="2"] > span{width:100%}
+    .pill[data-step="1"] > span{width:33.33%}
+    .pill[data-step="2"] > span{width:66.66%}
+    .pill[data-step="3"] > span{width:75%} /* Step 3 commented out - keeping for future use */
+    .pill[data-step="4"] > span{width:100%}
 
     .step{display:none}
     .step.active{display:block}
@@ -150,13 +169,13 @@
     <div class="card" role="region" aria-labelledby="reg-title">
       <div class="steps" aria-hidden="true">
         <div class="pill" id="progress" data-step="1"><span></span></div>
-        <span style="color:var(--muted); font-size:.9rem">Step <strong id="step-num">1</strong> of 2</span>
+        <span style="color:var(--muted); font-size:.9rem">Step <strong id="step-num">1</strong> of 4</span>
       </div>
 
       <h1 id="reg-title">Register</h1>
-      <p class="lead">Create your account to get started.</p>
+      <p class="lead" id="reg-lead">Create your account to get started.</p>
 
-      <!-- Step 1: Account -->
+      <!-- Step 1: Email Verification -->
       <form id="form-step1" class="step active" novalidate>
         <div class="grid">
           <div>
@@ -165,6 +184,21 @@
               <input id="reg-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
             </div>
           </div>
+        </div>
+        <div style="margin-top:1rem">
+          <button class="btn btn-primary" type="button" id="send-verification">Send Verification Email</button>
+        </div>
+        <div id="email-verification-status" class="verification-status" style="display:none"></div>
+        <div id="email-code-input" style="display:none;"></div>
+        <div id="continue-container" style="display:none; margin-top:1rem;">
+          <button class="btn btn-primary" type="button" id="continue-step1">Continue</button>
+        </div>
+        <p id="msg1" class="msg" role="status" aria-live="polite"></p>
+      </form>
+
+      <!-- Step 2: Name and Password -->
+      <form id="form-step2" class="step" novalidate>
+        <div class="grid">
           <div>
             <label for="reg-name">Name</label>
             <div class="input-wrap">
@@ -187,22 +221,79 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" type="button" id="back-step2">Back</button>
+          <button class="btn btn-primary" type="submit">Continue</button>
+        </div>
+        <p id="msg2" class="msg" role="status" aria-live="polite"></p>
+      </form>
+
+      <!-- Step 3: Phone Verification - TEMPORARILY COMMENTED OUT -->
+      <!--
+      <form id="form-step3" class="step" novalidate>
+        <div class="grid">
           <div>
-            <label for="reg-phone">Phone Number <small>(optional)</small></label>
-            <div class="input-wrap">
-              <input id="reg-phone" name="phone" type="tel" placeholder="(123) 456-7890" />
+            <label for="reg-phone">Phone Number</label>
+            <div style="display: flex; gap: 0.5rem; align-items: stretch;">
+              <div style="flex: 0 0 140px; min-width: 140px;">
+                <select id="country-code" name="country-code" style="width: 100%; padding: 0.9rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1rem; box-sizing: border-box;">
+                  <option value="+1">🇺🇸 +1 (US)</option>
+                  <option value="+44">🇬🇧 +44 (UK)</option>
+                  <option value="+91">🇮🇳 +91 (IN)</option>
+                  <option value="+86">🇨🇳 +86 (CN)</option>
+                  <option value="+81">🇯🇵 +81 (JP)</option>
+                  <option value="+49">🇩🇪 +49 (DE)</option>
+                  <option value="+33">🇫🇷 +33 (FR)</option>
+                  <option value="+39">🇮🇹 +39 (IT)</option>
+                  <option value="+34">🇪🇸 +34 (ES)</option>
+                  <option value="+61">🇦🇺 +61 (AU)</option>
+                  <option value="+55">🇧🇷 +55 (BR)</option>
+                  <option value="+52">🇲🇽 +52 (MX)</option>
+                  <option value="+7">🇷🇺 +7 (RU)</option>
+                  <option value="+82">🇰🇷 +82 (KR)</option>
+                  <option value="+65">🇸🇬 +65 (SG)</option>
+                  <option value="+971">🇦🇪 +971 (AE)</option>
+                  <option value="+966">🇸🇦 +966 (SA)</option>
+                  <option value="+27">🇿🇦 +27 (ZA)</option>
+                  <option value="+234">🇳🇬 +234 (NG)</option>
+                  <option value="+20">🇪🇬 +20 (EG)</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div class="input-wrap" style="position: relative; z-index: 10;">
+                  <input id="reg-phone" name="phone" type="tel" placeholder="(123) 456-7890" autocomplete="tel" style="position: relative; z-index: 10;" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="recaptcha-container" style="display: block; min-height: 78px; width: 100%; margin-top: 1rem; position: relative; z-index: 1;"></div>
+          <div id="phone-code-section" style="display:none">
+            <div>
+              <label for="phone-code">Verification Code</label>
+              <div class="input-wrap">
+                <input id="phone-code" name="phone-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align: center; letter-spacing: 0.5rem; font-size: 1.2rem;" />
+              </div>
             </div>
           </div>
         </div>
+        <div id="phone-verification-status" class="verification-status" style="display:none"></div>
         <div class="actions">
-          <span></span>
-          <button class="btn btn-primary" type="submit">Continue</button>
+          <button class="btn btn-ghost" type="button" id="back-step3">Back</button>
+          <div style="display: flex; gap: 0.5rem; margin-left: auto; flex-direction: column;">
+            <button class="btn btn-primary" type="button" id="send-phone-code" style="display:none;">Send Code</button>
+            <button class="btn btn-primary" type="button" id="verify-phone-code" style="display:none;">Verify Code</button>
+            <button class="btn btn-secondary" type="button" id="resend-phone-code" style="display:none;">Resend Code</button>
+            <button class="btn btn-primary" type="button" id="continue-step3" style="display:none;">Continue</button>
+            <button class="btn btn-ghost" type="button" id="skip-phone">Skip</button>
+          </div>
         </div>
-        <p id="msg1" class="msg" role="status" aria-live="polite"></p>
+        <p id="msg3" class="msg" role="status" aria-live="polite"></p>
       </form>
+      -->
 
-      <!-- Step 2: Health prefs (all optional) -->
-      <form id="form-step2" class="step" novalidate>
+      <!-- Step 4: Health prefs (all optional) -->
+      <form id="form-step4" class="step" novalidate>
         <div class="grid">
           <div class="row">
             <div>
@@ -282,10 +373,10 @@
         </div>
 
         <div class="actions">
-          <button class="btn btn-ghost" type="button" id="back">Back</button>
+          <button class="btn btn-ghost" type="button" id="back-step4">Back</button>
           <button class="btn btn-primary" type="submit">Finish</button>
         </div>
-        <p id="msg2" class="msg" role="status" aria-live="polite"></p>
+        <p id="msg4" class="msg" role="status" aria-live="polite"></p>
       </form>
 
       <p class="foot">Already have an account? <a class="link" href="login.html">Log in</a></p>
@@ -304,76 +395,6 @@
       });
     });
 
-    // Step logic
-    const step1 = document.getElementById('form-step1');
-    const step2 = document.getElementById('form-step2');
-    const progress = document.getElementById('progress');
-    const stepNum = document.getElementById('step-num');
-
-    step1.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const msg = document.getElementById('msg1');
-      msg.className = 'msg';
-      const email = step1.email.value.trim();
-      const name  = step1.name.value.trim();
-      const pw    = step1.password.value;
-      const cf    = step1.confirm.value;
-      if (!email || !name || !pw || !cf){ msg.classList.add('err'); msg.textContent = 'Please fill all required fields.'; return; }
-      if (pw.length < 8){ msg.classList.add('err'); msg.textContent = 'Password must be at least 8 characters.'; return; }
-      if (pw !== cf){ msg.classList.add('err'); msg.textContent = 'Passwords do not match.'; return; }
-      // advance
-      step1.classList.remove('active');
-      step2.classList.add('active');
-      progress.setAttribute('data-step','2');
-      stepNum.textContent = '2';
-      document.getElementById('reg-title').textContent = 'A few optional details';
-      document.querySelector('.lead').textContent = 'These help with reminders and safety — skip anything you don\'t want to share.';
-      
-    });
-
-    document.getElementById('back').addEventListener('click', ()=>{
-      step2.classList.remove('active');
-      step1.classList.add('active');
-      progress.setAttribute('data-step','1');
-      stepNum.textContent = '1';
-      document.getElementById('reg-title').textContent = 'Register';
-      document.querySelector('.lead').textContent = 'Create your account to get started.';
-      
-    });
-
-    // Finish - save profile data and redirect
-    step2.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      // Collect all form data from both steps
-      const profileData = {};
-      
-      // Step 1 data
-      profileData.email = step1.email.value.trim();
-      profileData.name = step1.name.value.trim();
-      profileData.password = step1.password.value;
-      profileData.phone = step1.phone.value.trim();
-      
-      // Step 2 data
-      profileData.dob = step2.dob.value;
-      profileData.gender = step2.gender.value;
-      profileData.gender_other = step2.gender_other.value;
-      profileData.allergies = step2.allergies.value;
-      profileData.conditions = step2.conditions.value;
-      profileData.quiet_start = step2.quiet_start.value;
-      profileData.quiet_end = step2.quiet_end.value;
-      profileData.units = step2.unit.value;
-      profileData.timezone = step2.tz.value;
-      profileData.emg_name = step2.emg_name.value;
-      profileData.emg_phone = step2.emg_phone.value;
-      
-      // Save to localStorage
-      localStorage.setItem('userProfile', JSON.stringify(profileData));
-      
-      // Redirect to home page (this is the old handler - Firebase handles redirect now)
-      // window.location.href = 'home.html';
-    });
-
     // Gender other field
     const gender = document.getElementById('gender');
     const gWrap = document.getElementById('gender-other-wrap');
@@ -385,18 +406,87 @@
     const tz = document.getElementById('tz');
     try { tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tz.value = ''; }
 
-    // Mobile menu aria-expanded (match index.html)
+    // Mobile menu toggle functionality
     const toggle = document.getElementById('menu-toggle');
     const label = document.querySelector('label[for="menu-toggle"]');
-    if (toggle && label){
-      toggle.addEventListener('change', () => label.setAttribute('aria-expanded', toggle.checked ? 'true' : 'false'));
+    const mobileMenu = document.getElementById('mobile-menu');
+    if (toggle && label && mobileMenu){
+      toggle.addEventListener('change', () => {
+        const isChecked = toggle.checked;
+        label.setAttribute('aria-expanded', isChecked ? 'true' : 'false');
+        if (isChecked) {
+          mobileMenu.style.maxHeight = '420px';
+          mobileMenu.style.opacity = '1';
+          mobileMenu.style.pointerEvents = 'auto';
+        } else {
+          mobileMenu.style.maxHeight = '0';
+          mobileMenu.style.opacity = '0';
+          mobileMenu.style.pointerEvents = 'none';
+        }
+      });
+      
+      // Close menu when any link is clicked
+      const mobileLinks = mobileMenu.querySelectorAll('a');
+      mobileLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          toggle.checked = false;
+          toggle.dispatchEvent(new Event('change'));
+        });
+      });
     }
-</script>
+
+    // Step navigation helper
+    function goToStep(stepNum) {
+      // Skip step 3 (phone verification) - redirect to step 4 if step 3 is requested
+      if (stepNum === 3) {
+        stepNum = 4;
+      }
+      
+      // Hide all steps
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      // Show target step
+      const stepElement = document.getElementById(`form-step${stepNum}`);
+      if (stepElement) {
+        stepElement.classList.add('active');
+      }
+      // Update progress
+      document.getElementById('progress').setAttribute('data-step', stepNum.toString());
+      // Update step counter (show as step X of 3, not 4)
+      const displayStepNum = stepNum === 4 ? 3 : stepNum; // Step 4 is displayed as step 3
+      document.getElementById('step-num').textContent = displayStepNum.toString();
+      
+      // Update title and lead
+      const titles = {
+        1: { title: 'Register', lead: 'Create your account to get started.' },
+        2: { title: 'Account Details', lead: 'Enter your name and create a secure password.' },
+        3: { title: 'Phone Verification', lead: 'Verify your phone number for SMS reminders.' },
+        4: { title: 'A few optional details', lead: 'These help with reminders and safety — skip anything you don\'t want to share.' }
+      };
+      if (titles[stepNum]) {
+        document.getElementById('reg-title').textContent = titles[stepNum].title;
+        document.getElementById('reg-lead').textContent = titles[stepNum].lead;
+      }
+    }
+  </script>
 
   <script type="module">
     // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      sendEmailVerification,
+      onAuthStateChanged,
+      signOut,
+      RecaptchaVerifier,
+      signInWithPhoneNumber,
+      PhoneAuthProvider,
+      signInWithCredential,
+      linkWithCredential,
+      EmailAuthProvider,
+      reauthenticateWithCredential,
+      updatePassword
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     // Firebase configuration
@@ -415,83 +505,1013 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Override the form submission to use Firebase
-    const step2Form = document.getElementById('form-step2');
-    
-    step2Form.onsubmit = null; // Remove old handler
-    step2Form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const msg = document.getElementById('msg2');
-      msg.className = 'msg';
-      msg.textContent = '';
-      
-      // Collect all form data
-      const step1 = document.getElementById('form-step1');
-      const profileData = {
-        email: step1.email.value.trim(),
-        name: step1.name.value.trim(),
-        phone: step1.phone.value.trim(),
-        dob: step2Form.dob.value,
-        gender: step2Form.gender.value,
-        gender_other: step2Form.gender_other.value,
-        allergies: step2Form.allergies.value,
-        conditions: step2Form.conditions.value,
-        quiet_start: step2Form.quiet_start.value,
-        quiet_end: step2Form.quiet_end.value,
-        units: step2Form.unit.value,
-        timezone: step2Form.tz.value,
-        emg_name: step2Form.emg_name.value,
-        emg_phone: step2Form.emg_phone.value
-      };
-      
-      const password = step1.password.value;
-      
+    // Global state
+    let tempUser = null;
+    let tempPassword = null;
+    let emailVerified = false;
+    let phoneVerified = false;
+    let phoneVerificationId = null;
+    let recaptchaVerifier = null;
+    let recaptchaVerified = false; // Track if reCAPTCHA has been completed
+
+    // Step 1: Email Verification
+    const step1Form = document.getElementById('form-step1');
+    const emailInput = document.getElementById('reg-email');
+    const sendVerificationBtn = document.getElementById('send-verification');
+    const continueStep1Btn = document.getElementById('continue-step1');
+    const emailStatusDiv = document.getElementById('email-verification-status');
+    const msg1 = document.getElementById('msg1');
+
+    // Store email temporarily (don't create account until final step)
+    let storedEmail = null;
+    let emailVerificationCode = null;
+
+    // Simple email validation
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Generate a simple verification code (6 digits)
+    function generateVerificationCode() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    sendVerificationBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email) {
+        msg1.className = 'msg err';
+        msg1.textContent = 'Please enter your email address.';
+        return;
+      }
+
+      if (!isValidEmail(email)) {
+        msg1.className = 'msg err';
+        msg1.textContent = 'Please enter a valid email address.';
+        return;
+      }
+
       try {
-        // Show loading
-        msg.classList.add('ok');
-        msg.textContent = 'Creating your account...';
+        msg1.className = 'msg';
+        msg1.textContent = '';
+        sendVerificationBtn.disabled = true;
+        sendVerificationBtn.textContent = 'Sending...';
+
+        // Call Cloud Function to send verification email
+        const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: email })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to send verification email');
+        }
+
+        storedEmail = email;
         
-        // 1. Create Firebase Auth user
-        const userCredential = await createUserWithEmailAndPassword(auth, profileData.email, password);
-        const userId = userCredential.user.uid;
+        // For testing: log the code (remove in production)
+        if (result.code) {
+          console.log('Verification code for', email, ':', result.code);
+        }
         
-        // 2. Save profile to Firestore (without password)
-        const firestoreData = {...profileData};
-        delete firestoreData.password; // Don't save password to Firestore
+        emailStatusDiv.style.display = 'flex';
+        emailStatusDiv.className = 'verification-status pending';
+        emailStatusDiv.innerHTML = '📧 Verification email sent! Please check your inbox and enter the code below.';
         
-        console.log('Saving to Firestore:', firestoreData);
-        await setDoc(doc(db, "users", userId), firestoreData);
-        console.log('Successfully saved to Firestore');
+        // Show code input
+        const codeInput = document.getElementById('email-code-input');
+        codeInput.style.display = 'block';
+        codeInput.innerHTML = `
+          <div style="margin-top: 1rem;">
+            <label for="email-verification-code">Verification Code</label>
+            <div class="input-wrap">
+              <input id="email-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align: center; letter-spacing: 0.5rem; font-size: 1.2rem;" />
+            </div>
+            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-direction: column;">
+              <button class="btn btn-primary" type="button" id="verify-email-code" style="width: 100%;">Verify Code</button>
+              <button class="btn btn-secondary" type="button" id="resend-verification" style="width: 100%;">Resend Verification Email</button>
+            </div>
+            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted); text-align: center;">Check your email for the verification code</p>
+          </div>
+        `;
         
-        // 3. Save to localStorage for offline access (include password for now)
-        localStorage.setItem('userProfile', JSON.stringify({...profileData, password}));
-        localStorage.setItem('userId', userId);
-        localStorage.setItem('userEmail', profileData.email);
+        msg1.className = 'msg ok';
+        msg1.textContent = 'Verification email sent. Please check your inbox and enter the code.';
         
-        // 4. Success - redirect to login with success message
-        msg.textContent = 'Account created! Redirecting to login...';
-        setTimeout(() => {
-          window.location.href = 'login.html?registered=true';
-        }, 1500);
+        // Update send button to resend (grey/secondary)
+        sendVerificationBtn.disabled = false;
+        sendVerificationBtn.className = 'btn btn-secondary';
+        sendVerificationBtn.textContent = 'Resend Verification Email';
+        sendVerificationBtn.style.display = 'none'; // Hide the original button, we have resend button in code input
+        
+        // Handle code verification
+        const verifyBtn = document.getElementById('verify-email-code');
+        verifyBtn.addEventListener('click', async () => {
+          const enteredCode = document.getElementById('email-verification-code').value.trim();
+          
+          if (!enteredCode || enteredCode.length !== 6) {
+            msg1.className = 'msg err';
+            msg1.textContent = 'Please enter a 6-digit verification code.';
+            return;
+          }
+
+          try {
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
+            
+            // Call Cloud Function to verify code
+            const verifyUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyEmailCode';
+            const verifyResponse = await fetch(verifyUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email: email, code: enteredCode })
+            });
+
+            const verifyResult = await verifyResponse.json();
+
+            if (!verifyResponse.ok) {
+              throw new Error(verifyResult.error || 'Invalid verification code');
+            }
+
+            // Code verified successfully
+            emailVerified = true;
+            emailStatusDiv.style.display = 'flex';
+            emailStatusDiv.className = 'verification-status verified';
+            emailStatusDiv.innerHTML = '✓ Email verified! You can continue.';
+            
+            // Hide code input and show continue button
+            codeInput.style.display = 'none';
+            const continueContainer = document.getElementById('continue-container');
+            continueContainer.style.display = 'block';
+            
+            msg1.className = 'msg ok';
+            msg1.textContent = 'Email verified successfully!';
+            
+          } catch (error) {
+            console.error('Verification error:', error);
+            msg1.className = 'msg err';
+            msg1.textContent = error.message || 'Invalid verification code. Please try again.';
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = 'Verify Code';
+          }
+        });
+        
+        // Handle resend verification email
+        const resendBtn = document.getElementById('resend-verification');
+        resendBtn.addEventListener('click', async () => {
+          // Re-run the send verification flow
+          resendBtn.disabled = true;
+          resendBtn.textContent = 'Sending...';
+          
+          try {
+            const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
+            const response = await fetch(functionUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ email: email })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+              throw new Error(result.error || 'Failed to send verification email');
+            }
+
+            // For testing: log the code (remove in production)
+            if (result.code) {
+              console.log('Verification code for', email, ':', result.code);
+            }
+            
+            emailStatusDiv.style.display = 'flex';
+            emailStatusDiv.className = 'verification-status pending';
+            emailStatusDiv.innerHTML = '📧 Verification email sent! Please check your inbox and enter the code below.';
+            
+            msg1.className = 'msg ok';
+            msg1.textContent = 'Verification email sent. Please check your inbox and enter the code.';
+            
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Verification Email';
+            
+          } catch (error) {
+            console.error('Error:', error);
+            msg1.className = 'msg err';
+            msg1.textContent = 'Error: ' + (error.message || 'Failed to send verification email');
+            emailStatusDiv.style.display = 'flex';
+            emailStatusDiv.className = 'verification-status error';
+            emailStatusDiv.innerHTML = '✗ Error sending verification email.';
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Verification Email';
+          }
+        });
         
       } catch (error) {
-        console.error('Registration error:', error);
-        msg.classList.add('err');
-        
-        // User-friendly error messages
-        if (error.code === 'auth/email-already-in-use') {
-          msg.textContent = 'This email is already registered. Please log in instead.';
-        } else if (error.code === 'auth/invalid-email') {
-          msg.textContent = 'Please enter a valid email address.';
-        } else if (error.code === 'auth/weak-password') {
-          msg.textContent = 'Password should be at least 6 characters.';
-        } else {
-          msg.textContent = 'Registration failed: ' + error.message;
+        console.error('Error:', error);
+        msg1.className = 'msg err';
+        msg1.textContent = 'Error: ' + (error.message || 'Failed to send verification email');
+        emailStatusDiv.style.display = 'flex';
+        emailStatusDiv.className = 'verification-status error';
+        emailStatusDiv.innerHTML = '✗ Error sending verification email.';
+        sendVerificationBtn.disabled = false;
+        sendVerificationBtn.className = 'btn btn-primary';
+        sendVerificationBtn.textContent = 'Send Verification Email';
+        sendVerificationBtn.style.display = 'block';
+        // Hide code input if it was shown
+        const codeInput = document.getElementById('email-code-input');
+        if (codeInput) {
+          codeInput.style.display = 'none';
         }
       }
     });
-  </script>
+
+    continueStep1Btn.addEventListener('click', () => {
+      if (emailVerified && storedEmail) {
+        window.storedEmail = storedEmail; // Store for final step
+        goToStep(2);
+      } else {
+        msg1.className = 'msg err';
+        msg1.textContent = 'Please verify your email before continuing.';
+      }
+    });
+
+    // Step 2: Name and Password
+    const step2Form = document.getElementById('form-step2');
+    const msg2 = document.getElementById('msg2');
+    const backStep2Btn = document.getElementById('back-step2');
+
+    step2Form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg2.className = 'msg';
+      msg2.textContent = '';
+
+      const name = step2Form.name.value.trim();
+      const pw = step2Form.password.value;
+      const cf = step2Form.confirm.value;
+
+      if (!name || !pw || !cf) {
+        msg2.className = 'msg err';
+        msg2.textContent = 'Please fill all required fields.';
+        return;
+      }
+
+      if (pw.length < 8) {
+        msg2.className = 'msg err';
+        msg2.textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+
+      if (pw !== cf) {
+        msg2.className = 'msg err';
+        msg2.textContent = 'Passwords do not match.';
+        return;
+      }
+
+      // Store the password and name for final submission
+      window.finalPassword = pw;
+      window.tempName = name;
+      
+      // Skip step 3 (phone verification) - go directly to step 4
+      goToStep(4);
+    });
+
+    backStep2Btn.addEventListener('click', () => {
+      goToStep(1);
+    });
+
+    // Step 3: Phone Verification - TEMPORARILY COMMENTED OUT
+    /*
+    const step3Form = document.getElementById('form-step3');
+    const phoneInput = document.getElementById('reg-phone');
+    const countryCodeSelect = document.getElementById('country-code');
+    const phoneCodeInput = document.getElementById('phone-code');
+    const phoneCodeSection = document.getElementById('phone-code-section');
+    const sendPhoneCodeBtn = document.getElementById('send-phone-code');
+    const verifyPhoneCodeBtn = document.getElementById('verify-phone-code');
+    const continueStep3Btn = document.getElementById('continue-step3');
+    const phoneStatusDiv = document.getElementById('phone-verification-status');
+    const msg3 = document.getElementById('msg3');
+    const backStep3Btn = document.getElementById('back-step3');
+    */
+
+    /*
+    /*
+    // Phone number auto-formatting: (xxx) - xxx - xxxx
+    phoneInput.addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\D/g, ''); // Remove all non-digits
+      
+      // Limit to 10 digits (US phone number)
+      if (value.length > 10) {
+        value = value.slice(0, 10);
+      }
+      
+      // Format: (xxx) - xxx - xxxx
+      let formatted = '';
+      if (value.length > 0) {
+        if (value.length <= 3) {
+          formatted = '(' + value;
+        } else if (value.length <= 6) {
+          formatted = '(' + value.slice(0, 3) + ') - ' + value.slice(3);
+        } else {
+          formatted = '(' + value.slice(0, 3) + ') - ' + value.slice(3, 6) + ' - ' + value.slice(6, 10);
+        }
+      }
+      
+      e.target.value = formatted;
+    });
+    
+    // Also handle paste events
+    phoneInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+      const digits = pastedText.replace(/\D/g, '').slice(0, 10);
+      phoneInput.value = '';
+      phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
+      // Manually set the value
+      let formatted = '';
+      if (digits.length > 0) {
+        if (digits.length <= 3) {
+          formatted = '(' + digits;
+        } else if (digits.length <= 6) {
+          formatted = '(' + digits.slice(0, 3) + ') - ' + digits.slice(3);
+        } else {
+          formatted = '(' + digits.slice(0, 3) + ') - ' + digits.slice(3, 6) + ' - ' + digits.slice(6, 10);
+        }
+      }
+      phoneInput.value = formatted;
+    });
+
+    // Prevent non-numeric input
+    phoneInput.addEventListener('keydown', (e) => {
+      // Allow: backspace, delete, tab, escape, enter, and arrow keys
+      if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
+          // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+          (e.keyCode === 65 && e.ctrlKey === true) ||
+          (e.keyCode === 67 && e.ctrlKey === true) ||
+          (e.keyCode === 86 && e.ctrlKey === true) ||
+          (e.keyCode === 88 && e.ctrlKey === true)) {
+        return;
+      }
+      // Ensure that it is a number and stop the keypress
+      if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+        e.preventDefault();
+      }
+    });
+
+    // Initialize reCAPTCHA
+    async function initializeRecaptcha() {
+      if (!recaptchaVerifier) {
+        try {
+          // Clear any existing reCAPTCHA
+          const container = document.getElementById('recaptcha-container');
+          if (!container) {
+            throw new Error('reCAPTCHA container not found');
+          }
+          
+          container.innerHTML = '';
+          container.style.display = 'block';
+          container.style.minHeight = '78px';
+          
+          // Verify RecaptchaVerifier is available
+          if (typeof RecaptchaVerifier === 'undefined') {
+            throw new Error('RecaptchaVerifier is not available. Make sure Firebase Auth is properly loaded.');
+          }
+          
+          // Verify auth is ready
+          if (!auth) {
+            throw new Error('Firebase Auth is not initialized');
+          }
+          
+          console.log('Creating RecaptchaVerifier with auth:', auth, 'container:', container.id);
+          
+          // Create reCAPTCHA verifier following Firebase documentation pattern
+          // https://firebase.google.com/docs/auth/web/phone-auth
+          // Use 'normal' size for visible reCAPTCHA widget
+          recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'normal',
+            'callback': (response) => {
+              console.log('reCAPTCHA verified, response:', response);
+              recaptchaVerified = true; // Mark as verified
+              // Show "Send Code" button in blue when reCAPTCHA is verified
+              sendPhoneCodeBtn.style.display = 'inline-flex';
+              sendPhoneCodeBtn.className = 'btn btn-primary';
+              sendPhoneCodeBtn.disabled = false;
+              msg3.className = 'msg';
+              msg3.textContent = '';
+              console.log('reCAPTCHA callback fired - Send Code button should be visible now');
+              // Store the response token for debugging
+              window.lastRecaptchaResponse = response;
+            },
+            'expired-callback': () => {
+              console.log('reCAPTCHA expired');
+              recaptchaVerified = false; // Mark as not verified
+              sendPhoneCodeBtn.style.display = 'none'; // Hide send code button when expired
+              sendPhoneCodeBtn.disabled = true;
+              msg3.className = 'msg err';
+              msg3.textContent = 'reCAPTCHA expired. Please complete it again.';
+              window.lastRecaptchaResponse = null;
+            }
+          });
+          
+          console.log('Rendering reCAPTCHA...');
+          // Render the reCAPTCHA - render() returns a Promise in Firebase v9+
+          try {
+            const widgetId = await recaptchaVerifier.render();
+            console.log('reCAPTCHA rendered successfully, widget ID:', widgetId);
+            // Note: widgetId can be 0 initially, which is valid for Firebase reCAPTCHA
+          } catch (renderError) {
+            console.error('Error during render():', renderError);
+            // If render fails, the verifier might still work, so we'll continue
+            // but log the error for debugging
+          }
+          
+          // Wait a moment for reCAPTCHA widget to appear in DOM and be fully ready
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Don't show send code button yet - wait for reCAPTCHA to be verified
+          sendPhoneCodeBtn.style.display = 'none';
+          sendPhoneCodeBtn.disabled = true; // Disable until reCAPTCHA is verified
+          recaptchaVerified = false; // Reset flag when initializing
+          
+          console.log('reCAPTCHA initialization complete - waiting for user to verify');
+        } catch (error) {
+          console.error('Error initializing reCAPTCHA:', error);
+          msg3.className = 'msg err';
+          
+          // Provide helpful error message based on error type
+          let errorMessage = 'Error initializing verification. ';
+          if (error.code === 'auth/internal-error' || error.message?.includes('internal-error')) {
+            errorMessage += 'This usually means: ';
+            errorMessage += '1) Domain not authorized (check Firebase Console → Authentication → Settings → Authorized domains - make sure "localhost" is listed), ';
+            errorMessage += '2) reCAPTCHA site key not configured, or ';
+            errorMessage += '3) Billing/quota issue. ';
+            errorMessage += 'Please check Firebase Console settings.';
+          } else {
+            errorMessage += (error.message || error.code || 'Unknown error') + '. Please refresh the page.';
+          }
+          
+          msg3.textContent = errorMessage;
+          if (recaptchaVerifier) {
+            try {
+              recaptchaVerifier.clear();
+            } catch (clearError) {
+              console.error('Error clearing reCAPTCHA:', clearError);
+            }
+            recaptchaVerifier = null;
+          }
+          throw error; // Re-throw so caller knows it failed
+        }
+      }
+      return recaptchaVerifier;
+    }
+
+    // Initialize reCAPTCHA when step 3 is shown
+    let recaptchaInitialized = false;
+    const originalGoToStep = window.goToStep;
+    window.goToStep = function(stepNum) {
+      originalGoToStep(stepNum);
+      if (stepNum === 3) {
+        // Always ensure container is visible when step 3 is shown
+        const container = document.getElementById('recaptcha-container');
+        if (container) {
+          container.style.display = 'block';
+          container.style.visibility = 'visible';
+          container.style.minHeight = '78px';
+          container.style.width = '100%';
+        }
+        
+        // Initialize reCAPTCHA if not already initialized or if it was cleared
+        if (!recaptchaInitialized || !recaptchaVerifier) {
+          // Wait for DOM and ensure auth is ready
+          setTimeout(async () => {
+            try {
+              // Check if auth is initialized
+              if (!auth) {
+                console.error('Firebase Auth not initialized');
+                msg3.className = 'msg err';
+                msg3.textContent = 'Authentication not ready. Please refresh the page.';
+                return;
+              }
+              
+              const container = document.getElementById('recaptcha-container');
+              if (!container) {
+                console.error('reCAPTCHA container not found');
+                msg3.className = 'msg err';
+                msg3.textContent = 'reCAPTCHA container not found. Please refresh the page.';
+                return;
+              }
+              
+              // Make sure container is visible and has proper styling
+              container.style.display = 'block';
+              container.style.visibility = 'visible';
+              container.style.minHeight = '78px';
+              container.style.width = '100%';
+              
+              // Clear container if it has old content but no verifier
+              if (!recaptchaVerifier && container.innerHTML.trim() !== '') {
+                container.innerHTML = '';
+              }
+              
+              // Wait a bit more to ensure container is fully rendered
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              await initializeRecaptcha();
+              recaptchaInitialized = true;
+              console.log('reCAPTCHA initialized successfully');
+            } catch (error) {
+              console.error('Failed to initialize reCAPTCHA:', error);
+              msg3.className = 'msg err';
+              const errorMsg = error.message || error.code || 'Unknown error';
+              msg3.textContent = `Failed to load reCAPTCHA: ${errorMsg}. Please refresh the page or try clicking "Send Code" to retry.`;
+              recaptchaInitialized = false; // Allow retry
+            }
+          }, 800); // Increased delay to ensure everything is ready
+        }
+      }
+    };
+
+    sendPhoneCodeBtn.addEventListener('click', async () => {
+      // Get phone number digits only
+      const phoneDigits = phoneInput.value.replace(/\D/g, '');
+      const countryCode = countryCodeSelect.value;
+      
+      if (!phoneDigits || phoneDigits.length !== 10) {
+        msg3.className = 'msg err';
+        msg3.textContent = 'Please enter a valid 10-digit phone number.';
+        return;
+      }
+
+      // Format phone number with country code for Firebase
+      // Ensure country code starts with + if it doesn't already
+      const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
+      const fullPhoneNumber = formattedCountryCode + phoneDigits;
+      
+      console.log('Phone number formatting:');
+      console.log('  Country code from dropdown:', countryCode);
+      console.log('  Phone digits:', phoneDigits);
+      console.log('  Full phone number:', fullPhoneNumber);
+
+      try {
+        msg3.className = 'msg';
+        msg3.textContent = '';
+        sendPhoneCodeBtn.disabled = true;
+        sendPhoneCodeBtn.textContent = 'Sending...';
+
+        // Ensure reCAPTCHA is initialized (retry if it failed before)
+        if (!recaptchaVerifier) {
+          try {
+            // Clear any previous error
+            msg3.className = 'msg';
+            msg3.textContent = 'Initializing reCAPTCHA...';
+            
+            await initializeRecaptcha();
+            // Wait a moment for reCAPTCHA widget to fully render
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Clear the loading message
+            msg3.className = 'msg';
+            msg3.textContent = '';
+          } catch (initError) {
+            console.error('Failed to initialize reCAPTCHA on button click:', initError);
+            msg3.className = 'msg err';
+            
+            let errorMsg = 'Failed to initialize reCAPTCHA. ';
+            if (initError.code === 'auth/internal-error' || initError.message?.includes('internal-error')) {
+              errorMsg += 'Phone authentication is not enabled in Firebase Console. ';
+              errorMsg += 'Please enable it: Firebase Console → Authentication → Sign-in method → Phone → Enable.';
+            } else {
+              errorMsg += (initError.message || initError.code || 'Unknown error') + '. ';
+              errorMsg += 'Please check your internet connection and try again.';
+            }
+            
+            msg3.textContent = errorMsg;
+            sendPhoneCodeBtn.disabled = false;
+            sendPhoneCodeBtn.textContent = 'Send Code';
+            return;
+          }
+        }
+
+        // Check if reCAPTCHA is ready
+        if (!recaptchaVerifier) {
+          msg3.className = 'msg err';
+          msg3.textContent = 'reCAPTCHA is still loading. Please wait a moment and try again.';
+          sendPhoneCodeBtn.disabled = false;
+          sendPhoneCodeBtn.textContent = 'Send Code';
+          return;
+        }
+        
+        // Check if reCAPTCHA has been verified using our flag
+        if (!recaptchaVerified) {
+          msg3.className = 'msg err';
+          msg3.textContent = 'Please complete the reCAPTCHA verification first (check the box above).';
+          sendPhoneCodeBtn.disabled = false;
+          sendPhoneCodeBtn.textContent = 'Send Code';
+          return;
+        }
+
+        // Use PhoneAuthProvider following Firebase documentation pattern
+        // https://firebase.google.com/docs/auth/web/phone-auth
+        const phoneAuthProvider = new PhoneAuthProvider(auth);
+        
+        // Validate phone number format (E.164: +[country code][number])
+        if (!fullPhoneNumber.startsWith('+')) {
+          throw new Error('Phone number must start with + (country code)');
+        }
+        
+        if (fullPhoneNumber.length < 10 || fullPhoneNumber.length > 15) {
+          throw new Error('Phone number length is invalid. Should be between 10-15 digits including country code.');
+        }
+        
+        console.log('=== Phone Verification Debug ===');
+        console.log('Country code from dropdown:', countryCode);
+        console.log('Phone digits extracted:', phoneDigits);
+        console.log('Full formatted number:', fullPhoneNumber);
+        console.log('Number length:', fullPhoneNumber.length);
+        console.log('Using reCAPTCHA verifier:', recaptchaVerifier);
+        console.log('reCAPTCHA verified status:', recaptchaVerified);
+        console.log('reCAPTCHA widget ID:', recaptchaVerifier?.widgetId);
+        console.log('Last reCAPTCHA response:', window.lastRecaptchaResponse);
+        console.log('Current URL:', window.location.href);
+        console.log('===============================');
+        
+        // Ensure reCAPTCHA container is visible and in DOM
+        const recaptchaContainer = document.getElementById('recaptcha-container');
+        if (recaptchaContainer) {
+          console.log('reCAPTCHA container visibility:', {
+            display: window.getComputedStyle(recaptchaContainer).display,
+            visibility: window.getComputedStyle(recaptchaContainer).visibility,
+            opacity: window.getComputedStyle(recaptchaContainer).opacity
+          });
+        }
+        
+        // Call verifyPhoneNumber as per Firebase documentation
+        // This will automatically handle reCAPTCHA verification
+        phoneVerificationId = await phoneAuthProvider.verifyPhoneNumber(fullPhoneNumber, recaptchaVerifier);
+        console.log('✅ Verification ID received:', phoneVerificationId);
+        console.log('📱 SMS should be sent to:', fullPhoneNumber);
+        console.log('⏰ SMS delivery can take 1-2 minutes. If you don\'t receive it:');
+        console.log('   1. Check spam/blocked messages');
+        console.log('   2. Verify your carrier allows short codes');
+        console.log('   3. Check Firebase Console → Authentication → Usage for SMS delivery status');
+        console.log('   4. Some carriers (especially prepaid) block short codes - try a different carrier or contact your carrier');
+        console.log('   5. Check Firebase Console → Billing to ensure Blaze plan is active and no quota limits');
+
+        // Show code input section
+        phoneCodeSection.style.display = 'block';
+        
+        // Hide send code button, show verify and resend buttons
+        sendPhoneCodeBtn.style.display = 'none';
+        verifyPhoneCodeBtn.style.display = 'inline-flex';
+        verifyPhoneCodeBtn.className = 'btn btn-primary';
+        const resendBtn = document.getElementById('resend-phone-code');
+        resendBtn.style.display = 'inline-flex';
+        resendBtn.className = 'btn btn-secondary';
+        
+        phoneStatusDiv.style.display = 'flex';
+        phoneStatusDiv.className = 'verification-status pending';
+        phoneStatusDiv.innerHTML = '📱 Verification code sent! Enter the code you received.<br><small style="opacity: 0.7; margin-top: 0.5rem; display: block;">If you don\'t receive it within 2 minutes, check your spam folder or try again.</small>';
+        
+        msg3.className = 'msg ok';
+        msg3.textContent = 'Verification code sent to your phone. SMS delivery can take 1-2 minutes.';
+        
+      } catch (error) {
+        console.error('Error sending phone verification:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          stack: error.stack
+        });
+        
+        msg3.className = 'msg err';
+        phoneStatusDiv.style.display = 'flex';
+        phoneStatusDiv.className = 'verification-status error';
+        
+        let errorMsg = 'Error sending verification code. ';
+        let statusMsg = '✗ Error sending code.';
+        
+        if (error.code === 'auth/invalid-phone-number') {
+          errorMsg = 'Invalid phone number format. Please check your number and country code.';
+          statusMsg = '✗ Invalid phone number.';
+        } else if (error.code === 'auth/too-many-requests') {
+          errorMsg = 'Too many requests. Please wait a few minutes and try again.';
+          statusMsg = '✗ Too many requests.';
+        } else if (error.code === 'auth/quota-exceeded') {
+          errorMsg = 'SMS quota exceeded. Please check your Firebase billing.';
+          statusMsg = '✗ SMS quota exceeded.';
+        } else if (error.code === 'auth/region-not-enabled' || error.message?.includes('region') || error.message?.includes('SMS')) {
+          errorMsg = 'SMS region not enabled. Go to Firebase Console → Authentication → Settings → SMS Region Policy → Enable your region (e.g., United States).';
+          statusMsg = '✗ SMS region not enabled.';
+        } else if (error.code === 'auth/captcha-check-failed') {
+          errorMsg = 'reCAPTCHA verification failed. Please try again.';
+          statusMsg = '✗ reCAPTCHA failed.';
+        } else if (error.code === 'auth/session-expired') {
+          errorMsg = 'Session expired. Please refresh the page and try again.';
+          statusMsg = '✗ Session expired.';
+        } else if (error.code === 'auth/internal-error') {
+          errorMsg = 'Internal error. This may indicate SMS region policy is not enabled. Go to Firebase Console → Authentication → Settings → SMS Region Policy → Enable your region.';
+          statusMsg = '✗ Internal error.';
+        } else if (error.code === 'auth/invalid-app-credential') {
+          errorMsg = 'Invalid app credential. Make sure: 1) You\'re accessing via http://localhost:8000 (not file://), 2) Both "localhost" AND "127.0.0.1" are in Firebase Console → Authentication → Settings → Authorized domains, 3) Phone Authentication is enabled. Try refreshing the page and completing reCAPTCHA again.';
+          statusMsg = '✗ Invalid app credential.';
+        } else {
+          errorMsg = 'Error: ' + (error.message || error.code || 'Unknown error');
+          statusMsg = '✗ Error sending code.';
+        }
+        
+        msg3.textContent = errorMsg;
+        phoneStatusDiv.innerHTML = statusMsg;
+        
+        // Clear reCAPTCHA on error so user can try again
+        if (recaptchaVerifier) {
+          try {
+            recaptchaVerifier.clear();
+            recaptchaVerifier = null;
+            recaptchaInitialized = false;
+            recaptchaVerified = false;
+            // Clear the container but keep it visible
+            const container = document.getElementById('recaptcha-container');
+            if (container) {
+              container.innerHTML = '';
+              container.style.display = 'block';
+              container.style.visibility = 'visible';
+              container.style.minHeight = '78px';
+            }
+            // Re-initialize reCAPTCHA after a short delay
+            setTimeout(async () => {
+              try {
+                await initializeRecaptcha();
+                recaptchaInitialized = true;
+                console.log('reCAPTCHA re-initialized after error');
+              } catch (reinitError) {
+                console.error('Failed to re-initialize reCAPTCHA:', reinitError);
+              }
+            }, 500);
+          } catch (clearError) {
+            console.error('Error clearing reCAPTCHA:', clearError);
+          }
+        }
+        
+        // On error, hide send code button (reCAPTCHA needs to be verified again)
+        sendPhoneCodeBtn.style.display = 'none';
+        sendPhoneCodeBtn.disabled = false;
+        sendPhoneCodeBtn.textContent = 'Send Code';
+      }
+    });
+
+    // Handle resend phone code button
+    const resendPhoneCodeBtn = document.getElementById('resend-phone-code');
+    resendPhoneCodeBtn.addEventListener('click', async () => {
+      // Re-run the send code flow
+      sendPhoneCodeBtn.click();
+    });
+
+    verifyPhoneCodeBtn.addEventListener('click', async () => {
+      const code = phoneCodeInput.value.trim();
+      if (!code || code.length !== 6) {
+        msg3.className = 'msg err';
+        msg3.textContent = 'Please enter the 6-digit verification code.';
+        return;
+      }
+
+      try {
+        msg3.className = 'msg';
+        msg3.textContent = '';
+        verifyPhoneCodeBtn.disabled = true;
+        verifyPhoneCodeBtn.textContent = 'Verifying...';
+
+        // Create credential from verification ID and code
+        const credential = PhoneAuthProvider.credential(phoneVerificationId, code);
+        
+        // DON'T sign in with phone - just verify the code is valid by checking the credential
+        // We'll link it to the email account when we create it in step 4
+        // This prevents creating a separate phone-only account
+        console.log('Phone code verified successfully - credential created, will link to email account in step 4');
+        
+        // Store the verification ID and code for linking in step 4
+        window.phoneVerificationCode = code;
+        window.phoneVerificationId = phoneVerificationId; // Make sure it's stored globally
+        window.phoneCredential = credential; // Store the credential itself for linking
+        
+        // Store verified phone number
+        const phoneDigits = phoneInput.value.replace(/\D/g, '');
+        const countryCode = countryCodeSelect.value;
+        window.verifiedPhoneNumber = countryCode + phoneDigits;
+        phoneVerified = true;
+
+        phoneStatusDiv.style.display = 'flex';
+        phoneStatusDiv.className = 'verification-status verified';
+        phoneStatusDiv.innerHTML = '✓ Phone verified!';
+        
+        // Hide verify and resend buttons, show continue button
+        verifyPhoneCodeBtn.style.display = 'none';
+        const resendBtn = document.getElementById('resend-phone-code');
+        resendBtn.style.display = 'none';
+        continueStep3Btn.style.display = 'inline-flex';
+        continueStep3Btn.className = 'btn btn-primary';
+        continueStep3Btn.disabled = false;
+        
+        msg3.className = 'msg ok';
+        msg3.textContent = 'Phone number verified successfully!';
+        
+      } catch (error) {
+        console.error('Error verifying phone code:', error);
+        msg3.className = 'msg err';
+        phoneStatusDiv.style.display = 'flex';
+        phoneStatusDiv.className = 'verification-status error';
+        
+        if (error.code === 'auth/invalid-verification-code') {
+          msg3.textContent = 'Invalid verification code. Please try again.';
+          phoneStatusDiv.innerHTML = '✗ Invalid code.';
+        } else if (error.code === 'auth/credential-already-in-use') {
+          msg3.textContent = 'This phone number is already linked to another account.';
+          phoneStatusDiv.innerHTML = '✗ Phone already in use.';
+        } else {
+          msg3.textContent = 'Error: ' + error.message;
+          phoneStatusDiv.innerHTML = '✗ Verification failed.';
+        }
+        
+        verifyPhoneCodeBtn.disabled = false;
+        verifyPhoneCodeBtn.textContent = 'Verify Code';
+      }
+    });
+
+    continueStep3Btn.addEventListener('click', () => {
+      if (phoneVerified) {
+        goToStep(4);
+      } else {
+        msg3.className = 'msg err';
+        msg3.textContent = 'Please verify your phone number before continuing, or click "Skip" to continue without phone.';
+      }
+    });
+
+    // Skip phone verification button
+    const skipPhoneBtn = document.getElementById('skip-phone');
+    skipPhoneBtn.addEventListener('click', () => {
+      // Mark that phone was skipped
+      phoneVerified = false;
+      window.verifiedPhoneNumber = null;
+      window.phoneVerificationId = null;
+      window.phoneVerificationCode = null;
+      
+      // Clear any phone input
+      phoneInput.value = '';
+      
+      // Proceed to step 4
+      msg3.className = 'msg';
+      msg3.textContent = 'Phone verification skipped. You can add a phone number later in your profile.';
+      goToStep(4);
+    });
+
+    backStep3Btn.addEventListener('click', () => {
+      goToStep(2);
+    });
+    */
+
+    // Step 4: Health Preferences and Final Submission
+    const step4Form = document.getElementById('form-step4');
+    const msg4 = document.getElementById('msg4');
+    const backStep4Btn = document.getElementById('back-step4');
+
+    step4Form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      msg4.className = 'msg';
+      msg4.textContent = '';
+
+      try {
+        msg4.classList.add('ok');
+        msg4.textContent = 'Creating your account...';
+
+        // Collect all form data
+        const email = window.storedEmail || emailInput.value.trim();
+        // Phone verification is temporarily disabled - no phone value collected
+        const phoneValue = window.verifiedPhoneNumber || '';
+        
+        const profileData = {
+          email: email,
+          name: window.tempName || step2Form.name.value.trim(),
+          dob: step4Form.dob.value,
+          gender: step4Form.gender.value,
+          gender_other: step4Form.gender_other.value,
+          allergies: step4Form.allergies.value,
+          conditions: step4Form.conditions.value,
+          quiet_start: step4Form.quiet_start.value,
+          quiet_end: step4Form.quiet_end.value,
+          units: step4Form.unit.value,
+          timezone: step4Form.tz.value,
+          emg_name: step4Form.emg_name.value,
+          emg_phone: step4Form.emg_phone.value
+        };
+        
+        // Only include phone if it was verified or provided
+        if (phoneValue) {
+          profileData.phone = phoneValue;
+        }
+
+        // Get password - check both stored value and form
+        const passwordField = step2Form.querySelector('#reg-pass') || step2Form.querySelector('[name="password"]');
+        const finalPassword = window.finalPassword || (passwordField ? passwordField.value : step2Form.password?.value || '');
+        
+        console.log('Password check:', {
+          stored: !!window.finalPassword,
+          fromField: !!passwordField?.value,
+          length: finalPassword?.length
+        });
+        
+        if (!finalPassword || finalPassword.length < 8) {
+          msg4.className = 'msg err';
+          msg4.textContent = 'Password is required and must be at least 8 characters. Please go back to Step 2 and enter your password.';
+          return;
+        }
+
+        // NOW create the Firebase account (only at the final step)
+        const userCredential = await createUserWithEmailAndPassword(auth, email, finalPassword);
+        const userId = userCredential.user.uid;
+        
+        // Link phone credential if phone was verified
+        // Use the stored credential directly (no need to recreate it)
+        if (phoneVerified && window.phoneCredential) {
+          try {
+            console.log('Linking phone credential to email account...');
+            console.log('Phone credential:', window.phoneCredential);
+            console.log('User:', userCredential.user.uid);
+            
+            // Link the phone credential to the email account
+            // This creates ONE account with both email and phone providers
+            await linkWithCredential(userCredential.user, window.phoneCredential);
+            console.log('✅ Phone number linked to account successfully - ONE user with both email and phone!');
+            console.log('User providers after linking:', userCredential.user.providerData.map(p => p.providerId));
+          } catch (linkError) {
+            console.error('Error linking phone:', linkError);
+            // If linking fails, we still save the phone number in the profile
+            // The user can manually link it later if needed
+            if (linkError.code === 'auth/credential-already-in-use') {
+              console.warn('Phone number already in use - will save to profile only');
+              msg4.textContent = 'Account created! Note: Phone number was already linked to another account, but it\'s saved in your profile.';
+            } else {
+              console.warn('Could not link phone credential, but phone number will be saved in profile');
+              msg4.textContent = 'Account created! Note: Phone number saved in profile but not linked to account.';
+            }
+          }
+        } else {
+          console.log('Phone not verified or missing credential:', {
+            phoneVerified,
+            hasCredential: !!window.phoneCredential,
+            hasVerificationId: !!window.phoneVerificationId,
+            hasCode: !!window.phoneVerificationCode
+          });
+        }
+        
+        // Send email verification
+        await sendEmailVerification(userCredential.user);
+
+        // Save profile to Firestore (without password)
+        const firestoreData = {...profileData};
+        delete firestoreData.password;
+
+        console.log('Saving to Firestore:', firestoreData);
+        await setDoc(doc(db, "users", userId), firestoreData);
+        console.log('Successfully saved to Firestore');
+
+        // Save to localStorage for offline access (don't save password for security)
+        localStorage.setItem('userProfile', JSON.stringify(profileData));
+        localStorage.setItem('userId', userId);
+        localStorage.setItem('userEmail', profileData.email);
+
+        // Success - redirect to login with success message
+        msg4.textContent = 'Account created! Redirecting to login...';
+        setTimeout(() => {
+          window.location.href = 'login.html?registered=true';
+        }, 1500);
+
+      } catch (error) {
+        console.error('Registration error:', error);
+        msg4.classList.add('err');
+
+        // User-friendly error messages
+        if (error.code === 'auth/email-already-in-use') {
+          msg4.textContent = 'This email is already registered. Please log in instead.';
+        } else if (error.code === 'auth/invalid-email') {
+          msg4.textContent = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/weak-password') {
+          msg4.textContent = 'Password should be at least 6 characters.';
+        } else {
+          msg4.textContent = 'Registration failed: ' + error.message;
+        }
+      }
+    });
+
+    backStep4Btn.addEventListener('click', () => {
+      goToStep(3);
+    });
+</script>
 
 </body>
 </html>

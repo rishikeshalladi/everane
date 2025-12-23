@@ -149,6 +149,8 @@ textarea:focus {
   max-width:320px;
   text-align:center;
   box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .modal-content p {
   margin-bottom:1rem;
