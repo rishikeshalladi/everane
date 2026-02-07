@@ -6,18 +6,18 @@
   <title>MedTracker – Calendar</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* Default to light mode */
+    /* Default to light mode - High contrast for seniors */
     :root {
-      --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
+      --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
       --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
-      --radius:20px; --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+      --radius:20px; --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
       --container:1200px;
       /* compatibility var */
       --danger-color: var(--danger);
-      /* Improved contrast for better readability */
-      --text-strong: #020617;
-      --muted-strong: #334155;
+      /* High contrast for seniors - maximum readability */
+      --text-strong: #000000;
+      --muted-strong: #1a1a1a;
     }
 
     /* Dark mode override */
@@ -216,27 +216,33 @@
     
     @media (max-width: 900px) {
       body {
-        overflow: hidden;
-        position: fixed;
+        /* Allow vertical scrolling on phones (calendar was getting clipped) */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        position: static;
         width: 100%;
-        height: 100vh;
+        height: auto;
       }
       .content {
         padding: 0 !important;
         padding-top: 5rem !important;
         margin: 0 !important;
-        height: 100vh;
         width: 100vw;
-        overflow: hidden;
-        position: fixed;
+        height: auto;
+        overflow: visible;
+        position: relative;
       }
       .calendar-container {
         padding: 0.3rem;
         max-width: 100%;
-        height: 80vh;
+        /* Make the main content scroll instead of clipping */
+        min-height: calc(100vh - 5rem);
+        height: auto;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2rem;
       }
       .calendar-header {
         padding: 0.25rem;
@@ -315,7 +321,7 @@
         display: flex;
         flex-direction: column;
         min-height: 0;
-        overflow: hidden;
+        overflow: visible;
         border-radius: 8px;
       }
       .calendar-weekdays {
@@ -328,7 +334,7 @@
       .calendar-days {
         flex: 1;
         min-height: 0;
-        overflow: hidden;
+        overflow: visible;
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         grid-template-rows: repeat(6, 1fr);
@@ -660,7 +666,6 @@
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
     <a href="profile.html">Profile</a>
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -1682,6 +1687,8 @@
             date: dateStrKey,
             doseNumber: doseNum,
             taken: taken,
+            // If this dose was previously auto-marked, explicitly clear it when the user manually sets status.
+            autoMarked: false,
             // Add timestamp when marked as taken, preserve existing if already taken
             takenAt: taken 
               ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())

@@ -18,8 +18,11 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
-        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        /* High contrast for seniors - maximum readability */
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
       }
     }
 
@@ -56,15 +59,29 @@
       color: var(--muted);
       border: 1px solid transparent;
       transition: .2s ease;
+      font-size: 1.15rem;
     }
-    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); text-decoration: none; }
     .sidebar a.active {
       color: #fff;
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
     /* Hamburger menu */
-    .menu-toggle { display: none; }
+    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    .menu-toggle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      opacity: 0;
+    }
     .hamburger {
       display: none;
       position: fixed;
@@ -159,6 +176,7 @@
         background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
         border: none !important;
         border-left: none !important;
+        text-decoration: none !important;
       }
       nav.sidebar a.active {
         background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
@@ -311,6 +329,8 @@
       box-shadow: var(--shadow);
       padding: 1.25rem;
       text-align: left;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
 
@@ -318,7 +338,8 @@
     .agenda-modal .modal-content {
       max-width: 720px;
       width: 95%;
-      max-height: 85vh;
+      max-height: 90vh;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 1rem;
@@ -476,7 +497,7 @@
     /* forms */
     .form-group { text-align: left; margin-bottom: 1rem; }
     .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
-    .form-group input[type="date"], .form-group input[type="number"] {
+    .form-group input[type="date"], .form-group input[type="number"], .form-group input[type="email"], .form-group input[type="text"], .form-group textarea {
       width: 100%;
       padding: .8rem 1rem;
       border-radius: 14px;
@@ -485,9 +506,15 @@
       color: var(--text);
       outline: none;
       transition: border-color .2s ease, box-shadow .2s ease;
+      font-family: inherit;
+      font-size: 1rem;
     }
-    .form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
-    .form-group input:focus {
+    .form-group textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+    .form-group input:focus, .form-group textarea:focus {
       border-color: color-mix(in oklab, var(--brand) 40%, transparent);
       box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
     }
@@ -617,7 +644,10 @@
       }
       
       .form-group input[type="date"],
-      .form-group input[type="number"] {
+      .form-group input[type="number"],
+      .form-group input[type="email"],
+      .form-group input[type="text"],
+      .form-group textarea {
         padding: .7rem .85rem;
         font-size: 16px;
       }
@@ -652,27 +682,34 @@
   <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
   
   <nav class="sidebar">
-    <a href="home.html" class="active">Home</a>
-    <a href="history.html">History</a>
-    <a href="calendar.html">Calendar</a>
-    <a href="notes.html">Notes</a>
-    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
-      <span>Profile</span>
-      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
-    </a>
+    <a href="home.html">Home</a>
+    <a href="add-patient.html" class="active">Add Patient</a>
+    <a href="profile.html">Profile</a>
   </nav>
 
   <div class="content">
     <div class="container">
       <div class="home-header">
-      <h1>Home</h1>
-        <button class="btn agenda-btn" id="open-agenda-btn">Agenda</button>
+      <h1>Add Patient</h1>
       </div>
-      <div id="med-list"></div>
-      <div style="text-align:center; margin-top:2rem;">
-        <button class="btn-primary" onclick="location.href='add-medication.html'">
-          + Add Medication
-        </button>
+      
+      <div class="card" style="margin-top: 2rem;">
+        <h2 style="margin-top: 0; margin-bottom: 1.5rem;">Request to Watch Over Patient</h2>
+        <form id="add-patient-form" novalidate>
+          <div class="form-group">
+            <label for="patient-email">Patient Email <span style="color: red;">*</span></label>
+            <input id="patient-email" name="patient-email" type="email" placeholder="patient@example.com" autocomplete="email" required />
+            <div id="patient-email-error" class="error-message"></div>
+          </div>
+          <div class="form-group">
+            <label for="message">Message <small>(optional)</small></label>
+            <textarea id="message" name="message" placeholder="Add a message to introduce yourself..." rows="5"></textarea>
+          </div>
+          <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">Request to Watch Over</button>
+          </div>
+          <p id="add-patient-message" class="msg" role="status" aria-live="polite" style="margin-top: 1rem;"></p>
+        </form>
       </div>
     </div>
   </div>
@@ -729,23 +766,6 @@
     </div>
   </div>
 
-  <!-- Agenda Modal -->
-  <div id="agenda-modal" class="modal agenda-modal">
-    <div class="modal-content">
-      <div class="agenda-header">
-        <div class="agenda-title-group">
-          <h3>Today’s Agenda</h3>
-          <p id="agenda-date"></p>
-        </div>
-        <button class="agenda-close" id="agenda-close" aria-label="Close agenda">&times;</button>
-      </div>
-      <div class="agenda-list" id="agenda-list"></div>
-      <div class="agenda-footer">
-        Automatic daily agenda emails are sent at 9:00 AM Pacific.
-      </div>
-    </div>
-  </div>
-
 <script>
       document.addEventListener('DOMContentLoaded', () => {
       // Close mobile menu when clicking on nav links
@@ -756,7 +776,7 @@
           menuToggle.checked = false;
         });
       });
-      
+
       let pendingDeleteIndex = null;
       let currentStockMedId = null;
       let pendingDeleteBottleIndex = null;
@@ -1053,27 +1073,17 @@
 </script>
 
 <style>
-  .verify-warning {
-    font-size: 1rem;
-    cursor: help;
-    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
-    animation: pulse 2s ease-in-out infinite;
-  }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
   }
 </style>
 
-<!-- Schedule and Dose Logs Utilities -->
-<script src="schedule-utils.js"></script>
-<script src="dose-logs-utils.js"></script>
-
 <script type="module">
   // Import Firebase SDKs for verification check
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, query, where } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
@@ -1103,105 +1113,6 @@
   };
 
   let currentMedications = [];
-  let currentAgendaEntries = [];
-
-  const agendaModal = document.getElementById('agenda-modal');
-  const openAgendaBtn = document.getElementById('open-agenda-btn');
-  const closeAgendaBtn = document.getElementById('agenda-close');
-  const agendaListEl = document.getElementById('agenda-list');
-  const agendaDateEl = document.getElementById('agenda-date');
-
-  const buildAgendaEntries = (medications) => {
-    const entries = [];
-    const now = new Date();
-    const todayIndex = now.getDay();
-
-    medications.forEach(med => {
-      const allowedDays = med.days && med.days.length ? med.days.map(d => d.toLowerCase()) : weekdaysConst;
-      if (!allowedDays.includes(weekdaysConst[todayIndex])) return;
-
-      const times = Array.isArray(med.times) && med.times.length ? [...med.times].filter(Boolean).sort() : [null];
-      times.forEach((timeStr, idx) => {
-        entries.push({
-          time: timeStr,
-          name: med.name,
-          dosage: med.dosage,
-          doseNumber: idx + 1,
-          totalDoses: times.length
-        });
-      });
-    });
-
-    entries.sort((a, b) => {
-      if (a.time === b.time) {
-        return (a.name || '').localeCompare(b.name || '');
-      }
-      if (!a.time) return 1;
-      if (!b.time) return -1;
-      return a.time.localeCompare(b.time);
-    });
-
-    return entries;
-  };
-
-  const renderAgendaEntries = () => {
-    if (!agendaListEl) return;
-    if (!currentAgendaEntries.length) {
-      agendaListEl.innerHTML = `<div class="agenda-empty">No medications scheduled for today.</div>`;
-      return;
-    }
-
-    agendaListEl.innerHTML = currentAgendaEntries.map(entry => {
-      const timeLabel = entry.time ? formatTime12h(entry.time) : 'Any time';
-      const doseLabel = entry.totalDoses > 1 ? `Dose ${entry.doseNumber}` : 'Single dose';
-      const dosageLabel = entry.dosage ? `<div class="agenda-entry-dose">${entry.dosage}</div>` : '';
-      return `
-        <div class="agenda-entry">
-          <div class="agenda-entry-time">${timeLabel}</div>
-          <div>
-            <div class="agenda-entry-name">${entry.name} · ${doseLabel}</div>
-            ${dosageLabel}
-          </div>
-        </div>
-      `;
-    }).join('');
-  };
-
-  const openAgendaModal = () => {
-    if (!agendaModal) return;
-    const now = new Date();
-    if (agendaDateEl) {
-      agendaDateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-    }
-    renderAgendaEntries();
-    agendaModal.classList.add('show');
-  };
-
-  const closeAgendaModal = () => {
-    if (!agendaModal) return;
-    agendaModal.classList.remove('show');
-  };
-
-  if (openAgendaBtn) {
-    openAgendaBtn.addEventListener('click', () => {
-      if (!currentAgendaEntries.length) {
-        currentAgendaEntries = buildAgendaEntries(currentMedications);
-      }
-      openAgendaModal();
-    });
-  }
-
-  if (closeAgendaBtn) {
-    closeAgendaBtn.addEventListener('click', closeAgendaModal);
-  }
-
-  if (agendaModal) {
-    agendaModal.addEventListener('click', (event) => {
-      if (event.target === agendaModal) {
-        closeAgendaModal();
-      }
-    });
-  }
 
   // Make auth, db, and Firebase functions globally available
   window.auth = auth;
@@ -1213,543 +1124,10 @@
   window.setDoc = setDoc;
   window.deleteDoc = deleteDoc;
   
-  // Define renderList function inside the module
+  // Define renderList function inside the module (disabled for caregiver view)
   async function renderList() {
-    try {
-      console.log('[Home] renderList() called');
-      const listEl = document.getElementById('med-list');
-      const user = window.auth.currentUser;
-      
-      console.log('[Home] Current user in renderList:', user ? `User: ${user.email}` : 'No user');
-      console.log('[Home] window.auth available:', !!window.auth);
-      
-      if (!window.auth) {
-        console.log('[Home] Auth not ready yet, retrying in 100ms');
-        setTimeout(window.renderList, 100);
-        return;
-      }
-      
-      if (!user) {
-        console.log('[Home] No user found, showing login message');
-        listEl.innerHTML = '<p style="text-align:center;color:#666">Please log in to view medications.</p>';
-        return;
-      }
-
-      // Load medications directly from Firebase
-      const medicationsCollectionRef = collection(window.db, "users", user.uid, "medications");
-      const medicationsSnapshot = await getDocs(medicationsCollectionRef);
-      const medications = [];
-      
-        medicationsSnapshot.forEach((doc) => {
-          const medData = doc.data();
-          
-          // Only show medications that are not deleted
-          if (!medData.deletedStatus) {
-            medications.push({
-              id: doc.id,
-              name: medData.name,
-              dosage: medData.dosage,
-              schedules: medData.schedules || [], // Load schedules array
-              reminder: medData.reminderMethod === 'E' ? 'Email' : 
-                       medData.reminderMethod === 'S' ? 'SMS' : 
-                       medData.reminderMethod === 'ES' ? 'Email + SMS' : 'None',
-              bottles: medData.bottles ? medData.bottles.map(bottleStr => {
-                const parts = bottleStr.split('/');
-                if (parts.length >= 4) {
-                  return {
-                    expiration: `${parts[0]}/${parts[1]}/${parts[2]}`,
-                    quantity: parts[3] === 'N/A' ? null : parseInt(parts[3])
-                  };
-                }
-                return null;
-              }).filter(Boolean) : []
-            });
-          }
-        });
-
-      listEl.innerHTML = '';
-
-      if (!medications.length) {
-        listEl.innerHTML = '<p style="text-align:center;color:#666">No medications yet.</p>';
-        return;
-      }
-
-      const now = new Date();
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
-      
-      // Get user timezone from profile if available
-      let userTimezone = timezone;
-      try {
-        const userDoc = await getDoc(doc(window.db, "users", user.uid));
-        if (userDoc.exists() && userDoc.data().timezone) {
-          userTimezone = userDoc.data().timezone;
-        }
-      } catch (e) {
-        console.warn('[Home] Could not get user timezone, using browser default');
-      }
-
-      // Generate occurrences for a medication and calculate stats
-      const getMedicationStats = (medication, timezone) => {
-        if (!medication.schedules || medication.schedules.length === 0) {
-          return {
-            perWeek: 0,
-            perDay: 0,
-            nextDosage: 'N/A',
-            currentDose: null,
-            allOccurrences: []
-          };
-        }
-
-        // Generate occurrences for the next 7 days (for per week calculation)
-        const weekStart = new Date(now);
-        weekStart.setHours(0, 0, 0, 0);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 7);
-
-        // Generate occurrences for current dose calculation (from yesterday to 7 days ahead)
-        const currentStart = new Date(now);
-        currentStart.setDate(currentStart.getDate() - 1);
-        currentStart.setHours(0, 0, 0, 0);
-        const currentEnd = new Date(weekEnd);
-
-        const allOccurrences = window.ScheduleUtils.generateOccurrencesForMedication(
-          medication,
-          currentStart,
-          currentEnd,
-          timezone
-        );
-
-        // Calculate per week (occurrences in the next 7 days)
-        const weekOccurrences = allOccurrences.filter(occ => {
-          const occDate = new Date(occ.dueAt);
-          return occDate >= weekStart && occDate < weekEnd;
-        });
-        const perWeek = weekOccurrences.length;
-
-        // Calculate per day (average per day this week)
-        const perDay = perWeek > 0 ? Math.round((perWeek / 7) * 10) / 10 : 0;
-
-        // Find next dosage (first occurrence >= now)
-        const nextOccurrence = allOccurrences.find(occ => new Date(occ.dueAt) >= now);
-        let nextDosage = 'N/A';
-        if (nextOccurrence) {
-          const nextDate = new Date(nextOccurrence.dueAt);
-          const weekdayName = weekdaysConst[nextDate.getDay()];
-          const timeStr = nextDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-          nextDosage = `${formatTime12h(timeStr)} on ${weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1)}`;
-        }
-
-        // Determine current dose (same logic as before but using occurrences)
-        const previousOccurrences = allOccurrences.filter(occ => new Date(occ.dueAt) < now);
-        const nextOccurrences = allOccurrences.filter(occ => new Date(occ.dueAt) >= now);
-        
-        const previousOcc = previousOccurrences.length > 0 ? previousOccurrences[previousOccurrences.length - 1] : null;
-        const nextOcc = nextOccurrences.length > 0 ? nextOccurrences[0] : null;
-
-        let currentDose = null;
-        if (!nextOcc) {
-          currentDose = allOccurrences[0] || null;
-        } else if (!previousOcc) {
-          currentDose = nextOcc;
-        } else {
-          const timeToNext = (new Date(nextOcc.dueAt) - now) / (1000 * 60);
-          const timeSincePrevious = (now - new Date(previousOcc.dueAt)) / (1000 * 60);
-          const timeBetweenDoses = (new Date(nextOcc.dueAt) - new Date(previousOcc.dueAt)) / (1000 * 60);
-
-          if (timeSincePrevious <= 45) {
-            currentDose = previousOcc;
-          } else if (timeBetweenDoses < 90) {
-            currentDose = timeToNext < timeSincePrevious ? nextOcc : previousOcc;
-          } else {
-            currentDose = nextOcc;
-          }
-        }
-
-        return { perWeek, perDay, nextDosage, currentDose, allOccurrences };
-      };
-
-      // Store current dose for each medication (will be set when "Taken" is clicked)
-      const medicationCurrentDoses = new Map();
-
-      medications.forEach((med) => {
-        // Calculate stats from schedules
-        const stats = getMedicationStats(med, userTimezone);
-        const { perWeek, perDay, nextDosage, currentDose } = stats;
-        
-        // Build current dose display
-        let currentDoseDisplay = '';
-        if (currentDose) {
-          const dueDate = new Date(currentDose.dueAt);
-          const timeStr = dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-          const timeDisplay = formatTime12h(timeStr);
-          const weekdayName = weekdaysConst[dueDate.getDay()];
-          const weekdayDisplay = weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1);
-          
-          // Find which schedule this occurrence belongs to (for dose number)
-          const schedule = med.schedules.find(s => s.scheduleId === currentDose.scheduleId);
-          let doseNumber = 1;
-          if (schedule && schedule.type === 'WEEKLY') {
-            // For weekly, we can't easily determine dose number, so use 1
-            doseNumber = 1;
-          } else {
-            // For interval, count occurrences from same schedule before this one
-            const sameScheduleOccs = stats.allOccurrences.filter(occ => 
-              occ.scheduleId === currentDose.scheduleId && 
-              new Date(occ.dueAt) <= dueDate
-            );
-            doseNumber = sameScheduleOccs.length;
-          }
-          
-          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay} on ${weekdayDisplay}, Dose #${doseNumber}`;
-        }
-        
-        // Store current dose for this medication (for Taken/Not Taken buttons)
-        if (currentDose) {
-          medicationCurrentDoses.set(med.id, {
-            ...currentDose,
-            dateTime: new Date(currentDose.dueAt) // Convert ISO string to Date
-          });
-        }
-        
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.medicationId = med.id;
-        
-        card.innerHTML = `
-          <h2>${med.name}</h2>
-          <p>
-            <strong>Per Week:</strong> ${perWeek} dosage${perWeek !== 1 ? 's' : ''}<br>
-            <strong>Per Day:</strong> ${perDay} dosage${perDay !== 1 ? 's' : ''}<br>
-            <strong>Next Dosage:</strong> ${nextDosage}${currentDoseDisplay}
-          </p>
-          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-success taken-btn">Taken</button>
-            <button class="btn btn-sm btn-danger not-taken-btn">Not Taken</button>
-            <button class="btn btn-sm btn-secondary" onclick="location.href='add-medication.html?edit=${med.id}'">Edit</button>
-            <button class="btn btn-sm btn-secondary" onclick="openStock('${med.id}')">Stock</button>
-            <button class="btn btn-sm btn-secondary delete-btn">Delete</button>
-          </div>
-        `;
-        
-        // Function to save/update dose in Firebase
-        // Helper function to update stock based on dose status change
-        const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
-          if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
-            console.log('[Home] No bottles to update stock for');
-            return medData.bottles || [];
-          }
-
-          // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
-          let stockChange = 0;
-          if (previousTaken !== true && newTaken === true) {
-            // Going from not-taken (or null) to taken: subtract dosage
-            stockChange = -dosage;
-          } else if (previousTaken === true && newTaken === false) {
-            // Going from taken to not-taken: add dosage back
-            stockChange = dosage;
-          }
-          // If status doesn't change or goes from not-taken to not-taken: no change
-
-          if (stockChange === 0) {
-            console.log('[Home] No stock change needed (status unchanged or not-taken to not-taken)');
-            return medData.bottles;
-          }
-
-          console.log(`[Home] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
-
-          // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
-          const now = new Date();
-          const parsedBottles = medData.bottles.map((bottleStr, index) => {
-            const parts = bottleStr.split('/');
-            if (parts.length < 3) return null;
-            
-            const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
-            const expirationDate = new Date(expirationStr);
-            const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
-            
-            return {
-              index,
-              expiration: expirationDate,
-              quantity: quantity,
-              original: bottleStr
-            };
-          }).filter(b => b !== null);
-
-          // Sort by expiration date (earliest first)
-          parsedBottles.sort((a, b) => a.expiration - b.expiration);
-
-          // Find the first bottle that hasn't expired and has quantity
-          let activeBottle = parsedBottles.find(b => 
-            b.expiration >= now && (b.quantity === null || b.quantity > 0)
-          );
-
-          // If no unexpired bottle, use the earliest one (even if expired)
-          if (!activeBottle && parsedBottles.length > 0) {
-            activeBottle = parsedBottles[0];
-          }
-
-          if (!activeBottle) {
-            console.log('[Home] No active bottle found to update');
-            return medData.bottles;
-          }
-
-          console.log(`[Home] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
-
-          // Update the quantity
-          const newBottles = [...medData.bottles];
-          const bottleParts = newBottles[activeBottle.index].split('/');
-          
-          if (bottleParts.length >= 4) {
-            let newQuantity = activeBottle.quantity;
-            if (newQuantity === null) {
-              // If quantity was N/A, we can't track it, so don't update
-              console.log('[Home] Bottle quantity is N/A, cannot update stock');
-              return medData.bottles;
-            }
-            
-            newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
-            
-            // Rebuild bottle string with updated quantity
-            const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
-            newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
-            
-            console.log(`[Home] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
-          }
-
-          return newBottles;
-        };
-
-        // Returns true if status changed, false if it's the same
-        const saveDoseToFirebase = async (medicationId, doseNumber, date, taken) => {
-          try {
-            const user = window.auth.currentUser;
-            if (!user) {
-              console.error('[Home] No user logged in');
-              return false;
-            }
-
-            const medDocRef = doc(window.db, "users", user.uid, "medications", medicationId);
-            const medDoc = await getDoc(medDocRef);
-            
-            if (!medDoc.exists()) {
-              console.error('[Home] Medication not found:', medicationId);
-              return false;
-            }
-
-            const medData = medDoc.data();
-            // Convert array to object if it's still an array (for migration)
-            let doses = medData.doses || {};
-            if (Array.isArray(doses)) {
-              // Migrate old array format to new object format
-              const dosesObj = {};
-              doses.forEach(dose => {
-                const key = `${String(dose.date || '')}_${Number(dose.doseNumber || 0)}`;
-                dosesObj[key] = {
-                  date: String(dose.date || ''),
-                  doseNumber: Number(dose.doseNumber || 0),
-                  taken: Boolean(dose.taken)
-                };
-              });
-              doses = dosesObj;
-              console.log('[Home] Migrated doses from array to object format');
-            }
-            
-            // Check if an entry already exists for this dose# and date
-            const dateStr = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
-            // Ensure doseNumber is a number for comparison
-            const doseNum = Number(doseNumber);
-            const doseKey = `${dateStr}_${doseNum}`;
-            
-            console.log('[Home] Looking for existing entry with key:', doseKey);
-            console.log('[Home] Current doses object:', doses);
-            
-            // Check if status is changing
-            const existingEntry = doses[doseKey];
-            const previousTaken = existingEntry ? existingEntry.taken : undefined;
-            const statusChanged = !existingEntry || existingEntry.taken !== taken;
-            
-            // Use object instead of array (Firestore doesn't support nested arrays)
-            // This structure makes it collapsible in Firebase console
-            // Preserve existing takenAt timestamp if already taken, or set new one if marking as taken
-            const newDoseEntry = {
-              date: dateStr,
-              doseNumber: doseNum,
-              taken: taken,
-              // Add timestamp when marked as taken, preserve existing if already taken
-              takenAt: taken 
-                ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
-                : null
-            };
-
-            const exists = doses.hasOwnProperty(doseKey);
-            doses[doseKey] = newDoseEntry;
-
-            if (exists) {
-              console.log('[Home] Updated existing dose entry:', newDoseEntry);
-            } else {
-              console.log('[Home] Added new dose entry:', newDoseEntry);
-            }
-
-            // Update stock based on dose status change
-            const dosage = Number(medData.dosage) || 0;
-            const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
-
-            // Save to Firebase - remove doseStatus and doseHistory if they exist (cleanup old data)
-            const updateData = { 
-              doses: doses,
-              bottles: updatedBottles
-            };
-            if (medData.doseStatus !== undefined) {
-              updateData.doseStatus = deleteField();
-              console.log('[Home] Removing old doseStatus field');
-            }
-            if (medData.doseHistory !== undefined) {
-              updateData.doseHistory = deleteField();
-              console.log('[Home] Removing old doseHistory field');
-            }
-            
-            await setDoc(medDocRef, updateData, { merge: true });
-            console.log('[Home] Saved doses and updated stock to Firebase for medication:', medicationId);
-            return statusChanged;
-          } catch (error) {
-            console.error('[Home] Error saving dose to Firebase:', error);
-            alert('Error saving dose: ' + error.message);
-            return false;
-          }
-        };
-
-        // Function to trigger flash animation
-        const triggerFlash = (cardElement, color) => {
-          // Remove any existing flash classes
-          cardElement.classList.remove('flash-green', 'flash-red');
-          // Force reflow to restart animation
-          void cardElement.offsetWidth;
-          // Add the flash class
-          cardElement.classList.add(`flash-${color}`);
-          // Remove the class after animation completes
-          setTimeout(() => {
-            cardElement.classList.remove(`flash-${color}`);
-          }, 1000);
-        };
-
-        // Add event listener for "Taken" button
-        const takenBtn = card.querySelector('.taken-btn');
-        if (takenBtn) {
-          takenBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('[Home] Taken button clicked for:', med.name);
-            
-            const storedCurrentDose = medicationCurrentDoses.get(med.id);
-            if (storedCurrentDose) {
-              const dueDate = new Date(storedCurrentDose.dueAt);
-              
-              // Check if already marked as taken
-              const user = window.auth.currentUser;
-              let alreadyTaken = false;
-              if (user && window.DoseLogsUtils) {
-                try {
-                  const doseLogs = await window.DoseLogsUtils.getDoseLogs(window.db, user.uid);
-                  const existingLog = window.DoseLogsUtils.getDoseLogForOccurrence(
-                    doseLogs,
-                    med.id,
-                    storedCurrentDose.scheduleId,
-                    storedCurrentDose.dueAt
-                  );
-                  if (existingLog && existingLog.status === 'TAKEN') {
-                    alreadyTaken = true;
-                    console.log('[Home] Medication already marked as taken');
-                  }
-                } catch (error) {
-                  console.error('[Home] Error checking dose logs:', error);
-                }
-              }
-              
-              // Save to doseLogs
-              if (user && window.DoseLogsUtils) {
-                try {
-                  await window.DoseLogsUtils.saveDoseLog(window.db, user.uid, {
-                    medId: med.id,
-                    scheduleId: storedCurrentDose.scheduleId,
-                    dueAt: storedCurrentDose.dueAt,
-                    status: 'TAKEN',
-                    loggedAt: new Date().toISOString()
-                  });
-                  triggerFlash(card, 'green');
-                } catch (error) {
-                  console.error('[Home] Error saving dose log:', error);
-                }
-              }
-              
-              // Only navigate to notes if it wasn't already taken
-              if (!alreadyTaken) {
-                const year = dueDate.getFullYear();
-                const month = String(dueDate.getMonth() + 1).padStart(2, '0');
-                const day = String(dueDate.getDate()).padStart(2, '0');
-                const dateString = `${year}-${month}-${day}`;
-                const timeStr = dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-                const timeParam = encodeURIComponent(timeStr);
-                
-                const url = `medication-action.html?medication=${encodeURIComponent(med.name)}&dose=1&time=${timeParam}&date=${dateString}&medId=${encodeURIComponent(med.id)}&scheduleId=${encodeURIComponent(storedCurrentDose.scheduleId)}&dueAt=${encodeURIComponent(storedCurrentDose.dueAt)}`;
-                
-                setTimeout(() => {
-                  window.location.href = url;
-                }, 400);
-              }
-            } else {
-              console.warn('[Home] Could not determine current dose for:', med.name);
-              alert('Could not determine current dose. Please check medication schedules.');
-            }
-          });
-        }
-
-        // Add event listener for "Not Taken" button
-        const notTakenBtn = card.querySelector('.not-taken-btn');
-        if (notTakenBtn) {
-          notTakenBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('[Home] Not Taken button clicked for:', med.name);
-            
-            const storedCurrentDose = medicationCurrentDoses.get(med.id);
-            if (storedCurrentDose && window.DoseLogsUtils) {
-              const user = window.auth.currentUser;
-              if (user) {
-                try {
-                  await window.DoseLogsUtils.saveDoseLog(window.db, user.uid, {
-                    medId: med.id,
-                    scheduleId: storedCurrentDose.scheduleId,
-                    dueAt: storedCurrentDose.dueAt,
-                    status: 'MISSED',
-                    loggedAt: new Date().toISOString()
-                  });
-                  triggerFlash(card, 'red');
-                } catch (error) {
-                  console.error('[Home] Error saving dose log:', error);
-                }
-              }
-            } else {
-              console.warn('[Home] Could not determine current dose for:', med.name);
-              alert('Could not determine current dose. Please check medication schedules.');
-            }
-          });
-        }
-        
-        card.querySelector('.delete-btn')
-            .addEventListener('click', () => confirmDelete(med.id));
-        listEl.appendChild(card);
-      });
-
-      currentMedications = medications;
-      currentAgendaEntries = buildAgendaEntries(medications);
-      if (agendaModal && agendaModal.classList.contains('show')) {
-        renderAgendaEntries();
-      }
-      window.currentMedications = currentMedications;
-    } catch (error) {
-      console.error('Error in renderList:', error);
-      document.getElementById('med-list').innerHTML = '<p style="text-align:center;color:red;">Error loading medications: ' + error.message + '</p>';
-    }
+    // Caregiver view - medications are not displayed here
+    return;
   }
   
   // Make renderList globally available
@@ -1764,76 +1142,106 @@
   const currentUser = auth.currentUser;
   console.log('[Home] Current user check:', currentUser ? `User: ${currentUser.email}` : 'No user signed in');
 
+  // ============ ADD PATIENT FORM HANDLER ============
+  document.addEventListener('DOMContentLoaded', () => {
+    const addPatientForm = document.getElementById('add-patient-form');
+    const messageElement = document.getElementById('add-patient-message');
+    
+    if (addPatientForm) {
+      addPatientForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        if (!messageElement) return;
+        
+        messageElement.className = 'msg';
+        messageElement.textContent = '';
+        
+        const patientEmail = document.getElementById('patient-email').value.trim();
+        const customMessage = document.getElementById('message').value.trim();
+        
+        if (!patientEmail) {
+          messageElement.className = 'msg err';
+          messageElement.textContent = 'Please enter a patient email address.';
+          return;
+        }
+        
+        // Basic email validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
+          messageElement.className = 'msg err';
+          messageElement.textContent = 'Please enter a valid email address.';
+          return;
+        }
+        
+        try {
+          messageElement.className = 'msg';
+          messageElement.textContent = 'Checking...';
+          
+          // Get caregiver's name from logged-in user's profile
+          const user = auth.currentUser;
+          if (!user) {
+            throw new Error('Not signed in');
+          }
+          
+          const caregiverDocRef = doc(db, 'users', user.uid);
+          const caregiverDoc = await getDoc(caregiverDocRef);
+          
+          if (!caregiverDoc.exists()) {
+            throw new Error('Caregiver profile not found');
+          }
+          
+          const caregiverData = caregiverDoc.data();
+          const caregiverName = caregiverData.name || 'A caregiver';
+          
+          // Call Cloud Function to send invitation email
+          const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendCaregiverInvitation';
+          const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              patientEmail: patientEmail.toLowerCase(),
+              caregiverId: user.uid,
+              caregiverName: caregiverName,
+              customMessage: customMessage || null
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            if (result.error && result.error.includes('User does not exist')) {
+              messageElement.className = 'msg err';
+              messageElement.textContent = 'User does not exist. Please try again.';
+            } else {
+              throw new Error(result.error || 'Failed to send invitation');
+            }
+            return;
+          }
+          
+          // Success
+          messageElement.className = 'msg ok';
+          messageElement.textContent = 'Request sent!';
+          messageElement.style.color = '#22c55e'; // Green color for success (using --success value)
+          
+          // Clear form
+          document.getElementById('patient-email').value = '';
+          document.getElementById('message').value = '';
+          
+        } catch (error) {
+          console.error('Error sending caregiver invitation:', error);
+          messageElement.className = 'msg err';
+          messageElement.textContent = 'Error: ' + (error.message || 'Failed to send invitation');
+        }
+      });
+    }
+  });
+
   // Check verification status
   onAuthStateChanged(auth, async (user) => {
     console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
-    
-    const warningIcon = document.getElementById('profile-verify-warning');
-    
-    if (!warningIcon) {
-      console.warn('[Home] Warning icon not found!');
-      return;
-    }
 
     if (user) {
-      let needsVerification = false;
-
-      // Check email verification (this is always available)
-      console.log('[Home] Email verified:', user.emailVerified);
-      if (!user.emailVerified) {
-        needsVerification = true;
-      }
-
-      // Check localStorage first for phone verification status
-      try {
-        const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-        console.log('[Home] Local phone:', localProfile.phone, 'Local phone verified:', localProfile.phoneVerified);
-        
-        // If phone exists in localStorage but not verified, show warning
-        if (localProfile.phone && !localProfile.phoneVerified) {
-          needsVerification = true;
-        }
-        
-        // Also check Firestore as backup (but don't wait for it)
-        const userDocRef = doc(db, "users", user.uid);
-        getDoc(userDocRef).then(docSnap => {
-          const profile = docSnap.data() || {};
-          console.log('[Home] Firestore phone:', profile.phone, 'Firestore phone verified:', profile.phoneVerified);
-          
-          // Update localStorage with latest data
-          if (profile.phone !== undefined) {
-            localProfile.phone = profile.phone;
-          }
-          if (profile.phoneVerified !== undefined) {
-            localProfile.phoneVerified = profile.phoneVerified;
-          }
-          localStorage.setItem('userProfile', JSON.stringify(localProfile));
-          
-          // Re-check verification status
-          let newNeedsVerification = false;
-          if (!user.emailVerified) newNeedsVerification = true;
-          if (localProfile.phone && !localProfile.phoneVerified) newNeedsVerification = true;
-          
-          if (newNeedsVerification !== needsVerification) {
-            warningIcon.style.display = newNeedsVerification ? 'inline' : 'none';
-            console.log('[Home] Updated verification status:', newNeedsVerification);
-          }
-        }).catch(error => {
-          console.error('[Home] Error checking Firestore:', error);
-        });
-        
-      } catch (error) {
-        console.error('[Home] Error checking localStorage:', error);
-      }
-
-      // Update warning icon immediately (based on email + localStorage)
-      console.log('[Home] Needs verification:', needsVerification);
-      if (needsVerification) {
-        warningIcon.style.display = 'inline';
-      } else {
-        warningIcon.style.display = 'none';
-      }
-
       // Refresh the display
       console.log('[Home] User authenticated, calling renderList()');
       if (user && user.uid) {
@@ -1842,8 +1250,7 @@
         console.log('[Home] User not properly authenticated, skipping renderList()');
       }
     } else {
-      // No user, hide warning and clear data
-      warningIcon.style.display = 'none';
+      // No user, clear data
       localStorage.removeItem('medications');
       localStorage.removeItem('historyMeds');
     }
@@ -2070,70 +1477,661 @@
     console.log('='.repeat(80));
   }
   
-  // ============ MEDICATION LOGGER (TRIGGERED BY HOME BUTTON CLICK) ============
-  // TODO: REMOVE THIS SECTION AFTER TESTING
-  
-  console.log('🔧 Medication logger script is running...');
-  
-  // Find the Home link in the sidebar and add click listener
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM loaded, looking for Home link...');
-    const homeLink = document.querySelector('nav.sidebar a[href="home.html"]');
-    if (homeLink) {
-      console.log('✅ Home link found! Adding click listener...');
-      homeLink.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevent page navigation
-        console.log('🏠 Home button clicked - printing Firebase hierarchy');
-        
-        // Print the EXACT hierarchy from Firebase
-        const user = auth.currentUser;
-        if (user) {
-          const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
-          getDocs(medicationsCollectionRef).then((snapshot) => {
-            console.log('🔥 FIREBASE HIERARCHY FROM DATABASE:');
-            console.log('='.repeat(80));
-            
-            if (snapshot.empty) {
-              console.log('No medications found in Firebase');
-            } else {
-              snapshot.forEach((doc) => {
-                const medData = doc.data();
-                console.log(`\n💊 MEDICATION: ${medData.name}`);
-                console.log('name:', medData.name);
-                console.log('dosage:', medData.dosage);
-                console.log('daysOfWeek:', medData.daysOfWeek);
-                console.log('timesPerDay:', medData.timesPerDay);
-                console.log('times:', medData.times);
-                console.log('startDate:', medData.startDate);
-                console.log('endDate:', medData.endDate);
-                console.log('reminderMethod:', medData.reminderMethod);
-                console.log('stock:', medData.stock);
-                console.log('bottles:', medData.bottles);
-                console.log('deletedStatus:', medData.deletedStatus);
-                console.log('notes:', medData.notes);
-                console.log('='.repeat(50));
-              });
-            }
-            console.log('='.repeat(80));
-          }).catch(error => {
-            console.error('Error loading from Firebase:', error);
-          });
-        } else {
-          console.log('No user logged in');
-        }
-      });
-    } else {
-      console.log('❌ Home link not found in sidebar');
-      // Let's see what links ARE in the sidebar
-      const allLinks = document.querySelectorAll('nav.sidebar a');
-      console.log('Available links in sidebar:', allLinks);
-      allLinks.forEach((link, i) => {
-        console.log(`Link ${i}:`, link.href, link.textContent);
-      });
-    }
-  });
+  // NOTE: previously, a temporary "medication logger" prevented navigation on the sidebar Home link.
+  // That debug-only code has been removed so the sidebar links work normally.
   
 </script>
 
+  <!-- First-time User Help Popup -->
+  <div id="first-time-popup" class="first-time-popup" style="display: none;">
+    <div class="popup-progress-bar">
+      <div class="popup-progress-fill"></div>
+    </div>
+    <button class="popup-close-btn" id="close-first-time-popup">×</button>
+    <div class="popup-content-wrapper">
+      <p class="popup-main-text">Confused or need help on using this app?</p>
+      <p class="popup-sub-text">This guide can be found in profile</p>
+      <button class="popup-watch-btn" id="open-help-modal-from-popup">Click to watch</button>
+    </div>
+  </div>
+
+  <!-- Help Modal with Canva Embed -->
+  <div id="help-modal" class="help-modal">
+    <div class="help-modal-content">
+      <button class="help-modal-close" id="close-help-modal">×</button>
+      <h2 class="help-modal-title">How to Use MedTracker</h2>
+      <div class="help-modal-slideshow">
+        <div class="slideshow-container">
+          <div class="slide active" data-slide="0">
+            <img src="slideshow/1.png" alt="Slide 1: Check Your Home Screen" class="slide-image">
+          </div>
+          <div class="slide" data-slide="1">
+            <img src="slideshow/2.png" alt="Slide 2: Add Your Bottles" class="slide-image">
+          </div>
+          <div class="slide" data-slide="2">
+            <img src="slideshow/3.png" alt="Slide 3: Check Calendar For Your History" class="slide-image">
+          </div>
+          <div class="slide" data-slide="3">
+            <img src="slideshow/4.png" alt="Slide 4: Access This Guide In Profile" class="slide-image">
+          </div>
+          <div class="slide" data-slide="4">
+            <img src="slideshow/5.png" alt="Slide 5: Click A Medication To Change It" class="slide-image">
+          </div>
+          <div class="slide" data-slide="5">
+            <img src="slideshow/6.png" alt="Slide 6: Mark A Dose When You Take It" class="slide-image">
+          </div>
+          <div class="slide" data-slide="6">
+            <img src="slideshow/7.png" alt="Slide 7: Add Notes (Optional)" class="slide-image">
+          </div>
+          <div class="slide" data-slide="7">
+            <img src="slideshow/8.png" alt="Slide 8: Choose Your Doses" class="slide-image">
+          </div>
+          <div class="slide" data-slide="8">
+            <img src="slideshow/9.png" alt="Slide 9: Add Your First Medication" class="slide-image">
+          </div>
+          <div class="slide" data-slide="9">
+            <img src="slideshow/10.png" alt="Slide 10: Get Alerts For Stock/Expiration" class="slide-image">
+          </div>
+        </div>
+        <button class="nav-arrow nav-arrow-left" id="nav-left" aria-label="Previous slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button class="nav-arrow nav-arrow-right" id="nav-right" aria-label="Next slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="finish-btn" id="finish-btn" style="display: none;">Finish</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* First-time User Popup Styles */
+    .first-time-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      max-width: calc(100vw - 40px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.2);
+      padding: 1.25rem;
+      z-index: 10000;
+      animation: slideInUp 0.3s ease-out;
+      overflow: hidden;
+    }
+
+    @keyframes slideInUp {
+      from {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .popup-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      overflow: hidden;
+    }
+
+    .popup-progress-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--success);
+      animation: progressBar 10s linear forwards;
+      transform-origin: left;
+    }
+
+    @keyframes progressBar {
+      from {
+        transform: scaleX(1);
+      }
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    .popup-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+    }
+
+    .popup-close-btn:hover {
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      color: var(--text);
+    }
+
+    .popup-content-wrapper {
+      padding-top: 0.5rem;
+    }
+
+    .popup-main-text {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-sub-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 1rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-watch-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+    }
+
+    .popup-watch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .popup-watch-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Help Modal Styles */
+    .help-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      z-index: 20000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .help-modal.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .help-modal-content {
+      position: relative;
+      width: 90vw;
+      height: auto;
+      max-height: 90vh;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      animation: slideInScale 0.3s ease-out;
+    }
+
+    @keyframes slideInScale {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .help-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: color-mix(in oklab, var(--surface) 90%, var(--border));
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+
+    .help-modal-close:hover {
+      background: var(--danger);
+      color: white;
+      transform: rotate(90deg);
+    }
+
+    .help-modal-title {
+      padding: 1rem 1.5rem;
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .help-modal-slideshow {
+      flex: 0 0 auto;
+      position: relative;
+      width: 100%;
+      height: 60vh;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .slideshow-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .slide.active {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    .slide-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .finish-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 48px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s ease;
+      opacity: 0.8;
+    }
+
+    .nav-arrow:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.5);
+      opacity: 1;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .nav-arrow:active {
+      transform: translateY(-50%) scale(0.95);
+    }
+
+    .nav-arrow-left {
+      left: 10px;
+    }
+
+    .nav-arrow-right {
+      right: 10px;
+    }
+
+    .nav-arrow svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .first-time-popup {
+        width: calc(100vw - 40px);
+        bottom: 15px;
+        right: 15px;
+        left: 15px;
+        max-width: none;
+      }
+
+      .help-modal-content {
+        width: 90vw;
+        height: auto;
+        max-height: 95vh;
+        margin: 0;
+        border-radius: var(--radius);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .help-modal-title {
+        padding: 0.75rem 1rem;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+      }
+
+      .help-modal-slideshow {
+        width: 100%;
+        height: 60vh;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .slideshow-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide-image {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+      }
+
+      .popup-main-text {
+        font-size: 0.95rem;
+      }
+
+      .popup-sub-text {
+        font-size: 0.8rem;
+      }
+    }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .finish-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-arrow {
+      width: 56px;
+      height: 56px;
+      opacity: 0.9;
+    }
+
+    .nav-arrow-left {
+      left: 5px;
+    }
+
+    .nav-arrow-right {
+      right: 5px;
+    }
+
+    .nav-arrow svg {
+      width: 24px;
+      height: 24px;
+    }
+  </style>
+
+  <script>
+    // First-time user popup logic
+    (function() {
+      const popup = document.getElementById('first-time-popup');
+      const closeBtn = document.getElementById('close-first-time-popup');
+      const watchBtn = document.getElementById('open-help-modal-from-popup');
+      const helpModal = document.getElementById('help-modal');
+      const closeModalBtn = document.getElementById('close-help-modal');
+      
+      // Check if user has seen the popup before
+      const hasSeenPopup = localStorage.getItem('hasSeenFirstTimePopup');
+      
+      // Show popup if first time
+      if (!hasSeenPopup) {
+        // Wait a bit after page load to show popup
+        setTimeout(() => {
+          popup.style.display = 'block';
+          
+          // Auto-hide after 10 seconds (progress bar handles this visually)
+          setTimeout(() => {
+            hidePopup();
+          }, 10000);
+        }, 1500);
+      }
+
+      function hidePopup() {
+        popup.style.animation = 'slideInUp 0.3s ease-out reverse';
+        setTimeout(() => {
+          popup.style.display = 'none';
+          localStorage.setItem('hasSeenFirstTimePopup', 'true');
+        }, 300);
+      }
+
+      // Slideshow navigation - declare variables first
+      let currentSlide = 0;
+      const totalSlides = 10;
+      const slides = document.querySelectorAll('.slide');
+      const navLeft = document.getElementById('nav-left');
+      const navRight = document.getElementById('nav-right');
+      const finishBtn = document.getElementById('finish-btn');
+
+      function openHelpModal() {
+        helpModal.classList.add('show');
+        // Reset to first slide when opening
+        currentSlide = 0;
+        updateSlideshow();
+      }
+
+      function closeHelpModal() {
+        helpModal.classList.remove('show');
+      }
+
+      function updateSlideshow() {
+        // Update slide visibility
+        slides.forEach((slide, index) => {
+          if (index === currentSlide) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        });
+
+        // Show/hide navigation buttons
+        if (currentSlide === 0) {
+          navLeft.style.display = 'none';
+        } else {
+          navLeft.style.display = 'flex';
+        }
+
+        if (currentSlide === totalSlides - 1) {
+          navRight.style.display = 'none';
+          finishBtn.style.display = 'block';
+        } else {
+          navRight.style.display = 'flex';
+          finishBtn.style.display = 'none';
+        }
+      }
+
+      if (navLeft) {
+        navLeft.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (currentSlide > 0) {
+            currentSlide--;
+            updateSlideshow();
+          }
+        });
+      }
+
+      if (navRight) {
+        navRight.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            updateSlideshow();
+          }
+        });
+      }
+
+      if (finishBtn) {
+        finishBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeHelpModal();
+        });
+      }
+
+      // Initialize slideshow and preload images
+      const slideImages = document.querySelectorAll('.slide-image');
+      slideImages.forEach((img, index) => {
+        img.onerror = function() {
+          console.error(`[Home] Failed to load slide ${index + 1}:`, img.src);
+          this.style.display = 'none';
+        };
+        img.onload = function() {
+          console.log(`[Home] Successfully loaded slide ${index + 1}`);
+        };
+      });
+      
+      updateSlideshow();
+
+      // Event listeners
+      if (closeBtn) closeBtn.addEventListener('click', hidePopup);
+      if (watchBtn) watchBtn.addEventListener('click', () => {
+        hidePopup();
+        openHelpModal();
+      });
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
+      
+      // Close modal on background click
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+          closeHelpModal();
+        }
+      });
+
+      // Make functions globally available for profile page
+      window.openHelpModal = openHelpModal;
+      window.closeHelpModal = closeHelpModal;
+    })();
+  </script>
 </body>
 </html>

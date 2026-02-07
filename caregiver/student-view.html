@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MedTracker – Detailed View</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); padding-bottom: 6.25rem; }
+
+    /* Inline SVG tab icons (Material icons) */
+    .tab-icon {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 26px;
+    }
+    .tab-icon svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .tab-icon path { fill: currentColor; }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+      font-size: 1.15rem;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      color: var(--text);
+      border-color: var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      transform: translateY(-1px);
+      text-decoration: none;
+    }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+
+    /* Hamburger menu */
+    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    .menu-toggle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      opacity: 0;
+    }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span { display:block; width:20px; height:2px; background: var(--text); }
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; padding-bottom: 6.5rem !important; }
+
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        bottom: auto !important; /* override base `inset: 0 auto 0 0` so menu doesn't stretch full height */
+        width: 165px !important;
+        height: auto !important;
+        padding: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        background: var(--surface) !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay { display:block !important; opacity:1 !important; }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      nav.sidebar a {
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        border: none !important;
+        background: transparent !important;
+        text-decoration: none !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        text-decoration: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+      }
+    }
+
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 900; letter-spacing: .2px; margin: 0; }
+    p.lead { margin-top: .6rem; color: var(--muted); }
+
+    /* -------- Read-only medication list (like home.html, but no actions) -------- */
+    .med-list {
+      margin-top: 1.25rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    @media (min-width: 900px) {
+      .med-list { max-width: 880px; }
+    }
+
+    .med-card {
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      padding: 1.05rem 1.1rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .med-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .med-name {
+      font-weight: 900;
+      font-size: 1.15rem;
+      line-height: 1.2;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .med-dosage {
+      margin-top: 0.2rem;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 900;
+      font-size: 0.82rem;
+      white-space: nowrap;
+      letter-spacing: 0.15px;
+    }
+
+    .chip.ok {
+      background: color-mix(in oklab, var(--success) 18%, transparent);
+      border-color: color-mix(in oklab, var(--success) 28%, transparent);
+      color: color-mix(in oklab, var(--success) 70%, white);
+    }
+    .chip.warn {
+      background: color-mix(in oklab, #f59e0b 18%, transparent);
+      border-color: color-mix(in oklab, #f59e0b 28%, transparent);
+      color: color-mix(in oklab, #f59e0b 72%, white);
+    }
+
+    .med-meta {
+      display: grid;
+      gap: 0.25rem;
+      color: var(--text);
+      font-size: 0.98rem;
+    }
+    .med-meta .muted { color: var(--muted); }
+    .meta-row { display: inline-flex; align-items: baseline; gap: 0.4rem; }
+    .meta-row strong { font-weight: 900; }
+
+    .empty-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px dashed color-mix(in oklab, var(--border) 130%, transparent);
+      border-radius: 16px;
+      color: var(--muted);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+
+    /* -------- Notes (read-only, same format vibe as notes.html) -------- */
+    .sv-notes {
+      margin-top: 1.25rem;
+      max-width: 900px;
+    }
+
+    /* Mobile: scrollable content area so it doesn't get clipped by bottom nav */
+    @media (max-width: 900px) {
+      .sv-notes {
+        max-height: calc(100vh - 4.25rem - 6.5rem);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.75rem;
+      }
+    }
+
+    .sv-notes-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,.20);
+      margin-bottom: 1rem;
+    }
+    .sv-notes-title {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--text);
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .sv-notes-nav {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .sv-date-picker { position: relative; display: inline-block; }
+    .sv-date-btn { min-width: 200px; text-align: center; }
+
+    .sv-date-dropdown {
+      position: absolute;
+      top: calc(100% + 0.5rem);
+      left: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 55px rgba(0,0,0,0.35);
+      padding: 0.9rem;
+      min-width: 280px;
+      display: none;
+      z-index: 30000;
+    }
+    .sv-date-dropdown.show { display: block; }
+
+    .sv-mini-head { display:flex; align-items:center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.7rem; }
+    .sv-mini-title { font-weight: 900; color: var(--text); font-size: 0.95rem; }
+    .sv-mini-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap: 0; }
+    .sv-mini-wd { font-size: 0.72rem; font-weight: 800; text-align:center; padding: 0.2rem; color: var(--muted); }
+    .sv-mini-day {
+      padding: 0.45rem 0.1rem;
+      text-align: center;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .sv-mini-day:hover { background: color-mix(in oklab, var(--brand) 12%, transparent); }
+    .sv-mini-day.other { opacity: 0.35; }
+    .sv-mini-day.today { background: color-mix(in oklab, var(--muted) 20%, transparent); }
+    .sv-mini-day.selected { background: linear-gradient(135deg, var(--brand), var(--brand-600)); color: #fff; }
+
+    .sv-notes-content { display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; }
+    .sv-note-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+    .sv-note-card h2 {
+      font-size: 1.05rem;
+      margin: 0 0 0.75rem;
+      color: var(--text);
+      font-weight: 900;
+    }
+    .sv-field-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 0.45rem;
+    }
+    .sv-select,
+    .sv-textarea {
+      width: 100%;
+      padding: 0.75rem 0.85rem;
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    .sv-textarea {
+      resize: none;
+      overflow-y: hidden;
+      min-height: auto;
+    }
+    .sv-textarea.scrollable { overflow-y: auto; }
+    .sv-select:disabled,
+    .sv-textarea:disabled,
+    .sv-textarea[readonly] {
+      opacity: 0.95;
+      cursor: not-allowed;
+    }
+
+    /* -------- Stats (copied styling from stats.html) -------- */
+    .time-range-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin: 0.5rem 0 2rem;
+      flex-wrap: wrap;
+    }
+    .time-range-btn {
+      padding: 0.75rem 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .time-range-btn:hover {
+      color: var(--text);
+      border-color: var(--brand);
+      background: color-mix(in oklab, var(--brand) 8%, transparent);
+    }
+    .time-range-btn.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      border-color: var(--brand);
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .stats-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+    .stats-card h2 {
+      margin: 0 0 1.5rem 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .adherence-numbers {
+      display: flex;
+      flex-direction: row;
+      gap: 2rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stat-number {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 100px;
+    }
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .stat-value.taken-color { color: var(--success); }
+    .stat-value.not-taken-color { color: var(--danger); }
+    .chart-container {
+      position: relative;
+      height: 320px;
+      width: 100%;
+      flex: 1;
+    }
+    #trend-chart { height: 360px !important; }
+    #adherence-chart {
+      max-width: 200px;
+      max-height: 200px;
+      margin: 0 auto;
+    }
+    .empty-state {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 3rem;
+      text-align: center;
+      color: var(--muted);
+      box-shadow: var(--shadow);
+    }
+    .empty-state p {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    @media (max-width: 1024px) {
+      .charts-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+    }
+    @media (max-width: 768px) {
+      .time-range-controls { justify-content: center; margin-bottom: 1.5rem; gap: 0.4rem; }
+      .time-range-btn { padding: 0.6rem 1rem; font-size: 0.85rem; }
+      .charts-grid { grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
+      .adherence-numbers { flex-direction: column; gap: 1rem; margin-bottom: 1rem; }
+      .stat-value { font-size: 1.5rem; }
+      .stat-label { font-size: 0.75rem; }
+      .chart-container { height: 160px; }
+      .stats-card:has(#trend-chart) .chart-container { height: 200px !important; }
+      #trend-chart { height: 180px !important; }
+      #adherence-chart { max-width: 120px; max-height: 120px; }
+      .stats-card { padding: 1rem; }
+      .stats-card h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+      .stats-card:has(#trend-chart) h2 { margin-bottom: 0.5rem; }
+      .stats-card:has(#trend-chart) .chart-container { margin-top: 0.5rem; }
+    }
+
+    @media (max-width: 900px) {
+      .sv-notes-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+        padding: 0.75rem;
+      }
+      .sv-notes-title { text-align: center; min-width: 0; font-size: 1.05rem; }
+      .sv-notes-nav { width: 100%; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+      .sv-notes-nav .sv-btn { border: none; border-radius: 0; flex: 0 0 auto; }
+      .sv-date-picker { flex: 1; display: flex; }
+      .sv-date-btn { width: 100%; min-width: 0; border: none; border-radius: 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+      .sv-date-dropdown { position: fixed; left: 50%; transform: translateX(-50%); top: 8rem; width: min(340px, 92vw); }
+    }
+
+    /* -------- Calendar (read-only) -------- */
+    .sv-calendar {
+      margin-top: 1.25rem;
+      max-width: 980px;
+    }
+
+    .sv-cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+
+    .sv-cal-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+    }
+
+    .sv-cal-nav {
+      display: inline-flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .sv-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 0.6rem 0.85rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
+    }
+    .sv-btn:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .sv-btn:active { transform: translateY(1px); }
+
+    .sv-cal-grid {
+      margin-top: 0.85rem;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+
+    .sv-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: #fff;
+      font-weight: 900;
+      font-size: 0.85rem;
+    }
+    .sv-weekday { padding: 0.75rem 0.4rem; text-align: center; }
+
+    .sv-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-auto-rows: minmax(92px, 1fr);
+    }
+
+    .sv-day {
+      border: 1px solid color-mix(in oklab, var(--border) 120%, transparent);
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      padding: 0.55rem 0.55rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      cursor: pointer;
+      min-height: 92px;
+    }
+    .sv-day:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .sv-day.other { opacity: 0.55; }
+    .sv-day.today { outline: 2px solid color-mix(in oklab, var(--brand) 55%, transparent); outline-offset: -2px; }
+
+    .sv-day-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .sv-day-num { font-weight: 900; color: var(--text); font-size: 0.95rem; }
+
+    .sv-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: color-mix(in oklab, var(--brand) 70%, white);
+      opacity: 0.9;
+    }
+
+    .sv-mini-list {
+      display: grid;
+      gap: 0.25rem;
+      margin-top: 0.1rem;
+    }
+
+    .sv-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.25rem 0.4rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-weight: 800;
+      font-size: 0.75rem;
+      line-height: 1.15;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      color: var(--text);
+    }
+    .sv-pill.grey { border-color: color-mix(in oklab, var(--border) 120%, transparent); color: var(--muted); }
+    .sv-pill.green { background: color-mix(in oklab, var(--success) 18%, transparent); border-color: color-mix(in oklab, var(--success) 28%, transparent); }
+    .sv-pill.red { background: color-mix(in oklab, var(--danger) 18%, transparent); border-color: color-mix(in oklab, var(--danger) 28%, transparent); }
+
+    /* Mobile: make calendar area scrollable so it doesn't get clipped */
+    @media (max-width: 900px) {
+      .sv-calendar {
+        max-height: calc(100vh - 4.25rem - 6.5rem); /* top padding + bottom nav */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.75rem;
+      }
+      .sv-weekday { padding: 0.55rem 0.2rem; font-size: 0.72rem; }
+      .sv-days { grid-auto-rows: minmax(74px, 1fr); }
+      .sv-day { padding: 0.45rem 0.45rem; min-height: 74px; }
+      .sv-mini-list { display: none; } /* like calendar.html mobile: keep grid clean */
+      .sv-dot { width: 6px; height: 6px; }
+    }
+
+    /* Day details modal (read-only) */
+    .sv-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.78);
+      z-index: 24000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      backdrop-filter: blur(6px);
+    }
+    .sv-modal.show { display: flex; }
+    .sv-modal-card {
+      width: min(640px, 92vw);
+      max-height: min(78vh, 760px);
+      overflow: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+    }
+    .sv-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+    .sv-modal-title { margin: 0; font-size: 1.05rem; font-weight: 900; }
+    .sv-modal-close {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sv-modal-close:hover {
+      background: color-mix(in oklab, var(--surface) 90%, transparent);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .sv-modal-body { padding: 1rem 1.1rem; display: grid; gap: 0.6rem; }
+    .sv-row {
+      padding: 0.75rem 0.85rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      display: grid;
+      gap: 0.2rem;
+    }
+    .sv-row.green {
+      background: color-mix(in oklab, var(--success) 20%, transparent);
+      border-color: color-mix(in oklab, var(--success) 30%, transparent);
+    }
+    .sv-row.red {
+      background: color-mix(in oklab, var(--danger) 20%, transparent);
+      border-color: color-mix(in oklab, var(--danger) 30%, transparent);
+    }
+    .sv-row.grey {
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border-color: var(--border);
+    }
+    .sv-row-top { display:flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+    .sv-row-name { font-weight: 900; color: var(--text); }
+    .sv-row-status { font-weight: 900; color: var(--muted); font-size: 0.9rem; }
+    .sv-row-sub { color: var(--muted); font-weight: 700; font-size: 0.92rem; }
+
+    /* -------- Bottom nav (tabs) -------- */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1200;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(10px) saturate(1.15);
+      box-shadow: 0 -14px 40px rgba(0,0,0,0.25);
+    }
+
+    /* On desktop, align with the left sidebar (but still fixed at bottom) */
+    @media (min-width: 901px) {
+      .bottom-nav {
+        left: 240px;
+      }
+    }
+
+    .bottom-nav-inner {
+      max-width: var(--container);
+      margin-inline: auto;
+      padding: 0.55rem clamp(0.75rem, 2vw, 1.5rem);
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+
+    .bottom-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      padding: 0.7rem 0.65rem;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      color: var(--muted);
+      font-weight: 800;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.05s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .bottom-link:hover {
+      color: var(--text);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border-color: var(--border);
+    }
+    .bottom-link:active { transform: translateY(1px); }
+
+    .bottom-link.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.25);
+    }
+
+    .bottom-label {
+      font-size: 0.95rem;
+      letter-spacing: 0.1px;
+      white-space: nowrap;
+    }
+
+    /* Mobile: icons only */
+    @media (max-width: 900px) {
+      .bottom-label { display: none; }
+      .tab-icon { width: 28px; height: 28px; flex-basis: 28px; }
+      .bottom-link { padding: 0.85rem 0.65rem; }
+    }
+  </style>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </label>
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="add-patient.html">Add Patient</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <h1>Detailed view</h1>
+      <p class="lead" id="tab-subtitle">(Blank for now)</p>
+      <div id="tab-root"></div>
+    </div>
+  </div>
+
+  <!-- Bottom navigation (tabs) -->
+  <nav class="bottom-nav" aria-label="Detailed view navigation">
+    <div class="bottom-nav-inner">
+      <a class="bottom-link" data-tab="home" href="student-view.html?tab=home">
+        <span class="tab-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" role="img" focusable="false">
+            <path d="M226.67-186.67h140v-246.66h226.66v246.66h140v-380L480-756.67l-253.33 190v380ZM160-120v-480l320-240 320 240v480H526.67v-246.67h-93.34V-120H160Zm320-352Z"/>
+          </svg>
+        </span>
+        <span class="bottom-label">Home</span>
+      </a>
+      <a class="bottom-link" data-tab="calendar" href="student-view.html?tab=calendar">
+        <span class="tab-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" role="img" focusable="false">
+            <path d="M186.67-80q-27 0-46.84-19.83Q120-119.67 120-146.67v-600q0-27 19.83-46.83 19.84-19.83 46.84-19.83h56.66V-880h70v66.67h333.34V-880h70v66.67h56.66q27 0 46.84 19.83Q840-773.67 840-746.67v600q0 27-19.83 46.84Q800.33-80 773.33-80H186.67Zm0-66.67h586.66v-420H186.67v420Zm0-486.66h586.66v-113.34H186.67v113.34Zm0 0v-113.34 113.34ZM480-400q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z"/>
+          </svg>
+        </span>
+        <span class="bottom-label">Calendar</span>
+      </a>
+      <a class="bottom-link" data-tab="notes" href="student-view.html?tab=notes">
+        <span class="tab-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" role="img" focusable="false">
+            <path d="M186.67-120q-27.5 0-47.09-19.58Q120-159.17 120-186.67v-586.66q0-27.5 19.58-47.09Q159.17-840 186.67-840h586.66q27.5 0 47.09 19.58Q840-800.83 840-773.33v308.66q-15.67-8.33-32.67-13.83t-34-8.5v-286.33H186.67v586.66h286.66q3.67 18 9.19 34.79 5.51 16.78 13.15 31.88h-309Zm0-111.33v44.66-586.66V-487v-3.67V-231.33ZM280-280h195q3.67-17.67 9.17-34.33 5.5-16.67 13.5-32.34H280V-280Zm0-166.67h310.67q20-14.66 41.83-24.33 21.83-9.67 47.5-14.67v-27.66H280v66.66Zm0-166.66h400V-680H280v66.67ZM728.33-40.67q-79.33 0-135.5-56.5-56.16-56.5-56.16-134.83 0-79.96 56.16-136.31 56.16-56.36 135.84-56.36 79 0 135.5 56.36 56.5 56.35 56.5 136.31 0 78.33-56.5 134.83-56.5 56.5-135.84 56.5ZM712-107.33h35.33V-214H854v-35.33H747.33V-356H712v106.67H605.33V-214H712v106.67Z"/>
+          </svg>
+        </span>
+        <span class="bottom-label">Notes</span>
+      </a>
+      <a class="bottom-link" data-tab="stats" href="student-view.html?tab=stats">
+        <span class="tab-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" role="img" focusable="false">
+            <path d="M146.67-186.67h178v-346.66h-178v346.66Zm244.66 0h177.34v-586.66H391.33v586.66Zm244 0h178v-266.66h-178v266.66ZM80-120v-480h244.67v-240h310.66v320H880v400H80Z"/>
+          </svg>
+        </span>
+        <span class="bottom-label">Stats</span>
+      </a>
+    </div>
+  </nav>
+
+  <script>
+    // Close mobile menu when clicking sidebar links
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => link.addEventListener('click', () => { menuToggle.checked = false; }));
+    });
+  </script>
+
+  <script>
+    // Bottom-nav active state (no real content yet; just highlight current tab)
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const tab = (params.get('tab') || 'home').toLowerCase();
+      const patientId = params.get('patientId') || '';
+
+      document.querySelectorAll('.bottom-link').forEach(a => {
+        const isActive = (a.getAttribute('data-tab') || '') === tab;
+        a.classList.toggle('active', isActive);
+        a.setAttribute('aria-current', isActive ? 'page' : 'false');
+      });
+
+      // Preserve patientId across tab switches
+      document.querySelectorAll('.bottom-link[data-tab]').forEach(a => {
+        const t = a.getAttribute('data-tab');
+        const next = new URLSearchParams();
+        next.set('tab', t);
+        if (patientId) next.set('patientId', patientId);
+        a.setAttribute('href', `student-view.html?${next.toString()}`);
+      });
+
+      const subtitle = document.getElementById('tab-subtitle');
+      const labelMap = {
+        home: 'Home',
+        calendar: 'Calendar',
+        notes: 'Notes',
+        stats: 'Stats'
+      };
+      if (subtitle) subtitle.textContent = labelMap[tab] || 'Blank for now';
+    })();
+  </script>
+
+  <!-- Chart.js (used by Stats tab) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(window.location.search);
+    const tab = (params.get('tab') || 'home').toLowerCase();
+    const patientId = params.get('patientId') || '';
+
+    const root = document.getElementById('tab-root');
+
+    function safeText(s) {
+      return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatDays(daysOfWeek) {
+      if (!Array.isArray(daysOfWeek) || daysOfWeek.length === 0) return 'Every day';
+      // Supports either numbers (0-6) or strings
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const out = daysOfWeek.map(d => {
+        if (typeof d === 'number') return days[d % 7];
+        const s = String(d).toLowerCase();
+        const map = { sunday:'Sun', monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu', friday:'Fri', saturday:'Sat' };
+        return map[s] || s.slice(0,3);
+      });
+      // de-dupe
+      return Array.from(new Set(out)).join(', ');
+    }
+
+    function formatTimes(times, timesPerDay) {
+      const t = Array.isArray(times) ? times.filter(x => x && String(x).trim()) : [];
+      if (t.length > 0) return t.join(', ');
+      const n = Number(timesPerDay || 0);
+      if (!n) return 'Any time';
+      return `${n}x / day`;
+    }
+
+    function renderHomeShell(titleLine) {
+      root.innerHTML = `
+        <div class="empty-box" id="patient-header">${safeText(titleLine)}</div>
+        <div id="med-list" class="med-list"></div>
+      `;
+    }
+
+    function renderMeds(patientName, meds) {
+      const listEl = document.getElementById('med-list');
+      const headerEl = document.getElementById('patient-header');
+      if (headerEl) headerEl.innerHTML = `<strong style="color: var(--text);">Patient:</strong> <span style="color: var(--text); font-weight: 900;">${safeText(patientName || 'Patient')}</span>`;
+
+      const active = (meds || []).filter(m => m && m.deletedStatus !== true);
+      active.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+
+      if (active.length === 0) {
+        listEl.innerHTML = `<div class="empty-box">No medications found.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = active.map(m => {
+        const name = safeText(m.name || 'Medication');
+        const dosage = safeText(m.dosage || '');
+        const days = formatDays(m.daysOfWeek || m.days || []);
+        const times = formatTimes(m.times, m.timesPerDay);
+        const stock = (m.stock === 0 || (Array.isArray(m.bottles) && m.bottles.length === 0)) ? 'Out of stock' : 'In stock';
+        const chipClass = stock === 'Out of stock' ? 'warn' : 'ok';
+
+        return `
+          <div class="med-card">
+            <div class="med-top">
+              <div>
+                <div class="med-name">${name}</div>
+                ${dosage ? `<div class="med-dosage">${dosage}</div>` : `<div class="med-dosage"> </div>`}
+              </div>
+              <span class="chip ${chipClass}">${stock}</span>
+            </div>
+            <div class="med-meta">
+              <div class="meta-row"><span class="muted">Days:</span> <strong>${safeText(days)}</strong></div>
+              <div class="meta-row"><span class="muted">Times:</span> <strong>${safeText(times)}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showError(msg) {
+      root.innerHTML = `<div class="empty-box" style="border-color: color-mix(in oklab, var(--danger) 50%, var(--border)); color: var(--danger);">${safeText(msg)}</div>`;
+    }
+
+    if (tab !== 'home') {
+      // Keep other tabs blank for now.
+      if (root) root.innerHTML = '';
+    } else {
+      if (!patientId) {
+        showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
+      } else {
+        renderHomeShell('Loading patient…');
+
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            window.location.href = '../login.html';
+            return;
+          }
+
+          // Load patient profile (name) once (caregiver must have access via rules).
+          let patientName = 'Patient';
+          try {
+            const pSnap = await getDoc(doc(db, 'users', patientId));
+            if (pSnap.exists()) {
+              const p = pSnap.data() || {};
+              patientName = p.name || p.email || 'Patient';
+            }
+          } catch (e) {
+            showError('You do not have permission to view this patient (or the link is invalid).');
+            return;
+          }
+
+          // Live meds
+          onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
+            const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderMeds(patientName, meds);
+          }, (err) => {
+            console.warn('[Student View] meds snapshot error:', err);
+            showError('Could not load medications (permission denied or network issue).');
+          });
+        });
+      }
+    }
+
+    // -------- Calendar tab (read-only) --------
+    function toISODateLocal(d) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function normalizeTaken(taken, autoMarked, takenAt) {
+      if (taken === true) return true;
+      if (taken === false) return false;
+      if (typeof taken === 'string') {
+        const v = String(taken).trim().toLowerCase();
+        if (v === 'true' || v === 'taken' || v === 'yes' || v === 'y') return true;
+        if (v === 'false' || v === 'not taken' || v === 'nottaken' || v === 'no' || v === 'missed') return false;
+      }
+      if (takenAt) return true;
+      if (autoMarked === true) return false;
+      return undefined;
+    }
+
+    function shouldShowOnDate(med, dateObj) {
+      // Similar logic to calendar.html: show meds if scheduled OR if any dose exists for that date.
+      const dateStr = toISODateLocal(dateObj);
+      const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
+      const hasDose = Object.keys(dosesObj).some(k => k.split('_')[0] === dateStr);
+      if (hasDose) return true;
+
+      const normalizeDate = (dateStrRaw) => {
+        if (!dateStrRaw || dateStrRaw === 'N/A') return null;
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStrRaw)) return dateStrRaw.split('T')[0];
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStrRaw)) {
+          const parts = dateStrRaw.split('/');
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+        if (dateStrRaw.includes('T')) return dateStrRaw.split('T')[0];
+        return dateStrRaw;
+      };
+
+      const start = normalizeDate(med.startDate);
+      const end = normalizeDate(med.endDate);
+      if (start && dateStr < start) return false;
+      if (end && dateStr > end) return false;
+
+      const days = med.daysOfWeek || med.days || [];
+      if (!Array.isArray(days) || days.length === 0) return true;
+      const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+      const todayName = weekdays[dateObj.getDay()];
+      const normalizedDays = days.map(d => (typeof d === 'number') ? weekdays[d % 7] : String(d).toLowerCase());
+      return normalizedDays.includes(todayName);
+    }
+
+    function getDoseItemsForDate(med, dateObj) {
+      // Return dose entries for a date in a stable, user-friendly list.
+      const dateStr = toISODateLocal(dateObj);
+      const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
+      const times = Array.isArray(med.times) ? med.times.filter(Boolean) : [];
+      const timesPerDay = Number(med.timesPerDay || 0);
+      const plannedCount = times.length > 0 ? times.length : (timesPerDay || 1);
+
+      const items = [];
+      for (let dn = 1; dn <= plannedCount; dn += 1) {
+        const key = `${dateStr}_${dn}`;
+        const entry = dosesObj[key] || null;
+        const time = times[dn - 1] || null;
+        const takenBool = entry ? normalizeTaken(entry.taken, entry.autoMarked, entry.takenAt) : undefined;
+        items.push({
+          doseNumber: dn,
+          time,
+          entry,
+          takenBool
+        });
+      }
+      return items;
+    }
+
+    function pillClassForDose(d, dateObj) {
+      if (d.takenBool === true) return 'green';
+      if (d.takenBool === false) return 'red';
+
+      // UI-only "auto miss" like calendar.html (do NOT write)
+      if (d.time) {
+        const now = new Date();
+        const [hh, mm] = String(d.time).split(':').map(Number);
+        if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
+          const dt = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hh, mm, 0, 0);
+          const minutesPast = (now.getTime() - dt.getTime()) / (1000 * 60);
+          if (minutesPast > 45) return 'red';
+        }
+      }
+      return 'grey';
+    }
+
+    function renderCalendarTab(patientName, meds) {
+      // Build skeleton once
+      if (!root) return;
+      root.innerHTML = `
+        <div class="sv-calendar" id="sv-calendar">
+          <div class="sv-cal-header">
+            <div>
+              <div style="color: var(--muted); font-weight: 800; font-size: 0.9rem;">Patient</div>
+              <div style="color: var(--text); font-weight: 900; font-size: 1.05rem;">${safeText(patientName || 'Patient')}</div>
+            </div>
+            <div class="sv-cal-nav">
+              <button class="sv-btn" id="sv-prev" type="button">‹</button>
+              <button class="sv-btn" id="sv-today" type="button">Today</button>
+              <button class="sv-btn" id="sv-next" type="button">›</button>
+            </div>
+          </div>
+
+          <div class="sv-cal-grid">
+            <div class="sv-weekdays">
+              <div class="sv-weekday">Sun</div><div class="sv-weekday">Mon</div><div class="sv-weekday">Tue</div><div class="sv-weekday">Wed</div><div class="sv-weekday">Thu</div><div class="sv-weekday">Fri</div><div class="sv-weekday">Sat</div>
+            </div>
+            <div class="sv-days" id="sv-days"></div>
+          </div>
+        </div>
+
+        <div class="sv-modal" id="sv-day-modal" role="dialog" aria-modal="true" aria-labelledby="sv-day-title">
+          <div class="sv-modal-card">
+            <div class="sv-modal-head">
+              <h3 class="sv-modal-title" id="sv-day-title">Day</h3>
+              <button class="sv-modal-close" id="sv-day-close" type="button" aria-label="Close">×</button>
+            </div>
+            <div class="sv-modal-body" id="sv-day-body"></div>
+          </div>
+        </div>
+      `;
+
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const calEl = document.getElementById('sv-calendar');
+      const daysEl = document.getElementById('sv-days');
+      const modal = document.getElementById('sv-day-modal');
+      const modalTitle = document.getElementById('sv-day-title');
+      const modalBody = document.getElementById('sv-day-body');
+      const closeBtn = document.getElementById('sv-day-close');
+
+      let current = new Date();
+      let currentMonth = current.getMonth();
+      let currentYear = current.getFullYear();
+
+      const activeMeds = (meds || []).filter(m => m && m.deletedStatus !== true);
+
+      function openDayModal(dateObj) {
+        const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        modalTitle.textContent = dateLabel;
+
+        const rows = [];
+        activeMeds.forEach(med => {
+          if (!shouldShowOnDate(med, dateObj)) return;
+          const items = getDoseItemsForDate(med, dateObj);
+          items.forEach(it => {
+            const cls = pillClassForDose(it, dateObj);
+            const status = cls === 'green' ? 'Taken' : cls === 'red' ? 'Not taken' : 'No status';
+            const timeLabel = it.time ? it.time : 'Any time';
+            rows.push(`
+              <div class="sv-row ${cls}">
+                <div class="sv-row-top">
+                  <div class="sv-row-name">${safeText(med.name || 'Medication')} — Dose ${it.doseNumber}</div>
+                  <div class="sv-row-status">${safeText(status)}</div>
+                </div>
+                <div class="sv-row-sub">${safeText(timeLabel)}${med.dosage ? ` • ${safeText(med.dosage)}` : ''}</div>
+              </div>
+            `);
+          });
+        });
+
+        modalBody.innerHTML = rows.length ? rows.join('') : `<div class="empty-box">No medications scheduled for this day.</div>`;
+        modal.classList.add('show');
+      }
+
+      function closeDayModal() {
+        modal.classList.remove('show');
+      }
+
+      function renderMonth() {
+        const firstDay = new Date(currentYear, currentMonth, 1);
+        const lastDay = new Date(currentYear, currentMonth + 1, 0);
+        const startDate = new Date(firstDay);
+        startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+        const title = `${months[currentMonth]} ${currentYear}`;
+        // Put month title in the lead line (keeps UI clean)
+        const subtitle = document.getElementById('tab-subtitle');
+        if (subtitle) subtitle.textContent = `Calendar — ${title}`;
+
+        daysEl.innerHTML = '';
+        for (let i = 0; i < 42; i += 1) {
+          const dateObj = new Date(startDate);
+          dateObj.setDate(startDate.getDate() + i);
+
+          const isCurrentMonth = dateObj.getMonth() === currentMonth;
+          const isToday = dateObj.toDateString() === new Date().toDateString();
+
+          // Has any meds/doses
+          let hasAny = false;
+          let preview = [];
+          for (const med of activeMeds) {
+            if (!shouldShowOnDate(med, dateObj)) continue;
+            const items = getDoseItemsForDate(med, dateObj);
+            if (items.length > 0) {
+              hasAny = true;
+              // Small preview (desktop only, hidden on mobile)
+              const it0 = items[0];
+              preview.push({ med, it: it0 });
+              if (preview.length >= 3) break;
+            }
+          }
+
+          const dayEl = document.createElement('div');
+          dayEl.className = 'sv-day' + (isCurrentMonth ? '' : ' other') + (isToday ? ' today' : '');
+
+          const top = document.createElement('div');
+          top.className = 'sv-day-top';
+          top.innerHTML = `<div class="sv-day-num">${dateObj.getDate()}</div>${hasAny ? `<div class="sv-dot" aria-hidden="true"></div>` : ''}`;
+          dayEl.appendChild(top);
+
+          if (preview.length > 0) {
+            const list = document.createElement('div');
+            list.className = 'sv-mini-list';
+            list.innerHTML = preview.map(({ med, it }) => {
+              const cls = pillClassForDose(it, dateObj);
+              const timeLabel = it.time ? it.time : 'Any time';
+              return `<div class="sv-pill ${cls}"><span>${safeText(med.name || 'Medication')}</span><span class="muted">${safeText(timeLabel)}</span></div>`;
+            }).join('');
+            dayEl.appendChild(list);
+          }
+
+          dayEl.addEventListener('click', () => openDayModal(dateObj));
+          daysEl.appendChild(dayEl);
+        }
+      }
+
+      document.getElementById('sv-prev').addEventListener('click', () => {
+        currentMonth -= 1;
+        if (currentMonth < 0) { currentMonth = 11; currentYear -= 1; }
+        renderMonth();
+      });
+      document.getElementById('sv-next').addEventListener('click', () => {
+        currentMonth += 1;
+        if (currentMonth > 11) { currentMonth = 0; currentYear += 1; }
+        renderMonth();
+      });
+      document.getElementById('sv-today').addEventListener('click', () => {
+        const now = new Date();
+        currentMonth = now.getMonth();
+        currentYear = now.getFullYear();
+        renderMonth();
+      });
+
+      closeBtn.addEventListener('click', closeDayModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeDayModal(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('show')) closeDayModal(); });
+
+      renderMonth();
+    }
+
+    if (tab === 'calendar') {
+      if (!patientId) {
+        showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
+      } else {
+        // We reuse the same auth gating + live meds subscription pattern.
+        root.innerHTML = `<div class="empty-box">Loading calendar…</div>`;
+
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            window.location.href = '../login.html';
+            return;
+          }
+
+          let patientName = 'Patient';
+          try {
+            const pSnap = await getDoc(doc(db, 'users', patientId));
+            if (pSnap.exists()) {
+              const p = pSnap.data() || {};
+              patientName = p.name || p.email || 'Patient';
+            }
+          } catch (e) {
+            showError('You do not have permission to view this patient (or the link is invalid).');
+            return;
+          }
+
+          onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
+            const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderCalendarTab(patientName, meds);
+          }, (err) => {
+            console.warn('[Student View] calendar meds snapshot error:', err);
+            showError('Could not load calendar data (permission denied or network issue).');
+          });
+        });
+      }
+    }
+
+    // -------- Notes tab (read-only) --------
+    function formatDateFull(d) {
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatDateMonthYear(d) {
+      return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    function formatTime12(timeStr) {
+      if (!timeStr || !/^\d{2}:\d{2}$/.test(String(timeStr))) return '';
+      const [hh, mm] = String(timeStr).split(':').map(Number);
+      const ampm = hh >= 12 ? 'PM' : 'AM';
+      const h = hh % 12 || 12;
+      return `${h}:${String(mm).padStart(2,'0')} ${ampm}`;
+    }
+
+    function minutesFromHHMM(timeStr) {
+      if (!timeStr || !/^\d{2}:\d{2}$/.test(String(timeStr))) return 0;
+      const [hh, mm] = String(timeStr).split(':').map(Number);
+      return (hh * 60) + mm;
+    }
+
+    function createReadOnlyNoteCard({ med, doseNumber, time, dateStr }) {
+      const title = time
+        ? `${med.name || 'Medication'} - Dose ${doseNumber} - ${formatTime12(time)}`
+        : `${med.name || 'Medication'} - Dose ${doseNumber}`;
+
+      // Notes stored per med doc: notes[YYYY-MM-DD] = [doseNumber, noteText, feelingRating]
+      let noteText = '';
+      let feelingRating = 0;
+      try {
+        const n = (med.notes && typeof med.notes === 'object') ? med.notes[dateStr] : null;
+        if (Array.isArray(n) && Number(n[0]) === Number(doseNumber)) {
+          noteText = String(n[1] || '');
+          feelingRating = Number(n[2] ?? 0) || 0;
+        }
+      } catch {}
+
+      const card = document.createElement('div');
+      card.className = 'sv-note-card';
+      card.innerHTML = `
+        <h2>${safeText(title)}</h2>
+        <div style="margin-bottom: 0.75rem;">
+          <label class="sv-field-label">How do you feel right now?</label>
+          <select class="sv-select" disabled>
+            <option value="0"${feelingRating === 0 ? ' selected' : ''}>Select...</option>
+            <option value="1"${feelingRating === 1 ? ' selected' : ''}>1</option>
+            <option value="2"${feelingRating === 2 ? ' selected' : ''}>2</option>
+            <option value="3"${feelingRating === 3 ? ' selected' : ''}>3</option>
+            <option value="4"${feelingRating === 4 ? ' selected' : ''}>4</option>
+            <option value="5"${feelingRating === 5 ? ' selected' : ''}>5</option>
+          </select>
+        </div>
+        <textarea class="sv-textarea" rows="1" readonly placeholder="No notes for this dose yet.">${safeText(noteText)}</textarea>
+      `;
+
+      // Auto-resize (up to 4 lines, then scroll)
+      const textarea = card.querySelector('textarea');
+      const autoResize = () => {
+        textarea.style.height = '1px';
+        textarea.style.maxHeight = 'none';
+        const computed = getComputedStyle(textarea);
+        const lineHeight = parseFloat(computed.lineHeight) || 22;
+        const paddingTop = parseFloat(computed.paddingTop) || 12;
+        const paddingBottom = parseFloat(computed.paddingBottom) || 12;
+        const padding = paddingTop + paddingBottom;
+        const fourLine = (lineHeight * 4) + padding;
+        const sh = textarea.scrollHeight;
+
+        if (!textarea.value || textarea.value.trim() === '') {
+          textarea.style.height = (lineHeight + padding) + 'px';
+          textarea.classList.remove('scrollable');
+          textarea.style.overflowY = 'hidden';
+          return;
+        }
+        if (sh <= fourLine) {
+          textarea.style.height = sh + 'px';
+          textarea.classList.remove('scrollable');
+          textarea.style.overflowY = 'hidden';
+        } else {
+          textarea.style.height = fourLine + 'px';
+          textarea.style.maxHeight = fourLine + 'px';
+          textarea.classList.add('scrollable');
+          textarea.style.overflowY = 'auto';
+        }
+      };
+      setTimeout(autoResize, 0);
+      return card;
+    }
+
+    function renderNotesTab(patientName, meds) {
+      const activeMeds = (meds || []).filter(m => m && m.deletedStatus !== true);
+      let currentDate = new Date();
+      let miniMonth = currentDate.getMonth();
+      let miniYear = currentDate.getFullYear();
+
+      root.innerHTML = `
+        <div class="sv-notes" id="sv-notes">
+          <div class="sv-notes-header">
+            <h1 class="sv-notes-title" id="sv-notes-title">Notes</h1>
+            <div class="sv-notes-nav">
+              <button class="sv-btn" id="sv-prev-day" type="button">‹ Prev</button>
+              <div class="sv-date-picker">
+                <button class="sv-btn sv-date-btn" id="sv-date-btn" type="button">${safeText(formatDateFull(currentDate))}</button>
+                <div class="sv-date-dropdown" id="sv-date-dd" role="dialog" aria-modal="false">
+                  <div class="sv-mini-head">
+                    <button class="sv-btn" id="sv-mini-prev" type="button">‹</button>
+                    <div class="sv-mini-title" id="sv-mini-title">${safeText(formatDateMonthYear(currentDate))}</div>
+                    <button class="sv-btn" id="sv-mini-next" type="button">›</button>
+                  </div>
+                  <div class="sv-mini-grid" id="sv-mini-grid"></div>
+                </div>
+              </div>
+              <button class="sv-btn" id="sv-next-day" type="button">Next ›</button>
+            </div>
+          </div>
+
+          <div class="sv-notes-content" id="sv-notes-content"></div>
+        </div>
+      `;
+
+      const titleEl = document.getElementById('sv-notes-title');
+      const dateBtn = document.getElementById('sv-date-btn');
+      const dd = document.getElementById('sv-date-dd');
+      const miniTitle = document.getElementById('sv-mini-title');
+      const miniGrid = document.getElementById('sv-mini-grid');
+      const content = document.getElementById('sv-notes-content');
+
+      function renderForDate() {
+        const dateStr = toISODateLocal(currentDate);
+        if (titleEl) titleEl.textContent = `Notes (${formatDateFull(currentDate)})`;
+        if (dateBtn) dateBtn.textContent = formatDateFull(currentDate);
+
+        // Same behavior as notes.html: build a list of dose "cards" for meds scheduled on this day
+        const dayMeds = activeMeds.filter(m => shouldShowOnDate(m, currentDate));
+        if (dayMeds.length === 0) {
+          content.innerHTML = `
+            <div class="empty-box">
+              No medications scheduled for this day.
+            </div>
+          `;
+          return;
+        }
+
+        const allDoses = [];
+        dayMeds.forEach(m => {
+          const times = Array.isArray(m.times) ? m.times.filter(t => t && String(t).trim()) : [];
+          if (times.length === 0) {
+            const n = Number(m.timesPerDay || 1);
+            for (let i = 1; i <= n; i += 1) {
+              allDoses.push({ med: m, doseNumber: i, time: null, sortTime: 0 });
+            }
+          } else {
+            times.forEach((t, idx) => {
+              allDoses.push({ med: m, doseNumber: idx + 1, time: t, sortTime: minutesFromHHMM(t) || 0 });
+            });
+          }
+        });
+
+        allDoses.sort((a, b) => {
+          if (a.sortTime === 0 && b.sortTime === 0) return String(a.med.name || '').localeCompare(String(b.med.name || ''));
+          if (a.sortTime === 0) return -1;
+          if (b.sortTime === 0) return 1;
+          return a.sortTime - b.sortTime;
+        });
+
+        content.innerHTML = '';
+        allDoses.forEach(d => {
+          content.appendChild(createReadOnlyNoteCard({ med: d.med, doseNumber: d.doseNumber, time: d.time, dateStr }));
+        });
+      }
+
+      function renderMiniCalendar() {
+        const firstDay = new Date(miniYear, miniMonth, 1);
+        const startDate = new Date(firstDay);
+        startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+        if (miniTitle) miniTitle.textContent = formatDateMonthYear(new Date(miniYear, miniMonth, 1));
+        miniGrid.innerHTML = `
+          <div class="sv-mini-wd">S</div><div class="sv-mini-wd">M</div><div class="sv-mini-wd">T</div><div class="sv-mini-wd">W</div><div class="sv-mini-wd">T</div><div class="sv-mini-wd">F</div><div class="sv-mini-wd">S</div>
+        `;
+
+        for (let i = 0; i < 42; i += 1) {
+          const d = new Date(startDate);
+          d.setDate(startDate.getDate() + i);
+          const el = document.createElement('div');
+          el.className = 'sv-mini-day';
+          if (d.getMonth() !== miniMonth) el.classList.add('other');
+          if (d.toDateString() === new Date().toDateString()) el.classList.add('today');
+          if (d.toDateString() === currentDate.toDateString()) el.classList.add('selected');
+          el.textContent = String(d.getDate());
+          el.addEventListener('click', () => {
+            currentDate = d;
+            renderForDate();
+            dd.classList.remove('show');
+          });
+          miniGrid.appendChild(el);
+        }
+      }
+
+      document.getElementById('sv-prev-day').addEventListener('click', () => {
+        currentDate.setDate(currentDate.getDate() - 1);
+        renderForDate();
+      });
+      document.getElementById('sv-next-day').addEventListener('click', () => {
+        currentDate.setDate(currentDate.getDate() + 1);
+        renderForDate();
+      });
+
+      document.getElementById('sv-mini-prev').addEventListener('click', () => {
+        miniMonth -= 1;
+        if (miniMonth < 0) { miniMonth = 11; miniYear -= 1; }
+        renderMiniCalendar();
+      });
+      document.getElementById('sv-mini-next').addEventListener('click', () => {
+        miniMonth += 1;
+        if (miniMonth > 11) { miniMonth = 0; miniYear += 1; }
+        renderMiniCalendar();
+      });
+
+      dateBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dd.classList.toggle('show');
+        miniMonth = currentDate.getMonth();
+        miniYear = currentDate.getFullYear();
+        renderMiniCalendar();
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!dd.contains(e.target) && e.target !== dateBtn) dd.classList.remove('show');
+      });
+
+      renderForDate();
+    }
+
+    if (tab === 'notes') {
+      if (!patientId) {
+        showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
+      } else {
+        root.innerHTML = `<div class="empty-box">Loading notes…</div>`;
+
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            window.location.href = '../login.html';
+            return;
+          }
+
+          let patientName = 'Patient';
+          try {
+            const pSnap = await getDoc(doc(db, 'users', patientId));
+            if (pSnap.exists()) {
+              const p = pSnap.data() || {};
+              patientName = p.name || p.email || 'Patient';
+            }
+          } catch (e) {
+            showError('You do not have permission to view this patient (or the link is invalid).');
+            return;
+          }
+
+          onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
+            const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderNotesTab(patientName, meds);
+          }, (err) => {
+            console.warn('[Student View] notes meds snapshot error:', err);
+            showError('Could not load notes data (permission denied or network issue).');
+          });
+        });
+      }
+    }
+
+    // -------- Stats tab (same as stats.html, read-only) --------
+    if (tab === 'stats') {
+      if (!patientId) {
+        showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
+      } else {
+        root.innerHTML = `
+          <div class="container" style="padding-inline: 0;">
+            <h1 style="margin: 0 0 1rem; font-weight: 900;">Stats</h1>
+
+            <div class="time-range-controls">
+              <button class="time-range-btn active" data-range="week" type="button">Week</button>
+              <button class="time-range-btn" data-range="month" type="button">Month</button>
+              <button class="time-range-btn" data-range="year" type="button">Year</button>
+              <button class="time-range-btn" data-range="all" type="button">All Time</button>
+            </div>
+
+            <div class="charts-grid">
+              <div class="stats-card">
+                <h2>Adherence Overview</h2>
+                <div class="adherence-numbers">
+                  <div class="stat-number">
+                    <span class="stat-label">Taken:</span>
+                    <span class="stat-value taken-color" id="taken-count">0</span>
+                  </div>
+                  <div class="stat-number">
+                    <span class="stat-label">Not Taken:</span>
+                    <span class="stat-value not-taken-color" id="not-taken-count">0</span>
+                  </div>
+                  <div class="stat-number">
+                    <span class="stat-label">Adherence:</span>
+                    <span class="stat-value" id="adherence-percent">0%</span>
+                  </div>
+                </div>
+                <div class="chart-container">
+                  <canvas id="adherence-chart"></canvas>
+                </div>
+              </div>
+
+              <div class="stats-card">
+                <h2>Daily Adherence Trend</h2>
+                <div class="chart-container">
+                  <canvas id="trend-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="empty-state" id="empty-state" style="display:none;">
+              <p>No dose history yet. Mark doses as Taken/Not Taken to see stats.</p>
+            </div>
+          </div>
+        `;
+
+        // Same variables as stats.html
+        let adherenceChart = null;
+        let trendChart = null;
+        let currentTimeRange = 'week';
+        let latestMedDocs = []; // array of { id, data }
+
+        function getDateRange(range) {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          switch (range) {
+            case 'week': {
+              const weekStart = new Date(today);
+              weekStart.setDate(today.getDate() - 6);
+              return { start: weekStart, end: today };
+            }
+            case 'month': {
+              const monthStart = new Date(today);
+              monthStart.setDate(today.getDate() - 29);
+              return { start: monthStart, end: today };
+            }
+            case 'year': {
+              const yearStart = new Date(today);
+              yearStart.setDate(today.getDate() - 364);
+              return { start: yearStart, end: today };
+            }
+            case 'all':
+            default:
+              return { start: null, end: null };
+          }
+        }
+
+        function buildDoseLogsFromMeds(medDocs) {
+          const doseLogs = [];
+          try {
+            medDocs.forEach(({ data: medData }) => {
+              if (!medData || medData.deletedStatus) return;
+
+              const medicationName = medData.name || 'Unknown';
+              const doses = medData.doses || {};
+
+              Object.keys(doses).forEach(key => {
+                const dose = doses[key];
+
+                // Same normalization as stats.html
+                let takenValue = dose.taken;
+                if (typeof takenValue === 'string') {
+                  takenValue = takenValue === 'true' || takenValue === 'True';
+                }
+
+                if (!dose.date) return;
+                if (takenValue === undefined || takenValue === null) return;
+
+                const [year, month, day] = String(dose.date).split('-').map(Number);
+                if (isNaN(year) || isNaN(month) || isNaN(day)) return;
+                const scheduledDate = new Date(year, month - 1, day);
+
+                let scheduledDateTime = new Date(scheduledDate);
+                if (medData.times && Array.isArray(medData.times) && medData.times.length > 0) {
+                  const sortedTimes = [...medData.times].sort();
+                  const timeIndex = (dose.doseNumber || 1) - 1;
+                  if (timeIndex >= 0 && timeIndex < sortedTimes.length) {
+                    const [hours, minutes] = String(sortedTimes[timeIndex]).split(':').map(Number);
+                    if (!isNaN(hours) && !isNaN(minutes)) {
+                      scheduledDateTime.setHours(hours, minutes, 0, 0);
+                    }
+                  }
+                }
+
+                const isTaken = takenValue === true;
+                doseLogs.push({
+                  medicationName,
+                  scheduledAt: scheduledDateTime,
+                  status: isTaken ? 'taken' : 'not_taken',
+                  createdAt: dose.takenAt ? new Date(dose.takenAt) : scheduledDateTime,
+                  autoMarked: dose.autoMarked === true
+                });
+              });
+            });
+          } catch (e) {
+            console.warn('[Student View][Stats] buildDoseLogs error:', e);
+          }
+
+          doseLogs.sort((a, b) => a.scheduledAt - b.scheduledAt);
+          return doseLogs;
+        }
+
+        function filterDoseLogs(doseLogs, range) {
+          if (range === 'all') {
+            const now = new Date();
+            return doseLogs.filter(log => log.scheduledAt <= now);
+          }
+          const { start, end } = getDateRange(range);
+          const now = new Date();
+          return doseLogs.filter(log => {
+            const logDate = new Date(log.scheduledAt);
+            logDate.setHours(0, 0, 0, 0);
+            const dateInRange = logDate >= start && logDate <= end;
+            if (logDate.getTime() === end.getTime()) {
+              return dateInRange && log.scheduledAt <= now;
+            }
+            return dateInRange;
+          });
+        }
+
+        function calculateDailyAdherence(doseLogs) {
+          const dailyData = {};
+          doseLogs.forEach(log => {
+            const date = new Date(log.scheduledAt);
+            date.setHours(0, 0, 0, 0);
+            const dateKey = date.toISOString().split('T')[0];
+            if (!dailyData[dateKey]) dailyData[dateKey] = { taken: 0, total: 0 };
+            dailyData[dateKey].total += 1;
+            if (log.status === 'taken') dailyData[dateKey].taken += 1;
+          });
+          return Object.keys(dailyData)
+            .sort()
+            .map(date => ({
+              date,
+              taken: dailyData[date].taken,
+              total: dailyData[date].total,
+              adherence: dailyData[date].total > 0 ? (dailyData[date].taken / dailyData[date].total) * 100 : 0
+            }));
+        }
+
+        function updateAdherenceChart(taken, notTaken) {
+          const canvas = document.getElementById('adherence-chart');
+          if (!canvas || typeof Chart === 'undefined') return;
+          const ctx = canvas.getContext('2d');
+          if (adherenceChart) adherenceChart.destroy();
+
+          const takenValue = Number(taken) || 0;
+          const notTakenValue = Number(notTaken) || 0;
+          const chartData = [takenValue, notTakenValue];
+
+          adherenceChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: ['Taken', 'Not Taken'],
+              datasets: [{
+                data: chartData,
+                backgroundColor: [
+                  'rgba(34, 197, 94, 0.8)',
+                  'rgba(255, 107, 107, 0.8)'
+                ],
+                borderColor: [
+                  'rgba(34, 197, 94, 1)',
+                  'rgba(255, 107, 107, 1)'
+                ],
+                borderWidth: 3
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: true,
+              cutout: '60%',
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                  padding: 12,
+                  titleFont: { size: 14, weight: '600' },
+                  bodyFont: { size: 13 },
+                  callbacks: {
+                    label: function(context) {
+                      const label = context.label || '';
+                      const value = context.parsed || 0;
+                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                      const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                      return `${label}: ${value} (${percent}%)`;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        function updateTrendChart(dailyData) {
+          const canvas = document.getElementById('trend-chart');
+          if (!canvas || typeof Chart === 'undefined') return;
+          const ctx = canvas.getContext('2d');
+          if (trendChart) trendChart.destroy();
+
+          const labels = dailyData.map(d => {
+            const date = new Date(d.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          });
+          const adherenceData = dailyData.map(d => d.adherence);
+
+          trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Adherence %',
+                data: adherenceData,
+                borderColor: 'rgba(34, 197, 94, 1)',
+                backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 8,
+                pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                pointBorderColor: 'rgba(255, 255, 255, 1)',
+                pointBorderWidth: 2,
+                pointHoverBackgroundColor: 'rgba(34, 197, 94, 1)',
+                pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
+                pointHoverBorderWidth: 3
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: true,
+              layout: { padding: { top: 30, bottom: 10 } },
+              interaction: { intersect: false, mode: 'index' },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 110,
+                  ticks: {
+                    stepSize: 20,
+                    callback: (value) => (value > 100 ? '' : value + '%'),
+                    color: '#ffffff',
+                    font: { size: 12 },
+                    padding: 12
+                  },
+                  grid: { color: 'var(--border)', drawBorder: false },
+                  border: { display: false }
+                },
+                x: {
+                  ticks: {
+                    color: '#ffffff',
+                    font: { size: 11 },
+                    maxRotation: 45,
+                    minRotation: 0,
+                    padding: 10
+                  },
+                  grid: { display: false },
+                  border: { display: false }
+                }
+              },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                  padding: 14,
+                  titleColor: '#ffffff',
+                  bodyColor: '#ffffff',
+                  titleFont: { size: 14, weight: '600' },
+                  bodyFont: { size: 13 },
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
+                  borderWidth: 1,
+                  cornerRadius: 8,
+                  displayColors: false,
+                  callbacks: {
+                    title: (context) => context[0].label,
+                    label: function(context) {
+                      const index = context.dataIndex;
+                      const day = dailyData[index];
+                      return [
+                        `Adherence: ${day.adherence.toFixed(1)}%`,
+                        `${day.taken} of ${day.total} doses taken`
+                      ];
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        async function updateCharts() {
+          const chartContainers = document.querySelectorAll('.chart-container, .adherence-numbers, .charts-grid');
+          chartContainers.forEach(container => {
+            container.style.opacity = '0';
+            container.style.transition = 'opacity 150ms ease-out';
+          });
+
+          setTimeout(() => {
+            const allLogs = buildDoseLogsFromMeds(latestMedDocs);
+            const filteredLogs = filterDoseLogs(allLogs, currentTimeRange);
+
+            const emptyState = document.getElementById('empty-state');
+            const chartsGrid = document.querySelector('.charts-grid');
+            if (filteredLogs.length === 0) {
+              if (emptyState) emptyState.style.display = 'block';
+              if (chartsGrid) chartsGrid.style.display = 'none';
+              return;
+            } else {
+              if (emptyState) emptyState.style.display = 'none';
+              if (chartsGrid) chartsGrid.style.display = 'grid';
+            }
+
+            const taken = filteredLogs.filter(log => log.status === 'taken').length;
+            const notTaken = filteredLogs.filter(log => log.status === 'not_taken').length;
+            const total = taken + notTaken;
+            const adherencePercent = total > 0 ? ((taken / total) * 100).toFixed(1) : 0;
+
+            const takenEl = document.getElementById('taken-count');
+            const notEl = document.getElementById('not-taken-count');
+            const adhEl = document.getElementById('adherence-percent');
+            if (takenEl) takenEl.textContent = String(taken);
+            if (notEl) notEl.textContent = String(notTaken);
+            if (adhEl) adhEl.textContent = adherencePercent + '%';
+
+            updateAdherenceChart(taken, notTaken);
+            const dailyData = calculateDailyAdherence(filteredLogs);
+            updateTrendChart(dailyData);
+
+            setTimeout(() => {
+              chartContainers.forEach(container => {
+                container.style.opacity = '1';
+                container.style.transition = 'opacity 150ms ease-in';
+              });
+            }, 50);
+
+            if (adherenceChart) adherenceChart.update('active');
+            if (trendChart) trendChart.update('active');
+          }, 150);
+        }
+
+        // Time range handlers (same behavior as stats.html)
+        document.querySelectorAll('.time-range-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTimeRange = btn.dataset.range;
+            updateCharts();
+          });
+        });
+
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            window.location.href = '../login.html';
+            return;
+          }
+
+          // Verify we can read patient profile (permission gate)
+          try {
+            await getDoc(doc(db, 'users', patientId));
+          } catch (e) {
+            showError('You do not have permission to view this patient (or the link is invalid).');
+            return;
+          }
+
+          onSnapshot(collection(db, 'users', patientId, 'medications'), (snapshot) => {
+            latestMedDocs = snapshot.docs.map(d => ({ id: d.id, data: d.data() }));
+            updateCharts();
+          }, (err) => {
+            console.warn('[Student View][Stats] meds snapshot error:', err);
+            showError('Could not load stats (permission denied or network issue).');
+          });
+
+          updateCharts();
+        });
+      }
+    }
+  </script>
+</body>
+</html>
+

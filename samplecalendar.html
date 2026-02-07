@@ -6,20 +6,22 @@
   <title>MedTracker – Calendar</title>
   <link rel="stylesheet" href="styles.css">
   <style>
+    /* Default to light mode */
     :root {
-      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
       --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
-      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --radius:20px; --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
       --container:1200px;
       /* compatibility var */
       --danger-color: var(--danger);
     }
 
-    @media (prefers-color-scheme: light) {
+    /* Dark mode override */
+    @media (prefers-color-scheme: dark) {
       :root {
-        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
-        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+        --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+        --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
       }
     }
 
@@ -63,14 +65,109 @@
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+    
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
     @media (max-width: 900px) {
-      .sidebar {
-        position: sticky; top: 0; width: auto; inset: unset;
-        padding: .5rem; border-right: none; border-bottom: 1px solid var(--border);
-        flex-direction: row; flex-wrap: wrap; gap: .5rem;
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.5rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1000 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
       }
-      .content { margin-left: 0; }
-      .sidebar a { flex: 1 1 auto; text-align: center; }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
     }
 
     /* headings */
@@ -99,88 +196,242 @@
     .btn:active { transform: translateY(1px); }
     .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
 
-    .btn-primary, .btn.btn-primary {
-      color: #fff;
-      background: linear-gradient(180deg, var(--brand), var(--brand-600));
-      box-shadow: 0 10px 20px rgba(79,140,255,.35);
-    }
-    .btn-primary:hover, .btn.btn-primary:hover {
-      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
-    }
-    .btn-secondary, .btn.btn-secondary {
-      background: transparent; color: var(--text); border-color: var(--border);
-    }
-    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
-    .btn-danger, .btn.btn-danger {
-      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
-      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
-      box-shadow: 0 10px 20px rgba(255,107,107,.25);
-    }
-    .btn-danger:hover { filter: brightness(.98); }
-    .btn-success, .btn.btn-success {
-      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
-      border-color: color-mix(in oklab, var(--success) 40%, transparent);
-      box-shadow: 0 10px 20px rgba(34,197,94,.25);
-    }
-    .btn-success:hover { filter: brightness(1.02); }
+    .btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-600)); color: #fff; border: none; }
+    .btn-primary:hover { background: linear-gradient(135deg, var(--brand-600), var(--brand-700)); box-shadow: 0 6px 16px rgba(79,140,255,.25); }
 
-    /* modals */
-    .modal {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(2,6,23,.55);
-      align-items: center; justify-content: center;
-      z-index: 1000;
-      padding: 1rem;
-    }
-    .modal.show { display: flex; }
-    .modal-content {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 1.25rem;
-      text-align: left;
-    }
-    .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); border-color: color-mix(in oklab, var(--border) 80%, var(--text)); }
 
-    /* forms */
-    .form-group { text-align: left; margin-bottom: 1rem; }
-    .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
-    .form-group input[type="date"], .form-group input[type="number"] {
-      width: 100%;
-      padding: .8rem 1rem;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      outline: none;
-      transition: border-color .2s ease, box-shadow .2s ease;
-    }
-    .form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
-    .form-group input:focus {
-      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
-      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
-    }
-    .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
+    .btn-success { background: var(--success); color: #fff; border: none; }
+    .btn-success:hover { background: color-mix(in oklab, var(--success) 85%, black); box-shadow: 0 6px 16px rgba(34,197,94,.25); }
 
-    /* helpful utilities */
-    .muted, .lead { color: var(--muted); }
-
-    /* scrollbars */
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-thumb {
-      background: color-mix(in oklab, var(--surface) 80%, var(--border));
-      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
-    }
-    ::-webkit-scrollbar-track { background: transparent; }
+    .btn-danger { background: var(--danger); color: #fff; border: none; }
+    .btn-danger:hover { background: color-mix(in oklab, var(--danger) 85%, black); box-shadow: 0 6px 16px rgba(255,107,107,.25); }
 
     /* === Calendar specific (adapted to dark surface) === */
     .calendar-container{max-width:95%; margin:0 auto; padding:1rem}
+    
+    @media (max-width: 900px) {
+      body {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100vh;
+      }
+      .content {
+        padding: 0 !important;
+        padding-top: 5rem !important;
+        margin: 0 !important;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        position: fixed;
+      }
+      .calendar-container {
+        padding: 0.3rem;
+        max-width: 100%;
+        height: 80vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .calendar-header {
+        padding: 0.25rem;
+        margin-bottom: 0.2rem;
+        flex-shrink: 0;
+      }
+      .calendar-title {
+        display: none;
+      }
+      .calendar-nav {
+        gap: 0;
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+      }
+      .nav-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+        border: none !important;
+        border-radius: 0 !important;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+      #prev-month {
+        flex: 0 0 auto;
+        min-width: 75px;
+        border-right: 1px solid var(--border) !important;
+      }
+      #today-btn {
+        flex: 0 0 auto;
+        min-width: 50px;
+        border-right: 1px solid var(--border) !important;
+      }
+      #next-month {
+        flex: 0 0 auto;
+        min-width: 75px;
+        border-right: none !important;
+        padding-left: 0.2rem !important;
+        padding-right: 1rem !important;
+      }
+      .mini-calendar-picker {
+        flex: 1;
+        display: flex;
+      }
+      .mini-calendar-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        min-width: 0;
+        width: 100%;
+        border: none !important;
+        border-radius: 0 !important;
+        border-right: 1px solid var(--border) !important;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+      .mini-calendar-dropdown {
+        position: fixed !important;
+        top: 8rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 3500 !important;
+        min-width: 280px !important;
+        max-width: 90vw !important;
+      }
+      .calendar-grid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        border-radius: 8px;
+      }
+      .calendar-weekdays {
+        flex-shrink: 0;
+      }
+      .weekday {
+        padding: 0.2rem 0.05rem;
+        font-size: 0.55rem;
+      }
+      .calendar-days {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        grid-template-rows: repeat(6, 1fr);
+    }
+      .calendar-day {
+        padding: 0.05rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+      }
+      .day-number {
+        font-size: 0.65rem;
+        margin-bottom: 0;
+        line-height: 1;
+      }
+      /* Hide medication checklist on mobile */
+      .calendar-day .medication-checklist {
+        display: none !important;
+      }
+      /* Show medication indicator instead */
+      .medication-indicator {
+        display: block !important;
+        width: 4px;
+        height: 4px;
+        background: var(--brand);
+        border-radius: 50%;
+        margin-top: 0.05rem;
+      }
+    }
+
+    /* Medication indicator - hidden on desktop */
+    .medication-indicator {
+      display: none;
+    }
+    
+    /* Day details modal for mobile */
+    .day-details-modal {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.8);
+      z-index: 3000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .day-details-modal.show {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+    .day-details-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      max-width: 90vw;
+      width: 100%;
+      max-height: 70vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+    .day-details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .day-details-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .day-details-close {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.15rem 0.3rem;
+      border-radius: 6px;
+      transition: background 0.2s ease, color 0.2s ease;
+      line-height: 1;
+    }
+    .day-details-close:hover {
+      background: color-mix(in oklab, var(--danger) 15%, transparent);
+      color: var(--danger);
+    }
+    .day-details-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
     .calendar-header{position:relative;
       display:flex; align-items:center; margin-bottom:2rem;
-      padding:1rem; background:var(--surface); border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow);
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:1rem; box-shadow:var(--shadow);
     }
     .calendar-title{font-size:1.5rem; font-weight:800; color:var(--text); margin:0; cursor:pointer; flex:1; min-width:200px;}
     .calendar-nav{display:flex; gap:.5rem; align-items:center; flex-shrink:0;}
@@ -199,15 +450,13 @@
     .mini-calendar-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem}
     .mini-calendar-title{font-weight:bold; font-size:0.875rem}
     .mini-calendar-nav{display:flex; gap:.25rem}
-    .mini-nav-btn{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:var(--text); border:none; border-radius:4px; padding:.25rem .5rem; cursor:pointer; font-size:.75rem; transition:background .2s}
-    .mini-nav-btn:hover{background:var(--brand-700)}
-    .mini-calendar-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px}
-    .mini-weekday{text-align:center; font-size:.7rem; font-weight:bold; color:var(--accent); padding:.25rem}
-    .mini-day{text-align:center; padding:.25rem; font-size:.75rem; cursor:pointer; border-radius:4px; transition:background .2s}
-    .mini-day:hover{background: color-mix(in oklab, var(--surface) 92%, transparent); color:var(--text)}
-    .mini-day.selected{background: color-mix(in oklab, var(--surface) 92%, transparent); color:var(--text)}
-    .mini-day.selected:hover{background: color-mix(in oklab, var(--surface) 86%, transparent)}
-    .mini-day.other-month{color: color-mix(in oklab, var(--muted) 60%, transparent)}
+    .mini-calendar-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:0}
+    .mini-calendar-grid .weekday-mini{font-size:0.75rem; font-weight:bold; text-align:center; padding:0.25rem; color:var(--muted)}
+    .mini-calendar-day{padding:.4rem; text-align:center; border-radius:6px; cursor:pointer; font-size:0.875rem}
+    .mini-calendar-day:hover{background: color-mix(in oklab, var(--brand) 12%, transparent)}
+    .mini-calendar-day.today{background: color-mix(in oklab, var(--muted) 20%, transparent); font-weight:bold}
+    .mini-calendar-day.selected{background:linear-gradient(135deg, var(--brand), var(--brand-600)); color:#fff; font-weight:bold}
+    .mini-calendar-day.other-month{color:var(--muted); opacity:0.4}
 
     /* main grid */
     .calendar-grid{background:var(--surface); border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden}
@@ -223,35 +472,193 @@
     /* checklist items inside days */
     .medication-checklist{margin-top:.25rem}
     .medication-item{
-      display:flex; align-items:center; justify-content:space-between;
-      background: color-mix(in oklab, var(--surface) 96%, transparent); border-radius:8px; padding:.25rem .5rem; margin-bottom:.25rem; font-size:.75rem;
-      border:1px solid color-mix(in oklab, var(--border) 60%, transparent); min-height:2rem;
+      display:flex; align-items:center; justify-content:space-between; padding:.3rem .4rem; margin-bottom:.25rem;
+      background: color-mix(in oklab, var(--brand) 8%, transparent); border:1px solid var(--brand); border-radius:8px;
+      font-size:0.75rem; min-height:2rem; cursor:pointer; transition: background 0.2s ease;
     }
-    .medication-info{flex:1; min-width:0}
-    .medication-name{font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:.1rem; line-height:1.2}
-    .medication-time{font-size:.7rem; color:var(--muted)}
+    .medication-item:hover{background: color-mix(in oklab, var(--brand) 15%, transparent)}
+    
+    /* Status colors for medication items */
+    .medication-item.status-grey{
+      background: color-mix(in oklab, var(--muted) 20%, var(--surface));
+      border-color: color-mix(in oklab, var(--muted) 40%, transparent);
+    }
+    .medication-item.status-green{
+      background: color-mix(in oklab, var(--success) 30%, var(--surface));
+      border-color: color-mix(in oklab, var(--success) 50%, transparent);
+    }
+    .medication-item.status-red{
+      background: color-mix(in oklab, var(--danger) 30%, var(--surface));
+      border-color: color-mix(in oklab, var(--danger) 50%, transparent);
+    }
+    .medication-item.status-green:hover{
+      background: color-mix(in oklab, var(--success) 40%, var(--surface));
+    }
+    .medication-item.status-red:hover{
+      background: color-mix(in oklab, var(--danger) 40%, var(--surface));
+    }
+    .medication-item:last-child{margin-bottom:0}
+    .medication-info{flex:1; display:flex; flex-direction:column; gap:0.1rem}
+    .medication-name{color:var(--text); font-weight:600; line-height:1.2}
+    .medication-time{color:var(--muted); font-size:0.7rem}
     .medication-plus{
-      background: color-mix(in oklab, var(--success) 90%, black 5%); color:#fff; border:1px solid transparent;
-      border-radius:8px; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-left:.25rem;
-      transition:transform .1s, box-shadow .2s; line-height:1; position:relative; box-shadow:0 2px 6px rgba(34,197,94,.25);
+      width:24px; height:24px; flex-shrink:0; margin-left:.25rem; background:var(--brand); border:none; border-radius:6px; cursor:pointer; position:relative;
+      transition: transform 0.2s ease, background 0.2s ease;
     }
-    .medication-plus:hover{transform:translateY(-1px); box-shadow:0 4px 10px rgba(34,197,94,.35)}
+    .medication-plus:hover{background:var(--brand-600); transform: scale(1.1);}
     .medication-plus::before, .medication-plus::after{
-      content:''; position:absolute; background:#fff; border-radius:1px;
+      content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:1px;
     }
     .medication-plus::before{width:2px; height:12px}
     .medication-plus::after{width:12px; height:2px}
+
+    /* Dose status modal */
+    .dose-status-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .dose-status-modal.show {
+      display: flex;
+    }
+    .dose-status-content {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      max-width: 400px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .dose-status-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dose-status-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: var(--text);
+    }
+    .dose-status-close {
+      background: none;
+      border: none;
+      font-size: 1.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .dose-status-close:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+    .dose-status-body {
+      padding: 1.5rem;
+    }
+    .dose-status-info {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--brand) 8%, transparent);
+      border-radius: 8px;
+      border: 1px solid var(--brand);
+    }
+    .dose-status-info p {
+      margin: 0.25rem 0;
+      color: var(--text);
+    }
+    .dose-status-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .dose-status-buttons button {
+      padding: 1rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: white;
+    }
+    .dose-status-buttons .btn-taken {
+      background: var(--success);
+    }
+    .dose-status-buttons .btn-taken:hover {
+      background: color-mix(in oklab, var(--success) 85%, black);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+    .dose-status-buttons .btn-not-taken {
+      background: var(--danger);
+    }
+    .dose-status-buttons .btn-not-taken:hover {
+      background: color-mix(in oklab, var(--danger) 85%, black);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+    }
+
+    /* Flash animations */
+    @keyframes flash-green {
+      0%, 100% { background: color-mix(in oklab, var(--success) 30%, var(--surface)); }
+      50% { background: color-mix(in oklab, var(--success) 60%, var(--surface)); }
+    }
+    @keyframes flash-red {
+      0%, 100% { background: color-mix(in oklab, var(--danger) 30%, var(--surface)); }
+      50% { background: color-mix(in oklab, var(--danger) 60%, var(--surface)); }
+    }
+    .medication-item.flash-green {
+      animation: flash-green 1s ease;
+    }
+    .medication-item.flash-red {
+      animation: flash-red 1s ease;
+    }
 
 
 </style>
 </head>
 <body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
   <nav class="sidebar">
     <a href="home.html">Home</a>
     <a href="history.html">History</a>
     <a href="calendar.html" class="active">Calendar</a>
     <a href="notes.html">Notes</a>
-    <a href="profile.html">Profile</a>
+    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
+      <span>Profile</span>
+      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
+    </a>
   </nav>
 
   <div class="content">
@@ -265,14 +672,18 @@
             <button class="mini-calendar-btn" id="mini-calendar-btn">July 2025</button>
             <div class="mini-calendar-dropdown" id="mini-calendar-dropdown">
               <div class="mini-calendar-header">
-                <div class="mini-calendar-title" id="mini-calendar-title">July 2025</div>
-                <div class="mini-calendar-nav">
-                  <button class="mini-nav-btn" id="mini-prev">&lt;</button>
-                  <button class="mini-nav-btn" id="mini-next">&gt;</button>
-                </div>
+                <button class="nav-btn" id="mini-prev-month">&lt;</button>
+                <span class="mini-calendar-title" id="mini-calendar-title">July 2025</span>
+                <button class="nav-btn" id="mini-next-month">&gt;</button>
               </div>
               <div class="mini-calendar-grid" id="mini-calendar-grid">
-                <!-- Will be populated by JavaScript -->
+                <div class="weekday-mini">S</div>
+                <div class="weekday-mini">M</div>
+                <div class="weekday-mini">T</div>
+                <div class="weekday-mini">W</div>
+                <div class="weekday-mini">T</div>
+                <div class="weekday-mini">F</div>
+                <div class="weekday-mini">S</div>
               </div>
             </div>
           </div>
@@ -297,7 +708,230 @@
     </div>
   </div>
 
+  <!-- Day Details Modal for Mobile -->
+  <div id="day-details-modal" class="day-details-modal">
+    <div class="day-details-content">
+      <div class="day-details-header">
+        <h3 id="day-details-title">Medications</h3>
+        <button class="day-details-close" onclick="closeDayModal()">&times;</button>
+      </div>
+      <div id="day-details-list" class="day-details-list"></div>
+    </div>
+  </div>
+
+  <!-- Dose Status Modal -->
+  <div id="dose-status-modal" class="dose-status-modal">
+    <div class="dose-status-content">
+      <div class="dose-status-header">
+        <h3 id="dose-status-title">Update Dose Status</h3>
+        <button class="dose-status-close" onclick="closeDoseStatusModal()">&times;</button>
+      </div>
+      <div class="dose-status-body">
+        <div class="dose-status-info">
+          <p><strong id="dose-med-name">Medication</strong></p>
+          <p id="dose-date-time">Date & Time</p>
+          <p id="dose-number">Dose #1</p>
+          <p id="dose-taken-time" style="display: none; color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem;"></p>
+        </div>
+        <div class="dose-status-buttons">
+          <button class="btn-taken" id="dose-taken-btn">✓ Taken</button>
+          <button class="btn-not-taken" id="dose-not-taken-btn">✗ Not Taken</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule and Dose Logs Utilities -->
+  <script src="schedule-utils.js"></script>
+  <script src="dose-logs-utils.js"></script>
+  
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, getDocs, setDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Make globally available
+    window.auth = auth;
+    window.db = db;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+    window.deleteField = deleteField;
+
+    // Global medications array
+    window.globalMedications = [];
+
+    async function loadMedicationsFromFirebase() {
+      const user = auth.currentUser;
+      if (!user) return [];
+
+      try {
+        const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
+        const medicationsSnapshot = await getDocs(medicationsCollectionRef);
+        const medications = [];
+        
+        medicationsSnapshot.forEach((doc) => {
+          const medData = doc.data();
+          
+          // Only include active medications (not deleted)
+          if (!medData.deletedStatus) {
+            const schedules = medData.schedules || [];
+            console.log(`[Calendar] Loading medication: ${medData.name}, schedules:`, schedules.length);
+            if (schedules.length > 0) {
+              console.log('[Calendar] Schedule details:', schedules);
+            }
+            
+            medications.push({
+              id: doc.id,
+              name: medData.name,
+              dosage: medData.dosage,
+              schedules: schedules, // Load schedules array
+              startDate: medData.startDate === 'N/A' ? null : medData.startDate,
+              endDate: medData.endDate === 'N/A' ? null : medData.endDate,
+              createdAt: medData.createdAt || null, // Include createdAt for fallback
+            });
+          }
+        });
+        
+        console.log('[Calendar] Total medications loaded:', medications.length);
+        return medications;
+      } catch (error) {
+        console.error('[Calendar] Error loading medications:', error);
+        return [];
+      }
+    }
+
+    // Load dose logs - make globally accessible
+    let globalDoseLogs = [];
+    window.globalDoseLogs = globalDoseLogs; // Make it globally accessible
+    
+    async function loadDoseLogs() {
+      const user = auth.currentUser;
+      if (!user || !window.DoseLogsUtils) {
+        window.globalDoseLogs = [];
+        return [];
+      }
+      try {
+        globalDoseLogs = await window.DoseLogsUtils.getDoseLogs(db, user.uid);
+        window.globalDoseLogs = globalDoseLogs; // Update global
+        return globalDoseLogs;
+      } catch (error) {
+        console.error('[Calendar] Error loading dose logs:', error);
+        window.globalDoseLogs = [];
+        return [];
+      }
+    }
+
+    // Get user timezone - make it globally accessible
+    let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+    window.userTimezone = userTimezone; // Make it globally accessible
+    
+    async function getUserTimezone() {
+      const user = auth.currentUser;
+      if (!user) {
+        window.userTimezone = userTimezone;
+        return userTimezone;
+      }
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists() && userDoc.data().timezone) {
+          userTimezone = userDoc.data().timezone;
+          window.userTimezone = userTimezone; // Update global
+        }
+      } catch (e) {
+        console.warn('[Calendar] Could not get user timezone');
+      }
+      window.userTimezone = userTimezone; // Ensure it's set
+      return userTimezone;
+    }
+
+    // Wait for auth and load medications, then render
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await getUserTimezone();
+        window.globalMedications = await loadMedicationsFromFirebase();
+        globalDoseLogs = await loadDoseLogs();
+        window.globalDoseLogs = globalDoseLogs;
+        console.log('[Calendar] Loaded medications:', window.globalMedications.length);
+        console.log('[Calendar] Loaded dose logs:', globalDoseLogs.length);
+      } else {
+        window.globalMedications = [];
+        globalDoseLogs = [];
+        window.globalDoseLogs = [];
+      }
+      // Trigger initial render
+      if (typeof window.renderCalendar === 'function') {
+        window.renderCalendar();
+      }
+    });
+
+    // Verification warning
+    onAuthStateChanged(auth, async (user) => {
+      const warningIcon = document.getElementById('profile-verify-warning');
+      if (!warningIcon) return;
+
+      if (user) {
+        let needsVerification = false;
+        if (!user.emailVerified) needsVerification = true;
+
+        try {
+          const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+          if (localProfile.phone && !localProfile.phoneVerified) needsVerification = true;
+        } catch (error) {
+          console.log('Could not check localStorage:', error);
+        }
+
+        warningIcon.style.display = needsVerification ? 'inline' : 'none';
+
+        try {
+          const userDocRef = doc(db, "users", user.uid);
+          getDoc(userDocRef).then(docSnap => {
+            const profile = docSnap.data() || {};
+            if (profile.phone && !profile.phoneVerified) {
+              warningIcon.style.display = 'inline';
+            }
+          });
+        } catch (error) {
+          console.log('Could not check Firestore:', error);
+        }
+      } else {
+        warningIcon.style.display = 'none';
+      }
+    });
+  </script>
+
   <script>
+    // Function to close day modal
+    function closeDayModal() {
+      document.getElementById('day-details-modal').classList.remove('show');
+    }
+
+    // Close mobile menu when clicking on nav links
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+    });
+
     let currentDate = new Date();
     let currentMonth = currentDate.getMonth();
     let currentYear = currentDate.getFullYear();
@@ -351,6 +985,20 @@
           if (medications.length > 0) {
             const checklist = createMedicationChecklist(medications, date);
             dayElement.appendChild(checklist);
+            
+            // Add indicator for mobile
+            const indicator = document.createElement('div');
+            indicator.className = 'medication-indicator';
+            dayElement.appendChild(indicator);
+            
+            // Add click handler for mobile to show modal
+            dayElement.addEventListener('click', (e) => {
+              // Only on mobile (window width <= 900px)
+              if (window.innerWidth <= 900) {
+                e.stopPropagation();
+                showDayDetailsModal(date, medications);
+              }
+            });
           } 
         }
 
@@ -358,59 +1006,183 @@
       }
     }
 
-    function getMedicationsForDate(date) {
-      const medications = JSON.parse(localStorage.getItem('medications') || '[]');
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      const dateString = date.toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      
-      return medications.filter(med => {
-        // Check if medication is active on this date
-        const startDate = med.startDate || today; // Default to today if no start date
-        if (dateString < startDate) {
-          return false; // Medication hasn't started yet
-        }
-        if (med.endDate && dateString > med.endDate) {
-          return false; // Medication has ended (only if end date is set)
+    // Make renderCalendar globally available
+    window.renderCalendar = renderCalendar;
+
+    // Get occurrences for a specific date
+    function getOccurrencesForDate(date) {
+      try {
+        const medications = window.globalMedications || [];
+        if (medications.length === 0) {
+          return [];
         }
         
-        // Check if this day of the week is scheduled for this medication
-        return med.days.includes(dayName);
-      });
+        if (!window.ScheduleUtils) {
+          console.error('[Calendar] ScheduleUtils not available');
+          return [];
+        }
+        
+        const dateString = date.toISOString().split('T')[0];
+        const dateStart = new Date(date);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(date);
+        dateEnd.setHours(23, 59, 59, 999);
+        
+        const allOccurrences = [];
+        
+        medications.forEach(med => {
+          if (!med || !med.schedules || med.schedules.length === 0) {
+            if (med && !med.schedules) {
+              console.log(`[Calendar] Medication ${med.name} has no schedules array`);
+            }
+            return;
+          }
+          
+          try {
+            // Generate occurrences for this date
+            const tz = window.userTimezone || userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+            const occurrences = window.ScheduleUtils.generateOccurrencesForMedication(
+              med,
+              dateStart,
+              dateEnd,
+              tz
+            );
+            
+            console.log(`[Calendar] Generated ${occurrences.length} occurrences for ${med.name} on ${dateString}`);
+            
+            // Merge with dose logs
+            const doseLogs = window.globalDoseLogs || globalDoseLogs || [];
+            const occurrencesWithStatus = window.ScheduleUtils.mergeDoseLogs(occurrences, doseLogs);
+            
+            // Filter to only this date (compare date strings)
+            occurrencesWithStatus.forEach(occ => {
+              if (!occ.dueAt) return;
+              
+              try {
+                const occDate = new Date(occ.dueAt);
+                if (isNaN(occDate.getTime())) {
+                  console.warn('[Calendar] Invalid dueAt date:', occ.dueAt);
+                  return;
+                }
+                
+                // Get date string in local timezone to match
+                const occYear = occDate.getFullYear();
+                const occMonth = String(occDate.getMonth() + 1).padStart(2, '0');
+                const occDay = String(occDate.getDate()).padStart(2, '0');
+                const occDateString = `${occYear}-${occMonth}-${occDay}`;
+                
+                // Also get target date string in same format
+                const targetYear = date.getFullYear();
+                const targetMonth = String(date.getMonth() + 1).padStart(2, '0');
+                const targetDay = String(date.getDate()).padStart(2, '0');
+                const targetDateString = `${targetYear}-${targetMonth}-${targetDay}`;
+                
+                if (occDateString === targetDateString) {
+                  allOccurrences.push({
+                    ...occ,
+                    medication: med
+                  });
+                }
+              } catch (error) {
+                console.warn('[Calendar] Error parsing dueAt:', occ.dueAt, error);
+              }
+            });
+          } catch (error) {
+            console.error('[Calendar] Error processing medication:', med.name, error);
+          }
+        });
+        
+        console.log(`[Calendar] Total occurrences for ${dateString}:`, allOccurrences.length);
+        
+        // Sort by time
+        allOccurrences.sort((a, b) => {
+          if (!a.dueAt || !b.dueAt) return 0;
+          return new Date(a.dueAt) - new Date(b.dueAt);
+        });
+        
+        return allOccurrences;
+      } catch (error) {
+        console.error('[Calendar] Error in getOccurrencesForDate:', error);
+        return [];
+      }
+    }
+
+    function getMedicationsForDate(date) {
+      // Return medications that have occurrences on this date
+      const occurrences = getOccurrencesForDate(date);
+      const medicationIds = new Set(occurrences.map(occ => occ.medId));
+      return window.globalMedications.filter(med => medicationIds.has(med.id));
     }
 
     function createMedicationChecklist(medications, date) {
-      const checklist = document.createElement('div');
-      checklist.className = 'medication-checklist';
-      
-      medications.forEach(med => {
-        // If no times are set, show medication without time
-        if (!med.times || med.times.length === 0 || med.times.every(t => !t)) {
-          const timesPerDay = med.timesPerDay || 1;
-          for (let i = 1; i <= timesPerDay; i++) {
-            const medItem = createMedicationItem(med.name, null, i, date);
-            checklist.appendChild(medItem);
-          }
-        } else {
-          // Show medication for each time (filter out blank times)
-          const validTimes = med.times.filter(time => time && time.trim() !== '');
-          if (validTimes.length === 0) {
-            // If all times are empty, create doses based on timesPerDay
-            const timesPerDay = med.timesPerDay || 1;
-            for (let i = 1; i <= timesPerDay; i++) {
-              const medItem = createMedicationItem(med.name, null, i, date);
-              checklist.appendChild(medItem);
-            }
-          } else {
-            validTimes.forEach((time, index) => {
-              const medItem = createMedicationItem(med.name, time, index + 1, date);
-              checklist.appendChild(medItem);
-            });
-          }
+      try {
+        const checklist = document.createElement('div');
+        checklist.className = 'medication-checklist';
+        
+        // Get all occurrences for this date
+        const occurrences = getOccurrencesForDate(date);
+        
+        if (occurrences.length === 0) {
+          return checklist; // Return empty checklist
         }
-      });
-      
-      return checklist;
+        
+        // Group occurrences by medication and count dose numbers
+        const medOccurrences = new Map();
+        occurrences.forEach(occ => {
+          if (!occ.medId) return;
+          if (!medOccurrences.has(occ.medId)) {
+            medOccurrences.set(occ.medId, []);
+          }
+          medOccurrences.get(occ.medId).push(occ);
+        });
+        
+        // Count dose numbers per medication (for display)
+        const doseCounts = new Map();
+        medOccurrences.forEach((occs, medId) => {
+          occs.forEach((occ, idx) => {
+            if (!doseCounts.has(medId)) {
+              doseCounts.set(medId, new Map());
+            }
+            const key = occ.dueAt || '';
+            doseCounts.get(medId).set(key, idx + 1);
+          });
+        });
+        
+        // Create medication items from occurrences
+        occurrences.forEach(occ => {
+          try {
+            if (!occ.dueAt) return;
+            
+            const dueDate = new Date(occ.dueAt);
+            if (isNaN(dueDate.getTime())) {
+              console.warn('[Calendar] Invalid dueAt:', occ.dueAt);
+              return;
+            }
+            
+            const timeStr = dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+            const doseNumber = doseCounts.get(occ.medId)?.get(occ.dueAt) || 1;
+            
+            const medItem = createMedicationItem(
+              occ.medicationName || occ.medication?.name || 'Unknown',
+              timeStr,
+              doseNumber,
+              date,
+              occ.medication || occ,
+              occ // Pass the occurrence for status
+            );
+            checklist.appendChild(medItem);
+          } catch (error) {
+            console.error('[Calendar] Error creating medication item:', error, occ);
+          }
+        });
+        
+        return checklist;
+      } catch (error) {
+        console.error('[Calendar] Error in createMedicationChecklist:', error);
+        const checklist = document.createElement('div');
+        checklist.className = 'medication-checklist';
+        return checklist;
+      }
     }
 
     function convertTo12Hour(time24) {
@@ -436,9 +1208,38 @@
       }
     }
 
-    function createMedicationItem(name, time, doseNumber, date) {
+    function createMedicationItem(name, time, doseNumber, date, medication = null, occurrence = null) {
       const medItem = document.createElement('div');
       medItem.className = 'medication-item';
+      
+      // Check dose status from doseLogs
+      let statusClass = 'status-grey'; // Default: no status
+      let hasExistingLog = false;
+      
+      if (occurrence) {
+        // Check status from occurrence (already merged with doseLogs)
+        if (occurrence.status === 'TAKEN') {
+          statusClass = 'status-green';
+          hasExistingLog = true;
+        } else if (occurrence.status === 'MISSED' || occurrence.status === 'SKIPPED') {
+          statusClass = 'status-red';
+          hasExistingLog = true;
+        }
+      }
+      
+      // Auto-mark as red if more than 45 minutes past scheduled time (ONLY if no existing log)
+      if (!hasExistingLog && statusClass !== 'status-green' && time && occurrence) {
+        const now = new Date();
+        const dueDate = new Date(occurrence.dueAt);
+        if (!isNaN(dueDate.getTime())) {
+          const minutesPast = (now - dueDate) / (1000 * 60);
+          if (minutesPast > 45) {
+            statusClass = 'status-red';
+          }
+        }
+      }
+      
+      medItem.classList.add(statusClass);
       
       const medInfo = document.createElement('div');
       medInfo.className = 'medication-info';
@@ -466,23 +1267,104 @@
         e.preventDefault();
         e.stopPropagation();
         
-        // Create date string in local timezone to avoid timezone issues
+        // Create date string in local timezone
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const dateString = `${year}-${month}-${day}`;
         
         const timeParam = time ? encodeURIComponent(time) : 'no-time';
-        const url = `notes.html?date=${dateString}&medication=${encodeURIComponent(name)}&dose=${doseNumber}&time=${timeParam}`;
+        // Include schedule info for notes
+        const medId = medication?.id || '';
+        const scheduleId = occurrence?.scheduleId || '';
+        const dueAt = occurrence?.dueAt || '';
+        const url = `notes.html?date=${dateString}&medication=${encodeURIComponent(name)}&dose=${doseNumber}&time=${timeParam}&medId=${encodeURIComponent(medId)}&scheduleId=${encodeURIComponent(scheduleId)}&dueAt=${encodeURIComponent(dueAt)}`;
         
-        // Navigate to the notes page
         window.location.href = url;
+      });
+      
+      // Add click handler for the medication box (excluding plus button)
+      medItem.addEventListener('click', (e) => {
+        if (e.target.closest('.medication-plus')) {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Open the dose status modal with occurrence
+        openDoseStatusModal(name, time, doseNumber, date, medication, medItem, occurrence);
       });
       
       medItem.appendChild(medInfo);
       medItem.appendChild(plusBtn);
       
       return medItem;
+    }
+
+    function showDayDetailsModal(date, medications) {
+      console.log('[Calendar] Opening modal for date:', date, 'medications:', medications.length);
+      
+      const modal = document.getElementById('day-details-modal');
+      const titleEl = document.getElementById('day-details-title');
+      const listEl = document.getElementById('day-details-list');
+      
+      if (!modal) {
+        console.error('[Calendar] Modal element not found!');
+        return;
+      }
+      
+      // Format date nicely
+      const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      titleEl.textContent = dateStr;
+      
+      // Clear previous content
+      listEl.innerHTML = '';
+      
+      // Collect all medication items with their times for sorting
+      const allItems = [];
+      
+      // Get occurrences for this date
+      const occurrences = getOccurrencesForDate(date);
+      
+      // Group by medication and count dose numbers
+      const medOccurrences = new Map();
+      occurrences.forEach(occ => {
+        if (!medOccurrences.has(occ.medId)) {
+          medOccurrences.set(occ.medId, []);
+        }
+        medOccurrences.get(occ.medId).push(occ);
+      });
+      
+      const doseCounts = new Map();
+      medOccurrences.forEach((occs, medId) => {
+        occs.forEach((occ, idx) => {
+          if (!doseCounts.has(medId)) {
+            doseCounts.set(medId, new Map());
+          }
+          doseCounts.get(medId).set(occ.dueAt, idx + 1);
+        });
+      });
+      
+      // Create medication items from occurrences
+      occurrences.forEach(occ => {
+        const dueDate = new Date(occ.dueAt);
+        const timeStr = dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        const doseNumber = doseCounts.get(occ.medId)?.get(occ.dueAt) || 1;
+        
+        const medItem = createMedicationItem(
+          occ.medicationName,
+          timeStr,
+          doseNumber,
+          date,
+          occ.medication,
+          occ
+        );
+        listEl.appendChild(medItem);
+      });
+      
+      modal.classList.add('show');
+      console.log('[Calendar] Modal should now be visible, classes:', modal.className);
     }
 
     let miniCalendarMonth = currentMonth;
@@ -498,34 +1380,31 @@
 
       miniCalendarTitle.textContent = `${months[miniCalendarMonth]} ${miniCalendarYear}`;
 
-      // Add weekday headers
+      // Clear previous days (keep weekday headers)
+      const weekdayHeaders = Array.from(miniCalendarGrid.querySelectorAll('.weekday-mini'));
       miniCalendarGrid.innerHTML = '';
-      const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-      weekdays.forEach(day => {
-        const dayHeader = document.createElement('div');
-        dayHeader.className = 'mini-weekday';
-        dayHeader.textContent = day;
-        miniCalendarGrid.appendChild(dayHeader);
-      });
+      weekdayHeaders.forEach(header => miniCalendarGrid.appendChild(header));
 
-      // Add calendar days
       for (let i = 0; i < 42; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
 
         const dayElement = document.createElement('div');
-        dayElement.className = 'mini-day';
-        dayElement.textContent = date.getDate();
+        dayElement.className = 'mini-calendar-day';
 
-        const isCurrentMonth = date.getMonth() === miniCalendarMonth;
-        const isSelected = date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-
-        if (!isCurrentMonth) {
+        if (date.getMonth() !== miniCalendarMonth) {
           dayElement.classList.add('other-month');
         }
-        if (isSelected) {
+
+        if (date.toDateString() === new Date().toDateString()) {
+          dayElement.classList.add('today');
+        }
+
+        if (date.toDateString() === currentDate.toDateString()) {
           dayElement.classList.add('selected');
         }
+
+        dayElement.textContent = date.getDate();
 
         dayElement.addEventListener('click', () => {
           currentMonth = date.getMonth();
@@ -538,7 +1417,6 @@
       }
     }
 
-    // Event listeners
     document.getElementById('prev-month').addEventListener('click', () => {
       currentMonth--;
       if (currentMonth < 0) {
@@ -566,13 +1444,18 @@
 
     document.getElementById('mini-calendar-btn').addEventListener('click', () => {
       const dropdown = document.getElementById('mini-calendar-dropdown');
-      dropdown.classList.toggle('show');
+      const isVisible = dropdown.classList.contains('show');
+      
+      if (!isVisible) {
       miniCalendarMonth = currentMonth;
       miniCalendarYear = currentYear;
       renderMiniCalendar();
+      }
+      
+      dropdown.classList.toggle('show');
     });
 
-    document.getElementById('mini-prev').addEventListener('click', () => {
+    document.getElementById('mini-prev-month').addEventListener('click', () => {
       miniCalendarMonth--;
       if (miniCalendarMonth < 0) {
         miniCalendarMonth = 11;
@@ -581,7 +1464,7 @@
       renderMiniCalendar();
     });
 
-    document.getElementById('mini-next').addEventListener('click', () => {
+    document.getElementById('mini-next-month').addEventListener('click', () => {
       miniCalendarMonth++;
       if (miniCalendarMonth > 11) {
         miniCalendarMonth = 0;
@@ -590,18 +1473,311 @@
       renderMiniCalendar();
     });
 
-    // Close dropdown when clicking outside
+    // Close mini calendar when clicking outside
     document.addEventListener('click', (e) => {
+      const miniCalendarPicker = document.querySelector('.mini-calendar-picker');
       const dropdown = document.getElementById('mini-calendar-dropdown');
-      const btn = document.getElementById('mini-calendar-btn');
-      if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+      
+      if (!miniCalendarPicker.contains(e.target)) {
         dropdown.classList.remove('show');
       }
     });
 
+    // Close day details modal when clicking outside
+    document.getElementById('day-details-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'day-details-modal') {
+        closeDayModal();
+      }
+    });
+
     // Initialize calendar
-    
     renderCalendar();
+
+    // Dose Status Modal Functions
+    window.closeDoseStatusModal = function() {
+      const modal = document.getElementById('dose-status-modal');
+      if (modal) {
+        modal.classList.remove('show');
+      }
+    };
+
+    window.openDoseStatusModal = function(name, time, doseNumber, date, medication, medItem, occurrence = null) {
+      console.log('[Calendar] Opening dose status modal for:', name, 'dose', doseNumber);
+      
+      const modal = document.getElementById('dose-status-modal');
+      const medNameEl = document.getElementById('dose-med-name');
+      const dateTimeEl = document.getElementById('dose-date-time');
+      const doseNumEl = document.getElementById('dose-number');
+      const takenBtn = document.getElementById('dose-taken-btn');
+      const notTakenBtn = document.getElementById('dose-not-taken-btn');
+      
+      console.log('[Calendar] Modal elements found:', { modal: !!modal, takenBtn: !!takenBtn, notTakenBtn: !!notTakenBtn });
+      
+      // Set modal content
+      medNameEl.textContent = name;
+      
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timeStr = time ? convertTo12Hour(time) : 'Any time';
+      dateTimeEl.textContent = `${dateStr} at ${timeStr}`;
+      
+      doseNumEl.textContent = `Dose #${doseNumber}`;
+      
+      // Check if dose is already taken and show taken time
+      const takenTimeEl = document.getElementById('dose-taken-time');
+      if (medication && medication.doses) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStrKey = `${year}-${month}-${day}`;
+        const doseKey = `${dateStrKey}_${doseNumber}`;
+        const doseEntry = medication.doses[doseKey];
+        
+        if (doseEntry && doseEntry.taken === true && doseEntry.takenAt) {
+          const takenDate = new Date(doseEntry.takenAt);
+          const takenTimeStr = takenDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          });
+          takenTimeEl.textContent = `Taken at ${takenTimeStr}`;
+          takenTimeEl.style.display = 'block';
+        } else {
+          takenTimeEl.style.display = 'none';
+        }
+      } else {
+        takenTimeEl.style.display = 'none';
+      }
+      
+      // Helper function to update stock based on dose status change
+      const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+        if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
+          console.log('[Calendar] No bottles to update stock for');
+          return medData.bottles || [];
+        }
+
+        // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
+        let stockChange = 0;
+        if (previousTaken !== true && newTaken === true) {
+          // Going from not-taken (or null) to taken: subtract dosage
+          stockChange = -dosage;
+        } else if (previousTaken === true && newTaken === false) {
+          // Going from taken to not-taken: add dosage back
+          stockChange = dosage;
+        }
+        // If status doesn't change or goes from not-taken to not-taken: no change
+
+        if (stockChange === 0) {
+          console.log('[Calendar] No stock change needed (status unchanged or not-taken to not-taken)');
+          return medData.bottles;
+        }
+
+        console.log(`[Calendar] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
+
+        // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
+        const now = new Date();
+        const parsedBottles = medData.bottles.map((bottleStr, index) => {
+          const parts = bottleStr.split('/');
+          if (parts.length < 3) return null;
+          
+          const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
+          const expirationDate = new Date(expirationStr);
+          const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
+          
+          return {
+            index,
+            expiration: expirationDate,
+            quantity: quantity,
+            original: bottleStr
+          };
+        }).filter(b => b !== null);
+
+        // Sort by expiration date (earliest first)
+        parsedBottles.sort((a, b) => a.expiration - b.expiration);
+
+        // Find the first bottle that hasn't expired and has quantity
+        let activeBottle = parsedBottles.find(b => 
+          b.expiration >= now && (b.quantity === null || b.quantity > 0)
+        );
+
+        // If no unexpired bottle, use the earliest one (even if expired)
+        if (!activeBottle && parsedBottles.length > 0) {
+          activeBottle = parsedBottles[0];
+        }
+
+        if (!activeBottle) {
+          console.log('[Calendar] No active bottle found to update');
+          return medData.bottles;
+        }
+
+        console.log(`[Calendar] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
+
+        // Update the quantity
+        const newBottles = [...medData.bottles];
+        const bottleParts = newBottles[activeBottle.index].split('/');
+        
+        if (bottleParts.length >= 4) {
+          let newQuantity = activeBottle.quantity;
+          if (newQuantity === null) {
+            // If quantity was N/A, we can't track it, so don't update
+            console.log('[Calendar] Bottle quantity is N/A, cannot update stock');
+            return medData.bottles;
+          }
+          
+          newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+          
+          // Rebuild bottle string with updated quantity
+          const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
+          newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
+          
+          console.log(`[Calendar] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
+        }
+
+        return newBottles;
+      };
+
+      // Handler to save dose to Firebase
+      // Handler to save dose to doseLogs
+      const saveDose = async (taken) => {
+        console.log('[Calendar] saveDose called with taken:', taken);
+        try {
+          const user = window.auth.currentUser;
+          if (!user || !window.DoseLogsUtils) {
+            alert('Please sign in to update dose status');
+            return false;
+          }
+          
+          if (!medication || !medication.id) {
+            console.error('[Calendar] No medication data available');
+            return false;
+          }
+          
+          if (!window.currentDoseOccurrence) {
+            console.error('[Calendar] No occurrence data available');
+            return false;
+          }
+          
+          const occurrence = window.currentDoseOccurrence;
+          
+          // Get previous status
+          const existingLog = window.DoseLogsUtils.getDoseLogForOccurrence(
+            globalDoseLogs,
+            medication.id,
+            occurrence.scheduleId,
+            occurrence.dueAt
+          );
+          const previousStatus = existingLog ? existingLog.status : null;
+          const previousTaken = previousStatus === 'TAKEN';
+          const statusChanged = previousStatus !== (taken ? 'TAKEN' : 'MISSED');
+          
+          // Save to doseLogs
+          const newStatus = taken ? 'TAKEN' : 'MISSED';
+          await window.DoseLogsUtils.saveDoseLog(window.db, user.uid, {
+            medId: medication.id,
+            scheduleId: occurrence.scheduleId,
+            dueAt: occurrence.dueAt,
+            status: newStatus,
+            loggedAt: new Date().toISOString()
+          });
+          
+          // Update stock
+          const medDocRef = window.doc(window.db, "users", user.uid, "medications", medication.id);
+          const medDoc = await window.getDoc(medDocRef);
+          if (medDoc.exists()) {
+            const medData = medDoc.data();
+            const dosage = Number(medData.dosage) || 0;
+            const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
+            await window.setDoc(medDocRef, { bottles: updatedBottles }, { merge: true });
+          }
+          
+          // Reload dose logs and refresh
+          globalDoseLogs = await loadDoseLogs();
+        window.globalDoseLogs = globalDoseLogs;
+          
+          return statusChanged;
+        } catch (error) {
+          console.error('[Calendar] Error saving dose:', error);
+          alert('Error saving dose: ' + error.message);
+          return false;
+        }
+      };
+      
+      // Flash animation
+      const triggerFlash = (color) => {
+        medItem.classList.remove('flash-green', 'flash-red', 'status-grey', 'status-green', 'status-red');
+        void medItem.offsetWidth; // Force reflow
+        medItem.classList.add(`flash-${color}`, `status-${color}`);
+        setTimeout(() => {
+          medItem.classList.remove(`flash-${color}`);
+        }, 1000);
+      };
+      
+      // Remove old event listeners by cloning buttons
+      const newTakenBtn = takenBtn.cloneNode(true);
+      takenBtn.parentNode.replaceChild(newTakenBtn, takenBtn);
+      const newNotTakenBtn = notTakenBtn.cloneNode(true);
+      notTakenBtn.parentNode.replaceChild(newNotTakenBtn, notTakenBtn);
+      
+      // Taken button handler
+      newTakenBtn.addEventListener('click', async (e) => {
+        console.log('[Calendar] Taken button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        const statusChanged = await saveDose(true);
+        console.log('[Calendar] Status changed:', statusChanged);
+        if (statusChanged) {
+          triggerFlash('green');
+        }
+        closeDoseStatusModal();
+        
+        // Reload dose logs and refresh calendar
+        globalDoseLogs = await loadDoseLogs();
+        window.globalDoseLogs = globalDoseLogs;
+        renderCalendar();
+        console.log('[Calendar] Calendar re-rendered after marking as taken');
+      });
+      
+      // Not Taken button handler
+      newNotTakenBtn.addEventListener('click', async (e) => {
+        console.log('[Calendar] Not Taken button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        const statusChanged = await saveDose(false);
+        console.log('[Calendar] Status changed:', statusChanged);
+        if (statusChanged) {
+          triggerFlash('red');
+        }
+        closeDoseStatusModal();
+        
+        // Reload dose logs and refresh calendar
+        globalDoseLogs = await loadDoseLogs();
+        window.globalDoseLogs = globalDoseLogs;
+        renderCalendar();
+        console.log('[Calendar] Calendar re-rendered after marking as not taken');
+      });
+      
+      // Show modal
+      modal.classList.add('show');
+      
+      // Close on background click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeDoseStatusModal();
+        }
+      });
+    }
   </script>
+
+<style>
+  .verify-warning {
+    font-size: 1rem;
+    cursor: help;
+    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+</style>
 </body>
 </html>

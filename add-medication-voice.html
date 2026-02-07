@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MedTracker – Add Medication (Voice)</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --danger-color: var(--danger);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        /* High contrast for seniors - maximum readability */
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 5rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1000 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+    }
+
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+
+    /* Voice conversation styles */
+    .voice-container {
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Floating voice bubble */
+    .voice-bubble {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 30px rgba(79, 140, 255, 0.4);
+      cursor: pointer;
+      z-index: 100;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .voice-bubble:hover {
+      transform: scale(1.1);
+      box-shadow: 0 15px 40px rgba(79, 140, 255, 0.5);
+    }
+
+    .voice-bubble.listening {
+      animation: pulse 1.5s ease-in-out infinite;
+      background: linear-gradient(135deg, var(--success), #16a34a);
+    }
+
+    .voice-bubble.speaking {
+      background: linear-gradient(135deg, var(--accent), #5dd4b8);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    .voice-bubble-icon {
+      font-size: 2rem;
+      color: white;
+    }
+
+    /* Transcript area */
+    .transcript-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      max-height: 60vh;
+      overflow-y: auto;
+      min-height: 300px;
+      scroll-behavior: smooth;
+    }
+
+    .transcript-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .transcript-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .message {
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+
+    .message.system {
+      background: color-mix(in oklab, var(--brand) 15%, transparent);
+      border-left: 4px solid var(--brand);
+      align-self: flex-start;
+      color: var(--text);
+    }
+
+    .message.user {
+      background: color-mix(in oklab, var(--accent) 15%, transparent);
+      border-left: 4px solid var(--accent);
+      align-self: flex-end;
+      color: var(--text);
+    }
+
+    .message.confirmation {
+      background: color-mix(in oklab, var(--success) 15%, transparent);
+      border-left: 4px solid var(--success);
+      align-self: flex-start;
+      color: var(--text);
+    }
+
+    .status-text {
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 1rem;
+      padding: 0.5rem;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: .7rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease;
+    }
+
+    .btn:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color: #fff;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+      box-shadow: 0 6px 16px rgba(79,140,255,.25);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .voice-bubble {
+        bottom: 1rem;
+        right: 1rem;
+        width: 70px;
+        height: 70px;
+      }
+
+      .voice-bubble-icon {
+        font-size: 1.5rem;
+      }
+
+      .transcript-container {
+        max-height: 50vh;
+      }
+
+      .message {
+        max-width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="stats.html">Stats</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <h1>Add Medication (Voice)</h1>
+      
+      <div class="voice-container">
+        <div class="transcript-container">
+          <div class="transcript-title">Conversation</div>
+          <div class="transcript-messages" id="transcript-messages">
+            <div class="message system">
+              Welcome! I'll help you add a medication. Let's start with some questions.
+            </div>
+          </div>
+          <div class="status-text" id="status-text">Ready to start</div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-secondary" id="restate-btn" type="button">Restate Question</button>
+          <button class="btn btn-secondary" id="fix-prev-btn" type="button">Fix previous answer</button>
+          <button class="btn btn-primary" id="pause-btn" type="button" aria-pressed="false">Pause</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating voice bubble -->
+  <div class="voice-bubble" id="voice-bubble">
+    <div class="voice-bubble-icon">🎤</div>
+  </div>
+
+  <script>
+    // Check for browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechSynthesis = window.speechSynthesis;
+
+    if (!SpeechRecognition) {
+      document.getElementById('status-text').textContent = 'Voice recognition not supported in this browser. Please use Chrome or Edge.';
+      document.getElementById('voice-bubble').style.display = 'none';
+    }
+
+    // Conversation state
+    let recognition = null;
+    let isListening = false;
+    let conversationData = {};
+    let currentStep = 'name';
+    let waitingForClarification = false;
+    let clarificationType = null;
+    let wrongField = null;
+    let shouldAutoRestart = false; // Flag to control auto-restart
+    let restartTimeout = null; // Track restart timeout
+    let isPaused = false;
+    const stepHistory = []; // Last answered (non-clarification) steps, used by "Fix previous answer"
+
+    function isFixableStep(step) {
+      return !!step && !!steps[step] && !steps[step].isClarification && step !== 'finish';
+    }
+
+    function recordAnsweredStep(step) {
+      if (!isFixableStep(step)) return;
+      stepHistory.push(step);
+    }
+
+    function clearDataForStep(step) {
+      switch (step) {
+        case 'name':
+          delete conversationData.name;
+          break;
+        case 'dosage':
+          delete conversationData.dosage;
+          break;
+        case 'days':
+          delete conversationData.days;
+          break;
+        case 'timesPerDay':
+          delete conversationData.timesPerDay;
+          break;
+        case 'specificTimes':
+          delete conversationData.wantsSpecificTimes;
+          delete conversationData.times;
+          break;
+        case 'times':
+          delete conversationData.times;
+          break;
+        case 'startDate':
+          delete conversationData.wantsStartDate;
+          delete conversationData.startDate;
+          break;
+        case 'startDateValue':
+          delete conversationData.startDate;
+          break;
+        case 'endDate':
+          delete conversationData.wantsEndDate;
+          delete conversationData.endDate;
+          break;
+        case 'endDateValue':
+          delete conversationData.endDate;
+          break;
+        case 'reminder':
+          delete conversationData.reminder;
+          break;
+        default:
+          break;
+      }
+    }
+
+    function stopAudioAndTimers() {
+      shouldAutoRestart = false;
+      if (restartTimeout) {
+        clearTimeout(restartTimeout);
+        restartTimeout = null;
+      }
+      try {
+        if (recognition && isListening) recognition.stop();
+      } catch (e) {
+        // ignore
+      }
+      try {
+        if (speechSynthesis) speechSynthesis.cancel();
+      } catch (e) {
+        // ignore
+      }
+      document.getElementById('voice-bubble').classList.remove('speaking');
+    }
+
+    // Conversation flow steps
+    const steps = {
+      name: {
+        question: 'What is the name of your medication?',
+        next: 'dosage'
+      },
+      dosage: {
+        question: 'How many pills or dosages do you take each time?',
+        next: 'clarify1'
+      },
+      clarify1: {
+        question: null, // Will be generated dynamically
+        next: 'days',
+        isClarification: true
+      },
+      days: {
+        question: 'Which days of the week do you take the medication?',
+        next: 'timesPerDay'
+      },
+      timesPerDay: {
+        question: 'How many times per day?',
+        next: 'specificTimes'
+      },
+      specificTimes: {
+        question: 'Would you like to add specific times?',
+        next: 'times',
+        isYesNo: true
+      },
+      times: {
+        question: 'What are those times?',
+        next: 'clarify2',
+        conditional: true // Only asked if specificTimes was Yes
+      },
+      clarify2: {
+        question: null, // Will be generated dynamically
+        next: 'startDate',
+        isClarification: true
+      },
+      startDate: {
+        question: 'Would you like to add a start date?',
+        next: 'startDateValue',
+        isYesNo: true
+      },
+      startDateValue: {
+        question: 'What is it?',
+        next: 'endDate'
+      },
+      endDate: {
+        question: 'Would you like to add an end date?',
+        next: 'endDateValue',
+        isYesNo: true
+      },
+      endDateValue: {
+        question: 'What is it?',
+        next: 'reminder'
+      },
+      reminder: {
+        question: 'How would you like to be reminded? Email, SMS, Both, or None?',
+        next: 'clarify3'
+      },
+      clarify3: {
+        question: null, // Will be generated dynamically
+        next: 'finish',
+        isClarification: true
+      },
+      finish: {
+        question: 'Now, you will be redirected to the form. Make sure everything is filled out correctly, and then add your bottles!',
+        next: null
+      }
+    };
+
+    // Initialize
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isListening = true;
+        document.getElementById('voice-bubble').classList.add('listening');
+        document.getElementById('status-text').textContent = 'Listening...';
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.trim();
+        // Clear any pending restart since we got a result
+        shouldAutoRestart = false;
+        if (restartTimeout) {
+          clearTimeout(restartTimeout);
+          restartTimeout = null;
+        }
+        handleUserResponse(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        isListening = false;
+        document.getElementById('voice-bubble').classList.remove('listening');
+        document.getElementById('status-text').textContent = 'Error: ' + event.error + '. Please try again.';
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        document.getElementById('voice-bubble').classList.remove('listening');
+        
+        console.log('[Voice] recognition.onend - currentStep:', currentStep, 'shouldAutoRestart:', shouldAutoRestart, 'waitingForClarification:', waitingForClarification);
+        
+        // Only auto-restart if we explicitly set the flag (after asking a question)
+        // This prevents permission dialogs from appearing unexpectedly
+        // Also check that we're not in the middle of transitioning between steps
+        if (!isPaused && shouldAutoRestart && currentStep !== 'finish' && !waitingForClarification && currentStep !== null) {
+          shouldAutoRestart = false; // Reset flag
+          restartTimeout = setTimeout(() => {
+            if (!isPaused && !isListening && currentStep !== 'finish' && currentStep !== null) {
+              console.log('[Voice] Auto-restarting listening for step:', currentStep);
+              startListening();
+            }
+          }, 500);
+        } else {
+          document.getElementById('status-text').textContent = isPaused ? 'Paused' : 'Ready for next question';
+        }
+      };
+    }
+
+    // Voice bubble click handler
+    document.getElementById('voice-bubble').addEventListener('click', () => {
+      if (!SpeechRecognition) return;
+      
+      if (isListening) {
+        recognition.stop();
+      } else {
+        startListening();
+      }
+    });
+
+    function startListening() {
+      if (isPaused) return;
+      if (recognition && !isListening && currentStep !== 'finish') {
+        try {
+          // Clear any pending restart
+          if (restartTimeout) {
+            clearTimeout(restartTimeout);
+            restartTimeout = null;
+          }
+          recognition.start();
+        } catch (error) {
+          // If recognition is already starting or in use, wait a bit and try again
+          if (error.name === 'InvalidStateError' || error.name === 'NotAllowedError') {
+            console.log('Recognition not ready, waiting...', error);
+            setTimeout(() => {
+              if (!isListening && currentStep !== 'finish') {
+                startListening();
+              }
+            }, 1000);
+          } else {
+            console.error('Error starting recognition:', error);
+            document.getElementById('status-text').textContent = 'Error starting microphone. Please click the microphone button.';
+          }
+        }
+      }
+    }
+
+    function speak(text) {
+      return new Promise((resolve) => {
+        if (isPaused) {
+          resolve();
+          return;
+        }
+        const utterance = new SpeechSynthesisUtterance(text);
+        let resolved = false;
+        const safeResolve = () => {
+          if (resolved) return;
+          resolved = true;
+          resolve();
+        };
+        utterance.onend = safeResolve;
+        utterance.onerror = safeResolve;
+        document.getElementById('voice-bubble').classList.add('speaking');
+        speechSynthesis.speak(utterance);
+        // Safety timeout: onend can fail to fire on some browsers (or after cancel).
+        const maxMs = Math.min(Math.max(text.length * 70, 900), 15000);
+        setTimeout(safeResolve, maxMs);
+        setTimeout(() => {
+          document.getElementById('voice-bubble').classList.remove('speaking');
+        }, text.length * 50); // Rough estimate
+      });
+    }
+
+    function addMessage(text, type = 'system') {
+      const messagesDiv = document.getElementById('transcript-messages');
+      const transcriptContainer = document.querySelector('.transcript-container');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${type}`;
+      messageDiv.textContent = text;
+      messagesDiv.appendChild(messageDiv);
+      
+      // Auto-scroll both the messages container and the transcript container
+      setTimeout(() => {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        if (transcriptContainer) {
+          transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+        }
+      }, 10);
+    }
+
+    // Helper functions for parsing responses
+    function textToNumber(text) {
+      const numberMap = {
+        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+        'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+        'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20,
+        'once': 1, 'twice': 2, 'thrice': 3
+      };
+      
+      const lowerText = text.toLowerCase().trim();
+      
+      // First try to find a digit
+      const digitMatch = text.match(/\d+/);
+      if (digitMatch) {
+        return parseInt(digitMatch[0]);
+      }
+      
+      // Then try to find text numbers
+      for (const [word, num] of Object.entries(numberMap)) {
+        if (lowerText.includes(word)) {
+          return num;
+        }
+      }
+      
+      return null;
+    }
+
+    function parseMedicationName(text) {
+      // Capitalize first letter of each word
+      return text.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join(' ');
+    }
+
+    function parseDosage(text) {
+      // Extract number from text (handles both digits and text numbers)
+      return textToNumber(text);
+    }
+
+    function parseDaysOfWeek(text) {
+      const dayMap = {
+        'sunday': 'sunday', 'sun': 'sunday',
+        'monday': 'monday', 'mon': 'monday',
+        'tuesday': 'tuesday', 'tue': 'tuesday', 'tues': 'tuesday',
+        'wednesday': 'wednesday', 'wed': 'wednesday',
+        'thursday': 'thursday', 'thu': 'thursday', 'thur': 'thursday',
+        'friday': 'friday', 'fri': 'friday',
+        'saturday': 'saturday', 'sat': 'saturday'
+      };
+      
+      const lowerText = text.toLowerCase();
+      const foundDays = [];
+      
+      for (const [key, value] of Object.entries(dayMap)) {
+        if (lowerText.includes(key)) {
+          if (!foundDays.includes(value)) {
+            foundDays.push(value);
+          }
+        }
+      }
+      
+      return foundDays;
+    }
+
+    function parseTimesPerDay(text) {
+      // Extract number from text (handles both digits and text numbers)
+      return textToNumber(text);
+    }
+
+    function parseTime(text) {
+      // Handle various time formats: "9 am", "9:00 am", "09:00", "9pm", etc.
+      const lowerText = text.toLowerCase().trim();
+      
+      // Remove common words
+      let cleanText = lowerText.replace(/\b(at|around|about|approximately)\b/g, '').trim();
+      
+      // Check for AM/PM
+      const isPM = /pm|p\.m\.|p m/.test(cleanText);
+      const isAM = /am|a\.m\.|a m/.test(cleanText);
+      
+      // Extract hour and minute
+      const timeMatch = cleanText.match(/(\d{1,2})(?::(\d{2}))?/);
+      if (!timeMatch) return null;
+      
+      let hour = parseInt(timeMatch[1]);
+      const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+      
+      // Convert to 24-hour format
+      if (isPM && hour !== 12) hour += 12;
+      if (isAM && hour === 12) hour = 0;
+      
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+
+    function parseMultipleTimes(text) {
+      // Split by common separators: "and", ",", "then", etc.
+      const parts = text.split(/\s*(?:and|,|then|&)\s*/i);
+      const times = [];
+      
+      for (const part of parts) {
+        const time = parseTime(part.trim());
+        if (time) times.push(time);
+      }
+      
+      return times;
+    }
+
+    function parseDate(text) {
+      // Try to parse various date formats
+      const today = new Date();
+      const lowerText = text.toLowerCase().trim();
+      const DEFAULT_YEAR_IF_MISSING = 2026;
+      
+      // Handle "today"
+      if (lowerText.includes('today')) {
+        return formatDateForForm(today);
+      }
+      
+      // Handle "tomorrow"
+      if (lowerText.includes('tomorrow')) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return formatDateForForm(tomorrow);
+      }
+      
+      // Handle "in X days" or "in X months" (digits or words)
+      const inXMatch = lowerText.match(/in\s*([\w-]+)\s*(day|days|month|months)/);
+      if (inXMatch) {
+        const num = Number.isFinite(parseInt(inXMatch[1], 10)) ? parseInt(inXMatch[1], 10) : textToNumber(inXMatch[1]);
+        const unit = inXMatch[2];
+        if (num !== null && Number.isFinite(num)) {
+          const futureDate = new Date(today);
+          if (unit.startsWith('day')) {
+            futureDate.setDate(today.getDate() + num);
+          } else if (unit.startsWith('month')) {
+            futureDate.setMonth(today.getMonth() + num);
+          }
+          return formatDateForForm(futureDate);
+        }
+      }
+
+      // Handle "feb 1", "feb 1st", "february 1st" (optionally with year: "feb 1 2027")
+      const monthMap = {
+        jan: 0, january: 0,
+        feb: 1, february: 1,
+        mar: 2, march: 2,
+        apr: 3, april: 3,
+        may: 4,
+        jun: 5, june: 5,
+        jul: 6, july: 6,
+        aug: 7, august: 7,
+        sep: 8, sept: 8, september: 8,
+        oct: 9, october: 9,
+        nov: 10, november: 10,
+        dec: 11, december: 11
+      };
+      const monthDayMatch = lowerText.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?\b/);
+      if (monthDayMatch) {
+        const monthKey = monthDayMatch[1];
+        const dayNum = parseInt(monthDayMatch[2], 10);
+        const monthIdx = monthMap[monthKey];
+        if (Number.isFinite(dayNum) && monthIdx !== undefined) {
+          const explicitYear = monthDayMatch[3] ? parseInt(monthDayMatch[3], 10) : null;
+          const year = Number.isFinite(explicitYear) ? explicitYear : DEFAULT_YEAR_IF_MISSING;
+          const candidate = new Date(year, monthIdx, dayNum);
+          if (!Number.isNaN(candidate.getTime())) {
+            return formatDateForForm(candidate);
+          }
+        }
+      }
+       
+      // Try parsing as MM/DD/YYYY or YYYY-MM-DD
+      const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+      if (dateMatch) {
+        const month = parseInt(dateMatch[1]);
+        const day = parseInt(dateMatch[2]);
+        const year = parseInt(dateMatch[3]);
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return formatDateForForm(date);
+        }
+      }
+      
+      // Try parsing as natural language date
+      const parsed = new Date(text);
+      if (!isNaN(parsed.getTime())) {
+        return formatDateForForm(parsed);
+      }
+      
+      return null;
+    }
+
+    function formatDateForForm(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseYesNo(text) {
+      const lowerText = text.toLowerCase().trim();
+      if (lowerText.includes('yes') || lowerText.includes('yeah') || lowerText.includes('yep') || lowerText.includes('sure') || lowerText.includes('okay') || lowerText.includes('ok')) {
+        return true;
+      }
+      if (lowerText.includes('no') || lowerText.includes('nope') || lowerText.includes('nah')) {
+        return false;
+      }
+      return null;
+    }
+
+    function parseReminder(text) {
+      const lowerText = text.toLowerCase().trim();
+      if (lowerText.includes('both') || (lowerText.includes('email') && lowerText.includes('sms'))) {
+        return 'Email + SMS';
+      }
+      if (lowerText.includes('email')) {
+        return 'Email';
+      }
+      if (lowerText.includes('sms') || lowerText.includes('text')) {
+        return 'SMS';
+      }
+      if (lowerText.includes('none') || lowerText.includes('no')) {
+        return 'None';
+      }
+      return null;
+    }
+
+    function formatDaysForDisplay(days) {
+      if (!days || days.length === 0) return 'no days';
+      const dayNames = days.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+      if (dayNames.length === 1) return dayNames[0];
+      if (dayNames.length === 2) return dayNames.join(' and ');
+      return dayNames.slice(0, -1).join(', ') + ', and ' + dayNames[dayNames.length - 1];
+    }
+
+    function formatTimesForDisplay(times) {
+      if (!times || times.length === 0) return 'no specific times';
+      return times.map(time => {
+        const [hours, minutes] = time.split(':').map(Number);
+        let displayHour = hours;
+        let period = 'AM';
+        if (hours === 0) {
+          displayHour = 12;
+        } else if (hours === 12) {
+          period = 'PM';
+        } else if (hours > 12) {
+          displayHour = hours - 12;
+          period = 'PM';
+        }
+        return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`;
+      }).join(', ');
+    }
+
+    function askRepeat(extra = '') {
+      const message = extra ? `Could you repeat that? ${extra}` : 'Could you repeat that?';
+      addMessage(message, 'system');
+      speak(message).then(() => {
+        shouldAutoRestart = true;
+        setTimeout(() => {
+          if (!isListening && shouldAutoRestart) {
+            startListening();
+          }
+        }, 500);
+      });
+    }
+
+    function handleUserResponse(transcript) {
+      addMessage(transcript, 'user');
+      
+      if (waitingForClarification) {
+        handleClarificationResponse(transcript);
+        return;
+      }
+
+      const currentStepData = steps[currentStep];
+      let parsedValue = null;
+      let isValid = true;
+      
+      // Process response based on current step
+      switch (currentStep) {
+        case 'name':
+          parsedValue = parseMedicationName(transcript);
+          if (!parsedValue || parsedValue.toLowerCase() === 'undefined') isValid = false;
+          conversationData.name = parsedValue;
+          break;
+          
+        case 'dosage':
+          parsedValue = parseDosage(transcript);
+          if (!parsedValue || parsedValue <= 0) isValid = false;
+          conversationData.dosage = parsedValue;
+          break;
+          
+        case 'days':
+          parsedValue = parseDaysOfWeek(transcript);
+          if (!parsedValue || parsedValue.length === 0) isValid = false;
+          conversationData.days = parsedValue;
+          break;
+          
+        case 'timesPerDay':
+          parsedValue = parseTimesPerDay(transcript);
+          if (!parsedValue || parsedValue <= 0) isValid = false;
+          conversationData.timesPerDay = parsedValue;
+          break;
+          
+        case 'specificTimes':
+          const wantsTimes = parseYesNo(transcript);
+          if (wantsTimes === null) {
+            askRepeat('Please say yes or no.');
+            return;
+          }
+          recordAnsweredStep('specificTimes');
+          conversationData.wantsSpecificTimes = wantsTimes;
+          if (!wantsTimes) {
+            // Skip times step
+            currentStep = 'clarify2';
+            moveToNextStep();
+          } else {
+            moveToNextStep();
+          }
+          return; // Return here as specificTimes has its own flow
+          
+        case 'times':
+          parsedValue = parseMultipleTimes(transcript);
+          if (!parsedValue || parsedValue.length === 0) isValid = false;
+          conversationData.times = parsedValue;
+          break;
+          
+        case 'startDate':
+          const wantsStartDate = parseYesNo(transcript);
+          if (wantsStartDate === null) {
+            askRepeat('Please say yes or no.');
+            return;
+          }
+          recordAnsweredStep('startDate');
+          conversationData.wantsStartDate = wantsStartDate; // Store the user's preference
+          if (!wantsStartDate) {
+            // If no start date, set to today's date and skip startDateValue
+            conversationData.startDate = formatDateForForm(new Date());
+            currentStep = 'endDate'; // Move directly to endDate
+            askCurrentQuestion();
+          } else {
+            moveToNextStep();
+          }
+          return; // Return here as startDate has its own flow
+          
+        case 'startDateValue':
+          parsedValue = parseDate(transcript);
+          if (!parsedValue) {
+            askRepeat();
+            return; // Stay on the same step
+          }
+          conversationData.startDate = parsedValue;
+          break;
+          
+        case 'endDate':
+          const wantsEndDate = parseYesNo(transcript);
+          if (wantsEndDate === null) {
+            askRepeat('Please say yes or no.');
+            return;
+          }
+          recordAnsweredStep('endDate');
+          conversationData.wantsEndDate = wantsEndDate; // Store the user's preference
+          if (!wantsEndDate) {
+            // If no end date, set to null (forever) and skip endDateValue
+            conversationData.endDate = null;
+            currentStep = 'reminder'; // Move directly to reminder
+            askCurrentQuestion();
+          } else {
+            moveToNextStep();
+          }
+          return; // Return here as endDate has its own flow
+          
+        case 'endDateValue':
+          parsedValue = parseDate(transcript);
+          if (!parsedValue) {
+            askRepeat();
+            return; // Stay on the same step
+          }
+          conversationData.endDate = parsedValue;
+          break;
+          
+        case 'reminder':
+          parsedValue = parseReminder(transcript);
+          if (parsedValue === null) {
+            askRepeat('Please say Email, SMS, Both, or None.');
+            return; // Stay on the same step
+          }
+          conversationData.reminder = parsedValue;
+          break;
+          
+        default:
+          // Fallback for unhandled steps (should not happen if flow is well-defined)
+          console.warn('Unhandled step in handleUserResponse:', currentStep);
+          isValid = false;
+          break;
+      }
+
+      if (isValid) {
+        recordAnsweredStep(currentStep);
+        moveToNextStep();
+      } else {
+        // Generic re-prompt if parsing failed and no specific re-prompt was given
+        askRepeat();
+        // Do not move to next step
+      }
+    }
+
+    function handleClarificationResponse(transcript) {
+      const lowerText = transcript.toLowerCase().trim();
+      
+      if (clarificationType === 'clarify1') {
+        const isYes = parseYesNo(transcript);
+        if (isYes === null) {
+          askRepeat('Please say yes or no.');
+          return;
+        }
+        
+        if (isYes) {
+          waitingForClarification = false;
+          clarificationType = null;
+          currentStep = 'days';
+          // Clear any pending auto-restart to prevent interference
+          shouldAutoRestart = false;
+          if (restartTimeout) {
+            clearTimeout(restartTimeout);
+            restartTimeout = null;
+          }
+          // Stop any active recognition to ensure clean state
+          if (isListening && recognition) {
+            try {
+              recognition.stop();
+            } catch (e) {
+              // Ignore errors if already stopped
+            }
+          }
+          // Small delay to ensure state is clean before asking next question
+          setTimeout(() => {
+            console.log('[Voice] Transitioning from clarify1 to days, currentStep:', currentStep);
+            askCurrentQuestion();
+          }, 300);
+        } else {
+          // Ask which one is wrong
+          addMessage('Which one is wrong? Please say "name" or "dosage".', 'system');
+          speak('Which one is wrong? Please say name or dosage.').then(() => {
+            wrongField = null;
+            shouldAutoRestart = true;
+            setTimeout(() => {
+              if (!isListening && shouldAutoRestart) {
+                startListening();
+              }
+            }, 500);
+          });
+          return;
+        }
+      }
+      
+      // Handle "which one is wrong" response
+      if (wrongField === null && (lowerText.includes('name') || lowerText.includes('medication'))) {
+        wrongField = 'name';
+        currentStep = 'name';
+        waitingForClarification = false;
+        addMessage('Okay, let\'s try the medication name again.', 'system');
+        speak('Okay, let\'s try the medication name again.').then(() => {
+          shouldAutoRestart = true;
+          setTimeout(() => {
+            if (!isListening && shouldAutoRestart) {
+              startListening();
+            }
+          }, 500);
+        });
+        return;
+      }
+      
+      if (wrongField === null && (lowerText.includes('dosage') || lowerText.includes('pills') || lowerText.includes('pills'))) {
+        wrongField = 'dosage';
+        currentStep = 'dosage';
+        waitingForClarification = false;
+        addMessage('Okay, let\'s try the dosage again.', 'system');
+        speak('Okay, let\'s try the dosage again.').then(() => {
+          shouldAutoRestart = true;
+          setTimeout(() => {
+            if (!isListening && shouldAutoRestart) {
+              startListening();
+            }
+          }, 500);
+        });
+        return;
+      }
+      
+      if (clarificationType === 'clarify2') {
+        const isYes = parseYesNo(transcript);
+        if (isYes === null) {
+          askRepeat('Please say yes or no.');
+          return;
+        }
+        
+        if (isYes) {
+          waitingForClarification = false;
+          currentStep = 'startDate';
+          askCurrentQuestion();
+        } else {
+          // Go back to days
+          currentStep = 'days';
+          waitingForClarification = false;
+          addMessage('Let\'s go back. Which days of the week do you take the medication?', 'system');
+          speak('Let\'s go back. Which days of the week do you take the medication?').then(() => {
+            shouldAutoRestart = true;
+            setTimeout(() => {
+              if (!isListening && shouldAutoRestart) {
+                startListening();
+              }
+            }, 500);
+          });
+        }
+      }
+      
+      if (clarificationType === 'clarify3') {
+        const isYes = parseYesNo(transcript);
+        if (isYes === null) {
+          askRepeat('Please say yes or no.');
+          return;
+        }
+        
+        if (isYes) {
+          waitingForClarification = false;
+          currentStep = 'finish';
+          askCurrentQuestion();
+        } else {
+          // Go back to start date
+          currentStep = 'startDate';
+          waitingForClarification = false;
+          addMessage('Let\'s go back. Would you like to add a start date?', 'system');
+          speak('Let\'s go back. Would you like to add a start date?').then(() => {
+            shouldAutoRestart = true;
+            setTimeout(() => {
+              if (!isListening && shouldAutoRestart) {
+                startListening();
+              }
+            }, 500);
+          });
+        }
+      }
+    }
+
+    function generateClarificationQuestion(type) {
+      if (type === 'clarify1') {
+        const name = conversationData.name || 'unknown';
+        const dosage = conversationData.dosage || 'unknown';
+        return `So you have ${name} with ${dosage} pills or dosages each time. Is that right?`;
+      }
+      
+      if (type === 'clarify2') {
+        const days = formatDaysForDisplay(conversationData.days || []);
+        const timesPerDay = conversationData.timesPerDay || 'unknown';
+        let timesText = '';
+        if (conversationData.wantsSpecificTimes && conversationData.times && conversationData.times.length > 0) {
+          timesText = ` at ${formatTimesForDisplay(conversationData.times)}`;
+        } else {
+          timesText = ' and no specific times were specified';
+        }
+        return `Just making sure you take your pills on ${days}, ${timesPerDay} per day${timesText}. Is that correct?`;
+      }
+      
+      if (type === 'clarify3') {
+        const startDate = conversationData.startDate || formatDateForForm(new Date());
+        const endDateText = conversationData.endDate ? conversationData.endDate : 'continue forever';
+        const reminderText = conversationData.reminder === 'None' 
+          ? 'you wouldn\'t like to be reminded' 
+          : `you would like to be reminded by ${conversationData.reminder}`;
+        return `Just to clarify, you would like to start on ${startDate} and end on ${endDateText}, and ${reminderText}. Is that correct?`;
+      }
+      
+      return '';
+    }
+
+    function moveToNextStep() {
+      const currentStepData = steps[currentStep];
+      console.log('[Voice] moveToNextStep called, currentStep:', currentStep, 'currentStepData:', currentStepData);
+      if (!currentStepData) {
+        finishConversation();
+        return;
+      }
+      
+      const nextStep = currentStepData.next;
+      console.log('[Voice] Next step will be:', nextStep);
+      
+      // Handle conditional steps
+      if (currentStepData.conditional) {
+        // Check if we should skip this step
+        if (currentStep === 'times' && !conversationData.wantsSpecificTimes) {
+          currentStep = nextStep;
+          moveToNextStep();
+          return;
+        }
+        // For startDateValue, we only skip if wantsStartDate is explicitly false. Default is today.
+        if (currentStep === 'startDateValue' && conversationData.wantsStartDate === false) {
+          currentStep = nextStep;
+          moveToNextStep();
+          return;
+        }
+        // For endDateValue, we only skip if wantsEndDate is explicitly false.
+        if (currentStep === 'endDateValue' && conversationData.wantsEndDate === false) {
+          currentStep = nextStep;
+          moveToNextStep();
+          return;
+        }
+      }
+      
+      // Handle clarification steps
+      if (currentStepData.isClarification) {
+        waitingForClarification = true;
+        clarificationType = currentStep;
+        const question = generateClarificationQuestion(currentStep);
+        addMessage(question, 'confirmation');
+        speak(question).then(() => {
+          shouldAutoRestart = true;
+          setTimeout(() => {
+            if (!isListening && shouldAutoRestart) {
+              startListening();
+            }
+          }, 500);
+        });
+        return;
+      }
+      
+      // Move to next step
+      if (nextStep) {
+        currentStep = nextStep;
+        askCurrentQuestion();
+      } else {
+        finishConversation();
+      }
+    }
+
+    function askCurrentQuestion() {
+      const stepData = steps[currentStep];
+      console.log('[Voice] askCurrentQuestion called, currentStep:', currentStep, 'stepData:', stepData);
+      if (!stepData) {
+        finishConversation();
+        return;
+      }
+      
+      if (stepData.question) {
+        console.log('[Voice] Asking question for step:', currentStep, 'Question:', stepData.question);
+        addMessage(stepData.question, 'system');
+        speak(stepData.question).then(() => {
+          // If we just spoke the finish message, redirect now
+          if (currentStep === 'finish') {
+            if (!isPaused) setTimeout(() => { redirectToForm(); }, 300);
+            return;
+          }
+          if (isPaused) return;
+          // Set flag to auto-restart after speech finishes
+          shouldAutoRestart = true;
+          // Start listening after speech finishes
+          setTimeout(() => {
+            if (!isPaused && !isListening && shouldAutoRestart) {
+              console.log('[Voice] Starting to listen for step:', currentStep);
+              startListening();
+            }
+          }, 500);
+        });
+      } else {
+        console.log('[Voice] No question for step, moving to next');
+        moveToNextStep();
+      }
+    }
+
+    function askNextQuestion() {
+      askCurrentQuestion();
+    }
+
+    function finishConversation() {
+      addMessage(steps.finish.question, 'system');
+      // Wait for speech to finish before redirecting — browsers block
+      // navigation while speechSynthesis is active.
+      speak(steps.finish.question).then(() => {
+        if (!isPaused) setTimeout(() => { redirectToForm(); }, 300);
+      });
+    }
+
+    function redirectToForm() {
+      // Convert conversation data to form format
+      const formData = {
+        name: conversationData.name || '',
+        dosage: conversationData.dosage ? String(conversationData.dosage) : '',
+        days: conversationData.days || [],
+        timesPerDay: conversationData.timesPerDay || 1,
+        times: conversationData.times || [],
+        startDate: conversationData.startDate || formatDateForForm(new Date()),
+        endDate: conversationData.endDate || null,
+        reminder: conversationData.reminder || 'None'
+      };
+      
+      // Store data in localStorage and redirect
+      console.log('[Voice] Saving formData to localStorage:', formData);
+      const serialized = JSON.stringify(formData);
+      try {
+        localStorage.setItem('voiceMedicationData', serialized);
+        // Backup in sessionStorage in case localStorage is blocked.
+        sessionStorage.setItem('voiceMedicationDataBackup', serialized);
+      } catch (e) {
+        console.error('[Voice] Failed to save voice data to storage:', e);
+      }
+      const targetUrl = 'add-medication.html?voice=true';
+      window.location.assign(targetUrl);
+      // Fallback: if navigation doesn't happen, try again shortly.
+      setTimeout(() => {
+        if (window.location.href.includes('add-medication-voice')) {
+          window.location.href = targetUrl;
+        }
+      }, 500);
+    }
+
+    // Start the conversation
+    if (SpeechRecognition) {
+      setTimeout(() => {
+        askCurrentQuestion();
+      }, 1000);
+    }
+
+    // Bottom controls
+    document.getElementById('restate-btn').addEventListener('click', () => {
+      stopAudioAndTimers();
+      // Re-ask the current step prompt and continue normally
+      askCurrentQuestion();
+    });
+
+    document.getElementById('fix-prev-btn').addEventListener('click', () => {
+      stopAudioAndTimers();
+      // Exit clarification mode if we were in it; we're explicitly correcting an answer.
+      waitingForClarification = false;
+      clarificationType = null;
+      wrongField = null;
+
+      // Most recent answered step is the one to fix.
+      while (stepHistory.length > 0) {
+        const prev = stepHistory.pop();
+        if (!isFixableStep(prev)) continue;
+        clearDataForStep(prev);
+        currentStep = prev;
+        askCurrentQuestion();
+        return;
+      }
+      // Nothing to go back to; just restate.
+      askCurrentQuestion();
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', (e) => {
+      const btn = e.currentTarget;
+      if (!isPaused) {
+        isPaused = true;
+        btn.textContent = 'Resume';
+        btn.setAttribute('aria-pressed', 'true');
+        document.getElementById('status-text').textContent = 'Paused';
+        stopAudioAndTimers();
+      } else {
+        isPaused = false;
+        btn.textContent = 'Pause';
+        btn.setAttribute('aria-pressed', 'false');
+        // On resume, restate the current prompt so the user knows what to answer.
+        askCurrentQuestion();
+      }
+    });
+
+    // Close mobile menu when clicking on nav links
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+

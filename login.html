@@ -33,7 +33,7 @@
       --container: 1200px;      /* <- width token that sets spacing */
     }
     @media (prefers-color-scheme: light){
-      :root{ --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15); --bg-elev: rgba(15,23,42,0.06); --shadow: 0 10px 30px rgba(2,6,23,0.08), 0 2px 10px rgba(2,6,23,0.06); --text-strong: #020617; --muted-strong: #334155; }
+      :root{ --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a; --bg-elev: rgba(0,0,0,0.05); --shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1); --text-strong: #000000; --muted-strong: #1a1a1a; }
     }
 
     /* --- Base --- */
@@ -100,6 +100,13 @@
 
     .actions{margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
     .foot{margin-top:1rem;color:var(--muted);font-size:.95rem;text-align:center}
+
+    /* Underlined helper links (switch between login/register) */
+    .link{
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      text-decoration-thickness: 2px;
+    }
 
     .msg{margin-top:.75rem;font-size:.95rem}
     .msg.ok{color:var(--accent)}
@@ -351,19 +358,32 @@
           localStorage.setItem('userId', userId);
           localStorage.setItem('userEmail', profileData.email);
           console.log('Loaded profile from Firestore:', profileData);
+          
+          // 4. Redirect based on user type
+          msg.textContent = 'Success! Redirecting...';
+          const userType = profileData.type || 'P'; // Default to Patient if type not set
+          setTimeout(() => {
+            if (userType === 'C') {
+              // Caregiver - redirect to caregiver home
+              window.location.href = 'caregiver/home.html';
+            } else {
+              // Patient - redirect to regular home
+              window.location.href = 'home.html';
+            }
+          }, 500);
         } else {
           // Profile doesn't exist in Firestore, create basic one
           console.warn('No profile found in Firestore for user:', userId);
           localStorage.setItem('userProfile', JSON.stringify({email, password}));
           localStorage.setItem('userId', userId);
           localStorage.setItem('userEmail', email);
+          
+          // Default to Patient home if no profile
+          msg.textContent = 'Success! Redirecting...';
+          setTimeout(() => {
+            window.location.href = 'home.html';
+          }, 500);
         }
-        
-        // 4. Redirect to home
-        msg.textContent = 'Success! Redirecting...';
-        setTimeout(() => {
-          window.location.href = 'home.html';
-        }, 500);
         
       } catch (error) {
         console.error('Login error:', error);

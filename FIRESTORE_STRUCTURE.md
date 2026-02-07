@@ -9,7 +9,7 @@ firestore/
         ├── email: string
         ├── name: string
         ├── phone: string
-        ├── dob: string (optional)
+        ├── age: number (optional)
         ├── gender: string (optional)
         ├── allergies: string (optional)
         ├── conditions: string (optional)
@@ -42,7 +42,7 @@ firestore/
   "email": "user@example.com",
   "name": "John Doe",
   "phone": "+1234567890",
-  "dob": "1990-01-15",
+  "age": 35,
   "gender": "Male",
   "allergies": "Penicillin, Peanuts",
   "conditions": "Hypertension",

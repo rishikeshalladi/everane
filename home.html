@@ -18,11 +18,11 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
-        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
-        /* Improved contrast for better readability */
-        --text-strong: #020617;
-        --muted-strong: #334155;
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        /* High contrast for seniors - maximum readability */
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
       }
     }
 
@@ -664,7 +664,6 @@
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
     <a href="profile.html">Profile</a>
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -675,8 +674,23 @@
       </div>
       <div id="med-list"></div>
       <div style="text-align:center; margin-top:2rem;">
-        <button class="btn-primary" onclick="location.href='add-medication.html'">
+        <button class="btn-primary" id="add-medication-btn">
           + Add Medication
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Medication Options Modal -->
+  <div id="add-medication-options-modal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <h3 style="margin-bottom: 1.5rem; text-align: center;">How would you like to add a medication?</h3>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <button class="btn btn-primary" id="use-voice-btn" style="padding: 1rem; font-size: 1rem;">
+          🎤 Use Voice
+        </button>
+        <button class="btn btn-secondary" id="type-manually-btn" style="padding: 1rem; font-size: 1rem;">
+          ⌨️ Type Manually
         </button>
       </div>
     </div>
@@ -761,6 +775,39 @@
           menuToggle.checked = false;
         });
       });
+
+      // Add Medication Options Modal
+      const addMedBtn = document.getElementById('add-medication-btn');
+      const addMedModal = document.getElementById('add-medication-options-modal');
+      const useVoiceBtn = document.getElementById('use-voice-btn');
+      const typeManuallyBtn = document.getElementById('type-manually-btn');
+
+      if (addMedBtn) {
+        addMedBtn.addEventListener('click', () => {
+          addMedModal.classList.add('show');
+        });
+      }
+
+      if (useVoiceBtn) {
+        useVoiceBtn.addEventListener('click', () => {
+          window.location.href = 'add-medication-voice.html';
+        });
+      }
+
+      if (typeManuallyBtn) {
+        typeManuallyBtn.addEventListener('click', () => {
+          window.location.href = 'add-medication.html';
+        });
+      }
+
+      // Close modal when clicking outside
+      if (addMedModal) {
+        addMedModal.addEventListener('click', (e) => {
+          if (e.target === addMedModal) {
+            addMedModal.classList.remove('show');
+          }
+        });
+      }
       
       let pendingDeleteIndex = null;
       let currentStockMedId = null;
@@ -1004,10 +1051,10 @@
       
         // Reload stock list from Firebase
         await renderStockList();
-        
-        // Close add modal and return to stock modal
-        document.getElementById('stock-add-modal').classList.remove('show');
-        document.getElementById('stock-modal').classList.add('show');
+      
+      // Close add modal and return to stock modal
+      document.getElementById('stock-add-modal').classList.remove('show');
+      document.getElementById('stock-modal').classList.add('show');
       } catch (error) {
         console.error('Error adding bottle:', error);
         errorEl.textContent = 'Error adding bottle: ' + error.message;
@@ -1582,6 +1629,8 @@
               date: dateStr,
               doseNumber: doseNum,
               taken: taken,
+              // If this dose was previously auto-marked, explicitly clear it when the user manually sets status.
+              autoMarked: false,
               // Add timestamp when marked as taken, preserve existing if already taken
               takenAt: taken 
                 ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
@@ -2563,23 +2612,22 @@
     }
 
     .nav-arrow {
-        width: 56px;
-        height: 56px;
-        opacity: 0.9;
-      }
+      width: 56px;
+      height: 56px;
+      opacity: 0.9;
+    }
 
-      .nav-arrow-left {
-        left: 5px;
-      }
+    .nav-arrow-left {
+      left: 5px;
+    }
 
-      .nav-arrow-right {
-        right: 5px;
-      }
+    .nav-arrow-right {
+      right: 5px;
+    }
 
-      .nav-arrow svg {
-        width: 24px;
-        height: 24px;
-      }
+    .nav-arrow svg {
+      width: 24px;
+      height: 24px;
     }
   </style>
 

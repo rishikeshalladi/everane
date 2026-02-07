@@ -94,7 +94,7 @@
     .btn-secondary:hover{background:rgba(255,255,255,0.08)}
 
     .foot{margin-top:1rem;color:var(--muted);font-size:.95rem;text-align:center}
-    /* Underlined helper links (login / switch-to-caregiver) */
+    /* Underlined helper links (login / switch-to-patient) */
     .link{
       text-decoration: underline;
       text-underline-offset: 3px;
@@ -145,20 +145,20 @@
   <!-- Navbar: same markup as index.html -->
   <header class="navbar">
     <div class="container nav-inner">
-      <a class="brand" href="index.html" aria-label="MedTracker Home">
+      <a class="brand" href="../index.html" aria-label="MedTracker Home">
         <span class="brand-mark" aria-hidden="true">🏥</span>
         <span class="brand-title">MedTracker</span>
       </a>
 
       <nav class="nav-links" aria-label="Primary">
-        <a href="index.html">Home</a>
-        <a href="index.html#about">About</a>
-        <a href="index.html#donate">Donate</a>
+        <a href="../index.html">Home</a>
+        <a href="../index.html#about">About</a>
+        <a href="../index.html#donate">Donate</a>
       </nav>
 
       <nav class="auth" aria-label="Account">
-        <a href="login.html">Log In</a>
-        <a class="btn btn-primary" href="register.html">Register</a>
+        <a href="../login.html">Log In</a>
+        <a class="btn btn-primary" href="../register.html">Register</a>
       </nav>
 
       <label for="menu-toggle" class="hamburger" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false">
@@ -170,11 +170,11 @@
     <div id="mobile-menu" class="mobile-menu" role="dialog" aria-modal="false">
       <div class="container">
         <div class="mobile-list" role="menu">
-          <a role="menuitem" href="index.html">Home</a>
-          <a role="menuitem" href="index.html#about">About</a>
-          <a role="menuitem" href="index.html#donate">Donate</a>
-          <a role="menuitem" href="login.html">Log In</a>
-          <a role="menuitem" class="btn btn-primary" href="register.html">Register</a>
+          <a role="menuitem" href="../index.html">Home</a>
+          <a role="menuitem" href="../index.html#about">About</a>
+          <a role="menuitem" href="../index.html#donate">Donate</a>
+          <a role="menuitem" href="../login.html">Log In</a>
+          <a role="menuitem" class="btn btn-primary" href="../register.html">Register</a>
         </div>
       </div>
     </div>
@@ -187,7 +187,7 @@
         <span style="color:var(--muted); font-size:.9rem">Step <strong id="step-num">1</strong> of 4</span>
       </div>
 
-      <h1 id="reg-title">Patient Register</h1>
+      <h1 id="reg-title">Caregiver Register</h1>
       <p class="lead" id="reg-lead">Create your account to get started.</p>
 
       <!-- Step 1: Email Verification -->
@@ -304,82 +304,22 @@
         <p id="msg3" class="msg" role="status" aria-live="polite"></p>
       </form>
 
-      <!-- Step 4: Health prefs (all optional) -->
+      <!-- Step 4: Relation to patient (optional) -->
       <form id="form-step4" class="step" novalidate>
         <div class="grid">
-          <div class="row">
             <div>
-              <label for="age">Age <small>(optional)</small></label>
-              <div class="input-wrap"><input id="age" name="age" type="number" min="0" max="130" inputmode="numeric" placeholder="e.g., 24" /></div>
-            </div>
-            <div>
-              <label for="gender">Gender <small>(optional)</small></label>
+            <label for="relation">Relation to Patient <small>(optional)</small></label>
               <div class="input-wrap">
-                <select id="gender" name="gender">
+              <select id="relation" name="relation">
                   <option value="">Select…</option>
-                  <option>Female</option>
-                  <option>Male</option>
-                  <option>Non-binary</option>
-                  <option>Prefer not to say</option>
-                  <option value="other">Other</option>
+                <option>Spouse</option>
+                <option>Kid</option>
+                <option>Nephew</option>
+                <option>Niece</option>
+                <option>Doctor</option>
+                <option>Guardian</option>
+                <option>Parent</option>
                 </select>
-              </div>
-            </div>
-          </div>
-
-          <div id="gender-other-wrap" style="display:none">
-            <label for="gender-other">Please specify</label>
-            <div class="input-wrap"><input id="gender-other" name="gender_other" type="text" placeholder="Self-described" /></div>
-          </div>
-
-          <div>
-            <label for="allergies">Allergies <small>(optional)</small></label>
-            <textarea id="allergies" name="allergies" placeholder="e.g., penicillin, peanuts"></textarea>
-          </div>
-
-          <div>
-            <label for="conditions">Conditions <small>(optional)</small></label>
-            <textarea id="conditions" name="conditions" placeholder="e.g., hypertension, asthma"></textarea>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="quiet-start">Do‑Not‑Disturb start <small>(optional)</small></label>
-              <div class="input-wrap"><input id="quiet-start" name="quiet_start" type="time" /></div>
-            </div>
-            <div>
-              <label for="quiet-end">Do‑Not‑Disturb end <small>(optional)</small></label>
-              <div class="input-wrap"><input id="quiet-end" name="quiet_end" type="time" /></div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="unit">Units <small>(optional)</small></label>
-              <div class="input-wrap">
-                <select id="unit" name="units">
-                  <option value="">Select…</option>
-                  <option>mg</option>
-                  <option>mL</option>
-                  <option>tablets</option>
-                  <option>drops</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label for="tz">Time zone <small>(auto)</small></label>
-              <div class="input-wrap"><input id="tz" name="timezone" type="text" readonly /></div>
-            </div>
-          </div>
-
-          <div class="row">
-            <div>
-              <label for="emg-name">Emergency contact name <small>(optional)</small></label>
-              <div class="input-wrap"><input id="emg-name" name="emg_name" type="text" placeholder="Full name" /></div>
-            </div>
-            <div>
-              <label for="emg-phone">Emergency contact phone <small>(optional)</small></label>
-              <div class="input-wrap"><input id="emg-phone" name="emg_phone" type="tel" placeholder="(123) 456-7890" /></div>
             </div>
           </div>
         </div>
@@ -392,8 +332,8 @@
       </form>
 
       <div id="auth-footers">
-      <p class="foot">Already have an account? <a class="link" href="login.html">Log in</a></p>
-        <p class="foot">Taking care of someone else?<br><a class="alt-link" href="caregiver/register.html">Caregiver register here</a></p>
+        <p class="foot">Already have an account? <a class="link" href="../login.html">Log in</a></p>
+        <p class="foot">Managing your own medications?<br><a class="alt-link" href="../register.html">Patient register here</a></p>
       </div>
     </div>
   </main>
@@ -410,16 +350,6 @@
       });
     });
 
-    // Gender other field
-    const gender = document.getElementById('gender');
-    const gWrap = document.getElementById('gender-other-wrap');
-    gender.addEventListener('change', ()=>{
-      gWrap.style.display = gender.value === 'other' ? 'block' : 'none';
-    });
-
-    // Timezone auto-fill
-    const tz = document.getElementById('tz');
-    try { tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tz.value = ''; }
 
     // Mobile menu toggle functionality
     const toggle = document.getElementById('menu-toggle');
@@ -470,14 +400,14 @@
         1: { title: 'Register', lead: 'Create your account to get started.' },
         2: { title: 'Account Details', lead: 'Enter your name and create a secure password.' },
         3: { title: 'Phone Verification', lead: 'Verify your phone number for SMS reminders.' },
-        4: { title: 'A few optional details', lead: 'These help with reminders and safety — skip anything you don\'t want to share.' }
+        4: { title: 'Relation to Patient', lead: 'Optional: How are you related to the patient?' }
       };
       if (titles[stepNum]) {
         document.getElementById('reg-title').textContent = titles[stepNum].title;
         document.getElementById('reg-lead').textContent = titles[stepNum].lead;
       }
 
-      // Only show the bottom "Log in / Caregiver register" prompts on Step 1 before email is verified.
+      // Only show the bottom "Log in / Patient register" prompts on Step 1 before email is verified.
       const footers = document.getElementById('auth-footers');
       if (footers) {
         footers.style.display = (stepNum === 1) ? '' : 'none';
@@ -1093,17 +1023,7 @@
         const profileData = {
           email: email,
           name: window.tempName || step2Form.name.value.trim(),
-          age: step4Form.age.value ? Number(step4Form.age.value) : undefined,
-          gender: step4Form.gender.value,
-          gender_other: step4Form.gender_other.value,
-          allergies: step4Form.allergies.value,
-          conditions: step4Form.conditions.value,
-          quiet_start: step4Form.quiet_start.value,
-          quiet_end: step4Form.quiet_end.value,
-          units: step4Form.unit.value,
-          timezone: step4Form.tz.value,
-          emg_name: step4Form.emg_name.value,
-          emg_phone: step4Form.emg_phone.value
+          relation: step4Form.relation.value
         };
         
         // Only include phone if it was verified or provided
@@ -1141,8 +1061,12 @@
         await sendEmailVerification(userCredential.user);
 
         // Save profile to Firestore (without password)
-        const firestoreData = {...profileData};
-        delete firestoreData.password;
+        // For caregivers, only save: email, name, phone, relation
+        const firestoreData = {
+          email: profileData.email,
+          name: profileData.name,
+          relation: profileData.relation || ''
+        };
 
         // Add phone number and verification status if phone was verified
         if (phoneVerified && verifiedPhoneNumber) {
@@ -1150,8 +1074,8 @@
           firestoreData.phoneVerified = true;
         }
 
-        // Set user type: P for Patient (regular registration)
-        firestoreData.type = 'P';
+        // Set user type: C for Caregiver
+        firestoreData.type = 'C';
 
         console.log('Saving to Firestore:', firestoreData);
         await setDoc(doc(db, "users", userId), firestoreData);
@@ -1165,7 +1089,7 @@
         // Success - redirect to login with success message
         msg4.textContent = 'Account created! Redirecting to login...';
         setTimeout(() => {
-          window.location.href = 'login.html?registered=true';
+          window.location.href = '../login.html?registered=true';
         }, 1500);
 
       } catch (error) {

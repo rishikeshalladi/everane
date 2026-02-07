@@ -6,6 +6,9 @@
     ],
     "runtime": "nodejs20"
   },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": ".",
     "ignore": [

@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MedTracker – Caregiver Home</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+      font-size: 1.15rem;
+      text-decoration: none;
+    }
+    .sidebar a:hover {
+      color: var(--text);
+      border-color: var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      transform: translateY(-1px);
+      text-decoration: none;
+    }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+
+    /* Hamburger menu */
+    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    .menu-toggle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      opacity: 0;
+    }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span { display:block; width:20px; height:2px; background: var(--text); }
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        bottom: auto !important; /* override base `inset: 0 auto 0 0` so menu doesn't stretch full height */
+        width: 165px !important;
+        height: auto !important;
+        padding: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        background: var(--surface) !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay { display:block !important; opacity:1 !important; }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        border: none !important;
+        background: transparent !important;
+        text-decoration: none !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        text-decoration: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+      }
+    }
+
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0; }
+    p.lead { margin-top: .5rem; color: var(--muted); }
+
+    /* -------- Dashboard UI -------- */
+    .topbar {
+      margin-top: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem 0.75rem;
+      align-items: center;
+    }
+
+    .control {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.6rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      color: var(--text);
+    }
+
+    .control label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* Custom dropdowns */
+    .dropdown {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .dd-btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 0.55rem 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      cursor: pointer;
+      font-weight: 800;
+      letter-spacing: 0.1px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      transition: transform 0.08s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .dd-btn:active { transform: translateY(1px); }
+    .dd-btn:hover {
+      border-color: color-mix(in oklab, var(--brand) 25%, var(--border));
+      box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+    }
+
+    .dd-label {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .dd-value {
+      color: var(--text);
+      font-weight: 900;
+    }
+
+    .dd-caret {
+      opacity: 0.9;
+      font-weight: 900;
+      margin-left: 0.1rem;
+    }
+
+    .dd-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      min-width: 260px;
+      max-width: min(320px, 80vw);
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      border: 1px solid color-mix(in oklab, var(--border) 130%, transparent);
+      border-radius: 16px;
+      box-shadow: 0 18px 55px rgba(0,0,0,0.35);
+      padding: 0.35rem;
+      display: none;
+      z-index: 5000;
+      backdrop-filter: blur(10px) saturate(1.15);
+    }
+
+    .dropdown.open .dd-menu { display: block; }
+
+    .dd-option {
+      width: 100%;
+      text-align: left;
+      appearance: none;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      padding: 0.7rem 0.85rem;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      font-weight: 800;
+      transition: background 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
+    }
+
+    .dd-option:hover {
+      background: color-mix(in oklab, var(--brand) 14%, transparent);
+      border-color: color-mix(in oklab, var(--brand) 30%, transparent);
+    }
+
+    .dd-option:active { transform: translateY(1px); }
+
+    .dd-option .hint {
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    .dd-option.selected {
+      background: linear-gradient(135deg, color-mix(in oklab, var(--brand) 85%, transparent), color-mix(in oklab, var(--brand-600) 85%, transparent));
+      border-color: color-mix(in oklab, var(--brand) 35%, transparent);
+    }
+
+    .dd-option.selected .hint { color: color-mix(in oklab, #fff 80%, var(--muted)); }
+
+    @media (max-width: 640px) {
+      .dd-menu { min-width: 220px; }
+      .dd-btn { padding: 0.55rem 0.7rem; }
+    }
+
+    .grid {
+      margin-top: 1.25rem;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      .control select, .control input[type="number"] { min-width: 140px; }
+    }
+
+    .patient-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.15rem 1.2rem;
+      display: grid;
+      gap: 0.6rem;
+      min-height: 190px;
+      transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    /* Hover effect (desktop only) */
+    @media (hover: hover) and (pointer: fine) {
+      .patient-card:hover {
+        transform: translateY(-3px);
+        border-color: color-mix(in oklab, var(--brand) 25%, var(--border));
+        box-shadow: 0 16px 40px rgba(0,0,0,.28), 0 6px 18px rgba(0,0,0,.22);
+      }
+    }
+
+    .patient-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .patient-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.2px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      background: color-mix(in oklab, var(--success) 22%, transparent);
+      border-color: color-mix(in oklab, var(--success) 35%, transparent);
+      color: color-mix(in oklab, var(--success) 70%, white);
+    }
+    .badge.warn {
+      background: color-mix(in oklab, #f59e0b 22%, transparent);
+      border-color: color-mix(in oklab, #f59e0b 35%, transparent);
+      color: color-mix(in oklab, #f59e0b 75%, white);
+    }
+    .badge.bad {
+      background: color-mix(in oklab, var(--danger) 20%, transparent);
+      border-color: color-mix(in oklab, var(--danger) 35%, transparent);
+      color: color-mix(in oklab, var(--danger) 72%, white);
+    }
+
+    .meta {
+      display: grid;
+      gap: 0.3rem;
+      font-size: 0.98rem;
+      color: var(--text);
+    }
+    .meta .muted { color: var(--muted); }
+
+    .meta-row {
+      display: inline-flex;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: 0.35rem;
+    }
+
+    .meta-row strong { font-weight: 800; }
+
+    .next-dose {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .alerts {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 1.05rem;
+      color: var(--muted);
+    }
+    .alert-icon { display: inline-flex; }
+
+    .empty, .loading {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      border: 1px dashed color-mix(in oklab, var(--border) 130%, transparent);
+      border-radius: 16px;
+      color: var(--muted);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+
+    /* ---------- Modal (patient detail placeholder) ---------- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 25000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      width: min(560px, 92vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+    }
+
+    .modal-close {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.05s ease;
+    }
+
+    .modal-close:hover {
+      background: color-mix(in oklab, var(--surface) 90%, transparent);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    .modal-close:active { transform: translateY(1px); }
+
+    .modal-body {
+      padding: 1.1rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .modal-actions {
+      padding: 1.1rem;
+      padding-top: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+    }
+
+    .modal-btn {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.28);
+      transition: transform 0.05s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .modal-btn:hover { background: linear-gradient(180deg, var(--brand-600), var(--brand-700)); }
+    .modal-btn:active { transform: translateY(1px); }
+
+    /* ---------- Tutorial popup + slideshow (kept as-is) ---------- */
+    .first-time-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      max-width: calc(100vw - 40px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.2);
+      padding: 1.25rem;
+      z-index: 10000;
+      animation: slideInUp 0.3s ease-out;
+      overflow: hidden;
+    }
+
+    @keyframes slideInUp {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .popup-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      overflow: hidden;
+    }
+
+    .popup-progress-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--success);
+      animation: progressBar 10s linear forwards;
+      transform-origin: left;
+    }
+
+    @keyframes progressBar {
+      from { transform: scaleX(1); }
+      to { transform: scaleX(0); }
+    }
+
+    .popup-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+    }
+
+    .popup-close-btn:hover {
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      color: var(--text);
+    }
+
+    .popup-content-wrapper { padding-top: 0.5rem; }
+
+    .popup-main-text {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-sub-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 1rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-watch-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+    }
+
+    .popup-watch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .popup-watch-btn:active { transform: translateY(0); }
+
+    .help-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      z-index: 20000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .help-modal.show { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .help-modal-content {
+      position: relative;
+      width: 90vw;
+      height: auto;
+      max-height: 90vh;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      overflow-y: auto;
+      display: flex;
+        flex-direction: column;
+      animation: slideInScale 0.3s ease-out;
+    }
+
+    @keyframes slideInScale { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .help-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      font-size: 28px;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+        justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+
+    .help-modal-close:hover { background: rgba(255,255,255,.12); transform: scale(1.05); }
+
+    .help-modal-title {
+      margin: 0;
+      padding: 1.25rem 1.25rem 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .help-modal-slideshow { padding: 0 1.25rem 1.25rem; }
+
+    .slideshow-container {
+      position: relative;
+      width: 100%;
+      height: 60vh;
+      min-height: 420px;
+      max-height: 600px;
+      background: rgba(0,0,0,.2);
+        border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+        padding: 1rem;
+    }
+
+    .slide.active { opacity: 1; }
+
+    .slide-image {
+      max-width: 100%;
+      max-height: 100%;
+        border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      object-fit: contain;
+      background: rgba(0,0,0,.15);
+    }
+
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 50px;
+      height: 50px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(255,255,255,.10);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      z-index: 10;
+      opacity: 0.85;
+    }
+
+    .nav-arrow:hover { opacity: 1; transform: translateY(-50%) scale(1.04); }
+
+    .nav-arrow-left { left: 10px; }
+    .nav-arrow-right { right: 10px; }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+        font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(79,140,255,.4); }
+    .finish-btn:active { transform: translateY(0); }
+
+    @media (max-width: 768px) {
+      .first-time-popup { right: 10px; bottom: 10px; width: calc(100vw - 20px); }
+      .slideshow-container { height: 70vh; min-height: 420px; }
+    }
+</style>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </label>
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html" class="active">Home</a>
+    <a href="add-patient.html">Add Patient</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <h1>Caregiver Home</h1>
+      <p class="lead">One card per patient so you can quickly answer: “Is this patient doing okay right now?”</p>
+
+      <!-- Filters + Sorting -->
+      <div class="topbar" aria-label="Filter and sort patients">
+        <div></div>
+
+        <!-- Keep this simple: two dropdown "buttons" on the right -->
+        <div class="controls">
+          <div class="dropdown" id="filter-dd">
+            <button class="dd-btn" id="filter-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-label">Filter</span>
+              <span class="dd-value" id="filter-value">All</span>
+              <span class="dd-caret">▾</span>
+        </button>
+            <div class="dd-menu" id="filter-menu" role="listbox" aria-label="Filter patients">
+              <button class="dd-option" type="button" data-value="all"><span>All</span><span class="hint">Everyone</span></button>
+              <button class="dd-option" type="button" data-value="urgent"><span>Urgent</span><span class="hint">🔴</span></button>
+              <button class="dd-option" type="button" data-value="needs_attention"><span>Needs Attention</span><span class="hint">🟡</span></button>
+              <button class="dd-option" type="button" data-value="on_track"><span>On Track</span><span class="hint">🟢</span></button>
+              <button class="dd-option" type="button" data-value="missed_today"><span>Missed today</span><span class="hint">Today</span></button>
+              <button class="dd-option" type="button" data-value="adherence_low"><span>Adherence below 80%</span><span class="hint">7d</span></button>
+              <button class="dd-option" type="button" data-value="next_2h"><span>Next dose within 2h</span><span class="hint">2h</span></button>
+              <button class="dd-option" type="button" data-value="next_4h"><span>Next dose within 4h</span><span class="hint">4h</span></button>
+              <button class="dd-option" type="button" data-value="next_8h"><span>Next dose within 8h</span><span class="hint">8h</span></button>
+    </div>
+  </div>
+
+          <div class="dropdown" id="sort-dd">
+            <button class="dd-btn" id="sort-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="dd-label">Sort</span>
+              <span class="dd-value" id="sort-value">Patient name (A–Z)</span>
+              <span class="dd-caret">▾</span>
+        </button>
+            <div class="dd-menu" id="sort-menu" role="listbox" aria-label="Sort patients">
+              <button class="dd-option" type="button" data-value="name_asc"><span>Patient name (A–Z)</span><span class="hint">A→Z</span></button>
+              <button class="dd-option" type="button" data-value="adherence_asc"><span>Adherence (low → high)</span><span class="hint">7d</span></button>
+              <button class="dd-option" type="button" data-value="nextdose_asc"><span>Next dose (soonest first)</span><span class="hint">Soon</span></button>
+            </div>
+      </div>
+    </div>
+  </div>
+
+      <div id="state" class="loading">Loading patients…</div>
+      <div id="grid" class="grid" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Patient detail modal (placeholder) -->
+  <div id="patient-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="patient-modal-title">
+    <div class="modal" role="document">
+      <div class="modal-header">
+        <h2 id="patient-modal-title" class="modal-title">Detailed view</h2>
+        <button id="patient-modal-close" class="modal-close" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body" id="patient-modal-body">
+        Detailed view
+    </div>
+      <div class="modal-actions">
+        <button id="patient-modal-action" class="modal-btn" type="button">Open detailed view</button>
+  </div>
+      </div>
+      </div>
+
+  <!-- First-time User Help Popup -->
+  <div id="first-time-popup" class="first-time-popup" style="display: none;">
+    <div class="popup-progress-bar">
+      <div class="popup-progress-fill"></div>
+      </div>
+    <button class="popup-close-btn" id="close-first-time-popup">×</button>
+    <div class="popup-content-wrapper">
+      <p class="popup-main-text">Confused or need help on using this app?</p>
+      <p class="popup-sub-text">This guide can be found in profile</p>
+      <button class="popup-watch-btn" id="open-help-modal-from-popup">Click to watch</button>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="help-modal" class="help-modal">
+    <div class="help-modal-content">
+      <button class="help-modal-close" id="close-help-modal">×</button>
+      <h2 class="help-modal-title">How to Use MedTracker</h2>
+      <div class="help-modal-slideshow">
+        <div class="slideshow-container">
+          <!-- Note: caregiver pages live under /caregiver/, slideshow assets are in /slideshow/ -->
+          <div class="slide active" data-slide="0"><img src="../slideshow/1.png" alt="Slide 1" class="slide-image"></div>
+          <div class="slide" data-slide="1"><img src="../slideshow/2.png" alt="Slide 2" class="slide-image"></div>
+          <div class="slide" data-slide="2"><img src="../slideshow/3.png" alt="Slide 3" class="slide-image"></div>
+          <div class="slide" data-slide="3"><img src="../slideshow/4.png" alt="Slide 4" class="slide-image"></div>
+          <div class="slide" data-slide="4"><img src="../slideshow/5.png" alt="Slide 5" class="slide-image"></div>
+          <div class="slide" data-slide="5"><img src="../slideshow/6.png" alt="Slide 6" class="slide-image"></div>
+          <div class="slide" data-slide="6"><img src="../slideshow/7.png" alt="Slide 7" class="slide-image"></div>
+          <div class="slide" data-slide="7"><img src="../slideshow/8.png" alt="Slide 8" class="slide-image"></div>
+          <div class="slide" data-slide="8"><img src="../slideshow/9.png" alt="Slide 9" class="slide-image"></div>
+          <div class="slide" data-slide="9"><img src="../slideshow/10.png" alt="Slide 10" class="slide-image"></div>
+  </div>
+
+        <button class="nav-arrow nav-arrow-left" id="nav-left" aria-label="Previous slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button class="nav-arrow nav-arrow-right" id="nav-right" aria-label="Next slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="finish-btn" id="finish-btn" style="display: none;">Finish</button>
+        </div>
+    </div>
+  </div>
+
+<script>
+    // Close mobile menu when clicking sidebar links
+      document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => link.addEventListener('click', () => { menuToggle.checked = false; }));
+  });
+</script>
+
+<script type="module">
+    /**
+     * Caregiver Home Dashboard (Read-only)
+     *
+     * Data sources (existing structure):
+     * - Caregiver document: `users/{caregiverId}` has `patients: string[]` (patient emails)
+     * - Patient medications: `users/{patientId}/medications/{medId}`
+     *   - doses object uses keys like "YYYY-MM-DD_doseNumber" with values:
+     *     { date: "YYYY-MM-DD", doseNumber: number, taken: boolean, takenAt?: string|null, autoMarked?: boolean }
+     *
+     * Status rules:
+     * - Urgent (red): missed dose today OR any med out of stock
+     * - Needs Attention (yellow): no missed today, but 7-day adherence < 80% OR missed >= 2 in last 7 days
+     * - On Track (green): otherwise
+     */
+
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, getDocs, query, where, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+    authDomain: "medtracker-8c467.firebaseapp.com",
+    projectId: "medtracker-8c467",
+    storageBucket: "medtracker-8c467.firebasestorage.app",
+    messagingSenderId: "847799899373",
+    appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+  };
+
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  
+    const stateEl = document.getElementById('state');
+    const gridEl = document.getElementById('grid');
+
+    // Modal elements (detail view placeholder)
+    const modalOverlay = document.getElementById('patient-modal-overlay');
+    const modalCloseBtn = document.getElementById('patient-modal-close');
+    const modalBody = document.getElementById('patient-modal-body');
+    const modalActionBtn = document.getElementById('patient-modal-action');
+    let modalOpenForPatientId = null;
+
+    // Dropdown state (custom controls)
+    let filterMode = 'all';
+    let sortBy = 'name_asc';
+
+    const filterDd = document.getElementById('filter-dd');
+    const filterBtn = document.getElementById('filter-btn');
+    const filterMenu = document.getElementById('filter-menu');
+    const filterValueEl = document.getElementById('filter-value');
+
+    const sortDd = document.getElementById('sort-dd');
+    const sortBtn = document.getElementById('sort-btn');
+    const sortMenu = document.getElementById('sort-menu');
+    const sortValueEl = document.getElementById('sort-value');
+
+    /** yyyy-mm-dd in local time */
+    function toISODateStringLocal(d) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function parseBottleExpiry(bottleStr) {
+      // bottle string format "M/D/YYYY/qty" (qty optional)
+      // examples: "12/31/2026/30" or "12/31/2026/"
+      if (!bottleStr || typeof bottleStr !== 'string') return null;
+      const parts = bottleStr.split('/');
+      if (parts.length < 3) return null;
+      const month = Number(parts[0]);
+      const day = Number(parts[1]);
+      const year = Number(parts[2]);
+      if (!month || !day || !year) return null;
+      const dt = new Date(year, month - 1, day, 12, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function formatTime12h(dateObj) {
+      const hours = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const h = hours % 12 || 12;
+      const m = String(minutes).padStart(2, '0');
+      return `${h}:${m} ${ampm}`;
+    }
+
+    function hoursUntil(now, future) {
+      return Math.max(0, (future.getTime() - now.getTime()) / (1000 * 60 * 60));
+    }
+
+    function safeLower(s) {
+      return (s || '').toString().trim().toLowerCase();
+    }
+
+    /**
+     * Normalize legacy dose values.
+     * Some older data may store `taken` as strings (e.g. "Taken"/"Not Taken") instead of booleans.
+     * Return:
+     *  - true / false when determinable
+     *  - undefined when unknown
+     */
+    function normalizeTakenValue(taken, takenAt) {
+      if (taken === true) return true;
+      if (taken === false) return false;
+      if (typeof taken === 'string') {
+        const v = safeLower(taken);
+        if (v === 'true' || v === 'taken' || v === 'yes' || v === 'y') return true;
+        if (v === 'false' || v === 'not taken' || v === 'nottaken' || v === 'no' || v === 'missed') return false;
+      }
+      // If takenAt exists, treat as taken (best-effort for legacy writes)
+      if (takenAt) return true;
+      return undefined;
+    }
+
+    /**
+     * Computes patient metrics from medications/doses.
+     * Assumption: scheduled doses are represented by dose entries in the last 7 days
+     * (either taken=true or taken=false/autoMarked=true).
+     */
+    function computePatientMetrics({ meds, now }) {
+      const todayISO = toISODateStringLocal(now);
+      const start7 = toISODateStringLocal(addDays(now, -6));
+
+      let total7 = 0;
+      let taken7 = 0;
+      let missed7 = 0;
+      let missedToday = 0;
+
+      let anyOutOfStock = false;
+      let anyExpiringSoon = false;
+
+      /** @type {Date|null} */
+      let nextDoseAt = null;
+
+      for (const med of meds) {
+        // ⚠️ Out of stock: spec says "stock === 0"
+        const stockVal = Number(med.stock ?? 0);
+        const bottlesArr = Array.isArray(med.bottles) ? med.bottles : [];
+        if (stockVal === 0 || bottlesArr.length === 0) {
+          anyOutOfStock = true;
+        }
+
+        // ⏳ Expiring soon: any bottle within 7 days
+        for (const bottleStr of bottlesArr) {
+          const exp = parseBottleExpiry(bottleStr);
+          if (!exp) continue;
+          const daysLeft = (exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysLeft >= 0 && daysLeft <= 7) {
+            anyExpiringSoon = true;
+            break;
+          }
+        }
+
+        const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
+        const timesArr = Array.isArray(med.times) ? med.times : [];
+
+        for (const entry of Object.values(dosesObj)) {
+          if (!entry || typeof entry !== 'object') continue;
+          const date = entry.date;
+          if (!date || typeof date !== 'string') continue;
+          const takenBool = normalizeTakenValue(entry.taken, entry.takenAt);
+
+          // Last 7 days window (inclusive), lexicographic compare works for YYYY-MM-DD
+          if (date >= start7 && date <= todayISO) {
+            total7 += 1;
+            // IMPORTANT:
+            // - Treat taken=true as taken even if autoMarked is still true (patient corrected it).
+            // - Handle legacy string values for taken.
+            const taken = takenBool === true;
+            const missed = takenBool === false || (takenBool !== true && entry.autoMarked === true);
+
+            if (taken) taken7 += 1;
+            if (missed) missed7 += 1;
+          }
+
+          // Missed doses today (spec: date===today AND taken===false)
+          // Also treat auto-marked missed doses as missed today when taken isn't explicitly true.
+          if (date === todayISO && (takenBool === false || (takenBool !== true && entry.autoMarked === true))) {
+            missedToday += 1;
+          }
+
+          // Next dose: today, not taken, scheduled time after now
+          // We derive scheduled time using doseNumber -> med.times[doseNumber-1]
+          if (date === todayISO && takenBool !== true) {
+            const doseNumber = Number(entry.doseNumber);
+            const timeStr = (doseNumber && timesArr[doseNumber - 1]) ? timesArr[doseNumber - 1] : null;
+            if (timeStr && typeof timeStr === 'string' && /^\d{2}:\d{2}$/.test(timeStr)) {
+              const [hh, mm] = timeStr.split(':').map(Number);
+              const scheduled = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+              if (scheduled.getTime() > now.getTime()) {
+                if (!nextDoseAt || scheduled.getTime() < nextDoseAt.getTime()) {
+                  nextDoseAt = scheduled;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 7-day adherence % = taken / total scheduled
+      // If total is 0 (no data), default to 100% (neutral)
+      const adherencePct = total7 > 0 ? Math.round((taken7 / total7) * 100) : 100;
+
+      // Status rules
+      let statusKey = 'on_track';
+      if (missedToday > 0 || anyOutOfStock) {
+        statusKey = 'urgent';
+      } else if (adherencePct < 80 || missed7 >= 2) {
+        statusKey = 'needs_attention';
+      }
+            
+            return {
+        adherencePct,
+        missedToday,
+        missed7,
+        anyOutOfStock,
+        anyExpiringSoon,
+        nextDoseAt,
+        statusKey
+      };
+    }
+
+    function statusLabel(statusKey) {
+      if (statusKey === 'urgent') return '🔴 Urgent';
+      if (statusKey === 'needs_attention') return '🟡 Needs Attention';
+      return '🟢 On Track';
+    }
+
+    function statusClass(statusKey) {
+      if (statusKey === 'urgent') return 'bad';
+      if (statusKey === 'needs_attention') return 'warn';
+      return 'ok';
+    }
+
+    function renderCards(patients) {
+      const now = new Date();
+
+      // Apply one "Filter" dropdown to keep UI simple.
+      const mode = filterMode;
+      const filtered = patients.filter(p => {
+        const m = p.metrics;
+        if (mode === 'all') return true;
+        if (mode === 'urgent') return m.statusKey === 'urgent';
+        if (mode === 'needs_attention') return m.statusKey === 'needs_attention';
+        if (mode === 'on_track') return m.statusKey === 'on_track';
+        if (mode === 'missed_today') return m.missedToday > 0;
+        if (mode === 'adherence_low') return m.adherencePct < 80;
+        if (mode === 'next_2h') return m.nextDoseAt && hoursUntil(now, m.nextDoseAt) <= 2;
+        if (mode === 'next_4h') return m.nextDoseAt && hoursUntil(now, m.nextDoseAt) <= 4;
+        if (mode === 'next_8h') return m.nextDoseAt && hoursUntil(now, m.nextDoseAt) <= 8;
+        return true;
+      });
+
+      // Sorting
+      const sortMode = sortBy;
+      filtered.sort((a, b) => {
+        if (sortMode === 'name_asc') return (a.name || '').localeCompare(b.name || '');
+        if (sortMode === 'adherence_asc') return (a.metrics.adherencePct ?? 101) - (b.metrics.adherencePct ?? 101);
+        if (sortMode === 'nextdose_asc') {
+          const ta = a.metrics.nextDoseAt ? a.metrics.nextDoseAt.getTime() : Number.POSITIVE_INFINITY;
+          const tb = b.metrics.nextDoseAt ? b.metrics.nextDoseAt.getTime() : Number.POSITIVE_INFINITY;
+          if (ta !== tb) return ta - tb;
+          return (a.name || '').localeCompare(b.name || '');
+        }
+        return 0;
+      });
+
+      if (filtered.length === 0) {
+        gridEl.innerHTML = '';
+        stateEl.className = 'empty';
+        stateEl.textContent = 'No patients match these filters.';
+        stateEl.style.display = 'block';
+        return;
+      }
+
+      stateEl.style.display = 'none';
+      gridEl.innerHTML = filtered.map(p => {
+        const m = p.metrics;
+
+        // Next dose display
+        let nextDoseText = 'No more doses today';
+        if (m.nextDoseAt) {
+          const h = Math.round(hoursUntil(now, m.nextDoseAt));
+          nextDoseText = `Next dose: ${formatTime12h(m.nextDoseAt)}${h > 0 ? ` (in ${h}h)` : ''}`;
+        }
+
+        const missedTodayLine = m.missedToday > 0
+          ? `<div class="meta-row"><span class="muted">Missed today:</span> <strong>${m.missedToday}</strong></div>`
+          : '';
+
+        // Alerts (icons only)
+        const alerts = [
+          m.anyOutOfStock ? `<span class="alert-icon" title="Out of stock" aria-label="Out of stock">⚠️</span>` : '',
+          m.anyExpiringSoon ? `<span class="alert-icon" title="Expiring soon" aria-label="Expiring soon">⏳</span>` : ''
+        ].join('');
+
+        return `
+          <div class="patient-card" role="button" tabindex="0" data-patient-id="${p.id}">
+            <div class="patient-header">
+              <h2 class="patient-name">${(p.name || 'Patient').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</h2>
+              <span class="badge ${statusClass(m.statusKey)}">${statusLabel(m.statusKey)}</span>
+            </div>
+
+            <div class="meta">
+              <div class="meta-row"><span class="muted">Adherence (7 days):</span> <strong>${m.adherencePct}%</strong></div>
+              ${missedTodayLine}
+            </div>
+
+            <div class="next-dose">
+              <div class="meta"><span class="muted">${nextDoseText}</span></div>
+              <div class="alerts">${alerts}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Wire up card click -> open modal
+      const cards = Array.from(gridEl.querySelectorAll('.patient-card[data-patient-id]'));
+      cards.forEach(card => {
+        const open = () => openPatientModal(card.getAttribute('data-patient-id'));
+        card.addEventListener('click', open);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open();
+          }
+        });
+      });
+    }
+
+    function openPatientModal(patientId) {
+      modalOpenForPatientId = patientId;
+      // Simple placeholder content for now
+      const p = patientCache.find(x => x.id === patientId);
+      const name = p?.name || 'Patient';
+      modalBody.innerHTML = `<div style="color: var(--text); font-weight: 800; font-size: 1.05rem;">${String(name).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <div style="margin-top: 0.4rem;">Detailed view</div>`;
+
+      modalOverlay.classList.add('show');
+      // focus close for accessibility
+      modalCloseBtn.focus();
+    }
+
+    function closePatientModal() {
+      modalOverlay.classList.remove('show');
+      modalOpenForPatientId = null;
+    }
+
+    let patientCache = [];
+    // Live data cache for each patient so we can recompute metrics as time passes.
+    const patientLive = new Map(); // patientId -> { profile, meds, unsubProfile, unsubMeds }
+    let caregiverUnsub = null;
+    let refreshTimer = null;
+
+    function closeDropdown(dd) {
+      dd.classList.remove('open');
+      const btn = dd.querySelector('.dd-btn');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function openDropdown(dd) {
+      dd.classList.add('open');
+      const btn = dd.querySelector('.dd-btn');
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    }
+
+    function toggleDropdown(dd) {
+      if (dd.classList.contains('open')) closeDropdown(dd);
+      else {
+        // Only one open at a time
+        closeDropdown(filterDd);
+        closeDropdown(sortDd);
+        openDropdown(dd);
+      }
+    }
+
+    function markSelected(menuEl, value) {
+      const options = Array.from(menuEl.querySelectorAll('.dd-option'));
+      options.forEach(opt => opt.classList.toggle('selected', opt.dataset.value === value));
+    }
+
+    function setFilter(value) {
+      filterMode = value;
+      // Update visible label
+      const labelMap = {
+        all: 'All',
+        urgent: 'Urgent',
+        needs_attention: 'Needs Attention',
+        on_track: 'On Track',
+        missed_today: 'Missed today',
+        adherence_low: 'Adherence < 80%',
+        next_2h: 'Next ≤ 2h',
+        next_4h: 'Next ≤ 4h',
+        next_8h: 'Next ≤ 8h'
+      };
+      filterValueEl.textContent = labelMap[value] || 'All';
+      markSelected(filterMenu, value);
+      renderCards(patientCache);
+    }
+
+    function setSort(value) {
+      sortBy = value;
+      const labelMap = {
+        name_asc: 'Patient name (A–Z)',
+        adherence_asc: 'Adherence (low → high)',
+        nextdose_asc: 'Next dose (soonest first)'
+      };
+      sortValueEl.textContent = labelMap[value] || labelMap.name_asc;
+      markSelected(sortMenu, value);
+      renderCards(patientCache);
+    }
+
+    function wireControls() {
+      // Toggle open/close
+      filterBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleDropdown(filterDd); });
+      sortBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleDropdown(sortDd); });
+
+      // Pick option
+      filterMenu.querySelectorAll('.dd-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setFilter(btn.dataset.value);
+          closeDropdown(filterDd);
+        });
+      });
+      sortMenu.querySelectorAll('.dd-option').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setSort(btn.dataset.value);
+          closeDropdown(sortDd);
+        });
+      });
+
+      // Close on outside click
+      document.addEventListener('click', () => {
+        closeDropdown(filterDd);
+        closeDropdown(sortDd);
+      });
+
+      // Close on Esc
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeDropdown(filterDd);
+          closeDropdown(sortDd);
+        }
+      });
+
+      // Initial selection
+      setFilter(filterMode);
+      setSort(sortBy);
+    }
+
+    async function loadPatientByEmail(emailLower) {
+      try {
+        // Query `users` by email; rules will only allow docs where caregiver is linked in patient.caregivers.
+        const q = query(collection(db, 'users'), where('email', '==', emailLower), limit(1));
+        const snap = await getDocs(q);
+        if (snap.empty) return null;
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, ...docSnap.data() };
+      } catch (e) {
+        console.warn('[Caregiver Home] Cannot query patient by email (likely not linked yet):', emailLower, e?.message || e);
+        return null;
+      }
+    }
+
+    async function loadPatientById(patientId) {
+      try {
+        const snap = await getDoc(doc(db, 'users', patientId));
+        if (!snap.exists()) return null;
+        return { id: snap.id, ...snap.data() };
+      } catch (e) {
+        console.warn('[Caregiver Home] Cannot read patient by id (rules/linking):', patientId, e?.message || e);
+        return null;
+      }
+    }
+
+    async function loadPatientMedications(patientId) {
+      try {
+        const medsSnap = await getDocs(collection(db, 'users', patientId, 'medications'));
+        return medsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.warn('[Caregiver Home] Cannot read medications for patient:', patientId, e?.message || e);
+        return [];
+      }
+    }
+
+    function upsertPatientRow(patientId, patch) {
+      const idx = patientCache.findIndex(p => p.id === patientId);
+      if (idx === -1) {
+        patientCache = [...patientCache, { id: patientId, name: 'Patient', email: '', metrics: computePatientMetrics({ meds: [], now: new Date() }), ...patch }];
+      } else {
+        const updated = { ...patientCache[idx], ...patch };
+        patientCache = [...patientCache.slice(0, idx), updated, ...patientCache.slice(idx + 1)];
+      }
+      renderCards(patientCache);
+    }
+
+    function startPatientLive(patientId) {
+      if (patientLive.has(patientId)) return;
+      patientLive.set(patientId, { profile: null, meds: [], unsubProfile: null, unsubMeds: null });
+      upsertPatientRow(patientId, { id: patientId });
+
+      // Profile listener (name/email)
+      const unsubProfile = onSnapshot(doc(db, 'users', patientId), (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data() || {};
+        const name = data.name || safeLower(data.email) || 'Patient';
+        const email = safeLower(data.email);
+        const entry = patientLive.get(patientId);
+        if (entry) entry.profile = { name, email };
+        upsertPatientRow(patientId, { name, email });
+      }, (err) => {
+        console.warn('[Caregiver Home] Patient profile live listener error:', patientId, err?.message || err);
+      });
+
+      // Medications listener (doses/bottles/stock)
+      const unsubMeds = onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
+        const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const entry = patientLive.get(patientId);
+        if (entry) entry.meds = meds;
+        const metrics = computePatientMetrics({ meds, now: new Date() });
+        upsertPatientRow(patientId, { metrics });
+      }, (err) => {
+        console.warn('[Caregiver Home] Patient meds live listener error:', patientId, err?.message || err);
+      });
+
+      const entry = patientLive.get(patientId);
+      if (entry) {
+        entry.unsubProfile = unsubProfile;
+        entry.unsubMeds = unsubMeds;
+      }
+    }
+
+    function stopAllLive() {
+      if (caregiverUnsub) {
+        caregiverUnsub();
+        caregiverUnsub = null;
+      }
+      if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
+      for (const [pid, entry] of patientLive.entries()) {
+        try { entry.unsubProfile && entry.unsubProfile(); } catch {}
+        try { entry.unsubMeds && entry.unsubMeds(); } catch {}
+        patientLive.delete(pid);
+      }
+    }
+
+    function startRefreshTicker() {
+      if (refreshTimer) clearInterval(refreshTimer);
+      // Recompute every minute so "Next dose in Xh" stays accurate even with no Firestore changes.
+      refreshTimer = setInterval(() => {
+        const now = new Date();
+        for (const [pid, entry] of patientLive.entries()) {
+          const meds = entry?.meds || [];
+          const metrics = computePatientMetrics({ meds, now });
+          upsertPatientRow(pid, { metrics });
+        }
+      }, 60_000);
+    }
+
+    async function startLiveDashboard(caregiverUid) {
+      stopAllLive();
+      stateEl.className = 'loading';
+      stateEl.textContent = 'Loading patients…';
+      stateEl.style.display = 'block';
+      gridEl.innerHTML = '';
+      patientCache = [];
+
+      const caregiverRef = doc(db, 'users', caregiverUid);
+      caregiverUnsub = onSnapshot(caregiverRef, async (snap) => {
+        const caregiverData = snap.exists() ? (snap.data() || {}) : {};
+        const patientIds = Array.isArray(caregiverData.patientIds) ? caregiverData.patientIds.filter(Boolean) : [];
+        const patientEmails = Array.isArray(caregiverData.patients) ? caregiverData.patients.map(safeLower).filter(Boolean) : [];
+
+        // Resolve IDs if only emails exist.
+        let resolvedIds = patientIds;
+        if (resolvedIds.length === 0 && patientEmails.length > 0) {
+          const resolved = [];
+          const results = await Promise.allSettled(patientEmails.map(loadPatientByEmail));
+          results.forEach(r => { if (r.status === 'fulfilled' && r.value?.id) resolved.push(r.value.id); });
+          resolvedIds = resolved;
+        }
+
+        if (resolvedIds.length === 0) {
+          stateEl.className = 'empty';
+          stateEl.textContent = 'No patients yet. Use “Add Patient” to request access.';
+          gridEl.innerHTML = '';
+          return;
+        }
+
+        // Start listeners for any new patients.
+        stateEl.style.display = 'none';
+        resolvedIds.forEach(startPatientLive);
+        startRefreshTicker();
+      }, (err) => {
+        console.error('[Caregiver Home] caregiver live listener error:', err);
+        stateEl.className = 'empty';
+        stateEl.textContent = `Could not load patients. ${err?.message || ''}`.trim();
+      });
+    }
+
+    async function loadDashboard(caregiverUid) {
+      stateEl.className = 'loading';
+      stateEl.textContent = 'Loading patients…';
+      stateEl.style.display = 'block';
+      gridEl.innerHTML = '';
+
+      try {
+        const caregiverDoc = await getDoc(doc(db, 'users', caregiverUid));
+        const caregiverData = caregiverDoc.exists() ? caregiverDoc.data() : {};
+
+        // Preferred: patientIds written by Cloud Function on acceptance (fast + no email query).
+        const patientIds = Array.isArray(caregiverData.patientIds) ? caregiverData.patientIds.filter(Boolean) : [];
+        const patientEmails = Array.isArray(caregiverData.patients) ? caregiverData.patients.map(safeLower).filter(Boolean) : [];
+
+        if (patientIds.length === 0 && patientEmails.length === 0) {
+          stateEl.className = 'empty';
+          stateEl.textContent = 'No patients yet. Use “Add Patient” to request access.';
+          return;
+        }
+
+        const now = new Date();
+
+        // Resolve patient docs. Use allSettled so one failure doesn't block the whole dashboard.
+        const resolved = [];
+        if (patientIds.length > 0) {
+          const results = await Promise.allSettled(patientIds.map(loadPatientById));
+          results.forEach(r => { if (r.status === 'fulfilled' && r.value) resolved.push(r.value); });
+        } else {
+          const results = await Promise.allSettled(patientEmails.map(loadPatientByEmail));
+          results.forEach(r => { if (r.status === 'fulfilled' && r.value) resolved.push(r.value); });
+        }
+
+        if (resolved.length === 0) {
+          // Auto-repair for older data: caregiver has emails, but patient.caregivers wasn't set yet (rules block reads).
+          // We call a Cloud Function to sync links, then retry once.
+          if (patientIds.length === 0 && patientEmails.length > 0) {
+            stateEl.className = 'loading';
+            stateEl.textContent = 'Syncing patient links…';
+
+            try {
+              const token = await auth.currentUser.getIdToken();
+              const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/syncCaregiverPatients', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({})
+              });
+
+              if (resp.ok) {
+                // Retry dashboard load (will now use patientIds or allow read by rules)
+                await loadDashboard(caregiverUid);
+                return;
+              }
+            } catch (e) {
+              console.warn('[Caregiver Home] Sync failed:', e);
+            }
+          }
+
+          stateEl.className = 'empty';
+          stateEl.textContent = 'No linked patients found yet. Make sure the patient accepted the invitation.';
+          return;
+        }
+
+        // Load meds in parallel and compute metrics; update UI progressively.
+        const patientsWithMetrics = [];
+        let done = 0;
+        const total = resolved.length;
+
+        const tasks = resolved.map(async (p) => {
+          const meds = await loadPatientMedications(p.id);
+          const metrics = computePatientMetrics({ meds, now });
+          const row = {
+            id: p.id,
+            email: safeLower(p.email),
+            name: p.name || safeLower(p.email) || 'Patient',
+            metrics
+          };
+          patientsWithMetrics.push(row);
+          done += 1;
+          stateEl.textContent = `Loading patients… (${done}/${total})`;
+          patientCache = [...patientsWithMetrics];
+          renderCards(patientCache);
+        });
+
+        await Promise.allSettled(tasks);
+
+        patientCache = patientsWithMetrics;
+        if (patientsWithMetrics.length === 0) {
+          stateEl.className = 'empty';
+          stateEl.textContent = 'Could not load any patient data yet.';
+          return;
+        }
+        renderCards(patientCache);
+      } catch (e) {
+        console.error('[Caregiver Home] loadDashboard failed:', e);
+        stateEl.className = 'empty';
+        stateEl.textContent = `Could not load patients. ${e?.message || ''}`.trim();
+      }
+    }
+
+    wireControls();
+
+    // Modal wiring (no-op action button for now)
+    if (modalActionBtn) {
+      modalActionBtn.addEventListener('click', () => {
+        // Navigate to the (blank for now) detailed view page.
+        const pid = modalOpenForPatientId ? encodeURIComponent(modalOpenForPatientId) : '';
+        window.location.href = pid ? `student-view.html?patientId=${pid}` : 'student-view.html';
+      });
+    }
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closePatientModal);
+    if (modalOverlay) {
+      modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closePatientModal();
+      });
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalOverlay.classList.contains('show')) {
+        closePatientModal();
+      }
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = '../login.html';
+        return;
+      }
+      // Live-updating dashboard (so adherence/status updates when patients mark doses taken)
+      await startLiveDashboard(user.uid);
+    });
+  </script>
+
+  <script>
+    // First-time user popup logic (tutorial)
+    (function() {
+      const popup = document.getElementById('first-time-popup');
+      const closeBtn = document.getElementById('close-first-time-popup');
+      const watchBtn = document.getElementById('open-help-modal-from-popup');
+      const helpModal = document.getElementById('help-modal');
+      const closeModalBtn = document.getElementById('close-help-modal');
+      
+      const hasSeenPopup = localStorage.getItem('hasSeenFirstTimePopup');
+      if (!hasSeenPopup) {
+        setTimeout(() => {
+          popup.style.display = 'block';
+          setTimeout(() => hidePopup(), 10000);
+        }, 1500);
+      }
+
+      function hidePopup() {
+        popup.style.animation = 'slideInUp 0.3s ease-out reverse';
+        setTimeout(() => {
+          popup.style.display = 'none';
+          localStorage.setItem('hasSeenFirstTimePopup', 'true');
+        }, 300);
+      }
+
+      let currentSlide = 0;
+      const totalSlides = 10;
+      const slides = document.querySelectorAll('.slide');
+      const navLeft = document.getElementById('nav-left');
+      const navRight = document.getElementById('nav-right');
+      const finishBtn = document.getElementById('finish-btn');
+
+      function openHelpModal() {
+        helpModal.classList.add('show');
+        currentSlide = 0;
+        updateSlideshow();
+      }
+
+      function closeHelpModal() {
+        helpModal.classList.remove('show');
+      }
+
+      function updateSlideshow() {
+        slides.forEach((slide, index) => {
+          slide.classList.toggle('active', index === currentSlide);
+        });
+
+        navLeft.style.display = currentSlide === 0 ? 'none' : 'flex';
+        if (currentSlide === totalSlides - 1) {
+          navRight.style.display = 'none';
+          finishBtn.style.display = 'block';
+        } else {
+          navRight.style.display = 'flex';
+          finishBtn.style.display = 'none';
+        }
+      }
+
+        navLeft.addEventListener('click', (e) => {
+          e.stopPropagation();
+        if (currentSlide > 0) { currentSlide--; updateSlideshow(); }
+        });
+        navRight.addEventListener('click', (e) => {
+          e.stopPropagation();
+        if (currentSlide < totalSlides - 1) { currentSlide++; updateSlideshow(); }
+        });
+        finishBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeHelpModal();
+      });
+      
+      updateSlideshow();
+
+      if (closeBtn) closeBtn.addEventListener('click', hidePopup);
+      if (watchBtn) watchBtn.addEventListener('click', () => { hidePopup(); openHelpModal(); });
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
+      
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) closeHelpModal();
+      });
+
+      window.openHelpModal = openHelpModal;
+      window.closeHelpModal = closeHelpModal;
+    })();
+  </script>
+</body>
+</html>

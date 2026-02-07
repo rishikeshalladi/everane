@@ -17,9 +17,9 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
-        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
-        /* Improved contrast for better readability */
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        /* High contrast for seniors - maximum readability */
         --text-strong: #020617;
         --muted-strong: #334155;
       }
@@ -500,13 +500,16 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   
   .toggle-group {
     gap: 0.4rem;
+    justify-content: center;
   }
   
   .toggle-btn {
     padding: .5rem .75rem;
     font-size: 0.85rem;
-    flex: 1 1 calc(33.333% - 0.3rem);
-    min-width: fit-content;
+    /* Keep each day block the same width (so Saturday doesn't stretch on the last row),
+       while the row stays centered. */
+    flex: 0 0 calc(33.333% - 0.3rem);
+    max-width: calc(33.333% - 0.3rem);
   }
   
   .modal { padding: 0.5rem; }
@@ -540,7 +543,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
     <a href="profile.html">Profile</a>
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -681,7 +683,33 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     const params    = new URLSearchParams(window.location.search);
     const editIdx   = params.has('edit') ? params.get('edit') : null; // Keep as string for Firebase ID
     const renewIdx  = params.has('renew') ? +params.get('renew') : null;
+    const isVoice   = params.has('voice') ? true : false; // Check if coming from voice page
     const storageKey= 'medications';
+    
+    console.log('[Add-Medication] Page loaded. URL params:', {
+      editIdx: editIdx, renewIdx: renewIdx, isVoice: isVoice
+    });
+
+    // Check for voice data from localStorage
+    let voiceData = null;
+    if (isVoice) {
+      console.log('[Add-Medication] isVoice is true. Checking localStorage for voiceMedicationData.');
+      const voiceDataStr = localStorage.getItem('voiceMedicationData');
+      if (voiceDataStr) {
+        console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...'); // Log first 100 chars
+        try {
+          voiceData = JSON.parse(voiceDataStr);
+          console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
+          // Clear it after reading
+          localStorage.removeItem('voiceMedicationData');
+          console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
+        } catch (e) {
+          console.error('[Add-Medication] Error parsing voice data from localStorage:', e);
+        }
+      } else {
+        console.log('[Add-Medication] No voiceMedicationData found in localStorage despite isVoice being true.');
+      }
+    }
 
     // Steps
     const steps = ['step-1','step-2','step-3'].map(id=>document.getElementById(id));
@@ -919,16 +947,39 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         
         sourceArray = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
         med = sourceArray[renewIdx];
+      } else if (voiceData) {
+        // Handle voice data - pre-fill form with voice conversation data
+        console.log('[Add-Medication] Voice data received:', voiceData);
+        med = {
+          name: voiceData.name || '',
+          dosage: voiceData.dosage || '',
+          days: voiceData.days || [],
+          timesPerDay: voiceData.timesPerDay || 1,
+          times: voiceData.times || [],
+          startDate: voiceData.startDate || null,
+          endDate: voiceData.endDate || null,
+          reminder: voiceData.reminder || 'None'
+        };
+        console.log('[Add-Medication] Converted voice data to medication object:', med);
+        
+        // Show a message that this came from voice
+        const voiceNotice = document.createElement('div');
+        voiceNotice.style.cssText = 'background: #10b981; color: white; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;';
+        voiceNotice.textContent = '✓ Form pre-filled from voice conversation. Please review and edit as needed.';
+        const container = document.querySelector('.container');
+        if (container) {
+          container.insertBefore(voiceNotice, container.firstChild);
+        }
       } else {
         return;
       }
       
       if (!med) {
-        console.log('[Add-Medication] No medication data to populate form');
+        console.log('[Add-Medication] No medication data to populate form.');
         return;
       }
       
-      console.log('[Add-Medication] Populating form with medication:', med);
+      console.log('[Add-Medication] Populating form with medication data:', med);
       
       // If this is a renew flow, reset the reminder select to the placeholder
       if (renewIdx !== null) {
@@ -937,15 +988,21 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
 
       // Populate form fields
-      document.getElementById('med-name').value     = med.name || '';
-      document.getElementById('dosage').value      = med.dosage || '';
+      const medNameEl = document.getElementById('med-name');
+      const dosageEl = document.getElementById('dosage');
+
+      medNameEl.value = med.name || '';
+      console.log('[Add-Medication] Set med-name:', medNameEl.value);
+
+      dosageEl.value = med.dosage || '';
+      console.log('[Add-Medication] Set dosage:', dosageEl.value);
       
       const medTimeValues = Array.isArray(med.times) ? med.times.filter(Boolean) : [];
       cachedTimeValues = [...medTimeValues];
       const initialTimesPerDay = clampTimesPerDay(med.timesPerDay || medTimeValues.length || 1);
       setTimesPerDay(initialTimesPerDay, false);
       
-      console.log('[Add-Medication] Set basic fields - name:', med.name, 'dosage:', med.dosage, 'timesPerDay:', initialTimesPerDay);
+      console.log('[Add-Medication] Set timesPerDay:', initialTimesPerDay, 'and rendered time inputs.');
       
       // Set times
       if (med.times && med.times.length > 0) {
@@ -953,7 +1010,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           const timeInput = timePickers.querySelectorAll('input')[i];
           if (timeInput) timeInput.value = t;
         });
-        console.log('[Add-Medication] Set times:', med.times);
+        console.log('[Add-Medication] Set specific times:', med.times);
       }
       
       // Set days
@@ -1000,15 +1057,29 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       // Set dates (convert format for HTML date inputs)
       const startDateValue = convertDateForInput(med.startDate);
       const endDateValue = convertDateForInput(med.endDate);
-      document.getElementById('start-date').value = startDateValue;
-      document.getElementById('end-date').value = endDateValue;
-      console.log('[Add-Medication] Set dates - start:', med.startDate, '->', startDateValue, 'end:', med.endDate, '->', endDateValue);
+      const startDateEl = document.getElementById('start-date');
+      const endDateEl = document.getElementById('end-date');
+      if (startDateEl) startDateEl.value = startDateValue;
+      if (endDateEl) endDateEl.value = endDateValue;
+      console.log('[Add-Medication] Set start-date:', startDateValue, 'end-date:', endDateValue);
       
-      // Set reminder
-      if (renewIdx === null) {
-        document.getElementById('reminder').value = med.reminder || '';
-        console.log('[Add-Medication] Set reminder:', med.reminder);
+      // Set reminder (convert from voice format to form format)
+      if (med.reminder) {
+        const reminderSelectEl = document.getElementById('reminder');
+        if (reminderSelectEl) {
+          // Options don't have explicit values, so the <option> value is the visible text.
+          const normalized = (med.reminder || '').trim();
+          const allowed = new Set(['None', 'Email', 'SMS', 'Email + SMS']);
+          const mapped = (normalized === 'Both') ? 'Email + SMS' : normalized;
+          reminderSelectEl.value = allowed.has(mapped) ? mapped : '';
+          console.log('[Add-Medication] Set reminder:', reminderSelectEl.value, 'from voiceData:', med.reminder);
+        }
       }
+      // Set reminder
+      // if (renewIdx === null) {
+      //   document.getElementById('reminder').value = med.reminder || '';
+      //   console.log('[Add-Medication] Set reminder:', med.reminder);
+      // }
       // Set bottles
       if (med.bottles && med.bottles.length > 0) {
         console.log('[Add-Medication] Setting bottles:', med.bottles);

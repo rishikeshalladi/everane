@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MedTracker – Medication Action</title>
+  <title>MedTracker – Email Action</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     :root {
@@ -273,6 +273,7 @@
       transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
     }
     .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
 
     .btn-primary { 
       background: linear-gradient(135deg, var(--brand), var(--brand-600)); 
@@ -282,6 +283,40 @@
     .btn-primary:hover { 
       background: linear-gradient(135deg, var(--brand-600), var(--brand-700)); 
       box-shadow: 0 6px 16px rgba(79,140,255,.25); 
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover {
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border-color: color-mix(in oklab, var(--border) 80%, var(--text));
+    }
+    .btn-success, .btn.btn-success {
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
+      border-color: color-mix(in oklab, var(--success) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(34,197,94,.25);
+    }
+    .btn-success:hover { filter: brightness(1.02); }
+    .btn-danger, .btn.btn-danger {
+      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
+      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(255,107,107,.25);
+    }
+    .btn-danger:hover { filter: brightness(.98); }
+
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+    .action-buttons .btn {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      min-width: 150px;
     }
   </style>
 </head>
@@ -337,10 +372,9 @@
         </div>
       </div>
 
-      <div style="display: flex; justify-content: center; margin-top: 2rem;">
-        <button class="btn btn-primary" id="submit-btn" style="padding: 0.75rem 2rem; font-size: 1rem;">
-          Submit
-        </button>
+      <div class="action-buttons">
+        <button class="btn btn-success" id="taken-btn">Taken</button>
+        <button class="btn btn-danger" id="not-taken-btn">Not Taken</button>
       </div>
     </div>
   </div>
@@ -348,7 +382,7 @@
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
@@ -369,6 +403,7 @@
     window.doc = doc;
     window.setDoc = setDoc;
     window.getDoc = getDoc;
+    window.deleteField = deleteField;
 
     // Format time display
     function formatTimeDisplay(timeString) {
@@ -409,7 +444,7 @@
       const medId = params.get('medId');
 
       if (!medicationName || !doseNumber || !dateString || !medId) {
-        console.error('[Medication-Action] Missing required parameters');
+        console.error('[Email-Action] Missing required parameters');
         document.getElementById('dose-name').textContent = 'Error: Missing information';
         return;
       }
@@ -437,7 +472,7 @@
     async function loadExistingNotes(medId, dateString, doseNumber) {
       const user = auth.currentUser;
       if (!user) {
-        console.warn('[Medication-Action] No user logged in');
+        console.warn('[Email-Action] No user logged in');
         return;
       }
 
@@ -462,7 +497,7 @@
           }
         }
       } catch (error) {
-        console.error('[Medication-Action] Error loading notes:', error);
+        console.error('[Email-Action] Error loading notes:', error);
       }
     }
 
@@ -502,15 +537,12 @@
           notes: notes
         }, { merge: true });
 
-        console.log(`[Medication-Action] Saved note for ${name} on ${date}, dose ${doseNumber}`);
+        console.log(`[Email-Action] Saved note for ${name} on ${date}, dose ${doseNumber}`);
         
-        // Don't change taken/not taken status here - that's handled by the "Taken"/"Not Taken" buttons
-        // Just save the notes and navigate back
-
         // Navigate back to home
         window.location.href = 'home.html';
       } catch (error) {
-        console.error('[Medication-Action] Error saving notes:', error);
+        console.error('[Email-Action] Error saving notes:', error);
         alert('Error saving notes. Please try again.');
       }
     }
@@ -535,15 +567,221 @@
         });
       });
 
-      // Submit button
-      const submitBtn = document.getElementById('submit-btn');
-      if (submitBtn) {
-        submitBtn.addEventListener('click', async (e) => {
+      // Helper function to update stock based on dose status change
+      const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+        if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
+          console.log('[Email-Action] No bottles to update stock for');
+          return medData.bottles || [];
+        }
+
+        // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
+        let stockChange = 0;
+        if (previousTaken !== true && newTaken === true) {
+          // Going from not-taken (or null) to taken: subtract dosage
+          stockChange = -dosage;
+        } else if (previousTaken === true && newTaken === false) {
+          // Going from taken to not-taken: add dosage back
+          stockChange = dosage;
+        }
+        // If status doesn't change or goes from not-taken to not-taken: no change
+
+        if (stockChange === 0) {
+          console.log('[Email-Action] No stock change needed (status unchanged or not-taken to not-taken)');
+          return medData.bottles;
+        }
+
+        console.log(`[Email-Action] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
+
+        // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
+        const now = new Date();
+        const parsedBottles = medData.bottles.map((bottleStr, index) => {
+          const parts = bottleStr.split('/');
+          if (parts.length < 3) return null;
+          
+          const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
+          const expirationDate = new Date(expirationStr);
+          const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
+          
+          return {
+            index,
+            expiration: expirationDate,
+            quantity: quantity,
+            original: bottleStr
+          };
+        }).filter(b => b !== null);
+
+        // Sort by expiration date (earliest first)
+        parsedBottles.sort((a, b) => a.expiration - b.expiration);
+
+        // Find the first bottle that hasn't expired and has quantity
+        let activeBottle = parsedBottles.find(b => 
+          b.expiration >= now && (b.quantity === null || b.quantity > 0)
+        );
+
+        // If no unexpired bottle, use the earliest one (even if expired)
+        if (!activeBottle && parsedBottles.length > 0) {
+          activeBottle = parsedBottles[0];
+        }
+
+        if (!activeBottle) {
+          console.log('[Email-Action] No active bottle found to update');
+          return medData.bottles;
+        }
+
+        console.log(`[Email-Action] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
+
+        // Update the quantity
+        const newBottles = [...medData.bottles];
+        const bottleParts = newBottles[activeBottle.index].split('/');
+        
+        if (bottleParts.length >= 4) {
+          let newQuantity = activeBottle.quantity;
+          if (newQuantity === null) {
+            // If quantity was N/A, we can't track it, so don't update
+            console.log('[Email-Action] Bottle quantity is N/A, cannot update stock');
+            return medData.bottles;
+          }
+          
+          newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+          
+          // Rebuild bottle string with updated quantity
+          const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
+          newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
+          
+          console.log(`[Email-Action] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
+        }
+
+        return newBottles;
+      };
+
+      // Function to save dose status to Firebase
+      const saveDoseStatus = async (taken) => {
+        const user = auth.currentUser;
+        if (!user) {
+          alert('You must be logged in to mark doses.');
+          return false;
+        }
+
+        if (!window.currentMedication) {
+          alert('Error: Medication information not found.');
+          return false;
+        }
+
+        const { id, date, doseNumber } = window.currentMedication;
+
+        try {
+          const medDocRef = doc(db, "users", user.uid, "medications", id);
+          const medDoc = await getDoc(medDocRef);
+          
+          if (!medDoc.exists()) {
+            alert('Medication not found.');
+            return false;
+          }
+
+          const medData = medDoc.data();
+          let doses = medData.doses || {};
+          
+          // Migrate array to object if needed
+          if (Array.isArray(doses)) {
+            const dosesObj = {};
+            doses.forEach(dose => {
+              const key = `${String(dose.date || '')}_${Number(dose.doseNumber || 0)}`;
+              dosesObj[key] = {
+                date: String(dose.date || ''),
+                doseNumber: Number(dose.doseNumber || 0),
+                taken: Boolean(dose.taken)
+              };
+            });
+            doses = dosesObj;
+          }
+          
+          const doseKey = `${date}_${doseNumber}`;
+          
+          // Check if status is changing
+          const existingEntry = doses[doseKey];
+          const previousTaken = existingEntry ? existingEntry.taken : undefined;
+          const statusChanged = !existingEntry || existingEntry.taken !== taken;
+          
+          // Preserve existing takenAt timestamp if already taken, or set new one if marking as taken
+          const newDoseEntry = {
+            date: date,
+            doseNumber: doseNumber,
+            taken: taken,
+            // Add timestamp when marked as taken, preserve existing if already taken
+            takenAt: taken 
+              ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
+              : null
+          };
+          
+          doses[doseKey] = newDoseEntry;
+          
+          // Update stock based on dose status change
+          const dosage = Number(medData.dosage) || 0;
+          const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
+          
+          // Save to Firebase
+          const updateData = { 
+            doses: doses,
+            bottles: updatedBottles
+          };
+          // Remove old fields if they exist (using deleteField from Firestore)
+          if (medData.doseStatus !== undefined && window.deleteField) {
+            updateData.doseStatus = window.deleteField();
+          }
+          if (medData.doseHistory !== undefined && window.deleteField) {
+            updateData.doseHistory = window.deleteField();
+          }
+          
+          await setDoc(medDocRef, updateData, { merge: true });
+          console.log(`[Email-Action] Saved dose status (taken: ${taken}) for medication ${id}, dose ${doseNumber} on ${date}`);
+          
+          return statusChanged;
+        } catch (error) {
+          console.error('[Email-Action] Error saving dose status:', error);
+          alert('Error saving dose status. Please try again.');
+          return false;
+        }
+      };
+
+      // Taken/Not Taken buttons
+      const takenBtn = document.getElementById('taken-btn');
+      const notTakenBtn = document.getElementById('not-taken-btn');
+      
+      if (takenBtn) {
+        takenBtn.addEventListener('click', async (e) => {
           e.preventDefault();
+          console.log('[Email-Action] Taken button clicked');
+          const statusChanged = await saveDoseStatus(true);
+          if (statusChanged) {
+            // Show success feedback
+            takenBtn.style.opacity = '0.7';
+            setTimeout(() => {
+              takenBtn.style.opacity = '1';
+            }, 200);
+          }
+          // Save notes as well
+          await saveNotes();
+        });
+      }
+
+      if (notTakenBtn) {
+        notTakenBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          console.log('[Email-Action] Not Taken button clicked');
+          const statusChanged = await saveDoseStatus(false);
+          if (statusChanged) {
+            // Show success feedback
+            notTakenBtn.style.opacity = '0.7';
+            setTimeout(() => {
+              notTakenBtn.style.opacity = '1';
+            }, 200);
+          }
+          // Save notes as well
           await saveNotes();
         });
       }
     });
-</script>
+  </script>
 </body>
 </html>
+

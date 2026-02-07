@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MedTracker – Add/Edit Medication</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --danger-color: var(--danger);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
+        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .sidebar-signout {
+      width: 100%;
+      padding: .75rem .9rem;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 1rem;
+    }
+    .sidebar-signout:hover {
+      background: color-mix(in oklab, var(--danger) 85%, black);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(255, 107, 107, .25);
+    }
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+    
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      
+      .sidebar-signout {
+        width: 100% !important;
+        padding: 0.75rem 1rem !important;
+        background: var(--danger) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--radius) !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
+      
+      .sidebar-signout:hover {
+        background: color-mix(in oklab, var(--danger) 85%, black) !important;
+        transform: translateY(-1px) !important;
+      }
+    }
+
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    #med-list { max-height: 70vh; overflow-y: auto; display: grid; gap: 1rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary, .btn.btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover, .btn.btn-primary:hover {
+      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
+    }
+    .btn-secondary, .btn.btn-secondary {
+      background: transparent; color: var(--text); border-color: var(--border);
+    }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .btn-danger, .btn.btn-danger {
+      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
+      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(255,107,107,.25);
+    }
+    .btn-danger:hover { filter: brightness(.98); }
+    .btn-success, .btn.btn-success {
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
+      border-color: color-mix(in oklab, var(--success) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(34,197,94,.25);
+    }
+    .btn-success:hover { filter: brightness(1.02); }
+
+    .modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(2,6,23,.55);
+      align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      text-align: left;
+    }
+    .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
+
+    .bottle-item {
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s ease, transform .1s ease;
+    }
+    .bottle-item:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .bottle-item small { color: var(--muted); }
+
+    .form-group { text-align: left; margin-bottom: 1rem; }
+    .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
+    .form-group input[type="date"], .form-group input[type="number"] {
+      width: 100%;
+      padding: .8rem 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+    .form-group input:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
+
+    .muted, .lead { color: var(--muted); }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--surface) 80%, var(--border));
+      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+/* === Page-specific additions to match auth/welcome/home === */
+.form-group input[type="text"],
+.form-group input[type="time"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group select {
+  width: 100%;
+  padding: .8rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.form-group select { appearance: none; }
+.form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+.form-group input:focus, .form-group select:focus {
+  border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+}
+
+.form-step { display: none; }
+.form-step.active { display: block; }
+.wizard-nav { margin-top:1.5rem; display:flex; justify-content:space-between; gap:.75rem; }
+.wizard-nav .btn-primary, .wizard-nav .btn-secondary { min-width: 140px; }
+
+.toggle-group { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+.toggle-btn {
+  flex:0 1 auto; padding:.6rem .9rem;
+  border:1px solid var(--border);
+  border-radius:12px; background: color-mix(in oklab, var(--surface) 96%, transparent);
+  color: var(--muted); text-align:center;
+  cursor:pointer; transition:background .2s,color .2s, border-color .2s, box-shadow .2s;
+}
+.toggle-btn:hover { border-color: color-mix(in oklab, var(--brand) 35%, var(--border)); color: var(--text); }
+.toggle-btn.active {
+  color:#fff; border-color: transparent;
+  background: linear-gradient(180deg, var(--brand), var(--brand-600));
+  box-shadow: 0 10px 20px rgba(79,140,255,.25);
+}
+
+#bottle-popup {
+  display:none; position:fixed; inset:0;
+  background: rgba(2,6,23,.55); align-items:center; justify-content:center;
+  z-index:1000; padding: 1rem;
+}
+#bottle-popup .popup-content {
+  background: var(--surface); color: var(--text);
+  padding:1.25rem; border-radius: var(--radius);
+  width:min(420px, 92%); border:1px solid var(--border);
+  box-shadow: var(--shadow); text-align:left;
+}
+#bottle-popup .popup-content label { display:block; margin-top:1rem; font-weight:700; }
+#bottle-popup .popup-content button { margin-top:1rem; }
+
+.close-btn {
+  position: absolute; top: 1rem; left: 1rem;
+  font-size: 1.5rem; line-height: 1; text-decoration: none;
+  color: var(--muted); padding: .25rem .5rem; border-radius: 8px;
+  transition: color .2s ease, background .2s ease;
+}
+.close-btn:hover { color: #fff; background: color-mix(in oklab, var(--danger) 15%, transparent); }
+
+
+
+/* === Fixes: white dynamic time fields & Back button visibility === */
+
+/* Ensure ANY dynamically created inputs/selects inherit dark theme */
+input[type="time"],
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: .8rem 1rem;
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+input[type="time"]:focus,
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+select:focus {
+  border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+}
+/* Make native pickers readable in dark mode (Safari/Chrome) */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(.85);
+  cursor: pointer;
+}
+select, option { 
+  background-color: var(--surface); 
+  color: var(--text); 
+}
+
+
+/* Make "Back" look like the primary "Continue" button */
+.btn-secondary,
+button.back, .back-btn, .btn.back, a.back, #back, #back-btn {
+  color: #fff !important;
+  background: linear-gradient(180deg, var(--brand), var(--brand-600)) !important;
+  border-color: transparent !important;
+  box-shadow: 0 10px 20px rgba(79,140,255,.35);
+}
+.btn-secondary:hover,
+button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, #back-btn:hover {
+  background: linear-gradient(180deg, var(--brand-600), var(--brand-700)) !important;
+}
+
+/* Mobile form optimizations */
+@media (max-width: 640px) {
+  .container { padding-inline: 1rem; }
+  .content { padding-block: 1.5rem; padding-top: 4.5rem; }
+  
+  h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+  h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+  
+  .card {
+    padding: 0.9rem;
+    border-radius: 16px;
+  }
+  
+  .form-group {
+    margin-bottom: 0.85rem;
+  }
+  
+  .form-group label {
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .form-group input[type="text"],
+  .form-group input[type="time"],
+  .form-group input[type="date"],
+  .form-group input[type="number"],
+  .form-group select,
+  input[type="time"],
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  select {
+    padding: .7rem .85rem;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+  
+  select option {
+    background-color: var(--surface);
+    color: var(--text);
+    font-size: 16px;
+  }
+  
+  .btn {
+    padding: .65rem .85rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+  
+  .btn-sm {
+    padding: .45rem .65rem;
+    font-size: 0.85rem;
+  }
+  
+  .wizard-nav {
+    margin-top: 1rem;
+    gap: 0.5rem;
+  }
+  
+  .wizard-nav .btn-primary,
+  .wizard-nav .btn-secondary {
+    min-width: 110px;
+    flex: 1;
+  }
+  
+  .toggle-group {
+    gap: 0.4rem;
+  }
+  
+  .toggle-btn {
+    padding: .5rem .75rem;
+    font-size: 0.85rem;
+    flex: 1 1 calc(33.333% - 0.3rem);
+    min-width: fit-content;
+  }
+  
+  .modal { padding: 0.5rem; }
+  .modal-content {
+    padding: 1rem;
+    border-radius: 16px;
+  }
+  
+  #bottle-popup .popup-content {
+    padding: 1rem;
+    width: min(420px, 95%);
+  }
+}
+
+</style>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="profile.html" style="display: flex; align-items: center; justify-content: space-between;">
+      <span>Profile</span>
+      <span id="profile-verify-warning" class="verify-warning" style="display: none;" title="Verification needed">⚠️</span>
+    </a>
+  </nav>
+
+  <div class="content">
+    <a href="javascript:void(0)" class="close-btn" id="close-btn">×</a>
+    <div class="container">
+      <h1 id="form-title">Add Medication</h1>
+      <form id="med-form" novalidate>
+
+        <!-- STEP 1: Basic Medication Info -->
+        <div id="step-1" class="form-step active">
+          <div class="form-group">
+            <label>Name of Medication <span style="color: #ff0000; font-weight: bold;">*</span></label>
+            <input id="med-name" type="text" required>
+            <div id="name-error" class="error-message"></div>
+          </div>
+          <div class="form-group">
+            <label>Dosage (pills per dose) <span style="color: red;">*</span></label>
+            <input id="dosage" type="number" min="1" required>
+            <div id="dosage-error" class="error-message"></div>
+          </div>
+          <div class="form-group">
+            <label>Reminder Method <span style="color: red;">*</span></label>
+            <select id="reminder" required>
+              <option value="" disabled selected>Select a method</option>
+              <option>None</option>
+              <option>Email</option>
+              <option>SMS</option>
+              <option>Email + SMS</option>
+            </select>
+            <div id="reminder-error" class="error-message"></div>
+          </div>
+          <div class="wizard-nav">
+            <span></span>
+            <button type="button" id="to-step-2" class="btn-primary">Continue to Add Doses</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Add Dose Schedules -->
+        <div id="step-2" class="form-step">
+          <h2>Add Dose Schedules</h2>
+          <p class="muted">Create one or more schedules for when this medication should be taken.</p>
+          
+          <div id="schedules-list" style="margin-bottom: 1.5rem;"></div>
+          
+          <div style="margin-bottom: 1.5rem; padding: 1rem; background: color-mix(in oklab, var(--surface) 96%, transparent); border-radius: 12px; border: 1px solid var(--border);">
+            <h3 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 1.1rem;">Add New Schedule</h3>
+            <div class="form-group">
+              <label>Schedule Type <span style="color: red;">*</span></label>
+              <select id="schedule-type" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                <option value="">Select type...</option>
+                <option value="WEEKLY">Weekly (specific day + time)</option>
+                <option value="INTERVAL">Interval (every X hours/days/weeks)</option>
+              </select>
+            </div>
+            
+            <!-- WEEKLY Schedule Fields -->
+            <div id="weekly-fields" style="display: none;">
+              <div class="form-group">
+                <label>Day of Week <span style="color: red;">*</span></label>
+                <select id="schedule-weekday" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                  <option value="">Select day...</option>
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Time <span style="color: red;">*</span></label>
+                <input id="schedule-time" type="time" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+              <div class="form-group">
+                <label>Repeat Every (weeks)</label>
+                <input id="schedule-every-weeks" type="number" min="1" value="1" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                <small class="muted">Default: every week</small>
+              </div>
+              <div class="form-group">
+                <label>Start Date (optional)</label>
+                <input id="schedule-start-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+              <div class="form-group">
+                <label>End Date (optional)</label>
+                <input id="schedule-end-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+            </div>
+            
+            <!-- INTERVAL Schedule Fields -->
+            <div id="interval-fields" style="display: none;">
+              <div class="form-group">
+                <label>Interval <span style="color: red;">*</span></label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <input id="interval-value" type="number" min="1" value="1" placeholder="1" style="flex: 1; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                  <select id="interval-unit" style="flex: 1; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                    <option value="HOUR">Hour(s)</option>
+                    <option value="DAY">Day(s)</option>
+                    <option value="WEEK">Week(s)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Start Date & Time <span style="color: red;">*</span></label>
+                <input id="interval-anchor-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); margin-bottom: 0.5rem;">
+                <input id="interval-anchor-time" type="time" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                <small class="muted">First dose will be at this date/time, then repeat every interval</small>
+              </div>
+              <div class="form-group">
+                <label>End Date (optional)</label>
+                <input id="interval-end-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+            </div>
+            
+            <button type="button" id="add-schedule-btn" class="btn-primary" style="width: 100%; margin-top: 1rem;">Add Schedule</button>
+          </div>
+          
+          <div id="schedule-error" class="error-message" style="margin-bottom: 1rem;"></div>
+          
+          <div class="wizard-nav">
+            <button type="button" id="back-to-step-1" class="btn-secondary">Back</button>
+            <button type="button" id="to-step-3" class="btn-primary" disabled>Continue to Bottles</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: Bottles -->
+        <div id="step-3" class="form-step">
+          <h2>Add Bottles</h2>
+          <div id="bottles-list"></div>
+          <button type="button" id="add-bottle" class="btn-secondary btn-sm">+ Add Bottle</button>
+          <div class="wizard-nav">
+            <button type="button" id="back-to-step-2" class="btn-secondary">Back</button>
+            <button type="submit" class="btn-primary">Save Medication</button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Bottle Popup -->
+  <div id="bottle-popup">
+    <div class="popup-content">
+      <h3>Add Bottle</h3>
+      <label>Expiration Date <span style="color: red;">*</span></label>
+      <input id="bottle-exp" type="date">
+      <div id="bottle-exp-error" class="error-message"></div>
+      <label>Quantity Left</label>
+      <input id="bottle-qty" type="number" min="0">
+      <button id="bottle-save" class="btn-primary">Add Bottle</button>
+      <button id="bottle-cancel" class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Schedule and Dose Logs Utilities -->
+  <script src="schedule-utils.js"></script>
+  <script src="dose-logs-utils.js"></script>
+  
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, addDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    // Initialize Firebase only if not already initialized
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // Make auth, db, and Firebase functions globally available
+    window.auth = auth;
+    window.db = db;
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.deleteDoc = deleteDoc;
+    window.addDoc = addDoc;
+    
+    // Set up auth ready promise
+    window.authReady = new Promise((resolve) => {
+      onAuthStateChanged(auth, (user) => {
+        console.log('[Add-Medication] Auth state changed:', user ? user.email : 'No user');
+        window.currentUser = user;
+        resolve(user);
+      });
+    });
+  </script>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const editIdx = params.has('edit') ? params.get('edit') : null;
+    const renewIdx = params.has('renew') ? +params.get('renew') : null;
+
+    // Steps
+    const steps = ['step-1','step-2','step-3'].map(id=>document.getElementById(id));
+    function showStep(n){ steps.forEach((el,i)=>el.classList.toggle('active', i+1===n)); }
+
+    // Title for edit or renew
+    if (editIdx !== null) {
+      document.getElementById('form-title').textContent = 'Edit Medication';
+    } else if (renewIdx !== null) {
+      document.getElementById('form-title').textContent = 'Renew Medication';
+    }
+
+    // Schedule management
+    let schedules = []; // Array of schedule objects
+    
+    // Schedule type toggle
+    const scheduleTypeSelect = document.getElementById('schedule-type');
+    const weeklyFields = document.getElementById('weekly-fields');
+    const intervalFields = document.getElementById('interval-fields');
+    
+    scheduleTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      weeklyFields.style.display = type === 'WEEKLY' ? 'block' : 'none';
+      intervalFields.style.display = type === 'INTERVAL' ? 'block' : 'none';
+    });
+    
+    // Render schedules list
+    function renderSchedulesList() {
+      const schedulesList = document.getElementById('schedules-list');
+      schedulesList.innerHTML = '';
+      
+      if (schedules.length === 0) {
+        schedulesList.innerHTML = '<p class="muted" style="text-align: center; padding: 1rem;">No schedules added yet. Add your first schedule below.</p>';
+        document.getElementById('to-step-3').disabled = true;
+        return;
+      }
+      
+      document.getElementById('to-step-3').disabled = false;
+      
+      schedules.forEach((schedule, index) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.marginBottom = '1rem';
+        
+        let scheduleText = '';
+        if (schedule.type === 'WEEKLY') {
+          const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const dayName = weekdays[parseInt(schedule.weekday)];
+          const everyWeeks = schedule.everyWeeks || 1;
+          scheduleText = `Every ${everyWeeks === 1 ? '' : everyWeeks + ' '}week on ${dayName} at ${schedule.time}`;
+        } else if (schedule.type === 'INTERVAL') {
+          const unitText = schedule.interval.unit === 'HOUR' ? 'hour(s)' : 
+                           schedule.interval.unit === 'DAY' ? 'day(s)' : 'week(s)';
+          const anchorDate = new Date(schedule.anchorDateTime);
+          const dateStr = anchorDate.toLocaleDateString();
+          const timeStr = anchorDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          scheduleText = `Every ${schedule.interval.value} ${unitText} starting ${dateStr} at ${timeStr}`;
+        }
+        
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <strong>${scheduleText}</strong>
+              ${schedule.startDate ? `<br><small class="muted">Start: ${new Date(schedule.startDate).toLocaleDateString()}</small>` : ''}
+              ${schedule.endDate ? `<br><small class="muted">End: ${new Date(schedule.endDate).toLocaleDateString()}</small>` : ''}
+            </div>
+            <button type="button" class="btn-danger btn-sm" onclick="removeSchedule(${index})">Remove</button>
+          </div>
+        `;
+        schedulesList.appendChild(card);
+      });
+    }
+    
+    // Make removeSchedule available globally
+    window.removeSchedule = function(index) {
+      schedules.splice(index, 1);
+      renderSchedulesList();
+    };
+    
+    // Add schedule button
+    document.getElementById('add-schedule-btn').addEventListener('click', () => {
+      const type = scheduleTypeSelect.value;
+      if (!type) {
+        document.getElementById('schedule-error').textContent = 'Please select a schedule type';
+        return;
+      }
+      
+      document.getElementById('schedule-error').textContent = '';
+      
+      let schedule = {
+        scheduleId: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: type
+      };
+      
+      if (type === 'WEEKLY') {
+        const weekday = document.getElementById('schedule-weekday').value;
+        const time = document.getElementById('schedule-time').value;
+        const everyWeeks = parseInt(document.getElementById('schedule-every-weeks').value) || 1;
+        const startDate = document.getElementById('schedule-start-date').value;
+        const endDate = document.getElementById('schedule-end-date').value;
+        
+        if (!weekday || !time) {
+          document.getElementById('schedule-error').textContent = 'Please fill in weekday and time';
+          return;
+        }
+        
+        schedule.weekday = parseInt(weekday);
+        schedule.time = time;
+        schedule.everyWeeks = everyWeeks;
+        if (startDate) schedule.startDate = new Date(startDate).toISOString();
+        if (endDate) schedule.endDate = new Date(endDate).toISOString();
+      } else if (type === 'INTERVAL') {
+        const intervalValue = parseInt(document.getElementById('interval-value').value);
+        const intervalUnit = document.getElementById('interval-unit').value;
+        const anchorDate = document.getElementById('interval-anchor-date').value;
+        const anchorTime = document.getElementById('interval-anchor-time').value;
+        const endDate = document.getElementById('interval-end-date').value;
+        
+        if (!intervalValue || !intervalUnit || !anchorDate || !anchorTime) {
+          document.getElementById('schedule-error').textContent = 'Please fill in all required interval fields';
+          return;
+        }
+        
+        // Create anchorDateTime with just date and time (no seconds/milliseconds)
+        const anchorDateTime = new Date(`${anchorDate}T${anchorTime}:00`); // Add :00 for seconds
+        schedule.interval = { value: intervalValue, unit: intervalUnit };
+        // Format as YYYY-MM-DDTHH:MM:SS (without milliseconds)
+        const year = anchorDateTime.getFullYear();
+        const month = String(anchorDateTime.getMonth() + 1).padStart(2, '0');
+        const day = String(anchorDateTime.getDate()).padStart(2, '0');
+        const hours = String(anchorDateTime.getHours()).padStart(2, '0');
+        const minutes = String(anchorDateTime.getMinutes()).padStart(2, '0');
+        schedule.anchorDateTime = `${year}-${month}-${day}T${hours}:${minutes}:00`;
+        if (endDate) schedule.endDate = new Date(endDate).toISOString();
+      }
+      
+      schedules.push(schedule);
+      renderSchedulesList();
+      
+      // Reset form
+      scheduleTypeSelect.value = '';
+      weeklyFields.style.display = 'none';
+      intervalFields.style.display = 'none';
+      document.getElementById('schedule-weekday').value = '';
+      document.getElementById('schedule-time').value = '';
+      document.getElementById('schedule-every-weeks').value = '1';
+      document.getElementById('schedule-start-date').value = '';
+      document.getElementById('schedule-end-date').value = '';
+      document.getElementById('interval-value').value = '1';
+      document.getElementById('interval-unit').value = 'HOUR';
+      document.getElementById('interval-anchor-date').value = '';
+      document.getElementById('interval-anchor-time').value = '';
+      document.getElementById('interval-end-date').value = '';
+    });
+
+    // Error helpers
+    function clearErr(id){ const el = document.getElementById(id); if (el) el.textContent=''; }
+    function showErr(id,msg){ const el = document.getElementById(id); if (el) el.textContent=msg; }
+
+    // Validate Step 1 (Basic Info)
+    function valid1(){
+      clearErr('name-error');
+      clearErr('dosage-error');
+      clearErr('reminder-error');
+      let ok = true;
+      const nameEl = document.getElementById('med-name');
+      const doseEl = document.getElementById('dosage');
+      const reminderEl = document.getElementById('reminder');
+      
+      if (!nameEl.value.trim()) {
+        showErr('name-error','Enter medication name');
+        ok = false;
+      }
+      if (!doseEl.value || +doseEl.value < 1) {
+        showErr('dosage-error','Dosage must be ≥1');
+        ok = false;
+      }
+      if (!reminderEl.value) {
+        showErr('reminder-error','Select a reminder method');
+        ok = false;
+      }
+      return ok;
+    }
+
+    // Validate Step 2 (Schedules)
+    function valid2(){
+      clearErr('schedule-error');
+      if (schedules.length === 0) {
+        showErr('schedule-error','Please add at least one schedule');
+        return false;
+      }
+      return true;
+    }
+
+    // Validate Step 3 (Bottles - no validation needed, optional)
+    function valid3(){
+      return true; // Bottles are optional
+    }
+
+    // Wizard navigation
+    document.getElementById('to-step-2').onclick    = ()=> valid1() && showStep(2);
+    document.getElementById('back-to-step-1').onclick= ()=> showStep(1);
+    document.getElementById('to-step-3').onclick    = ()=> valid2() && showStep(3);
+    document.getElementById('back-to-step-2').onclick= ()=> showStep(2);
+
+    // Bottle popup
+    let popupResolve, bottles=[];
+    document.getElementById('add-bottle').onclick = async ()=>{
+      document.getElementById('bottle-exp').value='';
+      document.getElementById('bottle-qty').value='';
+      clearErr('bottle-exp-error');
+      document.getElementById('bottle-popup').style.display='flex';
+      await new Promise(r=>popupResolve=r);
+    };
+    document.getElementById('bottle-cancel').onclick = ()=>{
+      document.getElementById('bottle-popup').style.display='none';
+      popupResolve();
+    };
+    document.getElementById('bottle-save').onclick = ()=>{
+      const exp = document.getElementById('bottle-exp').value;
+      if (!exp) { showErr('bottle-exp-error','Required'); return; }
+      const qty = document.getElementById('bottle-qty').value||null;
+      bottles.push({expiration:exp,quantity:qty});
+      const li = document.getElementById('bottles-list');
+      const c  = document.createElement('div');
+      c.className='card';
+      c.innerHTML=`<p><strong>Expires:</strong> ${exp}${qty?`<br><strong>Qty:</strong> ${qty}`:''}</p>`;
+      li.appendChild(c);
+      document.getElementById('bottle-popup').style.display='none';
+      popupResolve();
+    };
+
+    // Close mobile menu when clicking on nav links
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+      
+      let med;
+      let sourceArray;
+      
+      if (editIdx !== null) {
+        console.log('[Add-Medication] Loading medication for edit, ID:', editIdx);
+        
+        // Wait for auth to be ready
+        await window.authReady;
+        
+        // Load medication directly from Firebase using the ID
+        const user = window.currentUser;
+        if (!user) {
+          console.error('[Add-Medication] No user logged in');
+          alert('Please log in to edit medications');
+          window.location.href = 'login.html';
+          return;
+        }
+        
+        console.log('[Add-Medication] User authenticated:', user.email);
+        
+        try {
+          const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
+          const medDocSnap = await getDoc(medDocRef);
+          
+          if (!medDocSnap.exists()) {
+            console.error('[Add-Medication] Medication not found with ID:', editIdx);
+            alert('Medication not found');
+            return;
+          }
+          
+          const medData = medDocSnap.data();
+          console.log('[Add-Medication] Loaded medication data:', medData);
+          
+          med = {
+            id: editIdx,
+            name: medData.name,
+            dosage: medData.dosage,
+            schedules: medData.schedules || [], // Load schedules array
+            reminder: medData.reminderMethod === 'E' ? 'Email' : 
+                     medData.reminderMethod === 'S' ? 'SMS' : 
+                     medData.reminderMethod === 'ES' ? 'Email + SMS' : 'None',
+            bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+              const parts = bottleStr.split('/');
+              if (parts.length >= 4) {
+                return {
+                  expiration: `${parts[0]}/${parts[1]}/${parts[2]}`,
+                  quantity: parts[3] === 'N/A' ? null : parseInt(parts[3])
+                };
+              }
+              return null;
+            }).filter(Boolean) : []
+          };
+          
+          console.log('[Add-Medication] Converted medication for form:', med);
+        } catch (error) {
+          console.error('[Add-Medication] Error loading medication:', error);
+          alert('Error loading medication: ' + error.message);
+          return;
+        }
+      } else if (renewIdx !== null) {
+        // Wait for auth to be ready for renew as well
+        await window.authReady;
+        
+        sourceArray = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
+        med = sourceArray[renewIdx];
+      } else {
+        return;
+      }
+      
+      if (!med) {
+        console.log('[Add-Medication] No medication data to populate form');
+        return;
+      }
+      
+      console.log('[Add-Medication] Populating form with medication:', med);
+      
+      // If this is a renew flow, reset the reminder select to the placeholder
+      if (renewIdx !== null) {
+        const sel = document.getElementById('reminder');
+        if (sel) { sel.selectedIndex = 0; sel.value = ''; }
+      }
+
+      // Populate form fields
+      document.getElementById('med-name').value = med.name || '';
+      document.getElementById('dosage').value = med.dosage || '';
+      
+      // Set reminder
+      const reminderSelect = document.getElementById('reminder');
+      if (reminderSelect && med.reminder) {
+        reminderSelect.value = med.reminder;
+      }
+      
+      // Load schedules
+      if (med.schedules && Array.isArray(med.schedules) && med.schedules.length > 0) {
+        schedules = med.schedules.map(s => ({ ...s })); // Clone schedules
+        renderSchedulesList();
+        console.log('[Add-Medication] Loaded schedules:', schedules);
+      } else {
+        schedules = [];
+        renderSchedulesList();
+      }
+      
+      // Convert date format from ISO to YYYY-MM-DD for HTML date inputs
+      const convertDateForInput = (dateStr) => {
+        if (!dateStr || dateStr === 'N/A' || dateStr === '') return '';
+        // If already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+          return dateStr;
+        }
+        // If in ISO format, extract date part
+        if (dateStr.includes('T')) {
+          return dateStr.split('T')[0];
+        }
+        // If in M/d/yyyy format, convert to YYYY-MM-DD
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+          const parts = dateStr.split('/');
+          const month = parts[0].padStart(2, '0');
+          const day = parts[1].padStart(2, '0');
+          const year = parts[2];
+          return `${year}-${month}-${day}`;
+        }
+        // Try parsing as Date object
+        try {
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
+        } catch (e) {
+          console.warn('[Add-Medication] Could not parse date:', dateStr);
+        }
+        return '';
+      };
+      // Set bottles
+      if (med.bottles && med.bottles.length > 0) {
+        console.log('[Add-Medication] Setting bottles:', med.bottles);
+      med.bottles.forEach(b=>{
+        bottles.push(b);
+        const li = document.getElementById('bottles-list');
+        const c  = document.createElement('div');
+        c.className='card';
+        c.innerHTML=`<p><strong>Expires:</strong> ${b.expiration}${b.quantity?`<br><strong>Qty:</strong> ${b.quantity}`:''}</p>`;
+        li.appendChild(c);
+      });
+      } else {
+        console.log('[Add-Medication] No bottles to set');
+      }
+      
+      console.log('[Add-Medication] Form population complete');
+    });
+
+    // Final save
+    document.getElementById('med-form').onsubmit = async (e)=>{
+      e.preventDefault();
+      
+      // No validation needed for step 3 (bottles are optional)
+      
+      // Gather form data
+      const name = document.getElementById('med-name').value.trim();
+      const dosage = +document.getElementById('dosage').value;
+      const reminder = document.getElementById('reminder').value;
+      
+      // Validate schedules
+      if (schedules.length === 0) {
+        alert('Please add at least one dose schedule');
+        return;
+      }
+      
+      // Add medId to each schedule
+      const medId = editIdx || `med_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      schedules.forEach(schedule => {
+        schedule.medId = medId;
+      });
+      const user = window.auth.currentUser;
+      if (!user) {
+        alert('Please log in to save medications');
+        return;
+      }
+      
+      // Format reminder method
+      let reminderMethod = 'N';
+      if (reminder === 'Email') reminderMethod = 'E';
+      else if (reminder === 'SMS') reminderMethod = 'S';
+      else if (reminder === 'Email + SMS') reminderMethod = 'ES';
+      
+      // Format bottles
+      const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleDateString();
+      };
+      
+      const formattedBottles = [];
+      if (bottles && bottles.length > 0) {
+        bottles.forEach((bottle) => {
+          const expDate = formatDate(bottle.expiration);
+          const quantity = bottle.quantity || 'N/A';
+          formattedBottles.push(`${expDate}/${quantity}`);
+        });
+      }
+      
+      if (editIdx !== null) {
+        // Edit existing medication - update directly in Firebase
+        const user = window.auth.currentUser;
+        if (!user) {
+          console.error('No user logged in');
+          return;
+        }
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
+        
+        // Get existing data to preserve notes, doses, createdAt
+        let existingData = {};
+        try {
+          const existingDoc = await getDoc(medDocRef);
+          if (existingDoc.exists()) {
+            existingData = existingDoc.data();
+          }
+        } catch (error) {
+          console.warn('[Add-Medication] Could not retrieve existing data:', error);
+        }
+
+        const medData = {
+          name: name,
+          dosage: dosage,
+          schedules: schedules, // NEW: Store schedules array
+          reminderMethod: reminderMethod,
+          stock: formattedBottles.length,
+          bottles: formattedBottles,
+          id: medId,
+          updatedAt: new Date().toISOString(),
+          notes: existingData.notes || {},
+          doses: existingData.doses || {} // Preserve existing doses
+        };
+        
+        // Preserve createdAt if it exists
+        if (existingData.createdAt) {
+          medData.createdAt = existingData.createdAt;
+        }
+        
+        // Preserve deletedStatus
+        if (existingData.deletedStatus !== undefined) {
+          medData.deletedStatus = existingData.deletedStatus;
+        }
+        
+        // Remove old fields if they exist
+        const updateData = { ...medData };
+        if (existingData.doseStatus !== undefined) {
+          updateData.doseStatus = deleteField();
+        }
+        if (existingData.doseHistory !== undefined) {
+          updateData.doseHistory = deleteField();
+        }
+        if (existingData.daysOfWeek !== undefined) {
+          updateData.daysOfWeek = deleteField();
+        }
+        if (existingData.timesPerDay !== undefined) {
+          updateData.timesPerDay = deleteField();
+        }
+        if (existingData.times !== undefined) {
+          updateData.times = deleteField();
+        }
+        
+        await setDoc(medDocRef, updateData);
+        console.log(`[Add-Medication] Updated medication: ${name} (ID: ${editIdx})`);
+        alert('Medication updated successfully!');
+        window.location.href = 'home.html';
+      } else if (renewIdx !== null) {
+        // Renew medication
+        const tempRenewMed = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
+        const renewMedId = tempRenewMed[renewIdx]?.id;
+        
+        if (!renewMedId) {
+          alert('Error: Could not find medication ID for renewal');
+          return;
+        }
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", renewMedId);
+        const existingDoc = await getDoc(medDocRef);
+        const existingData = existingDoc.exists() ? existingDoc.data() : {};
+        
+        const medData = {
+          name: name,
+          dosage: dosage,
+          schedules: schedules,
+          reminderMethod: reminderMethod,
+          stock: stock || formattedBottles.length,
+          bottles: formattedBottles,
+          id: renewMedId,
+          deletedStatus: false,
+          updatedAt: new Date().toISOString(),
+          notes: existingData.notes || {},
+          doses: existingData.doses || {}
+        };
+        
+        if (existingData.createdAt) medData.createdAt = existingData.createdAt;
+        
+        await setDoc(medDocRef, medData);
+        localStorage.removeItem('tempRenewMed');
+        alert('Medication renewed successfully!');
+        window.location.href = 'home.html';
+      } else {
+        // New medication
+        const medData = {
+          name: name,
+          dosage: dosage,
+          schedules: schedules,
+          reminderMethod: reminderMethod,
+          stock: stock || formattedBottles.length,
+          bottles: formattedBottles,
+          id: medId,
+          deletedStatus: false,
+          notes: {},
+          doses: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
+        await setDoc(medDocRef, medData);
+        console.log(`[Add-Medication] Created new medication: ${name} (ID: ${medId})`);
+        alert('Medication added successfully!');
+        window.location.href = 'home.html';
+      }
+    }
+
+    // Close button logic
+    document.getElementById('close-btn').addEventListener('click', () => {
+      if (renewIdx !== null) {
+        // If renewing, clean up temporary data and go back to history
+        localStorage.removeItem('tempRenewMed');
+        window.location.href = 'history.html';
+      } else {
+        // Otherwise go back to home
+        window.location.href = 'home.html';
+      }
+    });
+
+    
+    // constant
+    const weekdaysConst = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  </script>
+
+<style>
+  .verify-warning {
+    font-size: 1rem;
+    cursor: help;
+    filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.5));
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+</style>
+
+<script type="module">
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+  onAuthStateChanged(window.auth, async (user) => {
+    console.log('[Add-Medication] Auth state changed:', user ? `User: ${user.email}` : 'No user');
+    
+    const warningIcon = document.getElementById('profile-verify-warning');
+    if (!warningIcon) {
+      console.warn('[Add-Medication] Warning icon not found!');
+      return;
+    }
+
+    if (user) {
+      let needsVerification = false;
+      console.log('[Add-Medication] Email verified:', user.emailVerified);
+      if (!user.emailVerified) needsVerification = true;
+
+      // Check localStorage first (instant)
+      try {
+        const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        console.log('[Add-Medication] Local phone:', localProfile.phone, 'Local phone verified:', localProfile.phoneVerified);
+        if (localProfile.phone && !localProfile.phoneVerified) needsVerification = true;
+      } catch (error) {
+        console.log('[Add-Medication] Could not check localStorage:', error);
+      }
+
+      // Update warning immediately
+      console.log('[Add-Medication] Needs verification:', needsVerification);
+      warningIcon.style.display = needsVerification ? 'inline' : 'none';
+
+      // Check Firestore in background and update if needed
+      try {
+        const userDocRef = doc(window.db, "users", user.uid);
+        getDoc(userDocRef).then(docSnap => {
+          const profile = docSnap.data() || {};
+          console.log('[Add-Medication] Firestore phone:', profile.phone, 'Firestore phone verified:', profile.phoneVerified);
+          if (profile.phone && !profile.phoneVerified) {
+            warningIcon.style.display = 'inline';
+          }
+        });
+      } catch (error) {
+        console.log('[Add-Medication] Could not check Firestore:', error);
+      }
+    } else {
+      warningIcon.style.display = 'none';
+    }
+  });
+
+  // ============ FIRESTORE MEDICATION SYNC HELPERS ============
+  
+  // Helper function to save medications to Firestore (NEW STRUCTURE)
+  async function saveMedicationsToFirestore(medications) {
+    const user = window.auth.currentUser;
+    if (!user) {
+      console.warn('[Add-Medication] No user logged in, cannot save to Firestore');
+      return;
+    }
+
+    try {
+      console.log('[Add-Medication] Saving medications to Firestore (new structure):', medications.length, 'items');
+      
+      // Save each medication as a separate document
+      for (let i = 0; i < medications.length; i++) {
+        const med = medications[i];
+        const medId = med.id || `med_${Date.now()}_${i}`;
+        const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
+        
+        // Collect notes as a Map: {date: {dose: message}}
+        const notes = {};
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('note_')) {
+            const noteValue = localStorage.getItem(key);
+            if (noteValue && noteValue.trim()) {
+              const dateStr = key.replace('note_', '');
+              const noteDate = new Date(dateStr).toLocaleDateString();
+              const lines = noteValue.split('\n').filter(line => line.trim());
+              lines.forEach((line, index) => {
+                const dose = index + 1;
+                if (!notes[noteDate]) {
+                  notes[noteDate] = {};
+                }
+                notes[noteDate][dose] = line.trim();
+              });
+            }
+          }
+        });
+
+        // Format dates as mm/dd/yyyy
+        const formatDate = (dateStr) => {
+          if (!dateStr) return 'N/A';
+          return new Date(dateStr).toLocaleDateString();
+        };
+
+        // Format reminder method
+        let reminderMethod = 'N';
+        if (med.reminder === 'Email') reminderMethod = 'E';
+        else if (med.reminder === 'SMS') reminderMethod = 'S';
+        else if (med.reminder === 'Email + SMS') reminderMethod = 'ES';
+
+        // Format bottles as array
+        const stock = med.bottles ? med.bottles.length : 0;
+        const bottles = [];
+        if (med.bottles && med.bottles.length > 0) {
+          med.bottles.forEach((bottle) => {
+            const expDate = formatDate(bottle.expiration);
+            const quantity = bottle.quantity || 'N/A';
+            bottles.push(`${expDate}/${quantity}`);
+          });
+        }
+
+        // Get existing medication data to preserve doses and remove old fields
+        const existingMedDoc = await getDoc(medDocRef);
+        const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
+        
+        // Sort times chronologically before saving
+        const sortedTimes = (med.times || []).slice().sort((a, b) => {
+          const [aHour, aMin] = a.split(':').map(Number);
+          const [bHour, bMin] = b.split(':').map(Number);
+          if (aHour !== bHour) return aHour - bHour;
+          return aMin - bMin;
+        });
+        
+        const medData = {
+          name: med.name || '',
+          dosage: med.dosage || 0,
+          daysOfWeek: med.days || [],
+          timesPerDay: med.timesPerDay || 0,
+          times: sortedTimes,
+          startDate: formatDate(med.startDate),
+          endDate: formatDate(med.endDate),
+          reminderMethod: reminderMethod,
+          stock: stock,
+          bottles: bottles,
+          deletedStatus: med.deletedStatus || false,
+          notes: notes,
+          doses: existingData.doses || med.doses || {}, // Preserve existing doses field
+          id: medId,
+          updatedAt: new Date().toISOString()
+        };
+        
+        // Remove doseStatus and doseHistory if they exist
+        const updateData = { ...medData };
+        if (existingData.doseStatus !== undefined) {
+          updateData.doseStatus = deleteField();
+        }
+        if (existingData.doseHistory !== undefined) {
+          updateData.doseHistory = deleteField();
+        }
+        
+        // Log the EXACT hierarchy you specified
+        console.log('🔥 FIREBASE HIERARCHY:');
+        console.log('name:', medData.name);
+        console.log('dosage:', medData.dosage);
+        console.log('daysOfWeek:', medData.daysOfWeek);
+        console.log('timesPerDay:', medData.timesPerDay);
+        console.log('times:', medData.times);
+        console.log('startDate:', medData.startDate);
+        console.log('endDate:', medData.endDate);
+        console.log('reminderMethod:', medData.reminderMethod);
+        console.log('stock:', medData.stock);
+        console.log('bottles:', medData.bottles);
+        console.log('deletedStatus:', medData.deletedStatus);
+        console.log('notes:', updateData.notes);
+        console.log('doses:', updateData.doses);
+        
+        await setDoc(medDocRef, updateData);
+        console.log(`[Add-Medication] Saved medication: ${med.name} (ID: ${medId})`);
+      }
+      
+      console.log('[Add-Medication] ✅ All medications saved to Firestore successfully!');
+    } catch (error) {
+      console.error('[Add-Medication] Error saving medications:', error);
+      console.error('[Add-Medication] Error details:', error.message);
+    }
+  }
+
+  // Helper function to save history to Firestore
+  async function saveHistoryToFirestore(history) {
+    const user = window.auth.currentUser;
+    if (!user) {
+      console.warn('[Add-Medication] No user logged in, cannot save to Firestore');
+      return;
+    }
+
+    try {
+      const histDocRef = doc(window.db, "users", user.uid, "data", "history");
+      await setDoc(histDocRef, {
+        history: history,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.log('[Add-Medication] History saved to Firestore');
+    } catch (error) {
+      console.error('[Add-Medication] Error saving history:', error);
+    }
+  }
+  </script>
+</body>
+</html>

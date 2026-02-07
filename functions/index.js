@@ -9,13 +9,54 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const { DateTime } = require('luxon');
+const twilio = require('twilio');
+const cors = require('cors')({ origin: true });
 
 admin.initializeApp();
+
+// OpenAI (Realtime) configuration
+// For production, set: firebase functions:config:set openai.key="..." openai.realtime_model="..." openai.realtime_voice="..."
+// Or use environment variables: OPENAI_API_KEY, OPENAI_REALTIME_MODEL, OPENAI_REALTIME_VOICE
+const openaiApiKey = functions.config().openai?.key || process.env.OPENAI_API_KEY;
+const openaiRealtimeModel =
+  functions.config().openai?.realtime_model ||
+  process.env.OPENAI_REALTIME_MODEL ||
+  'gpt-4o-realtime-preview';
+const openaiRealtimeVoice =
+  functions.config().openai?.realtime_voice ||
+  process.env.OPENAI_REALTIME_VOICE ||
+  'alloy';
 
 // Configure your email service (Gmail example)
 // For production, use environment config: firebase functions:config:set gmail.email="your@gmail.com" gmail.password="your-app-password"
 const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
+
+// Base URL for the app (for email links)
+// For production, set: firebase functions:config:set app.baseurl="https://your-app.netlify.app"
+// Or use environment variable: APP_BASE_URL
+const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://melodious-selkie-5d4511.netlify.app';
+
+// Twilio configuration
+// IMPORTANT: never hardcode credentials in source control.
+// Set via:
+//   firebase functions:config:set twilio.accountsid="..." twilio.authtoken="..." twilio.phonenumber="..." twilio.verifyservice="..."
+// or environment variables:
+//   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_VERIFY_SERVICE_SID
+const twilioAccountSid = functions.config().twilio?.accountsid || process.env.TWILIO_ACCOUNT_SID;
+const twilioAuthToken = functions.config().twilio?.authtoken || process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = functions.config().twilio?.phonenumber || process.env.TWILIO_PHONE_NUMBER;
+const twilioVerifyServiceSid = functions.config().twilio?.verifyservice || process.env.TWILIO_VERIFY_SERVICE_SID;
+
+// Initialize Twilio client if credentials are available
+let twilioClient = null;
+if (twilioAccountSid && twilioAuthToken) {
+  twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+  console.log('✅ Twilio client initialized');
+} else {
+  console.error('⚠️ TWILIO CONFIGURATION MISSING:');
+  console.error('  SMS sending will fail. Please configure Twilio credentials.');
+}
 
 // Verify email configuration
 if (!gmailEmail || !gmailPassword) {
@@ -40,6 +81,134 @@ transporter.verify(function(error, success) {
   } else {
     console.log('✅ Email transporter verified successfully');
   }
+});
+
+/**
+ * Helper function to send SMS via Twilio
+ * @param {string} phoneNumber - Recipient phone number (E.164 format)
+ * @param {string} message - SMS message text
+ * @returns {Promise} - Twilio message result
+ */
+async function sendSMS(phoneNumber, message) {
+  if (!twilioClient) {
+    throw new Error('Twilio client not initialized');
+  }
+  
+  if (!twilioPhoneNumber) {
+    throw new Error('Twilio phone number not configured');
+  }
+  
+  try {
+    const result = await twilioClient.messages.create({
+      body: message,
+      from: twilioPhoneNumber,
+      to: phoneNumber
+    });
+    
+    console.log(`✅ SMS sent to ${phoneNumber}: ${result.sid}`);
+    return result;
+  } catch (error) {
+    console.error(`❌ Error sending SMS to ${phoneNumber}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Create an OpenAI Realtime session and return an ephemeral client secret.
+ * This keeps the OpenAI API key on the server and gives the browser a short-lived token.
+ *
+ * POST /createRealtimeSession
+ * Headers: Authorization: Bearer <Firebase ID token>  (recommended)
+ * Body (optional): { idToken?: string }
+ *
+ * Response: { client_secret: string, expires_at?: number, model: string, voice: string }
+ */
+exports.createRealtimeSession = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    // CORS/Preflight
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      if (!openaiApiKey) {
+        res.status(500).json({ error: 'OpenAI API key not configured on server' });
+        return;
+      }
+
+      // Require Firebase auth (prevents anonymous token minting)
+      const authHeader = req.get('authorization') || req.get('Authorization') || '';
+      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+      const bodyToken = req.body?.idToken || null;
+      const idToken = headerToken || bodyToken;
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+      await admin.auth().verifyIdToken(idToken);
+
+      // Create a short-lived Realtime session
+      // NOTE: Endpoint/response shape may evolve; client only needs the returned client_secret value.
+      const systemInstructions = [
+        'You are MedTracker Voice Assistant.',
+        'Have a natural conversation to help the user add a medication, then produce a structured medication draft.',
+        'Extract these fields: name (string), dosage (number), days (array of weekday names), timesPerDay (number), times (optional array of HH:MM 24h), startDate (YYYY-MM-DD), endDate (YYYY-MM-DD or null), reminder (one of: None, Email, SMS, Email + SMS).',
+        'Date rule: if the user says a month/day without a year, assume year 2026. If they provide a year, use it.',
+        'When all required fields are known, confirm once, then return the final structured object when asked.',
+      ].join('\n');
+
+      const sessionResp = await fetch('https://api.openai.com/v1/realtime/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: openaiRealtimeModel,
+          voice: openaiRealtimeVoice,
+          instructions: systemInstructions,
+        }),
+      });
+
+      const sessionJson = await sessionResp.json().catch(() => null);
+      if (!sessionResp.ok) {
+        console.error('❌ OpenAI Realtime session creation failed:', sessionResp.status, sessionJson);
+        res.status(502).json({ error: 'Failed to create Realtime session', details: sessionJson });
+        return;
+      }
+
+      const clientSecret =
+        sessionJson?.client_secret?.value ||
+        sessionJson?.client_secret ||
+        sessionJson?.client_secret_key ||
+        null;
+
+      if (!clientSecret) {
+        console.error('❌ OpenAI Realtime response missing client_secret:', sessionJson);
+        res.status(502).json({ error: 'Realtime session created but no client_secret returned' });
+        return;
+      }
+
+      res.status(200).json({
+        client_secret: clientSecret,
+        expires_at: sessionJson?.client_secret?.expires_at || sessionJson?.expires_at || null,
+        model: openaiRealtimeModel,
+        voice: openaiRealtimeVoice,
+      });
+    } catch (err) {
+      console.error('❌ createRealtimeSession error:', err);
+      res.status(500).json({ error: err.message || 'Internal error' });
+    }
+  });
 });
 
 /**
@@ -607,7 +776,7 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
               </div>
             ` : ''}
             <p style="margin-top:24px;">This agenda includes every dose scheduled for today. Tap "Taken" in MedTracker after each medication so we can keep your history up to date.</p>
-            <a href="http://localhost:8000/home.html" class="cta">Open MedTracker</a>
+            <a href="${APP_BASE_URL}/home.html" class="cta">Open MedTracker</a>
           </div>
           <div class="footer">
             This is an automated message from MedTracker.<br/>You can update reminder preferences anytime from your profile.
@@ -743,7 +912,7 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
               ${medSections}
             </div>
             <div class="cta-wrap">
-              <a class="cta" href="http://localhost:8000/home.html">Update in MedTracker</a>
+              <a class="cta" href="${APP_BASE_URL}/home.html">Update in MedTracker</a>
             </div>
           </div>
           <div class="footer">
@@ -801,7 +970,7 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
  * @param {DateTime} nowDateTime - Current date/time
  * @param {Firestore} db - Firestore database instance
  */
-async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, nowDateTime, db) {
+async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, nowDateTime, db, userPhoneNumber = null, phoneVerified = false) {
   const missedDoses = [];
   const updates = {}; // Track which medications need updates
   
@@ -821,8 +990,10 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
       doses: rawData.doses || {}
     };
     
-    // Skip if deleted or not email reminders (E, ES, or Email)
-    if (med.deletedStatus || (med.reminderMethod !== 'E' && med.reminderMethod !== 'ES' && med.reminderMethod !== 'Email')) {
+    // Skip if deleted or not email/SMS reminders (E, S, ES, or Email)
+    const isEmailReminder = med.reminderMethod === 'E' || med.reminderMethod === 'ES' || med.reminderMethod === 'Email';
+    const isSMSReminder = med.reminderMethod === 'S' || med.reminderMethod === 'ES';
+    if (med.deletedStatus || (!isEmailReminder && !isSMSReminder)) {
       continue;
     }
     
@@ -915,12 +1086,29 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
     }
   }
   
-  // Send email if there are missed doses
-  if (missedDoses.length > 0) {
+  // Send email if there are missed doses (filter by reminder method)
+  const emailMissedDoses = missedDoses.filter(({ med }) => {
+    const rm = med.reminderMethod || 'N';
+    return rm === 'E' || rm === 'ES' || rm === 'Email';
+  });
+  if (emailMissedDoses.length > 0) {
     try {
-      await sendMissedDoseEmail(userEmail, missedDoses);
+      await sendMissedDoseEmail(userEmail, emailMissedDoses);
     } catch (error) {
       console.error('[Missed Dose] Error sending email:', error);
+    }
+  }
+  
+  // Send SMS if there are missed doses and phone is verified (filter by reminder method)
+  const smsMissedDoses = missedDoses.filter(({ med }) => {
+    const rm = med.reminderMethod || 'N';
+    return rm === 'S' || rm === 'ES';
+  });
+  if (smsMissedDoses.length > 0 && userPhoneNumber && phoneVerified) {
+    try {
+      await sendMissedDoseSMS(userPhoneNumber, smsMissedDoses);
+    } catch (error) {
+      console.error('[Missed Dose] Error sending SMS:', error);
     }
   }
 }
@@ -1023,13 +1211,29 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 
   const medSections = meds.map((med, index) => {
     const scheduleEntry = findScheduleEntry(med.id);
+    const doseNumber = scheduleEntry
+      ? scheduleEntry.doseNumber
+      : (meds.length > 1 ? index + 1 : 1);
     const doseLabel = scheduleEntry
       ? `Dose ${scheduleEntry.doseNumber}`
       : (meds.length > 1 ? `Dose ${index + 1}` : 'Scheduled dose');
     const scheduledTime = scheduleEntry && scheduleEntry.time
       ? format12Hour(scheduleEntry.time)
       : time12;
+    const scheduledTimeRaw = scheduleEntry && scheduleEntry.time
+      ? scheduleEntry.time
+      : reminderTime;
     const isAlreadyTaken = med._isAlreadyTaken === true;
+    
+    // Build URL for email-action.html when isAtTime is true
+    const todayIso = nowDateTime.toISODate();
+    // Always show link for "take now" emails unless already taken
+    const emailActionUrl = isAtTime && !isAlreadyTaken
+      ? `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`
+      : null;
+    
+    // Debug logging for troubleshooting
+    console.log(`[Email Template] med: ${med.name}, offsetKey: ${offsetKey}, isAtTime: ${isAtTime}, isAlreadyTaken: ${isAlreadyTaken}, emailActionUrl exists: ${!!emailActionUrl}`);
 
     if (isAtTime) {
       const takenText = isAlreadyTaken ? ' (Already Taken)' : '';
@@ -1048,6 +1252,7 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
         ${!isAtTime ? `<div class="detail"><span class="label">Reminder sent:</span> ${nowDateTime.toFormat('h:mm a ZZZZ')}</div>` : ''}
         ${med.stock ? `<div class="detail"><span class="label">Bottles in stock:</span> ${med.stock}</div>` : ''}
         ${isAlreadyTaken ? '<div class="detail" style="margin-top: 12px; padding: 12px; background: #d1fae5; border-radius: 8px; color: #065f46;"><strong>✓ This medication was already marked as taken.</strong> No action needed.</div>' : ''}
+        ${isAtTime && !isAlreadyTaken ? `<div class="detail" style="margin-top: 12px;"><a href="${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}" style="display: inline-block; padding: 10px 20px; background: #3f6ff5; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">Take your dose</a></div>` : ''}
       </div>
     `;
   }).join('');
@@ -1150,7 +1355,7 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
             ${todaysScheduleHtml}
             ${bottleAlertsHtml}
             <div class="cta-wrap">
-              <a class="cta" href="http://localhost:8000/home.html">Open MedTracker</a>
+              <a class="cta" href="${APP_BASE_URL}/home.html">Open MedTracker</a>
             </div>
           </div>
           <div class="footer">
@@ -1249,6 +1454,177 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 }
 
 /**
+ * Sends combined reminder SMS for multiple medications at the same time
+ * @param {string} phoneNumber - User's phone number (E.164 format)
+ * @param {Array} meds - Array of medication objects
+ * @param {string} reminderTime - Time of reminder
+ * @param {string} offsetKey - Which reminder preference triggered this SMS
+ * @param {Array} alerts - Array of {med, alertType} objects for alerts
+ * @param {Array} bottleAlerts - Array of bottle alert objects
+ * @param {string} userTimezone - User's timezone
+ */
+async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKey = 'at_time', alerts = [], bottleAlerts = [], userTimezone = null) {
+  if (!twilioClient || !twilioPhoneNumber) {
+    throw new Error('Twilio not configured - cannot send SMS');
+  }
+
+  const time12 = format12Hour(reminderTime);
+  const option = getReminderOption(offsetKey);
+  const isAtTime = offsetKey === 'at_time';
+  const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
+  const nowDateTime = getNowInZone(displayTimezone);
+  const timezoneAbbr = nowDateTime.toFormat('ZZZZ');
+
+  const findScheduleEntry = (medId) => {
+    // This would need todaysSchedule if we want dose numbers - for now, just use index
+    return null;
+  };
+
+  let messageParts = [];
+
+  // Build medication reminders
+  if (meds.length > 0) {
+    if (isAtTime) {
+      // At-time reminders: "Click here to take your {med name} medication: {link}"
+      meds.forEach((med, index) => {
+        if (med._isAlreadyTaken) {
+          return; // Skip already taken medications
+        }
+        const scheduleEntry = findScheduleEntry(med.id);
+        const doseNumber = scheduleEntry ? scheduleEntry.doseNumber : (meds.length > 1 ? index + 1 : 1);
+        const scheduledTimeRaw = scheduleEntry && scheduleEntry.time ? scheduleEntry.time : reminderTime;
+        const todayIso = nowDateTime.toISODate();
+        const link = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`;
+        messageParts.push(`Click here to take your ${med.name} medication: ${link}`);
+      });
+    } else {
+      // Advance reminders: "Take your {med name} in {minutes} minutes"
+      const minutes = Math.abs(option.minutes);
+      meds.forEach((med) => {
+        if (med._isAlreadyTaken) {
+          return; // Skip already taken medications
+        }
+        messageParts.push(`Take your ${med.name} in ${minutes} minutes`);
+      });
+    }
+  }
+
+  // Add alerts
+  if (alerts.length > 0) {
+    alerts.forEach(({ med, alertType }) => {
+      const alertMsg = alertType === 'noBottles' 
+        ? `${med.name}: No bottles entered. Please add bottle information.`
+        : `${med.name}: Out of stock. Please refill soon.`;
+      messageParts.push(alertMsg);
+    });
+  }
+
+  // Add bottle alerts
+  if (bottleAlerts.length > 0) {
+    bottleAlerts.forEach(alert => {
+      messageParts.push(`${alert.medName}: ${alert.message}`);
+    });
+  }
+
+  // Combine into single message (SMS has 160 character limit per message, but can send multiple)
+  const fullMessage = messageParts.join('\n\n');
+  
+  try {
+    await sendSMS(phoneNumber, fullMessage);
+    console.log(`✅ Combined reminder SMS sent successfully to ${phoneNumber}`);
+    console.log(`  Medications: ${meds.length}, Alerts: ${alerts.length}, Bottle Alerts: ${bottleAlerts.length}`);
+  } catch (error) {
+    console.error('❌ Error sending combined SMS:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sends daily agenda SMS
+ * @param {string} phoneNumber - User's phone number
+ * @param {Array} scheduleEntries - Array of schedule entry objects
+ * @param {Array} bottleAlerts - Array of bottle alert objects
+ * @param {string} userTimezone - User's timezone
+ */
+async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [], userTimezone = null) {
+  if (!twilioClient || !twilioPhoneNumber) {
+    throw new Error('Twilio not configured - cannot send SMS');
+  }
+
+  const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
+  const nowDateTime = getNowInZone(displayTimezone);
+  const formattedDate = nowDateTime.toFormat('MMMM d, yyyy');
+
+  let messageParts = [`Today's Medication Agenda - ${formattedDate}`, ''];
+
+  // Add schedule
+  scheduleEntries.forEach(entry => {
+    const timeLabel = entry.time ? format12Hour(entry.time) : 'Any time';
+    const doseLabel = entry.totalDoses > 1 ? `Dose ${entry.doseNumber}` : 'Scheduled dose';
+    messageParts.push(`${timeLabel} - ${doseLabel}: ${entry.name}${entry.dosage ? ` (${entry.dosage})` : ''}`);
+  });
+
+  // Add bottle alerts
+  if (bottleAlerts.length > 0) {
+    messageParts.push('');
+    messageParts.push('Bottle Alerts:');
+    bottleAlerts.forEach(alert => {
+      messageParts.push(`${alert.medName}: ${alert.message}`);
+    });
+  }
+
+  messageParts.push('');
+  messageParts.push('Remember to mark each medication as taken in MedTracker.');
+
+  const fullMessage = messageParts.join('\n');
+
+  try {
+    await sendSMS(phoneNumber, fullMessage);
+    console.log(`✅ Daily agenda SMS sent to ${phoneNumber} with ${scheduleEntries.length} entries`);
+  } catch (error) {
+    console.error('❌ Error sending daily agenda SMS:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sends missed dose SMS
+ * @param {string} phoneNumber - User's phone number
+ * @param {Array} missedDoses - Array of {med, reminderTime, doseNumber, scheduledDateTime} objects
+ */
+async function sendMissedDoseSMS(phoneNumber, missedDoses) {
+  if (missedDoses.length === 0) return;
+  
+  if (!twilioClient || !twilioPhoneNumber) {
+    throw new Error('Twilio not configured - cannot send SMS');
+  }
+
+  const time12 = format12Hour(missedDoses[0].reminderTime);
+  
+  let messageParts = [`Missed Dose Alert - ${missedDoses.length} medication${missedDoses.length > 1 ? 's' : ''}`, ''];
+  
+  missedDoses.forEach(({ med, reminderTime, doseNumber, scheduledDateTime }) => {
+    const minutesLate = Math.floor((new Date() - scheduledDateTime.toJSDate()) / (1000 * 60));
+    messageParts.push(`${med.name} - Dose #${doseNumber}`);
+    messageParts.push(`Scheduled: ${format12Hour(reminderTime)}`);
+    messageParts.push(`Missed by: ${minutesLate} minutes`);
+    messageParts.push('');
+  });
+
+  messageParts.push('Please mark these doses in MedTracker.');
+
+  const fullMessage = messageParts.join('\n');
+
+  try {
+    await sendSMS(phoneNumber, fullMessage);
+    console.log(`✅ Missed dose SMS sent to ${phoneNumber} for ${missedDoses.length} doses`);
+  } catch (error) {
+    console.error('❌ Error sending missed dose SMS:', error);
+    throw error;
+  }
+}
+
+/**
  * Sends medication reminder email (DEPRECATED - use sendCombinedReminderEmail)
  * @param {string} userEmail - User's email address
  * @param {Object} med - Medication object
@@ -1295,7 +1671,7 @@ async function sendReminderEmail(userEmail, med, reminderTime, isAdvance = false
           ${isAdvance ? '<p>⏰ This is a 30-minute advance reminder. You\'ll receive another reminder at the scheduled time.</p>' : '<p>✅ Remember to mark this dose as taken in your MedTracker app!</p>'}
           
           <p style="text-align: center; margin-top: 30px;">
-            <a href="http://localhost:8000/home.html" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Open MedTracker</a>
+            <a href="${APP_BASE_URL}/home.html" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Open MedTracker</a>
           </p>
         </div>
         <div class="footer">
@@ -1402,8 +1778,12 @@ exports.sendMedicationReminders = functions.pubsub
         const todayIso = userNowDateTime.toISODate();
 
         // Group medications by actual send window (preference + time)
-        const sendGroups = {}; // key => { meds: [], reminderTime, offsetKey }
+        const sendGroups = {}; // key => { meds: [], reminderTime, offsetKey, emailMeds: [], smsMeds: [] }
         const alertMeds = []; // Medications with alerts (no bottles, out of stock, etc.)
+        
+        // Get user's phone number and verification status
+        const userPhoneNumber = userData.phone || null;
+        const phoneVerified = userData.phoneVerified === true;
         const todaysSchedule = [];
         const scheduleKeys = new Set();
         
@@ -1447,15 +1827,16 @@ exports.sendMedicationReminders = functions.pubsub
             continue;
           }
           
-          // Skip if reminder method is not Email
-          // Handle both 'E' and 'Email' formats
+          // Check reminder methods - E = Email, S = SMS, ES = Both, N = None
           const isEmailReminder = med.reminderMethod === 'E' || med.reminderMethod === 'ES' || med.reminderMethod === 'Email';
-          if (!isEmailReminder) {
-            console.log(`  -> SKIPPING: Reminder method is "${med.reminderMethod}", not Email`);
+          const isSMSReminder = med.reminderMethod === 'S' || med.reminderMethod === 'ES';
+          
+          if (!isEmailReminder && !isSMSReminder) {
+            console.log(`  -> SKIPPING: Reminder method is "${med.reminderMethod}", not Email or SMS`);
             continue;
           }
           
-          console.log(`  -> PASSED: Email reminders enabled`);
+          console.log(`  -> PASSED: Email=${isEmailReminder}, SMS=${isSMSReminder}`);
           
           // Check for alerts (no bottles or out of stock)
           if (!med.bottles || med.bottles.length === 0) {
@@ -1541,11 +1922,13 @@ exports.sendMedicationReminders = functions.pubsub
                 
                 const groupKey = `${preference}|09:00`;
                 if (!sendGroups[groupKey]) {
-                  sendGroups[groupKey] = { meds: [], reminderTime: '09:00', offsetKey: preference, reminderKeys: [] };
+                  sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], reminderTime: '09:00', offsetKey: preference, reminderKeys: [] };
                 }
                 sendGroups[groupKey].meds.push(med);
                 sendGroups[groupKey].reminderKeys.push(reminderKey);
-                console.log(`Queued ${med.name} for any time [offset=${preference}]`);
+                if (isEmailReminder) sendGroups[groupKey].emailMeds.push(med);
+                if (isSMSReminder) sendGroups[groupKey].smsMeds.push(med);
+                console.log(`Queued ${med.name} for any time [offset=${preference}] (Email: ${isEmailReminder}, SMS: ${isSMSReminder})`);
               }
             }
             continue;
@@ -1591,19 +1974,23 @@ exports.sendMedicationReminders = functions.pubsub
               
               const groupKey = `${preference}|${reminderTime}`;
               if (!sendGroups[groupKey]) {
-                sendGroups[groupKey] = { meds: [], reminderTime, offsetKey: preference, reminderKeys: [] };
+                sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], reminderTime, offsetKey: preference, reminderKeys: [] };
               }
               sendGroups[groupKey].meds.push(medWithTakenStatus);
               sendGroups[groupKey].reminderKeys.push(reminderKey);
-              console.log(`  -> Queued ${med.name} for ${reminderTime} [offset=${preference}] (current dose${isAlreadyTaken ? ', already taken' : ''})`);
+              if (isEmailReminder) sendGroups[groupKey].emailMeds.push(medWithTakenStatus);
+              if (isSMSReminder) sendGroups[groupKey].smsMeds.push(medWithTakenStatus);
+              console.log(`  -> Queued ${med.name} for ${reminderTime} [offset=${preference}] (Email: ${isEmailReminder}, SMS: ${isSMSReminder}${isAlreadyTaken ? ', already taken' : ''})`);
             }
           }
         }
         
-        // Send grouped emails (include alerts if offset is at_time at 09:00)
+        // Send grouped emails and SMS (include alerts if offset is at_time at 09:00)
         let sentAtTimeNineAM = false;
-        console.log(`\n=== EMAIL SENDING PHASE ===`);
+        console.log(`\n=== EMAIL & SMS SENDING PHASE ===`);
         console.log(`Total send groups: ${Object.keys(sendGroups).length}`);
+        console.log(`User phone: ${userPhoneNumber}, Verified: ${phoneVerified}`);
+        
         for (const [groupKey, group] of Object.entries(sendGroups)) {
           if (!group || group.meds.length === 0) {
             console.log(`Skipping empty group: ${groupKey}`);
@@ -1615,35 +2002,60 @@ exports.sendMedicationReminders = functions.pubsub
             sentAtTimeNineAM = true;
           }
           
-          try {
-            console.log(`\n>>> ATTEMPTING TO SEND EMAIL <<<`);
-            console.log(`  Group key: ${groupKey}`);
-            console.log(`  Medications: ${group.meds.length}`);
-            console.log(`  Reminder time: ${group.reminderTime}`);
-            console.log(`  Offset: ${group.offsetKey}`);
-            console.log(`  Alerts: ${includeAlerts.length}`);
-            console.log(`  User email: ${userEmail}`);
-            console.log(`  Reminder keys: ${JSON.stringify(group.reminderKeys)}`);
-            
-            // Get bottle alerts for this user
-            const bottleAlerts = await getBottleAlertsForUser(userId, userNowDateTime);
-            
-            await sendCombinedReminderEmail(userEmail, group.meds, group.reminderTime, group.offsetKey, includeAlerts, todaysSchedule, bottleAlerts, userTimezone);
-            
-            console.log(`✅ SUCCESS: Email sent to ${userEmail} for ${group.meds.length} medications at ${group.reminderTime} [offset=${group.offsetKey}]`);
-            
-            // Mark reminders as sent to prevent duplicates
-            if (group.reminderKeys) {
-              group.reminderKeys.forEach(key => {
-                lastSentReminders[key] = userNowDateTime.toISO();
-                console.log(`  Marked reminder as sent: ${key}`);
-              });
+          // Get bottle alerts for this user
+          const bottleAlerts = await getBottleAlertsForUser(userId, userNowDateTime);
+          
+          // Send EMAIL reminders
+          if (group.emailMeds && group.emailMeds.length > 0) {
+            try {
+              console.log(`\n>>> ATTEMPTING TO SEND EMAIL <<<`);
+              console.log(`  Group key: ${groupKey}`);
+              console.log(`  Email medications: ${group.emailMeds.length}`);
+              console.log(`  Reminder time: ${group.reminderTime}`);
+              console.log(`  Offset: ${group.offsetKey}`);
+              console.log(`  Alerts: ${includeAlerts.length}`);
+              console.log(`  User email: ${userEmail}`);
+              
+              await sendCombinedReminderEmail(userEmail, group.emailMeds, group.reminderTime, group.offsetKey, includeAlerts, todaysSchedule, bottleAlerts, userTimezone);
+              
+              console.log(`✅ SUCCESS: Email sent to ${userEmail} for ${group.emailMeds.length} medications at ${group.reminderTime} [offset=${group.offsetKey}]`);
+            } catch (error) {
+              console.error(`❌ FAILED to send reminder email to ${userEmail} for ${group.reminderTime} [offset=${group.offsetKey}]:`, error);
+              console.error(`  Error details:`, error.message);
+              // Continue with SMS even if email fails
             }
-          } catch (error) {
-            console.error(`❌ FAILED to send reminder email to ${userEmail} for ${group.reminderTime} [offset=${group.offsetKey}]:`, error);
-            console.error(`  Error details:`, error.message);
-            console.error(`  Stack trace:`, error.stack);
-            // Continue with other groups even if one fails
+          }
+          
+          // Send SMS reminders
+          if (group.smsMeds && group.smsMeds.length > 0) {
+            if (!userPhoneNumber || !phoneVerified) {
+              console.log(`  -> Skipping SMS: Phone number ${userPhoneNumber ? 'not verified' : 'not provided'}`);
+            } else {
+              try {
+                console.log(`\n>>> ATTEMPTING TO SEND SMS <<<`);
+                console.log(`  Group key: ${groupKey}`);
+                console.log(`  SMS medications: ${group.smsMeds.length}`);
+                console.log(`  Reminder time: ${group.reminderTime}`);
+                console.log(`  Offset: ${group.offsetKey}`);
+                console.log(`  User phone: ${userPhoneNumber}`);
+                
+                await sendCombinedReminderSMS(userPhoneNumber, group.smsMeds, group.reminderTime, group.offsetKey, includeAlerts, bottleAlerts, userTimezone);
+                
+                console.log(`✅ SUCCESS: SMS sent to ${userPhoneNumber} for ${group.smsMeds.length} medications at ${group.reminderTime} [offset=${group.offsetKey}]`);
+              } catch (error) {
+                console.error(`❌ FAILED to send reminder SMS to ${userPhoneNumber} for ${group.reminderTime} [offset=${group.offsetKey}]:`, error);
+                console.error(`  Error details:`, error.message);
+                // Continue with other groups even if SMS fails
+              }
+            }
+          }
+          
+          // Mark reminders as sent to prevent duplicates (only if at least one was sent successfully)
+          if (group.reminderKeys) {
+            group.reminderKeys.forEach(key => {
+              lastSentReminders[key] = userNowDateTime.toISO();
+              console.log(`  Marked reminder as sent: ${key}`);
+            });
           }
         }
         
@@ -1684,7 +2096,7 @@ exports.sendMedicationReminders = functions.pubsub
         
         // Check for missed doses (45+ minutes past scheduled time, not marked)
         try {
-          await checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, userNowDateTime, db);
+          await checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, userNowDateTime, db, userPhoneNumber, phoneVerified);
         } catch (error) {
           console.error(`Failed to check missed doses for ${userId}:`, error);
         }
@@ -1769,7 +2181,23 @@ exports.sendDailyAgenda = functions.pubsub
         }
 
         const bottleAlerts = await getBottleAlertsForUser(userDoc.id, userNow);
+        const userPhoneNumber = userData.phone || null;
+        const phoneVerified = userData.phoneVerified === true;
+        
+        // Send email agenda (always send if user has email)
         await sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts);
+        
+        // Send SMS agenda if phone is verified
+        if (userPhoneNumber && phoneVerified) {
+          try {
+            await sendDailyAgendaSMS(userPhoneNumber, scheduleEntries, bottleAlerts, userTimezone);
+            console.log(`Daily agenda SMS sent to ${userPhoneNumber} at 9:00 AM ${userTimezone}`);
+          } catch (error) {
+            console.error(`Failed to send daily agenda SMS for ${userPhoneNumber}`, error);
+            // Continue even if SMS fails
+          }
+        }
+        
         await userDoc.ref.set({ lastAgendaSentDate: todayIso }, { merge: true });
         console.log(`Daily agenda sent to ${userEmail} at 9:00 AM ${userTimezone}`);
       } catch (error) {
@@ -1828,7 +2256,12 @@ async function sendEmailVerificationCode(email, code) {
     .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
     .content { padding:32px 28px; line-height:1.7; font-size:18px; background:#f9f9f9; }
     .code-box { background:white; border:2px solid #3f6ff5; border-radius:16px; padding:32px; text-align:center; margin:24px 0; }
-    .code { font-size:48px; font-weight:700; letter-spacing:8px; color:#3f6ff5; font-family:monospace; }
+    /* Keep all 6 digits on one line, even on narrow mobile email clients */
+    .code { font-size:48px; font-weight:700; letter-spacing:8px; color:#3f6ff5; font-family:monospace; white-space:nowrap; }
+    @media (max-width: 420px) {
+      .code-box { padding:22px; }
+      .code { font-size:38px; letter-spacing:6px; }
+    }
     .instructions { color:#44506b; margin:20px 0; font-size:16px; }
     .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
     .warning { background:#fff8f0; padding:18px; border-radius:12px; margin:20px 0; border-left:4px solid #f59b45; color:#543210; font-size:15px; }
@@ -1898,6 +2331,1013 @@ Please do not reply to this email.
   await transporter.sendMail(mailOptions);
   console.log(`Verification email sent to ${email}`);
 }
+
+/**
+ * Helper function to send caregiver invitation email
+ * @param {string} patientEmail - Patient's email address
+ * @param {string} patientFirstName - Patient's first name
+ * @param {string} caregiverName - Caregiver's name
+ * @param {string} customMessage - Optional custom message from caregiver
+ * @param {string} invitationId - Unique invitation ID for the custom link
+ */
+async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, caregiverName, customMessage = null, invitationId) {
+  const styles = `
+    body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
+    .wrapper { width:100%; padding:24px 0; }
+    .container { width:90%; max-width:640px; margin:0 auto; background:white; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12); }
+    .header { background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:32px 28px; color:white; text-align:center; }
+    .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
+    .content { padding:32px 28px; line-height:1.7; font-size:18px; background:#f9f9f9; }
+    .message-box { background:white; border:2px solid #e5ecff; border-radius:16px; padding:24px; margin:24px 0; color:#1f2933; }
+    .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
+  `;
+
+  const messageBoxHtml = customMessage 
+    ? `<div class="message-box"><strong>Message from ${caregiverName}:</strong><br><br>"${customMessage.replace(/"/g, '&quot;')}"</div>` 
+    : '';
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>${styles}</style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h1>Invitation to monitor medications on MedTracker</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${patientFirstName},</p>
+            <p>${caregiverName} has invited you to share medication updates through MedTracker.</p>
+            <p>If you accept, ${caregiverName} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on the preferences you choose. Your medications cannot be changed by anyone else.</p>
+            ${messageBoxHtml}
+            <p>To review this request and decide whether to allow access, click the link below:</p>
+            <p style="text-align: center; margin: 24px 0;">
+              <a href="${APP_BASE_URL}/accept-caregiver.html?invitationId=${invitationId}" style="display: inline-block; padding: 14px 32px; background: #3f6ff5; color: white; text-decoration: none; border-radius: 14px; font-weight: 600;">👉 Review & Respond</a>
+            </p>
+            <p>You can decline or revoke access at any time. If you were not expecting this request, you may safely ignore this email.</p>
+          </div>
+          <div class="footer">
+            Best regards,<br/>
+            MedTracker<br/>
+            <br/>
+            Supporting safer, clearer medication management
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textBody = `
+Invitation to monitor medications on MedTracker
+
+Hello ${patientFirstName},
+
+${caregiverName} has invited you to share medication updates through MedTracker.
+
+If you accept, ${caregiverName} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on the preferences you choose. Your medications cannot be changed by anyone else.
+
+${customMessage ? `Message from ${caregiverName}:\n\n"${customMessage}"\n\n` : ''}To review this request and decide whether to allow access, click the link below:
+
+👉 Review & Respond: ${APP_BASE_URL}/accept-caregiver.html?invitationId=${invitationId}
+
+You can decline or revoke access at any time. If you were not expecting this request, you may safely ignore this email.
+
+Best regards,
+MedTracker
+
+Supporting safer, clearer medication management
+  `;
+
+  const mailOptions = {
+    from: `MedTracker <${gmailEmail}>`,
+    to: patientEmail,
+    subject: `Invitation to monitor medications on MedTracker`,
+    text: textBody,
+    html: htmlBody
+  };
+
+  await transporter.sendMail(mailOptions);
+  console.log(`Caregiver invitation email sent to ${patientEmail}`);
+}
+
+/**
+ * Cloud Function to send caregiver invitation email
+ * POST /sendCaregiverInvitation
+ * Body: { patientEmail: string, caregiverId: string, caregiverName: string, customMessage?: string }
+ */
+exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { patientEmail, caregiverId, caregiverName, customMessage } = req.body;
+
+    if (!patientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
+      res.status(400).json({ error: 'Valid patient email address is required' });
+      return;
+    }
+
+    if (!caregiverId || !caregiverId.trim()) {
+      res.status(400).json({ error: 'Caregiver ID is required' });
+      return;
+    }
+
+    if (!caregiverName || !caregiverName.trim()) {
+      res.status(400).json({ error: 'Caregiver name is required' });
+      return;
+    }
+
+    // Find patient by email in Firestore
+    const db = admin.firestore();
+    const usersSnapshot = await db.collection('users')
+      .where('email', '==', patientEmail.toLowerCase())
+      .limit(1)
+      .get();
+
+    if (usersSnapshot.empty) {
+      res.status(404).json({ error: 'User does not exist' });
+      return;
+    }
+
+    const patientDoc = usersSnapshot.docs[0];
+    const patientData = patientDoc.data();
+    const patientName = patientData.name || 'User';
+    const patientFirstName = patientName.split(' ')[0]; // Get first name
+
+    // Generate unique invitation ID
+    const invitationId = db.collection('invitations').doc().id;
+
+    // Store invitation in Firestore
+    await db.collection('invitations').doc(invitationId).set({
+      caregiverId: caregiverId,
+      caregiverName: caregiverName,
+      patientEmail: patientEmail.toLowerCase(),
+      patientName: patientName,
+      customMessage: customMessage || null,
+      status: 'pending',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Send email with invitation link
+    await sendCaregiverInvitationEmail(patientEmail, patientFirstName, caregiverName, customMessage || null, invitationId);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Invitation email sent successfully'
+    });
+
+  } catch (error) {
+    console.error('Error sending caregiver invitation email:', error);
+    res.status(500).json({ error: 'Failed to send invitation email: ' + error.message });
+  }
+});
+
+/**
+ * Helper function to send caregiver acceptance confirmation email
+ * @param {string} caregiverEmail - Caregiver's email address
+ * @param {string} caregiverName - Caregiver's name
+ * @param {string} patientName - Patient's name
+ */
+async function sendCaregiverAcceptanceEmail(caregiverEmail, caregiverName, patientName) {
+  const styles = `
+    body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
+    .wrapper { width:100%; padding:24px 0; }
+    .container { width:90%; max-width:640px; margin:0 auto; background:white; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12); }
+    .header { background:linear-gradient(135deg,#22c55e,#16a34a); padding:32px 28px; color:white; text-align:center; }
+    .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
+    .content { padding:32px 28px; line-height:1.7; font-size:18px; background:#f9f9f9; }
+    .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
+  `;
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>${styles}</style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h1>Patient Accepted Your Invitation</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${caregiverName},</p>
+            <p><strong>${patientName}</strong> has accepted your invitation and is now registered as a patient under your name!</p>
+            <p>You can now receive medication-related updates for ${patientName} based on their preferences. You can manage your notification settings in your caregiver profile.</p>
+            <p>Thank you for using MedTracker to help manage medications safely and effectively.</p>
+          </div>
+          <div class="footer">
+            Best regards,<br/>
+            MedTracker<br/>
+            <br/>
+            Supporting safer, clearer medication management
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textBody = `
+Patient Accepted Your Invitation - MedTracker
+
+Hello ${caregiverName},
+
+${patientName} has accepted your invitation and is now registered as a patient under your name!
+
+You can now receive medication-related updates for ${patientName} based on their preferences. You can manage your notification settings in your caregiver profile.
+
+Thank you for using MedTracker to help manage medications safely and effectively.
+
+Best regards,
+MedTracker
+
+Supporting safer, clearer medication management
+  `;
+
+  const mailOptions = {
+    from: `MedTracker <${gmailEmail}>`,
+    to: caregiverEmail,
+    subject: `${patientName} accepted your caregiver invitation`,
+    text: textBody,
+    html: htmlBody
+  };
+
+  await transporter.sendMail(mailOptions);
+  console.log(`Caregiver acceptance email sent to ${caregiverEmail}`);
+}
+
+/**
+ * Cloud Function to accept caregiver invitation and send confirmation email
+ * POST /acceptCaregiverInvitation
+ * Body: { invitationId: string, caregiverId: string, patientId: string, patientEmail: string, patientName: string }
+ */
+exports.acceptCaregiverInvitation = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { invitationId, caregiverId, patientId, patientEmail, patientName, idToken: bodyIdToken } = req.body;
+
+    if (!invitationId || !caregiverId || !patientId || !patientEmail) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    const db = admin.firestore();
+    const patientEmailLower = patientEmail.toLowerCase();
+
+    // --- AUTH CHECK (require patient to be signed in) ---
+    const authHeader = req.headers.authorization || '';
+    // Support both:
+    //  - Authorization: Bearer <token> (preferred)
+    //  - { idToken: "<token>" } in body (fallback for older clients / cached builds)
+    const idToken =
+      (authHeader.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : '') ||
+      (typeof bodyIdToken === 'string' ? bodyIdToken : '');
+
+    if (!idToken) {
+      res.status(401).json({ error: 'Missing auth token' });
+      return;
+    }
+    const decoded = await admin.auth().verifyIdToken(idToken);
+
+    if (!decoded?.uid || decoded.uid !== patientId) {
+      res.status(403).json({ error: 'Invalid user for this request' });
+      return;
+    }
+    if (!decoded.email || decoded.email.toLowerCase() !== patientEmailLower) {
+      res.status(403).json({ error: 'Email mismatch for this request' });
+      return;
+    }
+
+    // --- INVITATION VALIDATION ---
+    const invitationRef = db.collection('invitations').doc(invitationId);
+    const invitationSnap = await invitationRef.get();
+    if (!invitationSnap.exists) {
+      res.status(404).json({ error: 'Invitation not found' });
+      return;
+    }
+    const invitationData = invitationSnap.data() || {};
+    if ((invitationData.patientEmail || '').toLowerCase() !== patientEmailLower) {
+      res.status(403).json({ error: 'This invitation is not for your email' });
+      return;
+    }
+    if ((invitationData.caregiverId || '') !== caregiverId) {
+      res.status(400).json({ error: 'Caregiver mismatch for invitation' });
+      return;
+    }
+    if (invitationData.status && invitationData.status !== 'pending') {
+      res.status(409).json({ error: `Invitation already ${invitationData.status}` });
+      return;
+    }
+
+    // 1) Add patient email + patientId to caregiver doc (server-side)
+    const caregiverDocRef = db.collection('users').doc(caregiverId);
+    await caregiverDocRef.set({
+      patients: admin.firestore.FieldValue.arrayUnion(patientEmailLower),
+      patientIds: admin.firestore.FieldValue.arrayUnion(patientId)
+    }, { merge: true });
+
+    // 2) Link patient -> caregiver (so caregiver can read patient data via rules)
+    const patientDocRef = db.collection('users').doc(patientId);
+    await patientDocRef.set({
+      caregivers: admin.firestore.FieldValue.arrayUnion(caregiverId)
+    }, { merge: true });
+
+    // 3) Update invitation status
+    await invitationRef.set({
+      status: 'accepted',
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+      patientId: patientId
+    }, { merge: true });
+
+    // 4) Email caregiver (best-effort)
+    const caregiverSnap = await caregiverDocRef.get();
+    const caregiverData = caregiverSnap.exists ? (caregiverSnap.data() || {}) : {};
+    const caregiverEmail = caregiverData.email;
+    const caregiverNameFinal = caregiverData.name || 'Caregiver';
+
+    if (caregiverEmail) {
+      await sendCaregiverAcceptanceEmail(caregiverEmail, caregiverNameFinal, patientName || invitationData.patientName || 'A patient');
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Invitation accepted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error accepting caregiver invitation:', error);
+    res.status(500).json({ error: 'Failed to accept invitation: ' + error.message });
+  }
+});
+
+/**
+ * Cloud Function to sync caregiver<->patient links from caregiver's stored patient emails.
+ * This is a repair path for older data where caregiver.users/{caregiverId}.patients existed
+ * but patient.users/{patientId}.caregivers was not yet set (rules would block caregiver reads).
+ *
+ * POST /syncCaregiverPatients
+ * Headers: Authorization: Bearer <Firebase ID token for caregiver>
+ * Body: {}
+ *
+ * Returns: { patientIds: string[], linked: number, skipped: number }
+ */
+exports.syncCaregiverPatients = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const authHeader = req.headers.authorization || '';
+    const bodyIdToken = req.body?.idToken;
+    const idToken =
+      (authHeader.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : '') ||
+      (typeof bodyIdToken === 'string' ? bodyIdToken : '');
+
+    if (!idToken) {
+      res.status(401).json({ error: 'Missing auth token' });
+      return;
+    }
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    if (!decoded?.uid) {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+
+    const db = admin.firestore();
+    const caregiverId = decoded.uid;
+
+    const caregiverRef = db.collection('users').doc(caregiverId);
+    const caregiverSnap = await caregiverRef.get();
+    if (!caregiverSnap.exists) {
+      res.status(404).json({ error: 'Caregiver profile not found' });
+      return;
+    }
+    const caregiverData = caregiverSnap.data() || {};
+    const patientEmails = Array.isArray(caregiverData.patients)
+      ? caregiverData.patients.map(e => String(e || '').trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    if (patientEmails.length === 0) {
+      res.status(200).json({ patientIds: [], linked: 0, skipped: 0 });
+      return;
+    }
+
+    const patientIds = [];
+    let linked = 0;
+    let skipped = 0;
+
+    for (const email of patientEmails) {
+      const qs = await db.collection('users').where('email', '==', email).limit(1).get();
+      if (qs.empty) {
+        skipped += 1;
+        continue;
+      }
+
+      const patientDoc = qs.docs[0];
+      const patientId = patientDoc.id;
+      patientIds.push(patientId);
+
+      // Link patient -> caregiver for rules-based read access
+      await db.collection('users').doc(patientId).set({
+        caregivers: admin.firestore.FieldValue.arrayUnion(caregiverId)
+      }, { merge: true });
+
+      linked += 1;
+    }
+
+    // Also store the fast path ids on caregiver doc
+    if (patientIds.length > 0) {
+      await caregiverRef.set({
+        patientIds: admin.firestore.FieldValue.arrayUnion(...patientIds)
+      }, { merge: true });
+    }
+
+    res.status(200).json({ patientIds, linked, skipped });
+  } catch (error) {
+    console.error('Error syncing caregiver patients:', error);
+    res.status(500).json({ error: 'Failed to sync patients: ' + error.message });
+  }
+});
+
+/**
+ * =========================
+ * Caregiver Email Reports (4 total)
+ * =========================
+ * These are the ONLY caregiver-email jobs we support:
+ * 1) patient_expiration_dates  -> daily digest of patient bottle expirations (next 7 days)
+ * 2) patient_weekly_reports    -> weekly digest (last 7 days adherence)
+ * 3) patient_monthly_reports   -> monthly digest (last 30 days adherence)
+ * 4) adherence_below_80        -> daily alert if any patient 7-day adherence < 80%
+ *
+ * IMPORTANT: This section is intentionally isolated to avoid impacting existing patient reminders.
+ */
+
+const CAREGIVER_EMAIL_KEYS = {
+  PATIENT_EXPIRATION_DATES: 'patient_expiration_dates',
+  PATIENT_WEEKLY_REPORTS: 'patient_weekly_reports',
+  PATIENT_MONTHLY_REPORTS: 'patient_monthly_reports',
+  ADHERENCE_BELOW_80: 'adherence_below_80'
+};
+
+async function resolveCaregiverPatientIds(db, caregiverData) {
+  const directIds = Array.isArray(caregiverData.patientIds)
+    ? caregiverData.patientIds.map(String).filter(Boolean)
+    : [];
+  if (directIds.length > 0) return directIds;
+
+  const emails = Array.isArray(caregiverData.patients)
+    ? caregiverData.patients.map(e => String(e || '').trim().toLowerCase()).filter(Boolean)
+    : [];
+  if (emails.length === 0) return [];
+
+  const ids = [];
+  // Small N expected; keep it simple (admin privileges bypass rules).
+  for (const email of emails) {
+    const qs = await db.collection('users').where('email', '==', email).limit(1).get();
+    if (!qs.empty) ids.push(qs.docs[0].id);
+  }
+  return ids;
+}
+
+async function loadPatientProfile(db, patientId) {
+  const snap = await db.collection('users').doc(patientId).get();
+  if (!snap.exists) return null;
+  const data = snap.data() || {};
+  return {
+    id: patientId,
+    name: data.name || data.firstName || 'Patient',
+    email: (data.email || '').toLowerCase(),
+    timezone: data.timezone || DEFAULT_TIME_ZONE
+  };
+}
+
+async function loadPatientMedications(db, patientId) {
+  const snapshot = await db.collection('users').doc(patientId).collection('medications').get();
+  return snapshot.docs.map(doc => {
+    const raw = doc.data() || {};
+    return {
+      id: doc.id,
+      name: raw.name || 'Medication',
+      dosage: raw.dosage || '',
+      daysOfWeek: raw.daysOfWeek || raw.days || [],
+      times: Array.isArray(raw.times) ? raw.times.filter(Boolean) : [],
+      timesPerDay: raw.timesPerDay || 0,
+      startDate: raw.startDate || null,
+      endDate: raw.endDate || null,
+      deletedStatus: raw.deletedStatus === true,
+      bottles: Array.isArray(raw.bottles) ? raw.bottles : [],
+      stock: raw.stock || (Array.isArray(raw.bottles) ? raw.bottles.length : 0),
+      doses: raw.doses || {}
+    };
+  });
+}
+
+function computeAdherenceForRange(meds, nowDateTime, days) {
+  const start = nowDateTime.minus({ days: Math.max(0, days - 1) }).startOf('day');
+  let total = 0;
+  let taken = 0;
+  let missed = 0;
+
+  for (const med of meds) {
+    for (let i = 0; i < days; i += 1) {
+      const day = start.plus({ days: i });
+      const dayIso = day.toISODate();
+
+      if (!shouldSendReminderToday(med, day)) continue;
+
+      const times = getReminderTimes(med);
+      const dosesPerDay = Array.isArray(times) && times.length > 0 ? times.length : 1;
+
+      for (let doseNumber = 1; doseNumber <= dosesPerDay; doseNumber += 1) {
+        total += 1;
+        const key = `${dayIso}_${doseNumber}`;
+        const entry = med.doses ? med.doses[key] : null;
+
+        if (entry && entry.taken === true) {
+          taken += 1;
+        } else {
+          // Treat missing entries as missed (otherwise adherence is meaningless)
+          missed += 1;
+        }
+      }
+    }
+  }
+
+  const pct = total > 0 ? Math.round((taken / total) * 100) : null;
+  return { taken, missed, total, pct };
+}
+
+async function sendCaregiverEmail(to, subject, htmlBody, textBody) {
+  const mailOptions = {
+    from: `MedTracker <${gmailEmail}>`,
+    to,
+    subject,
+    text: textBody,
+    html: htmlBody
+  };
+  await transporter.sendMail(mailOptions);
+}
+
+async function markCaregiverEmailSent(db, caregiverId, key) {
+  const ref = db.collection('users').doc(caregiverId);
+  const updateObj = { [`caregiverEmailState.${key}`]: admin.firestore.FieldValue.serverTimestamp() };
+  try {
+    await ref.update(updateObj);
+  } catch (e) {
+    // If the doc somehow doesn't exist yet, create it.
+    await ref.set(updateObj, { merge: true });
+  }
+}
+
+function caregiverAlreadySent(caregiverData, key) {
+  return Boolean(caregiverData?.caregiverEmailState && caregiverData.caregiverEmailState[key]);
+}
+
+exports.sendCaregiverExpirationDatesEmails = functions.pubsub
+  .schedule('0 9 * * *') // daily 09:00 UTC
+  .timeZone('UTC')
+  .onRun(async () => {
+    const db = admin.firestore();
+    const todayKey = `expiration_${DateTime.utc().toISODate()}`;
+
+    const caregiversSnap = await db.collection('users')
+      .where('type', '==', 'C')
+      .where('email_reminders', 'array-contains', CAREGIVER_EMAIL_KEYS.PATIENT_EXPIRATION_DATES)
+      .get();
+
+    for (const caregiverDoc of caregiversSnap.docs) {
+      const caregiverId = caregiverDoc.id;
+      const caregiverData = caregiverDoc.data() || {};
+
+      if (caregiverAlreadySent(caregiverData, todayKey)) continue;
+      const caregiverEmail = caregiverData.email;
+      if (!caregiverEmail) continue;
+
+      const patientIds = await resolveCaregiverPatientIds(db, caregiverData);
+      if (patientIds.length === 0) continue;
+
+      const linesText = [];
+      const sectionsHtml = [];
+
+      for (const patientId of patientIds) {
+        const patient = await loadPatientProfile(db, patientId);
+        if (!patient) continue;
+
+        const patientNow = getNowInZone(patient.timezone);
+        const bottleAlerts = await getBottleAlertsForUser(patientId, patientNow);
+        if (!bottleAlerts || bottleAlerts.length === 0) continue;
+
+        linesText.push(`${patient.name} (${patient.email || patientId})`);
+        bottleAlerts.forEach(a => linesText.push(`- ${a.message}`));
+        linesText.push('');
+
+        const alertsHtml = bottleAlerts.map(a => `<li style="margin:6px 0;">${a.message}</li>`).join('');
+        sectionsHtml.push(`
+          <div style="padding:16px 16px; border:1px solid #d7e3ff; border-radius:16px; background:#ffffff; margin:14px 0;">
+            <div style="font-size:18px; font-weight:800; color:#1f3c88;">${patient.name}</div>
+            <div style="color:#64748b; margin-top:4px; font-size:14px;">${patient.email || ''}</div>
+            <ul style="margin:12px 0 0; padding-left:18px; color:#0f172a; font-size:15px; line-height:1.5;">
+              ${alertsHtml}
+            </ul>
+          </div>
+        `);
+      }
+
+      if (sectionsHtml.length === 0) {
+        // Nothing to send today
+        continue;
+      }
+
+      const subject = 'MedTracker: Patient expiration alerts';
+      const htmlBody = `
+        <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
+          <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
+            <div style="background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:26px 22px; color:#fff; text-align:center;">
+              <div style="font-size:22px; font-weight:900;">Patient expiration alerts</div>
+              <div style="margin-top:8px; opacity:.92; font-weight:600;">Bottles expiring within the next ${EXPIRATION_ALERT_DAYS} days</div>
+            </div>
+            <div style="padding:22px;">
+              ${sectionsHtml.join('')}
+              <div style="margin-top:18px; color:#64748b; font-size:13px;">
+                You can change these emails in your caregiver profile.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const textBody = [
+        'Patient expiration alerts',
+        `Bottles expiring within the next ${EXPIRATION_ALERT_DAYS} days`,
+        '',
+        ...linesText
+      ].join('\n');
+
+      await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
+      await markCaregiverEmailSent(db, caregiverId, todayKey);
+      console.log(`[Caregiver Emails] Sent expiration digest to ${caregiverEmail} (${caregiverId})`);
+    }
+
+    return null;
+  });
+
+exports.sendCaregiverAdherenceBelow80Alerts = functions.pubsub
+  .schedule('30 9 * * *') // daily 09:30 UTC
+  .timeZone('UTC')
+  .onRun(async () => {
+    const db = admin.firestore();
+    const todayKey = `adherenceBelow80_${DateTime.utc().toISODate()}`;
+
+    const caregiversSnap = await db.collection('users')
+      .where('type', '==', 'C')
+      .where('email_reminders', 'array-contains', CAREGIVER_EMAIL_KEYS.ADHERENCE_BELOW_80)
+      .get();
+
+    for (const caregiverDoc of caregiversSnap.docs) {
+      const caregiverId = caregiverDoc.id;
+      const caregiverData = caregiverDoc.data() || {};
+
+      if (caregiverAlreadySent(caregiverData, todayKey)) continue;
+      const caregiverEmail = caregiverData.email;
+      if (!caregiverEmail) continue;
+
+      const patientIds = await resolveCaregiverPatientIds(db, caregiverData);
+      if (patientIds.length === 0) continue;
+
+      const linesText = [];
+      const rowsHtml = [];
+
+      for (const patientId of patientIds) {
+        const patient = await loadPatientProfile(db, patientId);
+        if (!patient) continue;
+
+        const patientNow = getNowInZone(patient.timezone);
+        const meds = await loadPatientMedications(db, patientId);
+        const { pct, total, missed } = computeAdherenceForRange(meds, patientNow, 7);
+
+        if (pct === null || total === 0) continue;
+        if (pct >= 80) continue;
+
+        linesText.push(`${patient.name} (${patient.email || patientId}) - 7d adherence: ${pct}% (missed ${missed}/${total})`);
+        rowsHtml.push(`
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${patient.name}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${pct}%</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${missed}/${total}</td>
+          </tr>
+        `);
+      }
+
+      if (rowsHtml.length === 0) continue;
+
+      const subject = 'MedTracker: Adherence below 80%';
+      const htmlBody = `
+        <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
+          <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
+            <div style="background:linear-gradient(135deg,#ff6b6b,#ef4444); padding:26px 22px; color:#fff; text-align:center;">
+              <div style="font-size:22px; font-weight:900;">Adherence below 80%</div>
+              <div style="margin-top:8px; opacity:.92; font-weight:600;">Last 7 days</div>
+            </div>
+            <div style="padding:22px;">
+              <table style="width:100%; border-collapse:collapse; font-size:15px;">
+                <thead>
+                  <tr>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Patient</th>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Adherence</th>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Missed</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml.join('')}</tbody>
+              </table>
+              <div style="margin-top:18px; color:#64748b; font-size:13px;">
+                You can change these emails in your caregiver profile.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const textBody = ['Adherence below 80% (last 7 days)', '', ...linesText].join('\n');
+
+      await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
+      await markCaregiverEmailSent(db, caregiverId, todayKey);
+      console.log(`[Caregiver Emails] Sent adherence<80 alert to ${caregiverEmail} (${caregiverId})`);
+    }
+
+    return null;
+  });
+
+exports.sendCaregiverWeeklyReports = functions.pubsub
+  .schedule('0 9 * * 1') // Mondays 09:00 UTC
+  .timeZone('UTC')
+  .onRun(async () => {
+    const db = admin.firestore();
+    const weekKey = `weekly_${DateTime.utc().weekYear}-W${String(DateTime.utc().weekNumber).padStart(2, '0')}`;
+
+    const caregiversSnap = await db.collection('users')
+      .where('type', '==', 'C')
+      .where('email_reminders', 'array-contains', CAREGIVER_EMAIL_KEYS.PATIENT_WEEKLY_REPORTS)
+      .get();
+
+    for (const caregiverDoc of caregiversSnap.docs) {
+      const caregiverId = caregiverDoc.id;
+      const caregiverData = caregiverDoc.data() || {};
+
+      if (caregiverAlreadySent(caregiverData, weekKey)) continue;
+      const caregiverEmail = caregiverData.email;
+      if (!caregiverEmail) continue;
+
+      const patientIds = await resolveCaregiverPatientIds(db, caregiverData);
+      if (patientIds.length === 0) continue;
+
+      const rowsHtml = [];
+      const linesText = [];
+
+      for (const patientId of patientIds) {
+        const patient = await loadPatientProfile(db, patientId);
+        if (!patient) continue;
+
+        const patientNow = getNowInZone(patient.timezone);
+        const meds = await loadPatientMedications(db, patientId);
+        const { pct, total, missed } = computeAdherenceForRange(meds, patientNow, 7);
+
+        if (pct === null || total === 0) continue;
+
+        linesText.push(`${patient.name} - 7d adherence: ${pct}% (missed ${missed}/${total})`);
+        rowsHtml.push(`
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${patient.name}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${pct}%</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${missed}/${total}</td>
+          </tr>
+        `);
+      }
+
+      if (rowsHtml.length === 0) continue;
+
+      const subject = 'MedTracker: Weekly patient report';
+      const htmlBody = `
+        <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
+          <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
+            <div style="background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:26px 22px; color:#fff; text-align:center;">
+              <div style="font-size:22px; font-weight:900;">Weekly patient report</div>
+              <div style="margin-top:8px; opacity:.92; font-weight:600;">Last 7 days</div>
+            </div>
+            <div style="padding:22px;">
+              <table style="width:100%; border-collapse:collapse; font-size:15px;">
+                <thead>
+                  <tr>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Patient</th>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Adherence</th>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Missed</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml.join('')}</tbody>
+              </table>
+              <div style="margin-top:18px; color:#64748b; font-size:13px;">
+                You can change these emails in your caregiver profile.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const textBody = ['Weekly patient report (last 7 days)', '', ...linesText].join('\n');
+
+      await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
+      await markCaregiverEmailSent(db, caregiverId, weekKey);
+      console.log(`[Caregiver Emails] Sent weekly report to ${caregiverEmail} (${caregiverId})`);
+    }
+
+    return null;
+  });
+
+exports.sendCaregiverMonthlyReports = functions.pubsub
+  .schedule('0 9 1 * *') // 1st of month 09:00 UTC
+  .timeZone('UTC')
+  .onRun(async () => {
+    const db = admin.firestore();
+    const monthKey = `monthly_${DateTime.utc().toFormat('yyyy-MM')}`;
+
+    const caregiversSnap = await db.collection('users')
+      .where('type', '==', 'C')
+      .where('email_reminders', 'array-contains', CAREGIVER_EMAIL_KEYS.PATIENT_MONTHLY_REPORTS)
+      .get();
+
+    for (const caregiverDoc of caregiversSnap.docs) {
+      const caregiverId = caregiverDoc.id;
+      const caregiverData = caregiverDoc.data() || {};
+
+      if (caregiverAlreadySent(caregiverData, monthKey)) continue;
+      const caregiverEmail = caregiverData.email;
+      if (!caregiverEmail) continue;
+
+      const patientIds = await resolveCaregiverPatientIds(db, caregiverData);
+      if (patientIds.length === 0) continue;
+
+      const rowsHtml = [];
+      const linesText = [];
+
+      for (const patientId of patientIds) {
+        const patient = await loadPatientProfile(db, patientId);
+        if (!patient) continue;
+
+        const patientNow = getNowInZone(patient.timezone);
+        const meds = await loadPatientMedications(db, patientId);
+        const { pct, total, missed } = computeAdherenceForRange(meds, patientNow, 30);
+
+        if (pct === null || total === 0) continue;
+
+        linesText.push(`${patient.name} - 30d adherence: ${pct}% (missed ${missed}/${total})`);
+        rowsHtml.push(`
+          <tr>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${patient.name}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${pct}%</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${missed}/${total}</td>
+          </tr>
+        `);
+      }
+
+      if (rowsHtml.length === 0) continue;
+
+      const subject = 'MedTracker: Monthly patient report';
+      const htmlBody = `
+        <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
+          <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
+            <div style="background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:26px 22px; color:#fff; text-align:center;">
+              <div style="font-size:22px; font-weight:900;">Monthly patient report</div>
+              <div style="margin-top:8px; opacity:.92; font-weight:600;">Last 30 days</div>
+            </div>
+            <div style="padding:22px;">
+              <table style="width:100%; border-collapse:collapse; font-size:15px;">
+                <thead>
+                  <tr>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Patient</th>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Adherence</th>
+                    <th align="left" style="padding:10px 12px; border-bottom:1px solid #d7e3ff; color:#64748b; font-size:13px; text-transform:uppercase; letter-spacing:.06em;">Missed</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml.join('')}</tbody>
+              </table>
+              <div style="margin-top:18px; color:#64748b; font-size:13px;">
+                You can change these emails in your caregiver profile.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      const textBody = ['Monthly patient report (last 30 days)', '', ...linesText].join('\n');
+
+      await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
+      await markCaregiverEmailSent(db, caregiverId, monthKey);
+      console.log(`[Caregiver Emails] Sent monthly report to ${caregiverEmail} (${caregiverId})`);
+    }
+
+    return null;
+  });
+
+/**
+ * Cloud Function to send caregiver acceptance confirmation email
+ * POST /sendCaregiverAcceptanceEmail
+ * Body: { caregiverId: string, caregiverEmail?: string, patientName: string, patientEmail: string }
+ */
+exports.sendCaregiverAcceptanceEmail = functions.https.onRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { caregiverId, caregiverEmail, patientName, patientEmail } = req.body;
+
+    if (!caregiverId || !patientName) {
+      res.status(400).json({ error: 'Caregiver ID and patient name are required' });
+      return;
+    }
+
+    const db = admin.firestore();
+
+    // Get caregiver's email and name from Firestore if not provided
+    let finalCaregiverEmail = caregiverEmail;
+    let caregiverName = 'Caregiver';
+
+    const caregiverDocRef = db.collection('users').doc(caregiverId);
+    const caregiverDoc = await caregiverDocRef.get();
+
+    if (caregiverDoc.exists) {
+      const caregiverData = caregiverDoc.data();
+      finalCaregiverEmail = finalCaregiverEmail || caregiverData.email;
+      caregiverName = caregiverData.name || 'Caregiver';
+    }
+
+    if (!finalCaregiverEmail) {
+      res.status(404).json({ error: 'Caregiver email not found' });
+      return;
+    }
+
+    // Send email
+    await sendCaregiverAcceptanceEmail(finalCaregiverEmail, caregiverName, patientName);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Acceptance email sent successfully'
+    });
+
+  } catch (error) {
+    console.error('Error sending caregiver acceptance email:', error);
+    res.status(500).json({ error: 'Failed to send acceptance email: ' + error.message });
+  }
+});
 
 /**
  * Cloud Function to send email verification code
@@ -2020,5 +3460,182 @@ exports.verifyEmailCode = functions.https.onRequest(async (req, res) => {
     console.error('Error verifying email code:', error);
     res.status(500).json({ error: 'Failed to verify code: ' + error.message });
   }
+});
+
+/**
+ * Send phone verification code via Twilio SMS
+ */
+exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
+  console.log('🚀 FUNCTION CALLED - sendPhoneVerificationCode');
+  console.log('  Method:', req.method);
+  console.log('  Origin:', req.headers.origin);
+  console.log('  Headers:', JSON.stringify(req.headers));
+  
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    console.log('  ✅ Handling OPTIONS preflight request');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
+    console.log('  ✅ CORS headers set for OPTIONS');
+    res.status(204).send('');
+    console.log('  ✅ OPTIONS response sent');
+    return;
+  }
+
+  console.log('  📝 Processing', req.method, 'request');
+  return cors(req, res, async () => {
+    // Set CORS headers for actual request
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    console.log('  ✅ CORS headers set for', req.method);
+    
+    if (req.method !== 'POST') {
+      console.log('  ❌ Method not allowed:', req.method);
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const { phoneNumber } = req.body;
+      console.log('📱 sendPhoneVerificationCode called (Twilio Verify API)');
+      console.log('  Phone number:', phoneNumber);
+      console.log('  Twilio client initialized:', !!twilioClient);
+      console.log('  Twilio Account SID:', twilioAccountSid ? twilioAccountSid.substring(0, 10) + '...' : 'NOT SET');
+
+      if (!phoneNumber) {
+        res.status(400).json({ error: 'Phone number is required' });
+        return;
+      }
+
+      if (!twilioClient) {
+        console.error('❌ Twilio client not initialized!');
+        res.status(500).json({ error: 'Twilio not configured' });
+        return;
+      }
+
+      if (!twilioVerifyServiceSid) {
+        console.error('❌ Twilio Verify Service SID not configured!');
+        res.status(500).json({ error: 'Twilio Verify Service not configured' });
+        return;
+      }
+
+      console.log('  Using Twilio Verify API to send SMS verification...');
+      const verification = await twilioClient.verify.v2.services(twilioVerifyServiceSid)
+                                        .verifications
+                                        .create({ to: phoneNumber, channel: 'sms' });
+
+      console.log('✅ Twilio Verify SMS sent successfully!', verification.sid);
+      res.status(200).json({ message: 'Verification code sent via SMS' });
+      setTimeout(() => {
+        if (global.phoneVerificationCodes) {
+          global.phoneVerificationCodes.delete(phoneNumber);
+          console.log('  🗑️ Cleaned up expired code for', phoneNumber);
+        }
+      }, 10 * 60 * 1000);
+
+      res.status(200).json({ 
+        success: true, 
+        message: 'Verification code sent via SMS',
+        code: code, // For testing only
+        twilioSid: smsResult.sid,
+        status: smsResult.status
+      });
+
+    } catch (error) {
+      console.error('❌ Error sending phone verification code:', error);
+      console.error('  Error type:', error.constructor.name);
+      console.error('  Error message:', error.message);
+      console.error('  Error code:', error.code);
+      console.error('  Error status:', error.status);
+      console.error('  Error statusCode:', error.statusCode);
+      console.error('  Error moreInfo:', error.moreInfo);
+      console.error('  Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      console.error('  Error stack:', error.stack);
+      res.status(500).json({ error: 'Failed to send verification code: ' + error.message });
+    }
+  });
+});
+
+/**
+ * Verify phone verification code and mark phone as verified in user profile
+ */
+exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.status(204).send('');
+    return;
+  }
+
+  return cors(req, res, async () => {
+    // Set CORS headers for actual request
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const { phoneNumber, code, userId } = req.body;
+
+      if (!phoneNumber || !code) {
+        res.status(400).json({ error: 'Phone number and code are required' });
+        return;
+      }
+
+      console.log('🔐 verifyPhoneCode called (Twilio Verify API)');
+      console.log('  Phone number:', phoneNumber);
+      console.log('  Code:', code);
+      console.log('  User ID:', userId || 'not provided');
+
+      if (!twilioClient) {
+        console.error('❌ Twilio client not initialized!');
+        res.status(500).json({ error: 'Twilio not configured' });
+        return;
+      }
+
+      if (!twilioVerifyServiceSid) {
+        console.error('❌ Twilio Verify Service SID not configured!');
+        res.status(500).json({ error: 'Twilio Verify Service not configured' });
+        return;
+      }
+      
+      console.log('  Using Twilio Verify API to check verification...');
+      const verificationCheck = await twilioClient.verify.v2.services(twilioVerifyServiceSid)
+                                                .verificationChecks
+                                                .create({ to: phoneNumber, code: code });
+
+      if (verificationCheck.status === 'approved') {
+        console.log('✅ Twilio Verify SMS code approved!');
+        
+        // If userId is provided, update Firestore to mark phone as verified
+        if (userId) {
+          const userDocRef = doc(db, "users", userId);
+          await setDoc(userDocRef, { phoneVerified: true, phoneNumber: phoneNumber }, { merge: true });
+          console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
+        }
+
+        res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
+      } else {
+        console.log('❌ Twilio Verify SMS code failed or pending.', verificationCheck.status);
+        res.status(400).json({ error: 'Invalid verification code', status: verificationCheck.status });
+      }
+    } catch (error) {
+      console.error('❌ Error verifying phone code:', error);
+      console.error('  Error type:', error.constructor.name);
+      console.error('  Error message:', error.message);
+      console.error('  Error code:', error.code);
+      console.error('  Error status:', error.status);
+      console.error('  Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      console.error('  Error stack:', error.stack);
+      res.status(500).json({ error: 'Failed to verify code: ' + error.message });
+    }
+  });
 });
 

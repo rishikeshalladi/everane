@@ -1,0 +1,126 @@
+/* styles.css */
+
+:root {
+  --primary-color:   #005f73;
+  --secondary-color: #0a9396;
+  --accent-color:    #94d2bd;
+  --danger-color:    #e63946;
+  --success-color:   #52b788;
+  --bg-light:        #f0f5f9;
+  --text-color:      #1d1d1f;
+  --input-border:    #ccc;
+  --shadow:          rgba(0, 0, 0, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg-light);
+  color: var(--text-color);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.btn-primary {
+  background: var(--secondary-color);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+}
+.btn-primary:hover {
+  background: #0a7f82;
+}
+
+.btn-secondary {
+  background: var(--accent-color);
+  color: var(--text-color);
+  padding: 0.5rem 1.25rem;
+}
+.btn-secondary:hover {
+  background: #82cdb9;
+}
+
+.btn-success {
+  background: var(--success-color);
+  color: #fff;
+}
+.btn-danger {
+  background: var(--danger-color);
+  color: #fff;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-top: 1rem;
+}
+small {
+  font-weight: normal;
+  color: #666;
+  margin-left: 0.25rem;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  border: 2px solid var(--input-border);
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+  gap: 1.5rem 2rem;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+

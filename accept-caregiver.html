@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Accept Caregiver Invitation – MedTracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800;
+      margin: 0 0 1rem;
+      color: var(--text);
+    }
+
+    p {
+      color: var(--muted);
+      margin: 1rem 0;
+      font-size: 1.1rem;
+    }
+
+    .message {
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 1rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: var(--shadow);
+      margin-top: 1rem;
+      transition: transform 0.05s ease, box-shadow 0.2s ease;
+    }
+
+    .btn:hover {
+      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .error {
+      color: var(--danger);
+      background: color-mix(in oklab, var(--danger) 15%, transparent);
+      border: 1px solid var(--danger);
+      border-radius: 14px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+
+    .loading {
+      color: var(--muted);
+      margin: 2rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="content">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc, collection, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const contentDiv = document.getElementById('content');
+
+    // Get invitation ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const invitationId = urlParams.get('invitationId');
+
+    if (!invitationId) {
+      contentDiv.innerHTML = `
+        <h1>Invalid Invitation</h1>
+        <p class="error">No invitation ID provided. Please use the link from your email.</p>
+      `;
+    } else {
+      // Check authentication and load invitation
+      onAuthStateChanged(auth, async (user) => {
+        console.log('[Accept Caregiver] Auth state changed, user:', user ? user.email : 'null');
+      
+      try {
+        if (!user) {
+          console.log('[Accept Caregiver] No user, showing login prompt');
+          contentDiv.innerHTML = `
+            <h1>Please Log In</h1>
+            <p>You need to be logged in to accept this caregiver invitation.</p>
+            <a href="login.html" class="btn">Log In</a>
+          `;
+          return;
+        }
+
+        // Verify user has an email
+        if (!user.email) {
+          console.log('[Accept Caregiver] User has no email');
+          contentDiv.innerHTML = `
+            <h1>Error</h1>
+            <p class="error">Your account does not have an email address. Please contact support.</p>
+          `;
+          return;
+        }
+
+        console.log('[Accept Caregiver] User email:', user.email);
+        console.log('[Accept Caregiver] Loading invitation:', invitationId);
+
+        // Get invitation from Firestore first (before checking user profile)
+        const invitationRef = doc(db, 'invitations', invitationId);
+        const invitationDoc = await getDoc(invitationRef);
+
+        if (!invitationDoc.exists()) {
+          console.log('[Accept Caregiver] Invitation not found');
+          contentDiv.innerHTML = `
+            <h1>Invalid Invitation</h1>
+            <p class="error">This invitation link is invalid or has expired.</p>
+          `;
+          return;
+        }
+
+        const invitationData = invitationDoc.data();
+        console.log('[Accept Caregiver] Invitation data:', invitationData);
+
+        // Verify invitation data is valid
+        if (!invitationData || !invitationData.patientEmail || !invitationData.caregiverId || !invitationData.caregiverName) {
+          console.log('[Accept Caregiver] Invalid invitation data');
+          contentDiv.innerHTML = `
+            <h1>Invalid Invitation</h1>
+            <p class="error">This invitation is missing required information. Please contact support.</p>
+          `;
+          return;
+        }
+
+        // Get user's profile from Firestore
+        console.log('[Accept Caregiver] Loading user profile:', user.uid);
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (!userDoc.exists()) {
+          console.log('[Accept Caregiver] User profile not found');
+          contentDiv.innerHTML = `
+            <h1>Error</h1>
+            <p class="error">User profile not found. Please contact support.</p>
+          `;
+          return;
+        }
+
+        const userData = userDoc.data();
+        console.log('[Accept Caregiver] User data:', userData);
+        
+        const firestoreEmail = (userData.email || '').toLowerCase().trim();
+        const authEmail = user.email.toLowerCase().trim();
+        const invitationPatientEmail = invitationData.patientEmail.toLowerCase().trim();
+
+        console.log('[Accept Caregiver] Email comparison:');
+        console.log('  Auth email:', authEmail);
+        console.log('  Firestore email:', firestoreEmail);
+        console.log('  Invitation patient email:', invitationPatientEmail);
+
+        // Verify that the logged-in user's email matches the patient email
+        const emailMatches = authEmail === invitationPatientEmail || firestoreEmail === invitationPatientEmail;
+
+        if (!emailMatches) {
+          console.log('[Accept Caregiver] Email mismatch - wrong account');
+          contentDiv.innerHTML = `
+            <h1>Wrong Account</h1>
+            <p class="error">You are logged in with the wrong account.</p>
+            <p>You are currently logged in as: <strong>${user.email}</strong></p>
+            <p>This invitation is for: <strong>${invitationData.patientEmail}</strong></p>
+            <p style="margin-top: 1.5rem;">Please log out and log in with the correct account.</p>
+            <a href="login.html" class="btn" style="margin-top: 1rem;">Log In with Correct Account</a>
+          `;
+          return;
+        }
+
+        // Verify user is a patient (not a caregiver)
+        if (userData.type === 'C') {
+          console.log('[Accept Caregiver] User is a caregiver, not a patient');
+          contentDiv.innerHTML = `
+            <h1>Wrong Account</h1>
+            <p class="error">Only patients can accept caregiver invitations. You are logged in as a caregiver.</p>
+            <a href="login.html" class="btn">Log In with Patient Account</a>
+          `;
+          return;
+        }
+
+        // Check if invitation is already accepted/declined
+        if (invitationData.status !== 'pending') {
+          console.log('[Accept Caregiver] Invitation already processed:', invitationData.status);
+          const statusText = invitationData.status === 'accepted' ? 'already accepted' : invitationData.status === 'declined' ? 'already declined' : invitationData.status;
+          contentDiv.innerHTML = `
+            <h1>Invitation ${invitationData.status === 'accepted' ? 'Already Accepted' : invitationData.status === 'declined' ? 'Already Declined' : 'Processed'}</h1>
+            <p>This invitation has already been ${statusText}.</p>
+            <p style="font-size: 0.9rem; color: var(--muted);">If you need to change your response, please contact the caregiver directly.</p>
+          `;
+          return;
+        }
+
+        console.log('[Accept Caregiver] All checks passed, showing invitation');
+        
+        // Show invitation details and accept button
+        const messageHtml = invitationData.customMessage 
+          ? `<div class="message"><strong>Message from ${invitationData.caregiverName}:</strong><br><br>"${invitationData.customMessage.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</div>`
+          : '';
+
+        contentDiv.innerHTML = `
+          <h1>Caregiver Invitation</h1>
+          <p><strong>${invitationData.caregiverName.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</strong> has invited you to share medication updates through MedTracker.</p>
+          <p>If you accept, ${invitationData.caregiverName.replace(/</g, '&lt;').replace(/>/g, '&gt;')} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on your preferences. Your medications cannot be changed by anyone else.</p>
+          ${messageHtml}
+          <button id="accept-btn" class="btn">Accept Caregiver</button>
+        `;
+
+        // Add click handler for accept button
+        const acceptBtn = document.getElementById('accept-btn');
+        if (acceptBtn) {
+          acceptBtn.addEventListener('click', async () => {
+            try {
+              acceptBtn.disabled = true;
+              acceptBtn.textContent = 'Processing...';
+              
+              console.log('[Accept Caregiver] Accept button clicked');
+              
+              // First, verify user is logged in as the patient (double-check)
+              if (!user || !user.email) {
+                throw new Error('You must be logged in to accept this invitation');
+              }
+              
+              const loggedInEmail = user.email.toLowerCase();
+              const invitationPatientEmail = invitationData.patientEmail.toLowerCase();
+              
+              if (loggedInEmail !== invitationPatientEmail) {
+                throw new Error('You must be logged in with the patient account (' + invitationData.patientEmail + ') to accept this invitation');
+              }
+              
+              console.log('[Accept Caregiver] Verified user is logged in as patient:', loggedInEmail);
+              
+              // Call Cloud Function to handle everything server-side (has admin privileges)
+              // We still attach the Firebase Auth ID token so the function can verify the caller is the patient.
+              const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/acceptCaregiverInvitation';
+              // NOTE: Some browsers / in-app webviews can drop Authorization headers on redirects.
+              // Send token in BOTH header + body to make this robust.
+              const idToken = await user.getIdToken(true);
+              const response = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({
+                  invitationId: invitationId,
+                  caregiverId: invitationData.caregiverId,
+                  patientId: user.uid,
+                  patientEmail: userData.email || user.email,
+                  patientName: userData.name || invitationData.patientName,
+                  idToken: idToken
+                })
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to accept invitation');
+              }
+              
+              const result = await response.json();
+              console.log('[Accept Caregiver] Invitation accepted successfully:', result);
+              
+              // Redirect to home
+              window.location.href = 'home.html';
+              
+            } catch (error) {
+              console.error('[Accept Caregiver] Error accepting invitation:', error);
+              acceptBtn.disabled = false;
+              acceptBtn.textContent = 'Accept Caregiver';
+              
+              let errorMessage = error.message || 'Unknown error';
+              
+              // Provide more helpful error messages
+              if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
+                errorMessage = 'Permission denied. Please make sure you are logged in with the correct account and try again.';
+              } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                errorMessage = 'Network error. Please check your internet connection and try again.';
+              }
+              
+              contentDiv.innerHTML = `
+                <h1>Error</h1>
+                <p class="error">An error occurred while accepting the invitation: ${errorMessage}</p>
+                <p style="font-size: 0.9rem; color: var(--muted); margin-top: 1rem;">Please try again. If the problem persists, contact support.</p>
+                <button onclick="window.location.reload()" class="btn" style="margin-top: 1rem;">Reload Page</button>
+              `;
+            }
+          });
+        }
+
+      } catch (error) {
+        console.error('[Accept Caregiver] Error loading invitation:', error);
+        contentDiv.innerHTML = `
+          <h1>Error</h1>
+          <p class="error">An error occurred: ${error.message || 'Unknown error'}</p>
+          <p style="font-size: 0.9rem; color: var(--muted); margin-top: 1rem;">Please try refreshing the page or contact support if the problem persists.</p>
+          <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem;">Error details: ${error.stack || 'No stack trace'}</p>
+        `;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+

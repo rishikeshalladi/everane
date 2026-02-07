@@ -17,12 +17,12 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --bg:#f8fafc; --surface:#ffffff; --text:#0f172a; --muted:#475569; --border:rgba(15,23,42,0.15);
-        --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
-        /* Improved contrast for better readability */
-        --text-strong: #020617;
-        --muted-strong: #334155;
-      }
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        /* High contrast for seniors - maximum readability */
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
+    }
     }
 
     * { box-sizing: border-box; }
@@ -267,6 +267,33 @@
     .note-card textarea::placeholder {
       color: var(--muted);
     }
+    .feeling-dropdown-container {
+      margin-bottom: 0.75rem;
+    }
+    .feeling-dropdown-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+    .feeling-dropdown {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: border-color 0.2s ease;
+    }
+    .feeling-dropdown:focus {
+      outline: none;
+      border-color: var(--brand);
+      background: var(--surface);
+    }
     .no-notes {
       text-align: center;
       padding: 3rem 1rem;
@@ -371,7 +398,7 @@
         min-height: auto;
         font-size: 0.9rem;
         padding: 0.6rem;
-      }
+}
     }
 </style>
 </head>
@@ -392,7 +419,6 @@
     <a href="notes.html" class="active">Notes</a>
     <a href="stats.html">Stats</a>
     <a href="profile.html">Profile</a>
-    <a href="https://docs.google.com/forms/d/e/1FAIpQLScHhLK2jN1PcuU4mQwFhtOYHNyHI4PtoRMbWk8JUnkZ3iuC0w/viewform?usp=dialog" target="_blank" rel="noopener noreferrer">Feedback</a>
   </nav>
 
   <div class="content">
@@ -587,7 +613,7 @@
 
 
     // Function to save note to Firebase
-    window.saveNoteToFirebase = async function(medName, dateString, doseNumber, noteText) {
+    window.saveNoteToFirebase = async function(medName, dateString, doseNumber, noteText, feelingRating = 0) {
       const user = auth.currentUser;
       if (!user) {
         console.warn('[Notes] No user logged in, cannot save to Firestore');
@@ -602,14 +628,15 @@
         }
 
         const notes = medication.notes || {};
-        notes[dateString] = [doseNumber, noteText];
+        // Store as [doseNumber, noteText, feelingRating]
+        notes[dateString] = [doseNumber, noteText, feelingRating || 0];
 
         const medDocRef = doc(window.db, "users", user.uid, "medications", medication.id);
         await setDoc(medDocRef, {
           notes: notes
         }, { merge: true });
         
-        console.log(`[Notes] Saved note for ${medName} on ${dateString}, dose ${doseNumber}`);
+        console.log(`[Notes] Saved note for ${medName} on ${dateString}, dose ${doseNumber}, feeling: ${feelingRating || 0}`);
         
         // Update local cache
         medication.notes = notes;
@@ -782,11 +809,11 @@
     if (!window.getMedicationsForDate) {
       window.getMedicationsForDate = function(date) {
         const medications = window.globalMedications || [];
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-        const dateString = date.toISOString().split('T')[0];
-        const today = new Date().toISOString().split('T')[0];
-        
-        return medications.filter(med => {
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const dateString = date.toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      return medications.filter(med => {
           // Normalize date strings to YYYY-MM-DD format for comparison
           const normalizeDate = (dateStr) => {
             if (!dateStr || dateStr === 'N/A') return null;
@@ -840,8 +867,8 @@
             }
           }
           
-          return med.days.includes(dayName);
-        });
+        return med.days.includes(dayName);
+      });
       };
     }
 
@@ -877,16 +904,50 @@
         title.textContent = `${medName} - Dose ${doseNumber}`;
       }
       
-      const textarea = document.createElement('textarea');
-      textarea.rows = 1; // Start with 1 row
-      textarea.placeholder = 'Your notes...';
-      textarea.dataset.medication = medName;
-      textarea.dataset.time = time || 'no-time';
       // Use local date string to avoid timezone issues (match medication-action.html format)
       const noteYear = currentDate.getFullYear();
       const noteMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
       const noteDay = String(currentDate.getDate()).padStart(2, '0');
       const dateStringForDataset = `${noteYear}-${noteMonth}-${noteDay}`;
+      
+      // Create feeling dropdown container
+      const feelingContainer = document.createElement('div');
+      feelingContainer.className = 'feeling-dropdown-container';
+      
+      const feelingLabel = document.createElement('label');
+      feelingLabel.className = 'feeling-dropdown-label';
+      feelingLabel.textContent = 'How do you feel right now?';
+      feelingLabel.setAttribute('for', `feeling-${medName}-${doseNumber}-${dateStringForDataset}`);
+      
+      const feelingDropdown = document.createElement('select');
+      feelingDropdown.className = 'feeling-dropdown';
+      feelingDropdown.id = `feeling-${medName}-${doseNumber}-${dateStringForDataset}`;
+      feelingDropdown.dataset.medication = medName;
+      feelingDropdown.dataset.date = dateStringForDataset;
+      feelingDropdown.dataset.doseNumber = doseNumber;
+      
+      // Add options: 1-5 (no 0/N/A option shown)
+      const defaultOption = document.createElement('option');
+      defaultOption.value = '0';
+      defaultOption.textContent = 'Select...';
+      feelingDropdown.appendChild(defaultOption);
+      
+      for (let i = 1; i <= 5; i++) {
+        const option = document.createElement('option');
+        option.value = i.toString();
+        option.textContent = i.toString();
+        feelingDropdown.appendChild(option);
+      }
+      
+      feelingLabel.setAttribute('for', feelingDropdown.id);
+      feelingContainer.appendChild(feelingLabel);
+      feelingContainer.appendChild(feelingDropdown);
+      
+      const textarea = document.createElement('textarea');
+      textarea.rows = 1; // Start with 1 row
+      textarea.placeholder = 'Your notes...';
+      textarea.dataset.medication = medName;
+      textarea.dataset.time = time || 'no-time';
       textarea.dataset.date = dateStringForDataset;
       textarea.dataset.doseNumber = doseNumber;
       
@@ -937,9 +998,12 @@
       const medication = window.globalMedications.find(m => m.name === medName);
       if (medication && medication.notes && medication.notes[dateString]) {
         const noteData = medication.notes[dateString];
-        // Notes are stored as [doseNumber, noteText]
+        // Notes are stored as [doseNumber, noteText, feelingRating] (feelingRating is optional for backward compatibility)
         if (Array.isArray(noteData) && noteData[0] === doseNumber) {
           textarea.value = noteData[1] || '';
+          // Set feeling rating (default to 0 if not present)
+          const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
+          feelingDropdown.value = feelingRating.toString();
           // Auto-resize after loading existing content
           setTimeout(autoResize, 0);
         }
@@ -954,11 +1018,22 @@
       textarea.addEventListener('input', async () => {
         clearTimeout(window.notesSaveTimeout);
         window.notesSaveTimeout = setTimeout(async () => {
-          await window.saveNoteToFirebase(medName, dateString, doseNumber, textarea.value);
+          const feelingRating = parseInt(feelingDropdown.value) || 0;
+          await window.saveNoteToFirebase(medName, dateString, doseNumber, textarea.value, feelingRating);
         }, 1000);
       });
       
+      // Save feeling rating when changed
+      feelingDropdown.addEventListener('change', async () => {
+        clearTimeout(window.notesSaveTimeout);
+        window.notesSaveTimeout = setTimeout(async () => {
+          const feelingRating = parseInt(feelingDropdown.value) || 0;
+          await window.saveNoteToFirebase(medName, dateString, doseNumber, textarea.value, feelingRating);
+        }, 500);
+      });
+      
       card.appendChild(title);
+      card.appendChild(feelingContainer);
       card.appendChild(textarea);
       
       // Initial resize check - run after element is in DOM
@@ -1110,9 +1185,9 @@
         
         if (medicationParam && doseParam) {
           setTimeout(() => {
-            const noteCards = document.querySelectorAll('.note-card');
+      const noteCards = document.querySelectorAll('.note-card');
             let highlighted = false;
-            
+      
             noteCards.forEach(card => {
               const textarea = card.querySelector('textarea');
               if (textarea && 
@@ -1135,19 +1210,19 @@
                   setTimeout(() => {
                     textarea.focus();
                   }, 300);
-                  
+        
                   // Remove highlight after 3 seconds (temporary)
-                  setTimeout(() => {
+        setTimeout(() => {
                     card.style.backgroundColor = '';
-                  }, 3000);
-                }
-              }
+        }, 3000);
+      }
+    }
             });
           }, 200);
         }
       } else {
         // No URL params, just render normally
-        renderNotes();
+      renderNotes();
       }
     }
   </script>
