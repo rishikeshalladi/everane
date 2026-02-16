@@ -1131,6 +1131,38 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   
+  const getBrowserTimezone = () => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const maybeRequestTimezoneChangeEmail = async (user) => {
+    if (!user) return;
+    const tz = getBrowserTimezone();
+    if (!tz) return;
+    const cacheKey = `tzChangeEmail:${user.uid}:${tz}`;
+    const lastSent = Number(localStorage.getItem(cacheKey) || 0);
+    if (Date.now() - lastSent < 6 * 60 * 60 * 1000) return;
+
+    try {
+      const token = await user.getIdToken();
+      await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/requestTimezoneChangeEmail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ detectedTimezone: tz })
+      });
+      localStorage.setItem(cacheKey, String(Date.now()));
+    } catch (e) {
+      console.warn('[Home] Failed to request timezone change email:', e);
+    }
+  };
+
   const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
   const formatTime12h = (time24) => {
@@ -1819,6 +1851,8 @@
     console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
 
     if (user) {
+      // If timezone changed, send an email asking whether to update or keep
+      await maybeRequestTimezoneChangeEmail(user);
       // Refresh the display
       console.log('[Home] User authenticated, calling renderList()');
       if (user && user.uid) {

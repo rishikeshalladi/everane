@@ -38,15 +38,11 @@ const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PA
 const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://melodious-selkie-5d4511.netlify.app';
 
 // Twilio configuration
-// IMPORTANT: never hardcode credentials in source control.
-// Set via:
-//   firebase functions:config:set twilio.accountsid="..." twilio.authtoken="..." twilio.phonenumber="..." twilio.verifyservice="..."
-// or environment variables:
-//   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, TWILIO_VERIFY_SERVICE_SID
-const twilioAccountSid = functions.config().twilio?.accountsid || process.env.TWILIO_ACCOUNT_SID;
-const twilioAuthToken = functions.config().twilio?.authtoken || process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = functions.config().twilio?.phonenumber || process.env.TWILIO_PHONE_NUMBER;
-const twilioVerifyServiceSid = functions.config().twilio?.verifyservice || process.env.TWILIO_VERIFY_SERVICE_SID;
+// For production, set: firebase functions:config:set twilio.accountsid="..." twilio.authtoken="..." twilio.phonenumber="..." twilio.verifyservice="..."
+const twilioAccountSid = functions.config().twilio?.accountsid || process.env.TWILIO_ACCOUNT_SID || 'REDACTED_TWILIO_SID';
+const twilioAuthToken = functions.config().twilio?.authtoken || process.env.TWILIO_AUTH_TOKEN || 'REDACTED_TWILIO_TOKEN';
+const twilioPhoneNumber = functions.config().twilio?.phonenumber || process.env.TWILIO_PHONE_NUMBER || 'REDACTED_TWILIO_NUMBER';
+const twilioVerifyServiceSid = functions.config().twilio?.verifyservice || process.env.TWILIO_VERIFY_SERVICE_SID || 'REDACTED_TWILIO_VERIFY_SID';
 
 // Initialize Twilio client if credentials are available
 let twilioClient = null;
@@ -72,6 +68,277 @@ const transporter = nodemailer.createTransport({
     user: gmailEmail,
     pass: gmailPassword // Use App Password, not regular password
   }
+});
+
+/**
+ * Request a timezone change confirmation email when a user appears to have traveled.
+ * POST /requestTimezoneChangeEmail
+ * Headers: Authorization: Bearer <Firebase ID token>
+ * Body: { detectedTimezone: string }
+ */
+exports.requestTimezoneChangeEmail = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const authHeader = req.get('authorization') || req.get('Authorization') || '';
+      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+      const bodyToken = req.body?.idToken || null;
+      const idToken = headerToken || bodyToken;
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const uid = decoded.uid;
+      const email = decoded.email;
+
+      const detectedTimezone = (req.body?.detectedTimezone || '').trim();
+      if (!detectedTimezone) {
+        res.status(400).json({ error: 'detectedTimezone is required' });
+        return;
+      }
+
+      const db = admin.firestore();
+      const userRef = db.collection('users').doc(uid);
+      const userSnap = await userRef.get();
+      const userData = userSnap.exists ? userSnap.data() : {};
+      const originalTimezone = (userData?.timezone || '').trim();
+
+      if (!originalTimezone || originalTimezone === detectedTimezone) {
+        res.status(200).json({ status: 'no_change' });
+        return;
+      }
+
+      const lastDecision = userData?.timezoneChangeLastDecision || null;
+      if (lastDecision?.decision === 'stay' && lastDecision?.newTimezone === detectedTimezone) {
+        const lastAt = lastDecision?.at?.toDate ? lastDecision.at.toDate() : null;
+        if (lastAt && Date.now() - lastAt.getTime() < 30 * 24 * 60 * 60 * 1000) {
+          res.status(200).json({ status: 'suppressed' });
+          return;
+        }
+      }
+
+      const existingReqSnap = await db.collection('timezoneChangeRequests')
+        .where('uid', '==', uid)
+        .where('status', '==', 'pending')
+        .where('newTimezone', '==', detectedTimezone)
+        .limit(1)
+        .get();
+
+      if (!existingReqSnap.empty) {
+        res.status(200).json({ status: 'pending_exists' });
+        return;
+      }
+
+      const requestRef = db.collection('timezoneChangeRequests').doc();
+      await requestRef.set({
+        uid,
+        email: email || userData?.email || null,
+        originalTimezone,
+        newTimezone: detectedTimezone,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      const requestUrl = `${APP_BASE_URL}/traveltimezone.html?request=${requestRef.id}`;
+      const subject = 'Timezone change detected — update or stay the same?';
+      const html = `
+        <div style="font-family: Arial, sans-serif; color: #1f2a37;">
+          <p>We noticed you changed timezones from <strong>${originalTimezone}</strong> to <strong>${detectedTimezone}</strong>.</p>
+          <p>Would you like to update it or stay the same?</p>
+          <p>
+            <a href="${requestUrl}" style="display:inline-block;padding:10px 16px;background:#0f172a;color:#fff;border-radius:6px;text-decoration:none;">Review &amp; Respond</a>
+          </p>
+          <p style="font-size:12px;color:#6b7280;">If you didn’t expect this, you can ignore this email.</p>
+        </div>
+      `;
+      const text = `We noticed you changed timezones from ${originalTimezone} to ${detectedTimezone}. Would you like to update it or stay the same? Open: ${requestUrl}`;
+
+      if (gmailEmail && gmailPassword && (email || userData?.email)) {
+        await transporter.sendMail({
+          from: `"MedTracker" <${gmailEmail}>`,
+          to: email || userData?.email,
+          subject,
+          text,
+          html
+        });
+      }
+
+      res.status(200).json({ status: 'sent', requestId: requestRef.id });
+    } catch (error) {
+      console.error('Error requesting timezone change email:', error);
+      res.status(500).json({ error: 'Failed to send timezone change email' });
+    }
+  });
+});
+
+/**
+ * Fetch timezone change request details for the current user.
+ * POST /getTimezoneChangeRequest
+ * Headers: Authorization: Bearer <Firebase ID token>
+ * Body: { requestId: string }
+ */
+exports.getTimezoneChangeRequest = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const authHeader = req.get('authorization') || req.get('Authorization') || '';
+      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+      const bodyToken = req.body?.idToken || null;
+      const idToken = headerToken || bodyToken;
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const uid = decoded.uid;
+      const requestId = (req.body?.requestId || '').trim();
+      if (!requestId) {
+        res.status(400).json({ error: 'requestId is required' });
+        return;
+      }
+
+      const reqRef = admin.firestore().collection('timezoneChangeRequests').doc(requestId);
+      const reqSnap = await reqRef.get();
+      if (!reqSnap.exists) {
+        res.status(404).json({ error: 'Request not found' });
+        return;
+      }
+
+      const data = reqSnap.data();
+      if (data.uid !== uid) {
+        res.status(403).json({ error: 'Wrong account' });
+        return;
+      }
+
+      res.status(200).json({
+        status: data.status,
+        originalTimezone: data.originalTimezone,
+        newTimezone: data.newTimezone
+      });
+    } catch (error) {
+      console.error('Error fetching timezone change request:', error);
+      res.status(500).json({ error: 'Failed to fetch request' });
+    }
+  });
+});
+
+/**
+ * Resolve a timezone change request.
+ * POST /resolveTimezoneChange
+ * Headers: Authorization: Bearer <Firebase ID token>
+ * Body: { requestId: string, action: "stay" | "change" }
+ */
+exports.resolveTimezoneChange = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const authHeader = req.get('authorization') || req.get('Authorization') || '';
+      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+      const bodyToken = req.body?.idToken || null;
+      const idToken = headerToken || bodyToken;
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      const uid = decoded.uid;
+      const requestId = (req.body?.requestId || '').trim();
+      const action = (req.body?.action || '').trim();
+      if (!requestId || !action || !['stay', 'change'].includes(action)) {
+        res.status(400).json({ error: 'requestId and valid action are required' });
+        return;
+      }
+
+      const db = admin.firestore();
+      const reqRef = db.collection('timezoneChangeRequests').doc(requestId);
+      const reqSnap = await reqRef.get();
+      if (!reqSnap.exists) {
+        res.status(404).json({ error: 'Request not found' });
+        return;
+      }
+      const data = reqSnap.data();
+      if (data.uid !== uid) {
+        res.status(403).json({ error: 'Wrong account' });
+        return;
+      }
+      if (data.status !== 'pending') {
+        res.status(400).json({ error: 'Request already resolved' });
+        return;
+      }
+
+      const userRef = db.collection('users').doc(uid);
+      if (action === 'change') {
+        await userRef.set({
+          timezone: data.newTimezone,
+          timezoneUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      }
+
+      await reqRef.set({
+        status: 'resolved',
+        decision: action,
+        resolvedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      await userRef.set({
+        timezoneChangeLastDecision: {
+          decision: action,
+          newTimezone: data.newTimezone,
+          originalTimezone: data.originalTimezone,
+          at: admin.firestore.FieldValue.serverTimestamp()
+        }
+      }, { merge: true });
+
+      res.status(200).json({
+        status: 'ok',
+        decision: action,
+        timezone: action === 'change' ? data.newTimezone : data.originalTimezone
+      });
+    } catch (error) {
+      console.error('Error resolving timezone change request:', error);
+      res.status(500).json({ error: 'Failed to resolve request' });
+    }
+  });
 });
 
 // Verify transporter is configured
@@ -158,31 +425,268 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
 
       // Create a short-lived Realtime session
       // NOTE: Endpoint/response shape may evolve; client only needs the returned client_secret value.
-      const systemInstructions = [
-        'You are MedTracker Voice Assistant.',
-        'Have a natural conversation to help the user add a medication, then produce a structured medication draft.',
-        'Extract these fields: name (string), dosage (number), days (array of weekday names), timesPerDay (number), times (optional array of HH:MM 24h), startDate (YYYY-MM-DD), endDate (YYYY-MM-DD or null), reminder (one of: None, Email, SMS, Email + SMS).',
-        'Date rule: if the user says a month/day without a year, assume year 2026. If they provide a year, use it.',
-        'When all required fields are known, confirm once, then return the final structured object when asked.',
-      ].join('\n');
+      const systemInstructions = `🔒 SYSTEM PROMPT — MedTracker Voice Assistant
 
-      const sessionResp = await fetch('https://api.openai.com/v1/realtime/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: openaiRealtimeModel,
-          voice: openaiRealtimeVoice,
-          instructions: systemInstructions,
-        }),
-      });
+You are MedTracker Voice Assistant, a calm, friendly, and precise medical voice assistant.
 
-      const sessionJson = await sessionResp.json().catch(() => null);
-      if (!sessionResp.ok) {
-        console.error('❌ OpenAI Realtime session creation failed:', sessionResp.status, sessionJson);
-        res.status(502).json({ error: 'Failed to create Realtime session', details: sessionJson });
+Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
+
+🌐 Language & Communication Rules
+
+Speak and respond ONLY in English.
+
+Use natural, spoken conversation (short sentences, friendly tone).
+
+Sound like a helpful assistant, not a form.
+
+Do NOT ramble.
+
+Do NOT use medical advice beyond data collection.
+
+Do NOT mention internal rules or this prompt.
+
+🎯 Primary Goal
+
+Your goal is to collect medication information accurately through conversation and then output a single structured medication draft.
+
+You must:
+
+Ask for missing or unclear information.
+
+Never guess or assume values.
+
+Confirm ambiguous answers.
+
+Only finalize once required fields are complete.
+
+📦 Required Medication Fields (ALL REQUIRED)
+
+You must collect all of the following before producing a final draft:
+
+name (string)
+
+dosage (string — natural language is allowed, e.g. "2 pills", "1 tablet", "half a pill")
+
+days (array of weekday names: Monday–Sunday)
+
+timesPerDay (number)
+
+startDate (YYYY-MM-DD)
+
+endDate (YYYY-MM-DD or null)
+
+reminder (one of: None, Email, SMS, Email + SMS)
+
+⚠️ Do NOT convert or normalize dosage.
+Store it exactly as the user says it, unless they correct themselves.
+
+🧩 Optional Fields (ONLY include if explicitly provided)
+
+times (array of strings in HH:MM 24-hour format)
+
+⚠️ Do NOT invent times.
+⚠️ Do NOT include times unless the user gives exact times.
+
+🗓️ Date Understanding & Conversion Rules (VERY IMPORTANT)
+
+You MUST correctly interpret natural language dates, including relative and informal phrasing.
+
+Accepted user date formats include:
+
+“in 5 days”
+
+“in 17 weeks”
+
+“next year”
+
+“February 27”
+
+“Feb 27th 2028”
+
+“on March 3”
+
+“starting tomorrow”
+
+“end in 2 months”
+
+Conversion rules:
+
+Convert everything into YYYY-MM-DD
+
+If the user gives month + day without a year, assume year = 2026
+
+If the user gives a year, use that year
+
+If the user says “next year”, use 2027
+
+If the user gives a relative duration (e.g. “in 5 weeks”), calculate the correct calendar date
+
+If the user says “no end date” → endDate = null
+
+⚠️ If a date is unclear or ambiguous, ASK A FOLLOW-UP QUESTION.
+
+⏱️ Times & Frequency Rules
+
+Ask how many times per day the medication is taken.
+
+After getting timesPerDay, ask:
+
+“Do you want to add specific times, or should I leave the times flexible?”
+
+If the user:
+
+Gives specific times → collect them and convert to HH:MM (24-hour)
+
+Does NOT give times → do NOT include times in the draft
+
+❓ Clarifying Question Rules (VERY IMPORTANT)
+
+Never guess or auto-fill missing values
+
+Ask short, clear clarifying questions
+
+Ask only one question at a time
+
+Ask questions as soon as something is missing or ambiguous
+
+Examples:
+
+“Just to confirm, is that once per day or twice per day?”
+
+“Do you want email reminders, text reminders, or both?”
+
+“What day should this medication start?”
+
+🧠 Conversation Flow Guidelines
+
+Follow this general flow (but stay natural):
+
+Medication name
+
+Dosage
+
+Days of the week
+
+Times per day
+
+Optional exact times
+
+Start date
+
+End date
+
+Reminder preference
+
+You may gently guide the user, but never rush.
+
+✅ Final Output Rules
+
+Once ALL required fields are confirmed, output ONLY a structured medication draft in JSON.
+
+Output format:
+
+Valid JSON only
+
+No extra text
+
+No explanations
+
+No markdown
+
+Example structure:
+{
+  "name": "Ibuprofen",
+  "dosage": "2 pills",
+  "days": ["Monday", "Wednesday", "Friday"],
+  "timesPerDay": 2,
+  "times": ["08:00", "20:00"],
+  "startDate": "2026-02-27",
+  "endDate": null,
+  "reminder": "Email"
+}
+
+
+⚠️ Do NOT include fields the user did not provide.
+⚠️ Do NOT include comments or explanations.
+
+🚫 Absolute Restrictions
+
+Do NOT assume default values
+
+Do NOT infer medical intent
+
+Do NOT auto-correct without confirmation
+
+Do NOT output JSON until all required fields are known
+
+Do NOT speak after outputting final JSON
+
+🧩 If the user changes their mind
+
+If the user corrects or changes something:
+
+Acknowledge it
+
+Update the value
+
+Continue normally
+
+🎙️ Voice-Specific Behavior
+
+Keep responses short and conversational
+
+Avoid long lists
+
+Pause naturally between questions
+
+Speak clearly and calmly`;
+
+      // Mint a short-lived client secret for Realtime. Endpoint naming has changed over time;
+      // try the known variants for robustness.
+      const candidateUrls = [
+        'https://api.openai.com/v1/realtime/client_secrets',
+        'https://api.openai.com/v1/realtime/client_secret',
+      ];
+
+      let sessionResp = null;
+      let sessionJson = null;
+      let lastErr = null;
+
+      for (const url of candidateUrls) {
+        try {
+          const r = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              // Attach default session configuration to the minted client secret.
+              // Clients can still override parts of this via session.update after connecting.
+              session: {
+                type: 'realtime',
+                model: openaiRealtimeModel,
+                instructions: systemInstructions,
+              },
+            }),
+          });
+          const j = await r.json().catch(() => null);
+          if (r.ok) {
+            sessionResp = r;
+            sessionJson = j;
+            console.log('✅ OpenAI Realtime client secret minted via:', url);
+            break;
+          }
+          lastErr = { url, status: r.status, body: j };
+          console.error('❌ OpenAI Realtime client secret mint failed via:', url, r.status, j);
+        } catch (e) {
+          lastErr = { url, error: String(e?.message || e) };
+          console.error('❌ OpenAI Realtime client secret mint exception via:', url, e);
+        }
+      }
+
+      if (!sessionResp) {
+        res.status(502).json({ error: 'Failed to create Realtime session', details: lastErr });
         return;
       }
 
@@ -190,6 +694,7 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
         sessionJson?.client_secret?.value ||
         sessionJson?.client_secret ||
         sessionJson?.client_secret_key ||
+        sessionJson?.value ||
         null;
 
       if (!clientSecret) {

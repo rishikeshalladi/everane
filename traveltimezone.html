@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timezone Update</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .tz-container {
+      max-width: 720px;
+      margin: 80px auto;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .tz-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #111827;
+    }
+    .tz-desc {
+      font-size: 16px;
+      color: #4b5563;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .tz-cta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tz-btn {
+      appearance: none;
+      border: 0;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 220px;
+    }
+    .tz-btn.primary {
+      background: #0f172a;
+      color: #fff;
+    }
+    .tz-btn.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .tz-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .tz-msg {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #0f172a;
+    }
+    .tz-error {
+      color: #b91c1c;
+    }
+    @media (max-width: 640px) {
+      .tz-container {
+        margin: 24px 16px;
+        padding: 20px;
+      }
+      .tz-title {
+        font-size: 20px;
+      }
+      .tz-desc {
+        font-size: 15px;
+      }
+      .tz-cta {
+        flex-direction: column;
+      }
+      .tz-btn {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="tz-container">
+    <div class="tz-title">Timezone Update</div>
+    <div id="tz-desc" class="tz-desc">
+      Loading timezone details...
+    </div>
+    <div class="tz-cta">
+      <button id="stay-btn" class="tz-btn secondary" disabled>Stay at current timezone</button>
+      <button id="change-btn" class="tz-btn primary" disabled>Change timezone</button>
+    </div>
+    <div id="tz-msg" class="tz-msg"></div>
+    <div class="tz-note">
+      If you stay, reminders will keep using your original timezone.
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+
+    const descEl = document.getElementById('tz-desc');
+    const msgEl = document.getElementById('tz-msg');
+    const stayBtn = document.getElementById('stay-btn');
+    const changeBtn = document.getElementById('change-btn');
+
+    const params = new URLSearchParams(window.location.search);
+    const requestId = params.get('request');
+
+    const setError = (text) => {
+      msgEl.textContent = text;
+      msgEl.classList.add('tz-error');
+    };
+
+    const postJson = async (url, token, body) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data;
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!requestId) {
+        descEl.textContent = 'Missing request ID.';
+        return;
+      }
+
+      if (!user) {
+        descEl.textContent = 'Please log in to respond to this timezone change request.';
+        stayBtn.disabled = true;
+        changeBtn.disabled = true;
+        return;
+      }
+
+      try {
+        const token = await user.getIdToken();
+        const data = await postJson(
+          'https://us-central1-medtracker-8c467.cloudfunctions.net/getTimezoneChangeRequest',
+          token,
+          { requestId }
+        );
+
+        if (data.status !== 'pending') {
+          descEl.textContent = 'This timezone request has already been resolved.';
+          stayBtn.disabled = true;
+          changeBtn.disabled = true;
+          return;
+        }
+
+        descEl.textContent = `We noticed you changed timezones from ${data.originalTimezone} to ${data.newTimezone}. Would you like to update it or stay the same?`;
+        stayBtn.textContent = `Stay at ${data.originalTimezone}`;
+        changeBtn.textContent = `Change to ${data.newTimezone}`;
+        stayBtn.disabled = false;
+        changeBtn.disabled = false;
+
+        stayBtn.addEventListener('click', async () => {
+          stayBtn.disabled = true;
+          changeBtn.disabled = true;
+          msgEl.textContent = 'Saving your choice...';
+          msgEl.classList.remove('tz-error');
+
+          try {
+            await postJson(
+              'https://us-central1-medtracker-8c467.cloudfunctions.net/resolveTimezoneChange',
+              token,
+              { requestId, action: 'stay' }
+            );
+            msgEl.textContent = 'Got it — we will keep your original timezone.';
+          } catch (err) {
+            setError(err.message || 'Failed to save your choice.');
+            stayBtn.disabled = false;
+            changeBtn.disabled = false;
+          }
+        });
+
+        changeBtn.addEventListener('click', async () => {
+          stayBtn.disabled = true;
+          changeBtn.disabled = true;
+          msgEl.textContent = 'Saving your choice...';
+          msgEl.classList.remove('tz-error');
+
+          try {
+            await postJson(
+              'https://us-central1-medtracker-8c467.cloudfunctions.net/resolveTimezoneChange',
+              token,
+              { requestId, action: 'change' }
+            );
+            msgEl.textContent = 'Timezone updated. Your reminders will follow the new timezone.';
+          } catch (err) {
+            setError(err.message || 'Failed to save your choice.');
+            stayBtn.disabled = false;
+            changeBtn.disabled = false;
+          }
+        });
+      } catch (err) {
+        setError(err.message || 'Failed to load timezone request.');
+      }
+    });
+  </script>
+</body>
+</html>

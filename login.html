@@ -296,6 +296,38 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    const getBrowserTimezone = () => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const maybeRequestTimezoneChangeEmail = async (user) => {
+      if (!user) return;
+      const tz = getBrowserTimezone();
+      if (!tz) return;
+      const cacheKey = `tzChangeEmail:${user.uid}:${tz}`;
+      const lastSent = Number(localStorage.getItem(cacheKey) || 0);
+      if (Date.now() - lastSent < 6 * 60 * 60 * 1000) return;
+
+      try {
+        const token = await user.getIdToken();
+        await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/requestTimezoneChangeEmail', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ detectedTimezone: tz })
+        });
+        localStorage.setItem(cacheKey, String(Date.now()));
+      } catch (e) {
+        console.warn('[Login] Failed to request timezone change email:', e);
+      }
+    };
+
     // Make accessible globally
     window._fb = { app, auth, db };
 
@@ -343,14 +375,17 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const userId = userCredential.user.uid;
         
-        // 2. Fetch user profile from Firestore
+        // 2. Send timezone-change email if travel detected
+        await maybeRequestTimezoneChangeEmail(userCredential.user);
+
+        // 3. Fetch user profile from Firestore
         const userDocRef = doc(db, "users", userId);
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
           const profileData = userDoc.data();
           
-          // 3. Store locally for offline access - preserve any existing password updates
+          // 4. Store locally for offline access - preserve any existing password updates
           const existingProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
           const finalProfile = {...profileData, password: existingProfile.password || password};
           
@@ -359,7 +394,7 @@
           localStorage.setItem('userEmail', profileData.email);
           console.log('Loaded profile from Firestore:', profileData);
           
-          // 4. Redirect based on user type
+          // 5. Redirect based on user type
           msg.textContent = 'Success! Redirecting...';
           const userType = profileData.type || 'P'; // Default to Patient if type not set
           setTimeout(() => {
