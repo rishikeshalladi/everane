@@ -33,9 +33,9 @@ const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
 
 // Base URL for the app (for email links)
-// For production, set: firebase functions:config:set app.baseurl="https://your-app.netlify.app"
+// For production, set: firebase functions:config:set app.baseurl="https://everane.live"
 // Or use environment variable: APP_BASE_URL
-const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://melodious-selkie-5d4511.netlify.app';
+const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://everane.live';
 
 // Twilio configuration
 // For production, set: firebase functions:config:set twilio.accountsid="..." twilio.authtoken="..." twilio.phonenumber="..." twilio.verifyservice="..."
