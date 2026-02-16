@@ -39,10 +39,10 @@ const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL
 
 // Twilio configuration
 // For production, set: firebase functions:config:set twilio.accountsid="..." twilio.authtoken="..." twilio.phonenumber="..." twilio.verifyservice="..."
-const twilioAccountSid = functions.config().twilio?.accountsid || process.env.TWILIO_ACCOUNT_SID || 'REDACTED_TWILIO_SID';
-const twilioAuthToken = functions.config().twilio?.authtoken || process.env.TWILIO_AUTH_TOKEN || 'REDACTED_TWILIO_TOKEN';
-const twilioPhoneNumber = functions.config().twilio?.phonenumber || process.env.TWILIO_PHONE_NUMBER || 'REDACTED_TWILIO_NUMBER';
-const twilioVerifyServiceSid = functions.config().twilio?.verifyservice || process.env.TWILIO_VERIFY_SERVICE_SID || 'REDACTED_TWILIO_VERIFY_SID';
+const twilioAccountSid = functions.config().twilio?.accountsid || process.env.TWILIO_ACCOUNT_SID;
+const twilioAuthToken = functions.config().twilio?.authtoken || process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = functions.config().twilio?.phonenumber || process.env.TWILIO_PHONE_NUMBER;
+const twilioVerifyServiceSid = functions.config().twilio?.verifyservice || process.env.TWILIO_VERIFY_SERVICE_SID;
 
 // Initialize Twilio client if credentials are available
 let twilioClient = null;
