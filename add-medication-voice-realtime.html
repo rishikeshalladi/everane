@@ -286,6 +286,9 @@
       finalizing: false,
       finalized: false,
       finalBuffer: "",
+      finalRequestedAt: 0,
+      finalRetryCount: 0,
+      finalRequestTimer: null,
     };
 
     function setStatus(text) {
@@ -319,6 +322,43 @@
         if (!obj.times.every(t => typeof t === "string" && /^\d{2}:\d{2}$/.test(t))) return false;
       }
       return true;
+    }
+
+    const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const DAY_MAP = new Map([
+      ["mon", "Monday"], ["monday", "Monday"],
+      ["tue", "Tuesday"], ["tues", "Tuesday"], ["tuesday", "Tuesday"],
+      ["wed", "Wednesday"], ["weds", "Wednesday"], ["wednesday", "Wednesday"],
+      ["thu", "Thursday"], ["thur", "Thursday"], ["thurs", "Thursday"], ["thursday", "Thursday"],
+      ["fri", "Friday"], ["friday", "Friday"],
+      ["sat", "Saturday"], ["saturday", "Saturday"],
+      ["sun", "Sunday"], ["sunday", "Sunday"],
+    ]);
+
+    function normalizeDayToken(token) {
+      if (!token || typeof token !== "string") return null;
+      const clean = token.toLowerCase().replace(/[^a-z]/g, "");
+      return DAY_MAP.get(clean) || null;
+    }
+
+    function expandDaysFromString(text) {
+      const lower = String(text || "").toLowerCase();
+      if (!lower) return [];
+      if (lower.includes("everyday") || lower.includes("every day") || lower.includes("daily")) {
+        return [...DAY_NAMES];
+      }
+      if (lower.includes("weekdays")) {
+        return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      }
+      if (lower.includes("weekends")) {
+        return ["Saturday", "Sunday"];
+      }
+      const found = [];
+      DAY_MAP.forEach((value, key) => {
+        const re = new RegExp(`\\b${key}\\b`, "i");
+        if (re.test(lower)) found.push(value);
+      });
+      return Array.from(new Set(found));
     }
 
     function normalizeDateString(input) {
@@ -363,19 +403,28 @@
       if (typeof normalized.name === "string") normalized.name = normalized.name.trim();
       if (typeof normalized.dosage === "string") normalized.dosage = normalized.dosage.trim();
 
+      if (typeof normalized.days === "string") {
+        const expanded = expandDaysFromString(normalized.days);
+        if (expanded.length) normalized.days = expanded;
+      }
+
       if (Array.isArray(normalized.days)) {
-        normalized.days = normalized.days
+        let days = normalized.days
           .map(d => typeof d === "string" ? d.trim() : d)
-          .filter(Boolean)
-          .map(d => {
-            if (typeof d !== "string") return d;
-            const lower = d.toLowerCase();
-            return lower.charAt(0).toUpperCase() + lower.slice(1);
-          });
+          .filter(Boolean);
+
+        if (days.length === 1 && typeof days[0] === "string" && days[0].includes(",")) {
+          days = days[0].split(",").map(s => s.trim()).filter(Boolean);
+        }
+
+        normalized.days = Array.from(new Set(days
+          .map(d => normalizeDayToken(d) || (typeof d === "string" ? d.trim() : null))
+          .filter(Boolean)));
       }
 
       if (typeof normalized.timesPerDay === "string") {
-        const num = Number(normalized.timesPerDay);
+        const match = normalized.timesPerDay.match(/\d+(\.\d+)?/);
+        const num = match ? Number(match[0]) : Number(normalized.timesPerDay);
         if (Number.isFinite(num)) normalized.timesPerDay = num;
       }
 
@@ -391,9 +440,25 @@
           ["email+sms", "Email + SMS"],
           ["email and sms", "Email + SMS"],
           ["email & sms", "Email + SMS"],
+          ["text and email", "Email + SMS"],
+          ["sms and email", "Email + SMS"],
           ["both", "Email + SMS"],
         ]);
         normalized.reminder = map.get(rem) || normalized.reminder.trim();
+      }
+
+      const allowedReminder = new Set(["None", "Email", "SMS", "Email + SMS"]);
+      if (!allowedReminder.has(normalized.reminder)) {
+        const rem = String(normalized.reminder || "").toLowerCase();
+        if (rem.includes("email") && (rem.includes("sms") || rem.includes("text"))) {
+          normalized.reminder = "Email + SMS";
+        } else if (rem.includes("email")) {
+          normalized.reminder = "Email";
+        } else if (rem.includes("sms") || rem.includes("text")) {
+          normalized.reminder = "SMS";
+        } else if (!rem) {
+          normalized.reminder = "None";
+        }
       }
 
       if (typeof normalized.endDate === "string") {
@@ -403,16 +468,33 @@
 
       const startNorm = normalizeDateString(normalized.startDate);
       if (startNorm) normalized.startDate = startNorm;
+      if (!normalized.startDate) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        normalized.startDate = `${yyyy}-${mm}-${dd}`;
+      }
       if (normalized.endDate !== null) {
         const endNorm = normalizeDateString(normalized.endDate);
         if (endNorm) normalized.endDate = endNorm;
       }
+      if (normalized.endDate === undefined) normalized.endDate = null;
 
       if (Array.isArray(normalized.times)) {
         const times = normalized.times
           .map(t => normalizeTimeString(t))
           .filter(Boolean);
         normalized.times = times.length ? times : normalized.times;
+      }
+
+      if ((normalized.timesPerDay == null || normalized.timesPerDay === "") && Array.isArray(normalized.times) && normalized.times.length) {
+        normalized.timesPerDay = normalized.times.length;
+      }
+
+      if ((!Array.isArray(normalized.days) || normalized.days.length === 0) && typeof normalized.days === "string") {
+        const expanded = expandDaysFromString(normalized.days);
+        if (expanded.length) normalized.days = expanded;
       }
 
       return normalized;
@@ -476,6 +558,8 @@
       }
       state.collectingJson = true;
       state.finalBuffer = "";
+      state.finalRequestedAt = Date.now();
+      state.finalRetryCount += 1;
       setStatus("Finalizing… (requesting JSON)");
       try {
         state.dc.send(JSON.stringify({
@@ -486,10 +570,19 @@
             content: [{ type: "input_text", text: "Output ONLY the final medication JSON now. No extra text." }]
           }
         }));
-        state.dc.send(JSON.stringify({ type: "response.create" }));
+        state.dc.send(JSON.stringify({ type: "response.create", response: { modalities: ["text"] } }));
       } catch (e) {
         console.warn("[AI Voice] Failed to request final JSON:", e);
       }
+
+      // If no JSON arrives, retry once after a short wait.
+      if (state.finalRequestTimer) clearTimeout(state.finalRequestTimer);
+      state.finalRequestTimer = setTimeout(() => {
+        if (!state.finalized && state.collectingJson && state.finalRetryCount < 2) {
+          console.warn("[AI Voice] No JSON received yet, retrying request...");
+          requestFinalJson();
+        }
+      }, 6000);
     }
 
     function maybeTriggerFinalizationFromText(text) {
@@ -526,6 +619,10 @@
 
       state.finalized = true;
       state.finalizing = false;
+      if (state.finalRequestTimer) {
+        clearTimeout(state.finalRequestTimer);
+        state.finalRequestTimer = null;
+      }
       setStatus("Done. Opening the form…");
 
       // Save (best-effort) then print to console table
@@ -547,6 +644,36 @@
     function tryHandleFinalJsonFromBuffer() {
       if (!state.collectingJson || !state.finalBuffer) return;
       tryHandleFinalJsonFromText(state.finalBuffer);
+    }
+
+    function extractTextChunks(data, type) {
+      const chunks = [];
+      if (typeof data?.delta === "string") chunks.push(data.delta);
+      if (typeof data?.text === "string" && !type.includes("delta")) chunks.push(data.text);
+      if (typeof data?.transcript === "string") chunks.push(data.transcript);
+      if (typeof data?.response?.output_text?.delta === "string") chunks.push(data.response.output_text.delta);
+      if (typeof data?.response?.output_text === "string") chunks.push(data.response.output_text);
+      if (typeof data?.response?.text === "string") chunks.push(data.response.text);
+      const outputText = data?.response?.output?.[0]?.content?.[0]?.text;
+      if (typeof outputText === "string") chunks.push(outputText);
+      const outputTranscript = data?.response?.output?.[0]?.content?.[0]?.transcript;
+      if (typeof outputTranscript === "string") chunks.push(outputTranscript);
+      if (Array.isArray(data?.response?.output)) {
+        data.response.output.forEach(item => {
+          if (!item?.content) return;
+          item.content.forEach(content => {
+            if (typeof content?.text === "string") chunks.push(content.text);
+            if (typeof content?.transcript === "string") chunks.push(content.transcript);
+          });
+        });
+      }
+      if (Array.isArray(data?.item?.content)) {
+        data.item.content.forEach(content => {
+          if (typeof content?.text === "string") chunks.push(content.text);
+          if (typeof content?.transcript === "string") chunks.push(content.transcript);
+        });
+      }
+      return chunks.filter(Boolean);
     }
 
     function startNewAiMessageIfNeeded() {
@@ -641,6 +768,7 @@
           dc.send(JSON.stringify({
             type: "session.update",
             session: {
+              modalities: ["text", "audio"],
               instructions: `🔒 SYSTEM PROMPT — MedTracker Voice Assistant
 
 You are MedTracker Voice Assistant, a calm, friendly, and precise medical voice assistant.
@@ -894,21 +1022,16 @@ Speak clearly and calmly`
         }
 
         // Prefer streaming delta fragments when present.
-        const delta =
-          (typeof data?.delta === "string") ? data.delta :
-          (typeof data?.text === "string" && !type.includes("delta")) ? data.text :
-          (typeof data?.response?.output_text === "string") ? data.response.output_text :
-          (typeof data?.response?.text === "string") ? data.response.text :
-          (typeof data?.response?.output?.[0]?.content?.[0]?.text === "string") ? data.response.output[0].content[0].text :
-          null;
-
-        if (typeof delta === "string" && delta.length) {
-          state.lastAssistantText += delta;
-          appendAiDelta(delta);
-          if (state.collectingJson) {
-            state.finalBuffer += delta;
-            tryHandleFinalJsonFromBuffer();
-          }
+        const chunks = extractTextChunks(data, type);
+        if (chunks.length) {
+          chunks.forEach((chunk) => {
+            state.lastAssistantText += chunk;
+            appendAiDelta(chunk);
+            if (state.collectingJson) {
+              state.finalBuffer += chunk;
+              tryHandleFinalJsonFromBuffer();
+            }
+          });
         }
       };
 
