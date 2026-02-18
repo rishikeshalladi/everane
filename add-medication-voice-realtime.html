@@ -289,6 +289,7 @@
       finalRequestedAt: 0,
       finalRetryCount: 0,
       finalRequestTimer: null,
+      finalRedirected: false,
     };
 
     function setStatus(text) {
@@ -590,6 +591,8 @@
       const t = String(text || "").toLowerCase();
       const shouldTrigger =
         /\b(i('|’)?ll|i will)\b[\s\S]*\bfinaliz(e|ing|ed)\b/.test(t) ||
+        /\b(i('|’)?m|im|i am)\b[\s\S]*\b(done|finished|complete|completed)\b/.test(t) ||
+        /\b(all set|that('s| is) everything|we're done|we are done)\b/.test(t) ||
         t.includes("finalize the details") ||
         t.includes("finalize now") ||
         t.includes("put it all together now") ||
@@ -597,7 +600,11 @@
         t.includes("here is the final") ||
         t.includes("here's the final") ||
         t.includes("final medication draft") ||
-        t.includes("final json");
+        t.includes("final json") ||
+        t.includes("i'm done") ||
+        t.includes("im done") ||
+        t.includes("perfect, i'm done") ||
+        t.includes("perfect im done");
 
       // Only block question prompts if we are NOT in finalization language.
       if (!shouldTrigger && t.includes("?")) return;
@@ -605,6 +612,13 @@
       if (shouldTrigger) {
         lockInteractionForFinalization();
         requestFinalJson();
+        if (!state.finalRedirected) {
+          state.finalRedirected = true;
+          setStatus("Finalized. Opening the form…");
+          setTimeout(() => {
+            window.location.assign("add-medication.html?voice=true");
+          }, 200);
+        }
       }
     }
 
@@ -985,7 +999,8 @@ Avoid long lists
 
 Pause naturally between questions
 
-Speak clearly and calmly`
+Speak clearly and calmly
+Always end with "Finalizing... Now you will be redirected" and then output the JSON.`
             }
           }));
         } catch (e) {
