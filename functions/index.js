@@ -26,6 +26,10 @@ const openaiRealtimeVoice =
   functions.config().openai?.realtime_voice ||
   process.env.OPENAI_REALTIME_VOICE ||
   'alloy';
+const openaiStructuredModel =
+  functions.config().openai?.structured_model ||
+  process.env.OPENAI_STRUCTURED_MODEL ||
+  'gpt-4.1-mini';
 
 // Configure your email service (Gmail example)
 // For production, use environment config: firebase functions:config:set gmail.email="your@gmail.com" gmail.password="your-app-password"
@@ -711,6 +715,165 @@ Speak clearly and calmly`;
       });
     } catch (err) {
       console.error('❌ createRealtimeSession error:', err);
+      res.status(500).json({ error: err.message || 'Internal error' });
+    }
+  });
+});
+
+/**
+ * Create a structured medication draft JSON via OpenAI Responses API.
+ *
+ * POST /createMedicationDraft
+ * Headers: Authorization: Bearer <Firebase ID token>
+ * Body: { assistantText?: string, fullTranscript?: string, buffer?: string, collected?: object }
+ *
+ * Response: { draft: object }
+ */
+exports.createMedicationDraft = functions.https.onRequest((req, res) => {
+  return cors(req, res, async () => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      if (!openaiApiKey) {
+        res.status(500).json({ error: 'OpenAI API key not configured on server' });
+        return;
+      }
+
+      const authHeader = req.get('authorization') || req.get('Authorization') || '';
+      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
+      const bodyToken = req.body?.idToken || null;
+      const idToken = headerToken || bodyToken;
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+      await admin.auth().verifyIdToken(idToken);
+
+      const assistantText = String(req.body?.assistantText || '');
+      const fullTranscript = String(req.body?.fullTranscript || '');
+      const buffer = String(req.body?.buffer || '');
+      const collected = req.body?.collected && typeof req.body.collected === 'object'
+        ? req.body.collected
+        : null;
+
+      const schema = {
+        name: 'medication_draft',
+        strict: true,
+        schema: {
+          anyOf: [
+            {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string' },
+                dosage: { type: 'string' },
+                days: {
+                  type: 'array',
+                  items: {
+                    type: 'string',
+                    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                  },
+                },
+                timesPerDay: { type: 'number', minimum: 1 },
+                times: {
+                  type: 'array',
+                  items: { type: 'string', pattern: '^[0-2][0-9]:[0-5][0-9]$' },
+                },
+                startDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+                endDate: {
+                  anyOf: [
+                    { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+                    { type: 'null' },
+                  ],
+                },
+                reminder: { type: 'string', enum: ['None', 'Email', 'SMS', 'Email + SMS'] },
+              },
+              required: ['name', 'dosage', 'days', 'timesPerDay', 'startDate', 'endDate', 'reminder'],
+            },
+            {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                error: { type: 'string', enum: ['missing_fields'] },
+                missing: { type: 'array', items: { type: 'string' } },
+              },
+              required: ['error', 'missing'],
+            },
+          ],
+        },
+      };
+
+      const prompt = [
+        'Return ONLY JSON that matches the schema.',
+        'If any required field is missing or unclear, output:',
+        '{"error":"missing_fields","missing":["field1","field2"]}',
+        'Do not include any extra keys or text.',
+        '',
+        'Collected draft (may be partial):',
+        collected ? JSON.stringify(collected) : '{}',
+        '',
+        'Latest assistant message:',
+        assistantText,
+        '',
+        'Full transcript (if needed):',
+        fullTranscript,
+        '',
+        'Raw buffer (if needed):',
+        buffer,
+      ].join('\n');
+
+      const resp = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: openaiStructuredModel,
+          input: prompt,
+          response_format: { type: 'json_schema', json_schema: schema },
+        }),
+      });
+
+      const respJson = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        console.error('❌ OpenAI structured draft error:', resp.status, respJson);
+        res.status(resp.status).json({ error: 'OpenAI error', details: respJson });
+        return;
+      }
+
+      const outputText =
+        respJson?.output_text ||
+        respJson?.output?.[0]?.content?.find((c) => c?.type === 'output_text' || c?.type === 'text')?.text ||
+        respJson?.output?.[0]?.content?.[0]?.text ||
+        '';
+
+      let parsed = null;
+      try {
+        parsed = JSON.parse(outputText);
+      } catch (e) {
+        console.error('❌ Structured draft JSON parse error:', e, outputText);
+      }
+
+      if (!parsed) {
+        res.status(502).json({ error: 'Invalid JSON returned from OpenAI', raw: outputText });
+        return;
+      }
+
+      res.status(200).json({ draft: parsed });
+    } catch (err) {
+      console.error('❌ createMedicationDraft error:', err);
       res.status(500).json({ error: err.message || 'Internal error' });
     }
   });

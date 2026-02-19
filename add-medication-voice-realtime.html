@@ -255,6 +255,7 @@
 
     // Firebase Function URL (prod)
     const CREATE_SESSION_URL = "https://us-central1-medtracker-8c467.cloudfunctions.net/createRealtimeSession";
+    const CREATE_DRAFT_URL = "https://us-central1-medtracker-8c467.cloudfunctions.net/createMedicationDraft";
 
     // OpenAI Realtime WebRTC SDP exchange endpoints (naming has changed over time).
     // We'll try these in order.
@@ -290,6 +291,8 @@
       finalRetryCount: 0,
       finalRequestTimer: null,
       finalRedirected: false,
+      finalRedirectTimer: null,
+      structuredDraftInFlight: false,
     };
 
     function setStatus(text) {
@@ -541,6 +544,43 @@
       }
     }
 
+    function redirectToForm() {
+      if (state.finalRedirected) return;
+      state.finalRedirected = true;
+      setTimeout(() => {
+        window.location.assign("add-medication.html?voice=true");
+        setTimeout(() => {
+          if (window.location.pathname.indexOf("add-medication.html") === -1) {
+            window.location.href = "add-medication.html?voice=true";
+          }
+        }, 400);
+      }, 150);
+    }
+
+    function finalizeWithDraft(draft, source = "structured") {
+      if (state.finalized) return true;
+      const normalized = normalizeDraft(draft);
+      if (!isValidMedicationDraft(normalized)) return false;
+
+      state.finalized = true;
+      state.finalizing = false;
+      state.collectingJson = false;
+      if (state.finalRequestTimer) {
+        clearTimeout(state.finalRequestTimer);
+        state.finalRequestTimer = null;
+      }
+      if (state.finalRedirectTimer) {
+        clearTimeout(state.finalRedirectTimer);
+        state.finalRedirectTimer = null;
+      }
+
+      setStatus(`Done. Opening the form… (${source})`);
+      saveDraftToFirebase(normalized);
+      printFinalDraftToConsole(normalized);
+      redirectToForm();
+      return true;
+    }
+
     function lockInteractionForFinalization() {
       state.finalizing = true;
       // Stop user audio input
@@ -550,6 +590,38 @@
       try { els.mute.disabled = true; } catch {}
       // Keep Stop enabled so the user can exit
       setStatus("Finalizing… (locked)");
+    }
+
+    async function requestStructuredDraftFromServer() {
+      if (state.structuredDraftInFlight) return null;
+      state.structuredDraftInFlight = true;
+      try {
+        const idToken = await getIdTokenOrThrow();
+        const resp = await fetch(CREATE_DRAFT_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            idToken,
+            assistantText: state.currentAiText || state.lastAssistantText,
+            fullTranscript: state.lastAssistantText,
+            buffer: state.finalBuffer,
+          }),
+        });
+        const json = await resp.json().catch(() => null);
+        if (!resp.ok) {
+          console.warn("[AI Voice] Structured draft request failed:", resp.status, json);
+          return null;
+        }
+        return json?.draft || null;
+      } catch (e) {
+        console.warn("[AI Voice] Structured draft request error:", e);
+        return null;
+      } finally {
+        state.structuredDraftInFlight = false;
+      }
     }
 
     function requestFinalJson() {
@@ -612,13 +684,24 @@
       if (shouldTrigger) {
         lockInteractionForFinalization();
         requestFinalJson();
-        if (!state.finalRedirected) {
-          state.finalRedirected = true;
-          setStatus("Finalized. Opening the form…");
-          setTimeout(() => {
-            window.location.assign("add-medication.html?voice=true");
-          }, 200);
-        }
+        setStatus("Finalizing… (building JSON)");
+
+        if (state.finalRedirectTimer) clearTimeout(state.finalRedirectTimer);
+        state.finalRedirectTimer = setTimeout(() => {
+          if (!state.finalized) {
+            console.warn("[AI Voice] Structured JSON timed out; redirecting with best effort.");
+            redirectToForm();
+          }
+        }, 2500);
+
+        requestStructuredDraftFromServer().then((draft) => {
+          if (!draft) return;
+          if (draft?.error === "missing_fields") {
+            console.warn("[AI Voice] Structured draft missing fields:", draft.missing);
+            return;
+          }
+          finalizeWithDraft(draft, "structured");
+        });
       }
     }
 
@@ -628,31 +711,8 @@
       const match = buf.match(/\{[\s\S]*\}/);
       if (!match) return;
       const parsed = safeJsonParse(match[0]);
-      const normalized = normalizeDraft(parsed);
-      if (!isValidMedicationDraft(normalized)) return;
-
-      state.finalized = true;
-      state.finalizing = false;
-      if (state.finalRequestTimer) {
-        clearTimeout(state.finalRequestTimer);
-        state.finalRequestTimer = null;
-      }
-      setStatus("Done. Opening the form…");
-
-      // Save (best-effort) then print to console table
-      saveDraftToFirebase(normalized);
-      printFinalDraftToConsole(normalized);
-
-      // Switch to the add-medication form; it will prefill from localStorage.voiceMedicationData
-      // (This keeps the flow fast and lets the user review/edit.)
-      setTimeout(() => {
-        window.location.assign("add-medication.html?voice=true");
-        setTimeout(() => {
-          if (window.location.pathname.indexOf("add-medication.html") === -1) {
-            window.location.href = "add-medication.html?voice=true";
-          }
-        }, 400);
-      }, 150);
+      if (!parsed) return;
+      finalizeWithDraft(parsed, "json");
     }
 
     function tryHandleFinalJsonFromBuffer() {
