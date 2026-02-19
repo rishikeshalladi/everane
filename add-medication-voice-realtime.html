@@ -767,6 +767,8 @@
         const [remoteStream] = evt.streams;
         if (remoteStream) {
           els.audio.srcObject = remoteStream;
+          // Slow down playback slightly so the assistant is easier to follow.
+          try { els.audio.playbackRate = 0.9; } catch {}
         }
       };
 
@@ -976,6 +978,7 @@ Do NOT infer medical intent
 Do NOT auto-correct without confirmation
 
 Do NOT output JSON until all required fields are known
+Do NOT finalize until the user has explicitly answered the reminder question.
 
 Do NOT speak after outputting final JSON
 
@@ -993,12 +996,12 @@ Continue normally
 
 🎙️ Voice-Specific Behavior
 
+Speak slowly and clearly. Use short sentences.
+Pause briefly between sentences so the user can follow.
+Ask one question at a time, then wait for the user's response before continuing.
 Keep responses short and conversational
-
 Avoid long lists
-
 Pause naturally between questions
-
 Speak clearly and calmly
 Always end with "Finalizing... Now you will be redirected" and then output the JSON.`
             }
