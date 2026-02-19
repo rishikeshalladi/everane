@@ -1017,7 +1017,7 @@ Always end with "Finalizing... Now you will be redirected" and then output the J
             item: {
               type: "message",
               role: "user",
-              content: [{ type: "input_text", text: "Let's add a medication. Please start by asking me the medication name." }]
+              content: [{ type: "input_text", text: "Start with this exact line no matter what, even if the user starts talking first: \"Hi there! What's the name of the medication you'd like to add?\"" }]
             }
           }));
           dc.send(JSON.stringify({ type: "response.create" }));
