@@ -283,10 +283,6 @@
       finalizing: false,
       finalized: false,
       finalRedirected: false,
-      toolCallArgsBuffer: "",
-      toolCallName: null,
-      toolCallPending: false,
-      toolCallTimer: null,
     };
 
     function setStatus(text) {
@@ -542,6 +538,7 @@
     function redirectToForm() {
       if (state.finalRedirected) return;
       state.finalRedirected = true;
+      console.log("[AI Voice] Redirecting to add-medication.html?source=voice");
       setTimeout(() => {
         window.location.assign("add-medication.html?source=voice");
         setTimeout(() => {
@@ -563,11 +560,6 @@
 
       state.finalized = true;
       state.finalizing = false;
-      state.toolCallPending = false;
-      if (state.toolCallTimer) {
-        clearTimeout(state.toolCallTimer);
-        state.toolCallTimer = null;
-      }
       lockInteractionForFinalization();
 
       setStatus("Done. Opening the form…");
@@ -610,80 +602,30 @@
       }
     }
 
-    function maybeNudgeForToolCall(text) {
-      if (state.finalized) return;
-      const lower = String(text || "").toLowerCase();
-      if (!lower.includes("finalizing") || !lower.includes("redirect")) return;
-      if (state.toolCallPending) return;
-      state.toolCallPending = true;
-      if (state.toolCallTimer) clearTimeout(state.toolCallTimer);
-      state.toolCallTimer = setTimeout(() => {
-        if (state.finalized) return;
-        console.warn("[AI Voice] Finalizing phrase detected but no tool call yet. Nudging model.");
-        requestFixFromModel(["submit_medication_draft"]);
-      }, 1800);
-    }
-
     function handleToolCallEvent(data) {
       const type = String(data?.type || "");
-      const isToolArgsDelta =
-        type.includes("function_call_arguments.delta") ||
-        type.includes("response.function_call_arguments.delta");
       const isToolArgsDone =
         type.includes("function_call_arguments.done") ||
-        type.includes("response.function_call_arguments.done") ||
-        type.includes("response.function_call.done");
-      const isToolItemAdded = type.includes("response.output_item.added") || type.includes("response.output_item.done");
-
-      if (isToolItemAdded) {
-        const item = data?.item || data?.response?.item;
-        if (item?.type === "function_call" && item?.name) {
-          state.toolCallName = item.name;
-          state.toolCallArgsBuffer = item?.arguments || "";
-        }
-        return false;
-      }
-
-      if (isToolArgsDelta) {
-        const name =
-          data?.name ||
-          data?.response?.name ||
-          data?.response?.function_call?.name ||
-          data?.response?.function?.name ||
-          state.toolCallName;
-        if (name !== "submit_medication_draft") return false;
-        const delta =
-          data?.arguments ||
-          data?.response?.arguments ||
-          data?.response?.function_call?.arguments ||
-          data?.response?.function?.arguments ||
-          "";
-        state.toolCallName = name;
-        state.toolCallArgsBuffer += String(delta || "");
-        return true;
-      }
-
+        type.includes("response.function_call_arguments.done");
       if (!isToolArgsDone) return false;
 
-      const name =
-        data?.name ||
-        data?.response?.name ||
-        data?.response?.function_call?.name ||
-        data?.response?.function?.name ||
-        state.toolCallName;
+      const name = data?.name || data?.response?.name;
       if (name !== "submit_medication_draft") return false;
 
-      const rawArgs =
-        data?.arguments ||
-        data?.response?.arguments ||
-        data?.response?.function_call?.arguments ||
-        data?.response?.function?.arguments ||
-        state.toolCallArgsBuffer;
+      const rawArgs = data?.arguments || data?.response?.arguments;
       const parsed = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
       if (!parsed) {
         console.warn("[AI Voice] Tool call arguments missing or invalid JSON.");
         requestFixFromModel(["draft"]);
         return true;
+      }
+
+      console.log("[AI Voice] Tool call received:", name);
+      try {
+        console.log("[AI Voice] Tool args (raw):", rawArgs);
+        console.log("[AI Voice] Tool args (parsed):", parsed);
+      } catch (e) {
+        console.warn("[AI Voice] Failed to log tool args:", e);
       }
 
       handleMedicationComplete(parsed);
@@ -746,7 +688,6 @@
       state.currentAiText += d;
       state.currentAiEl.textContent = state.currentAiText;
       els.log.scrollTop = els.log.scrollHeight;
-      maybeNudgeForToolCall(state.currentAiText);
     }
 
     function safeJsonParse(maybeJson) {
@@ -790,7 +731,7 @@
         if (remoteStream) {
           els.audio.srcObject = remoteStream;
           // Slightly faster playback so the assistant feels more responsive.
-          try { els.audio.playbackRate = 1.05; } catch {}
+          try { els.audio.playbackRate = 1.2; } catch {}
         }
       };
 
@@ -1142,6 +1083,7 @@ Never leave a sentence unfinished.`
         if (!data) return;
 
         const type = String(data?.type || "");
+        console.log("[AI Voice] Realtime event:", type);
 
         if (handleToolCallEvent(data)) return;
 
@@ -1214,13 +1156,6 @@ Never leave a sentence unfinished.`
       state.finalizing = false;
       state.finalized = false;
       state.finalRedirected = false;
-      state.toolCallArgsBuffer = "";
-      state.toolCallName = null;
-      state.toolCallPending = false;
-      if (state.toolCallTimer) {
-        clearTimeout(state.toolCallTimer);
-        state.toolCallTimer = null;
-      }
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
