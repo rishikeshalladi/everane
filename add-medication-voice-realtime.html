@@ -602,32 +602,68 @@
       }
     }
 
-    function handleToolCallEvent(data) {
+    /**
+     * Extracts a { name, rawArgs } tool call from any known OpenAI Realtime event shape.
+     * Returns null if this event doesn't contain a completed submit_medication_draft call.
+     */
+    function extractToolCall(data) {
       const type = String(data?.type || "");
-      const isToolArgsDone =
-        type.includes("function_call_arguments.done") ||
-        type.includes("response.function_call_arguments.done");
-      if (!isToolArgsDone) return false;
 
-      const name = data?.name || data?.response?.name;
-      if (name !== "submit_medication_draft") return false;
+      // Shape 1: response.function_call_arguments.done
+      //   { type: "response.function_call_arguments.done", name: "...", arguments: "..." }
+      if (type === "response.function_call_arguments.done" || type === "function_call_arguments.done") {
+        const name = data?.name;
+        const rawArgs = data?.arguments;
+        if (name && rawArgs != null) return { name, rawArgs };
+      }
 
-      const rawArgs = data?.arguments || data?.response?.arguments;
+      // Shape 2: response.done — tool call lives inside response.output[].type === "function_call"
+      //   { type: "response.done", response: { output: [{ type: "function_call", name: "...", arguments: "..." }] } }
+      if (type === "response.done") {
+        const outputs = data?.response?.output;
+        if (Array.isArray(outputs)) {
+          for (const item of outputs) {
+            if (item?.type === "function_call" && item?.name) {
+              return { name: item.name, rawArgs: item.arguments };
+            }
+          }
+        }
+      }
+
+      // Shape 3: output_item.done with function_call item
+      //   { type: "response.output_item.done", item: { type: "function_call", name: "...", arguments: "..." } }
+      if (type === "response.output_item.done" || type === "output_item.done") {
+        const item = data?.item;
+        if (item?.type === "function_call" && item?.name) {
+          return { name: item.name, rawArgs: item.arguments };
+        }
+      }
+
+      return null;
+    }
+
+    function handleToolCallEvent(data) {
+      const toolCall = extractToolCall(data);
+      if (!toolCall) return false;
+
+      const { name, rawArgs } = toolCall;
+
+      console.log("[AI Voice] Tool call detected — name:", name, "| event type:", data?.type);
+      console.log("[AI Voice] Tool args (raw):", rawArgs);
+
+      if (name !== "submit_medication_draft") {
+        console.warn("[AI Voice] Unexpected tool call name:", name, "— ignoring.");
+        return true; // still consumed so it doesn't bleed into text rendering
+      }
+
       const parsed = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
       if (!parsed) {
-        console.warn("[AI Voice] Tool call arguments missing or invalid JSON.");
+        console.warn("[AI Voice] Tool call arguments missing or failed to parse. raw:", rawArgs);
         requestFixFromModel(["draft"]);
         return true;
       }
 
-      console.log("[AI Voice] Tool call received:", name);
-      try {
-        console.log("[AI Voice] Tool args (raw):", rawArgs);
-        console.log("[AI Voice] Tool args (parsed):", parsed);
-      } catch (e) {
-        console.warn("[AI Voice] Failed to log tool args:", e);
-      }
-
+      console.log("[AI Voice] Tool args (parsed):", parsed);
       handleMedicationComplete(parsed);
       return true;
     }
@@ -1085,6 +1121,8 @@ Never leave a sentence unfinished.`
         const type = String(data?.type || "");
         console.log("[AI Voice] Realtime event:", type);
 
+        // Tool call check MUST come before the response.done boundary check,
+        // because response.done can itself carry the completed function_call output.
         if (handleToolCallEvent(data)) return;
 
         // End-of-message boundaries (varies by API version)
@@ -1199,4 +1237,3 @@ Never leave a sentence unfinished.`
   </script>
 </body>
 </html>
-
