@@ -220,6 +220,7 @@
         <div class="row">
           <button class="btn btn-primary" id="start-btn" type="button">Start AI Voice</button>
           <button class="btn btn-secondary" id="mute-btn" type="button" disabled>Mute</button>
+          <button class="btn btn-secondary" id="done-btn" type="button" disabled style="background:linear-gradient(135deg,var(--accent),color-mix(in oklab, var(--accent) 80%, var(--brand)));color:#0b1020;font-weight:800">✓ Done</button>
           <button class="btn btn-danger" id="stop-btn" type="button" disabled>Stop</button>
         </div>
 
@@ -227,6 +228,7 @@
         <audio id="ai-audio" autoplay></audio>
         <div class="hint">
           Tip: If the AI doesn’t respond, check your browser mic permissions and confirm your OpenAI key is configured on Firebase Functions.
+          If the AI finishes collecting info but doesn't redirect, click <strong>✓ Done</strong> to force submission.
         </div>
 
         <div class="log" id="log"></div>
@@ -267,6 +269,7 @@
       log: document.getElementById('log'),
       start: document.getElementById('start-btn'),
       mute: document.getElementById('mute-btn'),
+      done: document.getElementById('done-btn'),
       stop: document.getElementById('stop-btn'),
       audio: document.getElementById('ai-audio'),
     };
@@ -283,6 +286,8 @@
       finalizing: false,
       finalized: false,
       finalRedirected: false,
+      responseCount: 0,
+      forceAttempts: 0,
     };
 
     function setStatus(text) {
@@ -576,6 +581,7 @@
       // Disable buttons that would change interaction
       try { els.start.disabled = true; } catch {}
       try { els.mute.disabled = true; } catch {}
+      try { els.done.disabled = true; } catch {}
       // Keep Stop enabled so the user can exit
       setStatus("Finalizing… (locked)");
     }
@@ -609,6 +615,11 @@
     function extractToolCall(data) {
       const type = String(data?.type || "");
 
+      // Log any function-call related events for debugging
+      if (type.includes("function_call")) {
+        console.log("[AI Voice] Function call event:", type, JSON.stringify(data).slice(0, 500));
+      }
+
       // Shape 1: response.function_call_arguments.done
       if (type === "response.function_call_arguments.done" || type === "function_call_arguments.done") {
         const name = data?.name;
@@ -626,6 +637,14 @@
             }
           }
         }
+        // Also check response.output[].type === "tool_call" (alternate naming)
+        if (Array.isArray(outputs)) {
+          for (const item of outputs) {
+            if (item?.type === "tool_call" && (item?.name || item?.function?.name)) {
+              return { name: item.name || item.function.name, rawArgs: item.arguments || item.function?.arguments };
+            }
+          }
+        }
       }
 
       // Shape 3: response.output_item.done with function_call item
@@ -633,6 +652,9 @@
         const item = data?.item;
         if (item?.type === "function_call" && item?.name) {
           return { name: item.name, rawArgs: item.arguments };
+        }
+        if (item?.type === "tool_call" && (item?.name || item?.function?.name)) {
+          return { name: item.name || item.function.name, rawArgs: item.arguments || item.function?.arguments };
         }
       }
 
@@ -705,7 +727,9 @@
       state.currentAiText = '';
     }
 
-    // Phrases that indicate the AI is recapping instead of calling the tool
+    // Phrases that indicate the AI is recapping/finishing instead of calling the tool.
+    // Be aggressive — it's better to force the tool call too early (validation will catch it)
+    // than to never call it at all.
     const RECAP_TRIGGERS = [
       "here's what we have",
       "here is what we have",
@@ -719,6 +743,40 @@
       "alright, here's",
       "okay, here's",
       "so here's",
+      // The system prompt tells the AI to say this exact phrase before calling the tool.
+      // If we see it as TEXT instead of a tool call, the tool call didn't fire.
+      "finalizing",
+      "now you will be redirected",
+      "you will be redirected",
+      "redirecting you",
+      "redirect you",
+      // More generic wrap-up phrases
+      "i have all the information",
+      "i've got all the information",
+      "i have everything i need",
+      "i've got everything",
+      "that's everything",
+      "that covers everything",
+      "all the details",
+      "all the fields",
+      "all set",
+      "we're all set",
+      "you're all set",
+      "let me finalize",
+      "let me submit",
+      "i'll finalize",
+      "i'll submit",
+      "submitting",
+      "saving your medication",
+      "adding your medication",
+      "i'll go ahead and save",
+      "i'll go ahead and add",
+      "medication has been added",
+      "medication is added",
+      "medication saved",
+      "got it, so",
+      "perfect, so your medication",
+      "great, so your medication",
     ];
 
     function checkForRecapAndForceToolCall() {
@@ -727,11 +785,14 @@
       const triggered = RECAP_TRIGGERS.some(phrase => text.includes(phrase));
       if (!triggered) return;
 
-      console.warn("[AI Voice] Detected recap instead of tool call — forcing submit_medication_draft.");
+      console.warn("[AI Voice] Detected recap/wrap-up instead of tool call — forcing submit_medication_draft.");
+      console.warn("[AI Voice] Trigger text was:", text.slice(0, 200));
       if (!state.dc || state.dc.readyState !== "open") return;
 
-      // Reset lastAssistantText so this doesn't retrigger
-      state.lastAssistantText = "";
+      try {
+        // Cancel any in-progress AI response first
+        state.dc.send(JSON.stringify({ type: "response.cancel" }));
+      } catch {}
 
       try {
         state.dc.send(JSON.stringify({
@@ -741,27 +802,57 @@
             role: "user",
             content: [{
               type: "input_text",
-              text: "All fields are confirmed. Stop speaking. Call submit_medication_draft NOW with all the fields you just summarized. Do not say anything else first."
+              text: "STOP TALKING. All fields are confirmed. You MUST call submit_medication_draft RIGHT NOW. Do NOT say anything. Do NOT recap. Just call the tool immediately with all collected fields."
             }]
           }
         }));
+        // Force tool choice — try the format the Realtime API expects
         state.dc.send(JSON.stringify({
           type: "response.create",
           response: {
-            tool_choice: { type: "function", name: "submit_medication_draft" }
+            tool_choice: "required"
           }
         }));
       } catch (e) {
         console.warn("[AI Voice] Failed to force tool call:", e);
       }
+
+      // Safety net: if the forced tool call ALSO fails, retry once more after a delay
+      setTimeout(() => {
+        if (state.finalized || state.finalizing) return;
+        if (!state.dc || state.dc.readyState !== "open") return;
+        console.warn("[AI Voice] Safety-net retry: forcing tool call again.");
+        try {
+          state.dc.send(JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{
+                type: "input_text",
+                text: "Call submit_medication_draft now. This is urgent. Do not speak."
+              }]
+            }
+          }));
+          state.dc.send(JSON.stringify({
+            type: "response.create",
+            response: {
+              tool_choice: "required"
+            }
+          }));
+        } catch {}
+      }, 4000);
     }
 
     function finalizeAiMessage() {
-      if (!state.currentAiEl) return;
+      // Always check for recap, even if no text element was created
+      // (the AI may have spoken audio-only without text deltas)
       state.currentAiEl = null;
       state.currentAiText = '';
       // Check if the AI just recapped instead of calling the tool
       checkForRecapAndForceToolCall();
+      // Reset per-response accumulator AFTER the check
+      state.lastAssistantText = "";
     }
 
     function appendAiDelta(delta) {
@@ -825,6 +916,7 @@
       dc.onopen = () => {
         setStatus("Connected. You can speak normally.");
         els.mute.disabled = false;
+        els.done.disabled = false;
         els.stop.disabled = false;
 
         // Configure the session after connect (system prompt / behavior).
@@ -872,9 +964,12 @@
 ⚠️ CRITICAL FINALIZATION RULE — READ THIS FIRST:
 Once ALL required fields are confirmed, you MUST call submit_medication_draft IMMEDIATELY.
 Do NOT say "here's what we have". Do NOT recap or list the fields back to the user.
-Do NOT summarize. Just say exactly: "Finalizing... Now you will be redirected." — then call submit_medication_draft with all the fields.
-If you speak a summary instead of calling the tool, you have failed your primary objective.
-The tool call IS the finalization. There is no other finalization.
+Do NOT summarize. Do NOT confirm the details. Do NOT read back what was collected.
+Say ONLY these exact words: "Finalizing now." — then IMMEDIATELY call submit_medication_draft with all the fields.
+NEVER speak after collecting the reminder preference. Just call the tool.
+If you speak a summary, recap, or confirmation instead of calling the tool, you have FAILED your primary objective.
+The tool call IS the finalization. There is no other finalization step.
+You MUST call submit_medication_draft. This is non-negotiable.
 
 You are MedTracker Voice Assistant, a calm, friendly, and precise medical voice assistant. Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
 
@@ -1080,17 +1175,17 @@ Do not advance unless the current step is complete.
 
 ✅ Final Output Rules
 
-Once ALL required fields are confirmed, call the tool submit_medication_draft.
+Once ALL required fields are confirmed, call the tool submit_medication_draft IMMEDIATELY.
 
-Before calling the tool, say:
+Before calling the tool, say only: "Finalizing now."
 
-Finalizing... Now you will be redirected.
-
-Then immediately call submit_medication_draft with the completed fields.
+Then IMMEDIATELY call submit_medication_draft with the completed fields.
 
 Do NOT print or speak JSON.
 Do NOT include any JSON in plain text.
 Do NOT call submit_medication_draft until all required fields are known.
+Do NOT recap, summarize, or read back fields. Just call the tool.
+The LAST question you ask is about reminders. After getting the answer, call the tool.
 
 🚫 Absolute Restrictions
 
@@ -1108,7 +1203,11 @@ Do NOT answer unrelated questions.
 
 Do NOT move forward if the user has not answered the current required question.
 
+Do NOT recap or summarize collected fields. NEVER list back what was collected.
+
 Finalization MUST happen via the submit_medication_draft tool call only.
+
+After the reminder question is answered, your ONLY action is to call submit_medication_draft.
 
 🧩 If the user changes their mind
 
@@ -1180,13 +1279,22 @@ Never leave a sentence unfinished.`
         if (handleToolCallEvent(data)) return;
 
         // End-of-message boundaries (varies by API version)
-        if (/(^|\.)(done|completed)$/.test(type) || type.includes("response.done") || type.includes("output_text.done")) {
+        if (/(^|\.)(done|completed)$/.test(type) || type.includes("response.done") || type.includes("output_text.done") || type.includes("audio_transcript.done")) {
+          // Track how many full AI responses we've seen
+          if (type.includes("response.done")) {
+            state.responseCount++;
+            console.log("[AI Voice] Response count:", state.responseCount);
+          }
           finalizeAiMessage();
           return;
         }
 
-        // Prefer streaming delta fragments when present.
+        // Prefer streaming delta fragments when present — including audio transcript deltas.
         const chunks = extractTextChunks(data, type);
+        // Also explicitly catch audio transcript deltas
+        if (type.includes("audio_transcript") && typeof data?.delta === "string") {
+          if (!chunks.includes(data.delta)) chunks.push(data.delta);
+        }
         if (chunks.length) {
           chunks.forEach((chunk) => {
             state.lastAssistantText += chunk;
@@ -1248,9 +1356,12 @@ Never leave a sentence unfinished.`
       state.finalizing = false;
       state.finalized = false;
       state.finalRedirected = false;
+      state.responseCount = 0;
+      state.forceAttempts = 0;
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
+      els.done.disabled = true;
       els.stop.disabled = true;
       setStatus("Stopped.");
     }
@@ -1278,6 +1389,51 @@ Never leave a sentence unfinished.`
       try {
         state.localStream?.getAudioTracks()?.forEach(t => t.enabled = !state.muted);
       } catch {}
+    });
+
+    // Manual "Done" button — forces the AI to call submit_medication_draft
+    els.done.addEventListener("click", () => {
+      if (!state.dc || state.dc.readyState !== "open") return;
+      if (state.finalized || state.finalizing) return;
+
+      console.log("[AI Voice] User clicked Done — forcing tool call.");
+      setStatus("Forcing finalization…");
+      state.forceAttempts++;
+
+      try {
+        state.dc.send(JSON.stringify({ type: "response.cancel" }));
+      } catch {}
+
+      try {
+        state.dc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{
+              type: "input_text",
+              text: "I am done. All fields are complete. Call submit_medication_draft RIGHT NOW with everything we discussed. Do NOT say anything else. Just call the tool."
+            }]
+          }
+        }));
+        state.dc.send(JSON.stringify({
+          type: "response.create",
+          response: {
+            tool_choice: "required"
+          }
+        }));
+      } catch (e) {
+        console.warn("[AI Voice] Force tool call via Done button failed:", e);
+      }
+
+      els.done.disabled = true;
+      // Re-enable after a few seconds in case it fails
+      setTimeout(() => {
+        if (!state.finalized && !state.finalizing) {
+          els.done.disabled = false;
+          setStatus("Tool call may have failed. Try clicking Done again, or check the console.");
+        }
+      }, 6000);
     });
 
     els.stop.addEventListener("click", () => stopAll());
