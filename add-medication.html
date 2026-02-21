@@ -683,7 +683,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     const params    = new URLSearchParams(window.location.search);
     const editIdx   = params.has('edit') ? params.get('edit') : null; // Keep as string for Firebase ID
     const renewIdx  = params.has('renew') ? +params.get('renew') : null;
-    const isVoice   = params.has('voice') ? true : false; // Check if coming from voice page
+    const isVoice   = params.has('voice') || params.get('source') === 'voice'; // Check if coming from voice page
     const storageKey= 'medications';
     
     console.log('[Add-Medication] Page loaded. URL params:', {
@@ -693,21 +693,34 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     // Check for voice data from localStorage
     let voiceData = null;
     if (isVoice) {
-      console.log('[Add-Medication] isVoice is true. Checking localStorage for voiceMedicationData.');
-      const voiceDataStr = localStorage.getItem('voiceMedicationData');
-      if (voiceDataStr) {
-        console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...'); // Log first 100 chars
+      console.log('[Add-Medication] isVoice is true. Checking sessionStorage for voiceMedicationDraft.');
+      const sessionDataStr = sessionStorage.getItem('voiceMedicationDraft');
+      if (sessionDataStr) {
         try {
-          voiceData = JSON.parse(voiceDataStr);
-          console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
-          // Clear it after reading
-          localStorage.removeItem('voiceMedicationData');
-          console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
+          voiceData = JSON.parse(sessionDataStr);
+          console.log('[Add-Medication] Successfully parsed voiceMedicationDraft from sessionStorage:', voiceData);
+          sessionStorage.removeItem('voiceMedicationDraft');
+          sessionStorage.removeItem('voiceMedicationDraftAt');
         } catch (e) {
-          console.error('[Add-Medication] Error parsing voice data from localStorage:', e);
+          console.error('[Add-Medication] Error parsing voice data from sessionStorage:', e);
         }
       } else {
-        console.log('[Add-Medication] No voiceMedicationData found in localStorage despite isVoice being true.');
+        console.log('[Add-Medication] No voiceMedicationDraft found in sessionStorage. Falling back to localStorage.');
+        const voiceDataStr = localStorage.getItem('voiceMedicationData');
+        if (voiceDataStr) {
+          console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...'); // Log first 100 chars
+          try {
+            voiceData = JSON.parse(voiceDataStr);
+            console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
+            // Clear it after reading
+            localStorage.removeItem('voiceMedicationData');
+            console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
+          } catch (e) {
+            console.error('[Add-Medication] Error parsing voice data from localStorage:', e);
+          }
+        } else {
+          console.log('[Add-Medication] No voiceMedicationData found in localStorage despite isVoice being true.');
+        }
       }
     }
 
@@ -1015,9 +1028,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       
       // Set days
       tg.querySelectorAll('.toggle-btn').forEach(b=>{
-        // Convert day to lowercase for comparison since Firebase stores lowercase
         const dayLower = b.dataset.day.toLowerCase();
-        if (med.days && med.days.includes(dayLower)) {
+        const dayTitle = b.dataset.day;
+        if (med.days && (med.days.includes(dayLower) || med.days.includes(dayTitle))) {
           b.classList.add('active');
           console.log('[Add-Medication] Activated day:', b.dataset.day);
         }

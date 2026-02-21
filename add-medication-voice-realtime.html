@@ -255,8 +255,6 @@
 
     // Firebase Function URL (prod)
     const CREATE_SESSION_URL = "https://us-central1-medtracker-8c467.cloudfunctions.net/createRealtimeSession";
-    const CREATE_DRAFT_URL = "https://us-central1-medtracker-8c467.cloudfunctions.net/createMedicationDraft";
-
     // OpenAI Realtime WebRTC SDP exchange endpoints (naming has changed over time).
     // We'll try these in order.
     const REALTIME_CALL_URLS = [
@@ -278,21 +276,13 @@
       dc: null,
       localStream: null,
       muted: false,
-      collectingJson: false,
-      jsonBuffer: "",
       lastAssistantText: "",
       currentAiEl: null,
       currentAiText: "",
       clientSecret: null,
       finalizing: false,
       finalized: false,
-      finalBuffer: "",
-      finalRequestedAt: 0,
-      finalRetryCount: 0,
-      finalRequestTimer: null,
       finalRedirected: false,
-      finalRedirectTimer: null,
-      structuredDraftInFlight: false,
     };
 
     function setStatus(text) {
@@ -308,24 +298,26 @@
       els.log.scrollTop = els.log.scrollHeight;
     }
 
-    function isValidMedicationDraft(obj) {
-      if (!obj || typeof obj !== "object") return false;
-      const required = ["name", "dosage", "days", "timesPerDay", "startDate", "endDate", "reminder"];
-      for (const k of required) if (!(k in obj)) return false;
-      if (typeof obj.name !== "string" || !obj.name.trim()) return false;
-      // dosage is stored as user-spoken natural language (string). Do not normalize.
-      if (typeof obj.dosage !== "string" || !obj.dosage.trim()) return false;
-      if (!Array.isArray(obj.days) || obj.days.length === 0) return false;
-      if (typeof obj.timesPerDay !== "number" || !Number.isFinite(obj.timesPerDay) || obj.timesPerDay <= 0) return false;
-      if (typeof obj.startDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(obj.startDate)) return false;
-      if (!(obj.endDate === null || (typeof obj.endDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(obj.endDate)))) return false;
+    function validateMedicationDraft(obj) {
+      const issues = [];
+      if (!obj || typeof obj !== "object") return ["draft"];
+      const normalized = normalizeDraft(obj);
+      if (!Object.prototype.hasOwnProperty.call(normalized, "name") || !String(normalized.name || "").trim()) issues.push("name");
+      if (!Object.prototype.hasOwnProperty.call(normalized, "dosage") || !String(normalized.dosage || "").trim()) issues.push("dosage");
+      if (!Array.isArray(normalized.days) || normalized.days.length === 0) issues.push("days");
+      if (typeof normalized.timesPerDay !== "number" || !Number.isFinite(normalized.timesPerDay) || normalized.timesPerDay < 1) issues.push("timesPerDay");
+      if (!Object.prototype.hasOwnProperty.call(normalized, "startDate") || !/^\d{4}-\d{2}-\d{2}$/.test(normalized.startDate || "")) issues.push("startDate");
+      if (!Object.prototype.hasOwnProperty.call(normalized, "endDate") || !(normalized.endDate === null || (typeof normalized.endDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(normalized.endDate)))) issues.push("endDate");
       const allowedReminder = new Set(["None", "Email", "SMS", "Email + SMS"]);
-      if (typeof obj.reminder !== "string" || !allowedReminder.has(obj.reminder)) return false;
-      if ("times" in obj && obj.times != null) {
-        if (!Array.isArray(obj.times)) return false;
-        if (!obj.times.every(t => typeof t === "string" && /^\d{2}:\d{2}$/.test(t))) return false;
+      if (!Object.prototype.hasOwnProperty.call(normalized, "reminder") || typeof normalized.reminder !== "string" || !allowedReminder.has(normalized.reminder)) issues.push("reminder");
+      if ("times" in normalized && normalized.times != null) {
+        if (!Array.isArray(normalized.times) || !normalized.times.every(t => typeof t === "string" && /^\d{2}:\d{2}$/.test(t))) {
+          issues.push("times");
+        } else if (typeof normalized.timesPerDay === "number" && normalized.times.length !== normalized.timesPerDay) {
+          issues.push("times");
+        }
       }
-      return true;
+      return issues;
     }
 
     const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -472,18 +464,10 @@
 
       const startNorm = normalizeDateString(normalized.startDate);
       if (startNorm) normalized.startDate = startNorm;
-      if (!normalized.startDate) {
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const dd = String(now.getDate()).padStart(2, "0");
-        normalized.startDate = `${yyyy}-${mm}-${dd}`;
-      }
       if (normalized.endDate !== null) {
         const endNorm = normalizeDateString(normalized.endDate);
         if (endNorm) normalized.endDate = endNorm;
       }
-      if (normalized.endDate === undefined) normalized.endDate = null;
 
       if (Array.isArray(normalized.times)) {
         const times = normalized.times
@@ -528,6 +512,13 @@
         console.warn("[AI Voice] Failed to write voiceMedicationData to localStorage:", e);
       }
 
+      try {
+        sessionStorage.setItem("voiceMedicationDraft", JSON.stringify(draft));
+        sessionStorage.setItem("voiceMedicationDraftAt", new Date().toISOString());
+      } catch (e) {
+        console.warn("[AI Voice] Failed to write voiceMedicationDraft to sessionStorage:", e);
+      }
+
       // Best-effort Firestore save (backup + cross-device)
       try {
         const user = auth.currentUser;
@@ -548,33 +539,29 @@
       if (state.finalRedirected) return;
       state.finalRedirected = true;
       setTimeout(() => {
-        window.location.assign("add-medication.html?voice=true");
+        window.location.assign("add-medication.html?source=voice");
         setTimeout(() => {
           if (window.location.pathname.indexOf("add-medication.html") === -1) {
-            window.location.href = "add-medication.html?voice=true";
+            window.location.href = "add-medication.html?source=voice";
           }
         }, 400);
       }, 150);
     }
 
-    function finalizeWithDraft(draft, source = "structured") {
+    function handleMedicationComplete(draft) {
       if (state.finalized) return true;
       const normalized = normalizeDraft(draft);
-      if (!isValidMedicationDraft(normalized)) return false;
+      const issues = validateMedicationDraft(normalized);
+      if (issues.length) {
+        requestFixFromModel(issues);
+        return false;
+      }
 
       state.finalized = true;
       state.finalizing = false;
-      state.collectingJson = false;
-      if (state.finalRequestTimer) {
-        clearTimeout(state.finalRequestTimer);
-        state.finalRequestTimer = null;
-      }
-      if (state.finalRedirectTimer) {
-        clearTimeout(state.finalRedirectTimer);
-        state.finalRedirectTimer = null;
-      }
+      lockInteractionForFinalization();
 
-      setStatus(`Done. Opening the form… (${source})`);
+      setStatus("Done. Opening the form…");
       saveDraftToFirebase(normalized);
       printFinalDraftToConsole(normalized);
       redirectToForm();
@@ -592,132 +579,57 @@
       setStatus("Finalizing… (locked)");
     }
 
-    async function requestStructuredDraftFromServer() {
-      if (state.structuredDraftInFlight) return null;
-      state.structuredDraftInFlight = true;
-      try {
-        const idToken = await getIdTokenOrThrow();
-        const resp = await fetch(CREATE_DRAFT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${idToken}`,
-          },
-          body: JSON.stringify({
-            idToken,
-            assistantText: state.currentAiText || state.lastAssistantText,
-            fullTranscript: state.lastAssistantText,
-            buffer: state.finalBuffer,
-          }),
-        });
-        const json = await resp.json().catch(() => null);
-        if (!resp.ok) {
-          console.warn("[AI Voice] Structured draft request failed:", resp.status, json);
-          return null;
-        }
-        return json?.draft || null;
-      } catch (e) {
-        console.warn("[AI Voice] Structured draft request error:", e);
-        return null;
-      } finally {
-        state.structuredDraftInFlight = false;
-      }
-    }
-
-    function requestFinalJson() {
-      if (!state.dc || state.dc.readyState !== "open") {
-        console.warn("[AI Voice] Cannot request final JSON; datachannel not open.");
-        return;
-      }
-      state.collectingJson = true;
-      state.finalBuffer = "";
-      state.finalRequestedAt = Date.now();
-      state.finalRetryCount += 1;
-      setStatus("Finalizing… (requesting JSON)");
+    function requestFixFromModel(issues) {
+      if (!state.dc || state.dc.readyState !== "open") return;
+      const missingList = Array.from(new Set(issues)).join(", ");
+      setStatus(`Missing or invalid: ${missingList}`);
       try {
         state.dc.send(JSON.stringify({
           type: "conversation.item.create",
           item: {
             type: "message",
             role: "user",
-            content: [{ type: "input_text", text: "Output ONLY the final medication JSON now. No extra text." }]
+            content: [{
+              type: "input_text",
+              text: `The tool call is missing or invalid: ${missingList}. Ask ONLY for the next missing field, one question at a time. Do not call submit_medication_draft until everything is complete.`
+            }]
           }
         }));
-        state.dc.send(JSON.stringify({ type: "response.create", response: { modalities: ["text"] } }));
+        state.dc.send(JSON.stringify({ type: "response.create" }));
       } catch (e) {
-        console.warn("[AI Voice] Failed to request final JSON:", e);
-      }
-
-      // If no JSON arrives, retry once after a short wait.
-      if (state.finalRequestTimer) clearTimeout(state.finalRequestTimer);
-      state.finalRequestTimer = setTimeout(() => {
-        if (!state.finalized && state.collectingJson && state.finalRetryCount < 2) {
-          console.warn("[AI Voice] No JSON received yet, retrying request...");
-          requestFinalJson();
-        }
-      }, 6000);
-    }
-
-    function maybeTriggerFinalizationFromText(text) {
-      if (state.finalized || state.finalizing) return;
-      const t = String(text || "").toLowerCase();
-      const shouldTrigger =
-        /\b(i('|’)?ll|i will)\b[\s\S]*\bfinaliz(e|ing|ed)\b/.test(t) ||
-        /\b(i('|’)?m|im|i am)\b[\s\S]*\b(done|finished|complete|completed)\b/.test(t) ||
-        /\b(all set|that('s| is) everything|we're done|we are done)\b/.test(t) ||
-        t.includes("finalize the details") ||
-        t.includes("finalize now") ||
-        t.includes("put it all together now") ||
-        t.includes("let me confirm everything") ||
-        t.includes("here is the final") ||
-        t.includes("here's the final") ||
-        t.includes("final medication draft") ||
-        t.includes("final json") ||
-        t.includes("i'm done") ||
-        t.includes("im done") ||
-        t.includes("perfect, i'm done") ||
-        t.includes("perfect im done");
-
-      // Only block question prompts if we are NOT in finalization language.
-      if (!shouldTrigger && t.includes("?")) return;
-
-      if (shouldTrigger) {
-        lockInteractionForFinalization();
-        requestFinalJson();
-        setStatus("Finalizing… (building JSON)");
-
-        if (state.finalRedirectTimer) clearTimeout(state.finalRedirectTimer);
-        state.finalRedirectTimer = setTimeout(() => {
-          if (!state.finalized) {
-            console.warn("[AI Voice] Structured JSON timed out; redirecting with best effort.");
-            redirectToForm();
-          }
-        }, 2500);
-
-        requestStructuredDraftFromServer().then((draft) => {
-          if (!draft) return;
-          if (draft?.error === "missing_fields") {
-            console.warn("[AI Voice] Structured draft missing fields:", draft.missing);
-            return;
-          }
-          finalizeWithDraft(draft, "structured");
-        });
+        console.warn("[AI Voice] Failed to request missing fields:", e);
       }
     }
 
-    function tryHandleFinalJsonFromText(text) {
-      if (state.finalized) return;
-      const buf = String(text || "").trim();
-      const match = buf.match(/\{[\s\S]*\}/);
-      if (!match) return;
-      const parsed = safeJsonParse(match[0]);
-      if (!parsed) return;
-      finalizeWithDraft(parsed, "json");
-    }
+    function handleToolCallEvent(data) {
+      const type = String(data?.type || "");
+      const isToolArgsDone =
+        type.includes("function_call_arguments.done") ||
+        type.includes("response.function_call_arguments.done") ||
+        type.includes("response.function_call.done");
+      if (!isToolArgsDone) return false;
 
-    function tryHandleFinalJsonFromBuffer() {
-      if (!state.collectingJson || !state.finalBuffer) return;
-      tryHandleFinalJsonFromText(state.finalBuffer);
+      const name =
+        data?.name ||
+        data?.response?.name ||
+        data?.response?.function_call?.name ||
+        data?.response?.function?.name;
+      if (name !== "submit_medication_draft") return false;
+
+      const rawArgs =
+        data?.arguments ||
+        data?.response?.arguments ||
+        data?.response?.function_call?.arguments ||
+        data?.response?.function?.arguments;
+      const parsed = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
+      if (!parsed) {
+        console.warn("[AI Voice] Tool call arguments missing or invalid JSON.");
+        requestFixFromModel(["draft"]);
+        return true;
+      }
+
+      handleMedicationComplete(parsed);
+      return true;
     }
 
     function extractTextChunks(data, type) {
@@ -763,11 +675,6 @@
 
     function finalizeAiMessage() {
       if (!state.currentAiEl) return;
-      maybeTriggerFinalizationFromText(state.currentAiText);
-      tryHandleFinalJsonFromText(state.currentAiText);
-      if (state.collectingJson && state.finalBuffer) {
-        tryHandleFinalJsonFromText(state.finalBuffer);
-      }
       state.currentAiEl = null;
       state.currentAiText = '';
     }
@@ -781,10 +688,6 @@
       state.currentAiText += d;
       state.currentAiEl.textContent = state.currentAiText;
       els.log.scrollTop = els.log.scrollHeight;
-      maybeTriggerFinalizationFromText(state.currentAiText);
-      // If assistant outputs JSON without a "done" event we recognize, detect it anyway.
-      tryHandleFinalJsonFromText(state.currentAiText);
-      tryHandleFinalJsonFromBuffer();
     }
 
     function safeJsonParse(maybeJson) {
@@ -845,6 +748,40 @@
             type: "session.update",
             session: {
               modalities: ["text", "audio"],
+              tools: [{
+                type: "function",
+                function: {
+                  name: "submit_medication_draft",
+                  description: "Submit the completed medication draft.",
+                  parameters: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      name: { type: "string" },
+                      dosage: { type: "string" },
+                      days: {
+                        type: "array",
+                        items: { type: "string", enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] }
+                      },
+                      timesPerDay: { type: "number" },
+                      times: {
+                        type: "array",
+                        items: { type: "string", pattern: "^\\d{2}:\\d{2}$" }
+                      },
+                      startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                      endDate: {
+                        anyOf: [
+                          { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                          { type: "null" }
+                        ]
+                      },
+                      reminder: { type: "string", enum: ["None", "Email", "SMS", "Email + SMS"] }
+                    },
+                    required: ["name", "dosage", "days", "timesPerDay", "startDate", "endDate", "reminder"]
+                  }
+                }
+              }],
+              tool_choice: "auto",
               instructions: `🔒 SYSTEM PROMPT — MedTracker Voice Assistant
 
 You are MedTracker Voice Assistant, a calm, friendly, and precise medical voice assistant. Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
@@ -1051,46 +988,17 @@ Do not advance unless the current step is complete.
 
 ✅ Final Output Rules
 
-Once ALL required fields are confirmed, output ONLY a structured medication draft in JSON.
+Once ALL required fields are confirmed, call the tool submit_medication_draft.
 
-Before outputting JSON, say:
+Before calling the tool, say:
 
 Finalizing... Now you will be redirected.
 
-Then immediately output the JSON.
+Then immediately call submit_medication_draft with the completed fields.
 
-After outputting JSON:
-
-Do NOT speak again.
-
-Output format:
-
-Valid JSON only
-
-No extra text after JSON
-
-No explanations
-
-No markdown
-
-Example structure:
-
-{
-"name": "Ibuprofen",
-"dosage": "2 pills",
-"days": ["Monday", "Wednesday", "Friday"],
-"timesPerDay": 2,
-"times": ["08:00", "20:00"],
-"startDate": "2026-02-27",
-"endDate": null,
-"reminder": "Email"
-}
-
-⚠️ Do NOT include fields the user did not provide.
-
-⚠️ Do NOT include comments or explanations.
-
-⚠️ JSON must be syntactically valid.
+Do NOT print or speak JSON.
+Do NOT include any JSON in plain text.
+Do NOT call submit_medication_draft until all required fields are known.
 
 🚫 Absolute Restrictions
 
@@ -1100,15 +1008,15 @@ Do NOT infer medical intent.
 
 Do NOT auto-correct without confirmation.
 
-Do NOT output JSON until all required fields are known.
-
 Do NOT finalize until the user has explicitly answered the reminder question.
 
-Do NOT speak after outputting final JSON.
+Do NOT speak after calling submit_medication_draft.
 
 Do NOT answer unrelated questions.
 
 Do NOT move forward if the user has not answered the current required question.
+
+Finalization MUST happen via the submit_medication_draft tool call only.
 
 🧩 If the user changes their mind
 
@@ -1176,6 +1084,8 @@ Never leave a sentence unfinished.`
 
         const type = String(data?.type || "");
 
+        if (handleToolCallEvent(data)) return;
+
         // End-of-message boundaries (varies by API version)
         if (/(^|\.)(done|completed)$/.test(type) || type.includes("response.done") || type.includes("output_text.done")) {
           finalizeAiMessage();
@@ -1188,10 +1098,6 @@ Never leave a sentence unfinished.`
           chunks.forEach((chunk) => {
             state.lastAssistantText += chunk;
             appendAiDelta(chunk);
-            if (state.collectingJson) {
-              state.finalBuffer += chunk;
-              tryHandleFinalJsonFromBuffer();
-            }
           });
         }
       };
@@ -1244,13 +1150,11 @@ Never leave a sentence unfinished.`
       state.dc = null;
       state.localStream = null;
       state.muted = false;
-      state.collectingJson = false;
-      state.jsonBuffer = "";
       state.currentAiEl = null;
       state.currentAiText = "";
       state.finalizing = false;
       state.finalized = false;
-      state.finalBuffer = "";
+      state.finalRedirected = false;
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
