@@ -610,15 +610,13 @@
       const type = String(data?.type || "");
 
       // Shape 1: response.function_call_arguments.done
-      //   { type: "response.function_call_arguments.done", name: "...", arguments: "..." }
       if (type === "response.function_call_arguments.done" || type === "function_call_arguments.done") {
         const name = data?.name;
         const rawArgs = data?.arguments;
         if (name && rawArgs != null) return { name, rawArgs };
       }
 
-      // Shape 2: response.done — tool call lives inside response.output[].type === "function_call"
-      //   { type: "response.done", response: { output: [{ type: "function_call", name: "...", arguments: "..." }] } }
+      // Shape 2: response.done — tool call inside response.output[].type === "function_call"
       if (type === "response.done") {
         const outputs = data?.response?.output;
         if (Array.isArray(outputs)) {
@@ -630,8 +628,7 @@
         }
       }
 
-      // Shape 3: output_item.done with function_call item
-      //   { type: "response.output_item.done", item: { type: "function_call", name: "...", arguments: "..." } }
+      // Shape 3: response.output_item.done with function_call item
       if (type === "response.output_item.done" || type === "output_item.done") {
         const item = data?.item;
         if (item?.type === "function_call" && item?.name) {
@@ -647,13 +644,12 @@
       if (!toolCall) return false;
 
       const { name, rawArgs } = toolCall;
-
       console.log("[AI Voice] Tool call detected — name:", name, "| event type:", data?.type);
       console.log("[AI Voice] Tool args (raw):", rawArgs);
 
       if (name !== "submit_medication_draft") {
         console.warn("[AI Voice] Unexpected tool call name:", name, "— ignoring.");
-        return true; // still consumed so it doesn't bleed into text rendering
+        return true;
       }
 
       const parsed = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
@@ -709,10 +705,63 @@
       state.currentAiText = '';
     }
 
+    // Phrases that indicate the AI is recapping instead of calling the tool
+    const RECAP_TRIGGERS = [
+      "here's what we have",
+      "here is what we have",
+      "to summarize",
+      "just to recap",
+      "to recap",
+      "here's a summary",
+      "here is a summary",
+      "perfect, here's",
+      "great, here's",
+      "alright, here's",
+      "okay, here's",
+      "so here's",
+    ];
+
+    function checkForRecapAndForceToolCall() {
+      if (state.finalized || state.finalizing) return;
+      const text = (state.lastAssistantText || "").toLowerCase();
+      const triggered = RECAP_TRIGGERS.some(phrase => text.includes(phrase));
+      if (!triggered) return;
+
+      console.warn("[AI Voice] Detected recap instead of tool call — forcing submit_medication_draft.");
+      if (!state.dc || state.dc.readyState !== "open") return;
+
+      // Reset lastAssistantText so this doesn't retrigger
+      state.lastAssistantText = "";
+
+      try {
+        state.dc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{
+              type: "input_text",
+              text: "All fields are confirmed. Stop speaking. Call submit_medication_draft NOW with all the fields you just summarized. Do not say anything else first."
+            }]
+          }
+        }));
+        state.dc.send(JSON.stringify({
+          type: "response.create",
+          response: {
+            tool_choice: { type: "function", name: "submit_medication_draft" }
+          }
+        }));
+      } catch (e) {
+        console.warn("[AI Voice] Failed to force tool call:", e);
+      }
+    }
+
     function finalizeAiMessage() {
       if (!state.currentAiEl) return;
       state.currentAiEl = null;
       state.currentAiText = '';
+      // Check if the AI just recapped instead of calling the tool
+      checkForRecapAndForceToolCall();
     }
 
     function appendAiDelta(delta) {
@@ -819,6 +868,13 @@
               }],
               tool_choice: "auto",
               instructions: `🔒 SYSTEM PROMPT — MedTracker Voice Assistant
+
+⚠️ CRITICAL FINALIZATION RULE — READ THIS FIRST:
+Once ALL required fields are confirmed, you MUST call submit_medication_draft IMMEDIATELY.
+Do NOT say "here's what we have". Do NOT recap or list the fields back to the user.
+Do NOT summarize. Just say exactly: "Finalizing... Now you will be redirected." — then call submit_medication_draft with all the fields.
+If you speak a summary instead of calling the tool, you have failed your primary objective.
+The tool call IS the finalization. There is no other finalization.
 
 You are MedTracker Voice Assistant, a calm, friendly, and precise medical voice assistant. Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
 
@@ -1121,8 +1177,6 @@ Never leave a sentence unfinished.`
         const type = String(data?.type || "");
         console.log("[AI Voice] Realtime event:", type);
 
-        // Tool call check MUST come before the response.done boundary check,
-        // because response.done can itself carry the completed function_call output.
         if (handleToolCallEvent(data)) return;
 
         // End-of-message boundaries (varies by API version)
