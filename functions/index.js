@@ -670,7 +670,42 @@ Speak clearly and calmly`;
               session: {
                 type: 'realtime',
                 model: openaiRealtimeModel,
+                modalities: ['text', 'audio'],
                 instructions: systemInstructions,
+                tools: [{
+                  type: 'function',
+                  function: {
+                    name: 'submit_medication_draft',
+                    description: 'Submit the completed medication draft with all collected fields.',
+                    parameters: {
+                      type: 'object',
+                      additionalProperties: false,
+                      properties: {
+                        name: { type: 'string' },
+                        dosage: { type: 'string' },
+                        days: {
+                          type: 'array',
+                          items: { type: 'string', enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] }
+                        },
+                        timesPerDay: { type: 'number' },
+                        times: {
+                          type: 'array',
+                          items: { type: 'string', pattern: '^\\d{2}:\\d{2}$' }
+                        },
+                        startDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+                        endDate: {
+                          anyOf: [
+                            { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+                            { type: 'null' }
+                          ]
+                        },
+                        reminder: { type: 'string', enum: ['None', 'Email', 'SMS', 'Email + SMS'] }
+                      },
+                      required: ['name', 'dosage', 'days', 'timesPerDay', 'startDate', 'endDate', 'reminder']
+                    }
+                  }
+                }],
+                tool_choice: 'auto',
               },
             }),
           });

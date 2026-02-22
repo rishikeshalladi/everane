@@ -288,6 +288,9 @@
       finalRedirected: false,
       responseCount: 0,
       forceAttempts: 0,
+      forceToolCallActive: false,
+      fixAttempts: 0,
+      maxFixAttempts: 5,
     };
 
     function setStatus(text) {
@@ -554,7 +557,7 @@
       }, 150);
     }
 
-    function handleMedicationComplete(draft) {
+    async function handleMedicationComplete(draft) {
       if (state.finalized) return true;
       const normalized = normalizeDraft(draft);
       const issues = validateMedicationDraft(normalized);
@@ -567,9 +570,9 @@
       state.finalizing = false;
       lockInteractionForFinalization();
 
-      setStatus("Done. Opening the form…");
-      saveDraftToFirebase(normalized);
+      setStatus("Done. Saving and opening the form…");
       printFinalDraftToConsole(normalized);
+      await saveDraftToFirebase(normalized);
       redirectToForm();
       return true;
     }
@@ -588,8 +591,17 @@
 
     function requestFixFromModel(issues) {
       if (!state.dc || state.dc.readyState !== "open") return;
+
+      state.fixAttempts++;
+      if (state.fixAttempts > state.maxFixAttempts) {
+        console.error("[AI Voice] Max fix attempts reached (" + state.maxFixAttempts + "). Stopping retries.");
+        setStatus("Could not collect all fields after multiple attempts. Please try again or use the manual form.");
+        addLog("Unable to complete medication draft after multiple attempts. Please click Stop and try again, or use the manual form.", "ai");
+        return;
+      }
+
       const missingList = Array.from(new Set(issues)).join(", ");
-      setStatus(`Missing or invalid: ${missingList}`);
+      setStatus(`Missing or invalid: ${missingList} (attempt ${state.fixAttempts}/${state.maxFixAttempts})`);
       try {
         state.dc.send(JSON.stringify({
           type: "conversation.item.create",
@@ -602,7 +614,12 @@
             }]
           }
         }));
-        state.dc.send(JSON.stringify({ type: "response.create" }));
+        state.dc.send(JSON.stringify({
+          type: "response.create",
+          response: {
+            modalities: ["text", "audio"]
+          }
+        }));
       } catch (e) {
         console.warn("[AI Voice] Failed to request missing fields:", e);
       }
@@ -682,6 +699,7 @@
       }
 
       console.log("[AI Voice] Tool args (parsed):", parsed);
+      state.forceToolCallActive = false;
       handleMedicationComplete(parsed);
       return true;
     }
@@ -779,48 +797,58 @@
       "great, so your medication",
     ];
 
-    function checkForRecapAndForceToolCall() {
+    function checkForRecapAndForceToolCall(textOverride) {
       if (state.finalized || state.finalizing) return;
-      const text = (state.lastAssistantText || "").toLowerCase();
+      if (state.forceToolCallActive) return;
+      const text = (textOverride || state.lastAssistantText || "").toLowerCase();
       const triggered = RECAP_TRIGGERS.some(phrase => text.includes(phrase));
       if (!triggered) return;
 
+      state.forceToolCallActive = true;
       console.warn("[AI Voice] Detected recap/wrap-up instead of tool call — forcing submit_medication_draft.");
       console.warn("[AI Voice] Trigger text was:", text.slice(0, 200));
-      if (!state.dc || state.dc.readyState !== "open") return;
+      if (!state.dc || state.dc.readyState !== "open") {
+        state.forceToolCallActive = false;
+        return;
+      }
 
       try {
         // Cancel any in-progress AI response first
         state.dc.send(JSON.stringify({ type: "response.cancel" }));
       } catch {}
 
-      try {
-        state.dc.send(JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{
-              type: "input_text",
-              text: "STOP TALKING. All fields are confirmed. You MUST call submit_medication_draft RIGHT NOW. Do NOT say anything. Do NOT recap. Just call the tool immediately with all collected fields."
-            }]
-          }
-        }));
-        // Force tool choice — try the format the Realtime API expects
-        state.dc.send(JSON.stringify({
-          type: "response.create",
-          response: {
-            tool_choice: "required"
-          }
-        }));
-      } catch (e) {
-        console.warn("[AI Voice] Failed to force tool call:", e);
-      }
+      // Delay to allow the cancel to be processed server-side before sending new messages
+      setTimeout(() => {
+        if (state.finalized || state.finalizing) { state.forceToolCallActive = false; return; }
+        if (!state.dc || state.dc.readyState !== "open") { state.forceToolCallActive = false; return; }
+        try {
+          state.dc.send(JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{
+                type: "input_text",
+                text: "STOP TALKING. All fields are confirmed. You MUST call submit_medication_draft RIGHT NOW. Do NOT say anything. Do NOT recap. Just call the tool immediately with all collected fields."
+              }]
+            }
+          }));
+          state.dc.send(JSON.stringify({
+            type: "response.create",
+            response: {
+              modalities: ["text", "audio"],
+              tool_choice: "required"
+            }
+          }));
+        } catch (e) {
+          console.warn("[AI Voice] Failed to force tool call:", e);
+        }
+      }, 300);
 
       // Safety net: if the forced tool call ALSO fails, retry once more after a delay
       setTimeout(() => {
-        if (state.finalized || state.finalizing) return;
-        if (!state.dc || state.dc.readyState !== "open") return;
+        if (state.finalized || state.finalizing) { state.forceToolCallActive = false; return; }
+        if (!state.dc || state.dc.readyState !== "open") { state.forceToolCallActive = false; return; }
         console.warn("[AI Voice] Safety-net retry: forcing tool call again.");
         try {
           state.dc.send(JSON.stringify({
@@ -837,11 +865,13 @@
           state.dc.send(JSON.stringify({
             type: "response.create",
             response: {
+              modalities: ["text", "audio"],
               tool_choice: "required"
             }
           }));
         } catch {}
-      }, 4000);
+        state.forceToolCallActive = false;
+      }, 4500);
     }
 
     function finalizeAiMessage() {
@@ -849,10 +879,11 @@
       // (the AI may have spoken audio-only without text deltas)
       state.currentAiEl = null;
       state.currentAiText = '';
-      // Check if the AI just recapped instead of calling the tool
-      checkForRecapAndForceToolCall();
-      // Reset per-response accumulator AFTER the check
+      // Snapshot text before clearing so multiple response.done events don't lose it
+      const textSnapshot = state.lastAssistantText || "";
       state.lastAssistantText = "";
+      // Check if the AI just recapped instead of calling the tool
+      checkForRecapAndForceToolCall(textSnapshot);
     }
 
     function appendAiDelta(delta) {
@@ -1358,6 +1389,8 @@ Never leave a sentence unfinished.`
       state.finalRedirected = false;
       state.responseCount = 0;
       state.forceAttempts = 0;
+      state.forceToolCallActive = false;
+      state.fixAttempts = 0;
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
@@ -1404,27 +1437,33 @@ Never leave a sentence unfinished.`
         state.dc.send(JSON.stringify({ type: "response.cancel" }));
       } catch {}
 
-      try {
-        state.dc.send(JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{
-              type: "input_text",
-              text: "I am done. All fields are complete. Call submit_medication_draft RIGHT NOW with everything we discussed. Do NOT say anything else. Just call the tool."
-            }]
-          }
-        }));
-        state.dc.send(JSON.stringify({
-          type: "response.create",
-          response: {
-            tool_choice: "required"
-          }
-        }));
-      } catch (e) {
-        console.warn("[AI Voice] Force tool call via Done button failed:", e);
-      }
+      // Delay to allow the cancel to be processed server-side
+      setTimeout(() => {
+        if (state.finalized || state.finalizing) return;
+        if (!state.dc || state.dc.readyState !== "open") return;
+        try {
+          state.dc.send(JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{
+                type: "input_text",
+                text: "I am done. All fields are complete. Call submit_medication_draft RIGHT NOW with everything we discussed. Do NOT say anything else. Just call the tool."
+              }]
+            }
+          }));
+          state.dc.send(JSON.stringify({
+            type: "response.create",
+            response: {
+              modalities: ["text", "audio"],
+              tool_choice: "required"
+            }
+          }));
+        } catch (e) {
+          console.warn("[AI Voice] Force tool call via Done button failed:", e);
+        }
+      }, 300);
 
       els.done.disabled = true;
       // Re-enable after a few seconds in case it fails
