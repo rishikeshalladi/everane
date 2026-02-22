@@ -21,7 +21,7 @@ const openaiApiKey = functions.config().openai?.key || process.env.OPENAI_API_KE
 const openaiRealtimeModel =
   functions.config().openai?.realtime_model ||
   process.env.OPENAI_REALTIME_MODEL ||
-  'gpt-4o-realtime-preview';
+  'gpt-realtime';
 const openaiRealtimeVoice =
   functions.config().openai?.realtime_voice ||
   process.env.OPENAI_REALTIME_VOICE ||
@@ -645,53 +645,43 @@ Pause naturally between questions
 
 Speak clearly and calmly`;
 
-      // Mint a short-lived client secret for Realtime. Endpoint naming has changed over time;
-      // try the known variants for robustness.
-      const candidateUrls = [
-        'https://api.openai.com/v1/realtime/client_secrets',
-        'https://api.openai.com/v1/realtime/client_secret',
-      ];
+      // Mint a short-lived client secret for Realtime (GA endpoint).
+      const clientSecretUrl = 'https://api.openai.com/v1/realtime/client_secrets';
 
       let sessionResp = null;
       let sessionJson = null;
-      let lastErr = null;
 
-      for (const url of candidateUrls) {
-        try {
-          const r = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openaiApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              // Attach default session configuration to the minted client secret.
-              // Clients can still override parts of this via session.update after connecting.
-              session: {
-                type: 'realtime',
-                model: openaiRealtimeModel,
-                modalities: ['text', 'audio'],
-                instructions: systemInstructions,
+      try {
+        const r = await fetch(clientSecretUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            session: {
+              type: 'realtime',
+              model: openaiRealtimeModel,
+              instructions: systemInstructions,
+              audio: {
+                output: { voice: openaiRealtimeVoice },
               },
-            }),
-          });
-          const j = await r.json().catch(() => null);
-          if (r.ok) {
-            sessionResp = r;
-            sessionJson = j;
-            console.log('✅ OpenAI Realtime client secret minted via:', url);
-            break;
-          }
-          lastErr = { url, status: r.status, body: j };
-          console.error('❌ OpenAI Realtime client secret mint failed via:', url, r.status, j);
-        } catch (e) {
-          lastErr = { url, error: String(e?.message || e) };
-          console.error('❌ OpenAI Realtime client secret mint exception via:', url, e);
+            },
+          }),
+        });
+        const j = await r.json().catch(() => null);
+        if (r.ok) {
+          sessionResp = r;
+          sessionJson = j;
+          console.log('✅ OpenAI Realtime client secret minted via:', clientSecretUrl);
+        } else {
+          console.error('❌ OpenAI Realtime client secret mint failed:', r.status, j);
+          res.status(502).json({ error: 'Failed to create Realtime session', details: { url: clientSecretUrl, status: r.status, body: j } });
+          return;
         }
-      }
-
-      if (!sessionResp) {
-        res.status(502).json({ error: 'Failed to create Realtime session', details: lastErr });
+      } catch (e) {
+        console.error('❌ OpenAI Realtime client secret mint exception:', e);
+        res.status(502).json({ error: 'Failed to create Realtime session', details: { url: clientSecretUrl, error: String(e?.message || e) } });
         return;
       }
 

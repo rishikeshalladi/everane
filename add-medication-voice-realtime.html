@@ -257,12 +257,8 @@
 
     // Firebase Function URL (prod)
     const CREATE_SESSION_URL = "https://us-central1-medtracker-8c467.cloudfunctions.net/createRealtimeSession";
-    // OpenAI Realtime WebRTC SDP exchange endpoints (naming has changed over time).
-    // We'll try these in order.
-    const REALTIME_CALL_URLS = [
-      "https://api.openai.com/v1/realtime/calls",
-      "https://api.openai.com/v1/realtime/call",
-    ];
+    // OpenAI Realtime WebRTC SDP exchange endpoint (GA).
+    const REALTIME_CALL_URL = "https://api.openai.com/v1/realtime/calls";
 
     const els = {
       status: document.getElementById('status'),
@@ -554,7 +550,7 @@
       }, 150);
     }
 
-    function handleMedicationComplete(draft) {
+    async function handleMedicationComplete(draft) {
       if (state.finalized) return true;
       const normalized = normalizeDraft(draft);
       const issues = validateMedicationDraft(normalized);
@@ -567,9 +563,9 @@
       state.finalizing = false;
       lockInteractionForFinalization();
 
-      setStatus("Done. Opening the form…");
-      saveDraftToFirebase(normalized);
+      setStatus("Done. Saving and opening the form…");
       printFinalDraftToConsole(normalized);
+      await saveDraftToFirebase(normalized);
       redirectToForm();
       return true;
     }
@@ -927,35 +923,33 @@
               modalities: ["text", "audio"],
               tools: [{
                 type: "function",
-                function: {
-                  name: "submit_medication_draft",
-                  description: "Submit the completed medication draft.",
-                  parameters: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      name: { type: "string" },
-                      dosage: { type: "string" },
-                      days: {
-                        type: "array",
-                        items: { type: "string", enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] }
-                      },
-                      timesPerDay: { type: "number" },
-                      times: {
-                        type: "array",
-                        items: { type: "string", pattern: "^\\d{2}:\\d{2}$" }
-                      },
-                      startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-                      endDate: {
-                        anyOf: [
-                          { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-                          { type: "null" }
-                        ]
-                      },
-                      reminder: { type: "string", enum: ["None", "Email", "SMS", "Email + SMS"] }
+                name: "submit_medication_draft",
+                description: "Submit the completed medication draft.",
+                parameters: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    name: { type: "string" },
+                    dosage: { type: "string" },
+                    days: {
+                      type: "array",
+                      items: { type: "string", enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] }
                     },
-                    required: ["name", "dosage", "days", "timesPerDay", "startDate", "endDate", "reminder"]
-                  }
+                    timesPerDay: { type: "number" },
+                    times: {
+                      type: "array",
+                      items: { type: "string", pattern: "^\\d{2}:\\d{2}$" }
+                    },
+                    startDate: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                    endDate: {
+                      anyOf: [
+                        { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+                        { type: "null" }
+                      ]
+                    },
+                    reminder: { type: "string", enum: ["None", "Email", "SMS", "Email + SMS"] }
+                  },
+                  required: ["name", "dosage", "days", "timesPerDay", "startDate", "endDate", "reminder"]
                 }
               }],
               tool_choice: "auto",
@@ -1310,32 +1304,21 @@ Never leave a sentence unfinished.`
       await pc.setLocalDescription(offer);
 
       setStatus("Handshaking with OpenAI Realtime…");
-      // WebRTC SDP exchange
-      let answerSdp = null;
-      let lastErr = null;
-      for (const url of REALTIME_CALL_URLS) {
-        const resp = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${clientSecret}`,
-            "Content-Type": "application/sdp",
-          },
-          body: offer.sdp,
-        });
-        if (resp.ok) {
-          answerSdp = await resp.text();
-          console.log("[Realtime] SDP exchange OK via:", url);
-          break;
-        }
-        const t = await resp.text().catch(() => "");
-        lastErr = { url, status: resp.status, body: t.slice(0, 300) };
-        console.warn("[Realtime] SDP exchange failed via:", url, resp.status, t.slice(0, 300));
-        // If it's not a 404-ish, don't keep retrying different URLs.
-        if (resp.status !== 404) break;
+      // WebRTC SDP exchange (GA endpoint)
+      const sdpResp = await fetch(REALTIME_CALL_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${clientSecret}`,
+          "Content-Type": "application/sdp",
+        },
+        body: offer.sdp,
+      });
+      if (!sdpResp.ok) {
+        const errBody = await sdpResp.text().catch(() => "");
+        throw new Error(`Realtime SDP exchange failed (${sdpResp.status}): ${errBody.slice(0, 300)}`);
       }
-      if (!answerSdp) {
-        throw new Error(`Realtime call failed (${lastErr?.status || "?"}) via ${lastErr?.url || "?"}: ${lastErr?.body || ""}`);
-      }
+      const answerSdp = await sdpResp.text();
+      console.log("[Realtime] SDP exchange OK via:", REALTIME_CALL_URL);
       await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
 
       state.pc = pc;
