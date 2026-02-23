@@ -220,15 +220,14 @@
         <div class="row">
           <button class="btn btn-primary" id="start-btn" type="button">Start AI Voice</button>
           <button class="btn btn-secondary" id="mute-btn" type="button" disabled>Mute</button>
-          <button class="btn btn-secondary" id="done-btn" type="button" disabled style="background:linear-gradient(135deg,var(--accent),color-mix(in oklab, var(--accent) 80%, var(--brand)));color:#0b1020;font-weight:800">✓ Done</button>
           <button class="btn btn-danger" id="stop-btn" type="button" disabled>Stop</button>
         </div>
 
         <div class="status" id="status">Not started.</div>
         <audio id="ai-audio" autoplay></audio>
         <div class="hint">
-          Tip: If the AI doesn’t respond, check your browser mic permissions and confirm your OpenAI key is configured on Firebase Functions.
-          If the AI finishes collecting info but doesn't redirect, click <strong>✓ Done</strong> to force submission.
+          Tip: If the AI doesn't respond, check your browser mic permissions and confirm your OpenAI key is configured on Firebase Functions.
+          Once the AI finishes collecting all fields, it will automatically save and redirect you to the form.
         </div>
 
         <div class="log" id="log"></div>
@@ -265,7 +264,6 @@
       log: document.getElementById('log'),
       start: document.getElementById('start-btn'),
       mute: document.getElementById('mute-btn'),
-      done: document.getElementById('done-btn'),
       stop: document.getElementById('stop-btn'),
       audio: document.getElementById('ai-audio'),
     };
@@ -577,7 +575,6 @@
       // Disable buttons that would change interaction
       try { els.start.disabled = true; } catch {}
       try { els.mute.disabled = true; } catch {}
-      try { els.done.disabled = true; } catch {}
       // Keep Stop enabled so the user can exit
       setStatus("Finalizing… (locked)");
     }
@@ -775,15 +772,42 @@
       "great, so your medication",
     ];
 
+    /**
+     * Try to extract a medication draft JSON object from the AI's text output.
+     * The AI sometimes prints the draft as text instead of calling the tool.
+     */
+    function tryExtractDraftFromText(text) {
+      if (!text || typeof text !== "string") return null;
+      // Look for a JSON object containing "name" key (medication draft signature)
+      const jsonMatch = text.match(/\{[\s\S]*?"name"\s*:\s*"[\s\S]*?\}/);
+      if (!jsonMatch) return null;
+      const parsed = safeJsonParse(jsonMatch[0]);
+      if (!parsed || typeof parsed !== "object") return null;
+      // Must have at least name + dosage to be a medication draft
+      if (!parsed.name || !parsed.dosage) return null;
+      return parsed;
+    }
+
     function checkForRecapAndForceToolCall() {
       if (state.finalized || state.finalizing) return;
       const text = (state.lastAssistantText || "").toLowerCase();
+
+      // First: check if the AI printed a full JSON draft as text
+      const extractedDraft = tryExtractDraftFromText(state.lastAssistantText || "");
+      if (extractedDraft) {
+        console.warn("[AI Voice] Extracted medication draft from AI text output — auto-submitting.");
+        handleMedicationComplete(extractedDraft);
+        return;
+      }
+
       const triggered = RECAP_TRIGGERS.some(phrase => text.includes(phrase));
       if (!triggered) return;
 
       console.warn("[AI Voice] Detected recap/wrap-up instead of tool call — forcing submit_medication_draft.");
       console.warn("[AI Voice] Trigger text was:", text.slice(0, 200));
       if (!state.dc || state.dc.readyState !== "open") return;
+
+      state.forceAttempts++;
 
       try {
         // Cancel any in-progress AI response first
@@ -817,6 +841,15 @@
       setTimeout(() => {
         if (state.finalized || state.finalizing) return;
         if (!state.dc || state.dc.readyState !== "open") return;
+
+        // Try extracting draft from accumulated text one more time
+        const retryDraft = tryExtractDraftFromText(state.lastAssistantText || "");
+        if (retryDraft) {
+          console.warn("[AI Voice] Safety-net: extracted draft from text — auto-submitting.");
+          handleMedicationComplete(retryDraft);
+          return;
+        }
+
         console.warn("[AI Voice] Safety-net retry: forcing tool call again.");
         try {
           state.dc.send(JSON.stringify({
@@ -912,7 +945,6 @@
       dc.onopen = () => {
         setStatus("Connected. You can speak normally.");
         els.mute.disabled = false;
-        els.done.disabled = false;
         els.stop.disabled = false;
 
         // Configure the session after connect (system prompt / behavior).
@@ -1344,7 +1376,6 @@ Never leave a sentence unfinished.`
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
-      els.done.disabled = true;
       els.stop.disabled = true;
       setStatus("Stopped.");
     }
@@ -1372,51 +1403,6 @@ Never leave a sentence unfinished.`
       try {
         state.localStream?.getAudioTracks()?.forEach(t => t.enabled = !state.muted);
       } catch {}
-    });
-
-    // Manual "Done" button — forces the AI to call submit_medication_draft
-    els.done.addEventListener("click", () => {
-      if (!state.dc || state.dc.readyState !== "open") return;
-      if (state.finalized || state.finalizing) return;
-
-      console.log("[AI Voice] User clicked Done — forcing tool call.");
-      setStatus("Forcing finalization…");
-      state.forceAttempts++;
-
-      try {
-        state.dc.send(JSON.stringify({ type: "response.cancel" }));
-      } catch {}
-
-      try {
-        state.dc.send(JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{
-              type: "input_text",
-              text: "I am done. All fields are complete. Call submit_medication_draft RIGHT NOW with everything we discussed. Do NOT say anything else. Just call the tool."
-            }]
-          }
-        }));
-        state.dc.send(JSON.stringify({
-          type: "response.create",
-          response: {
-            tool_choice: "required"
-          }
-        }));
-      } catch (e) {
-        console.warn("[AI Voice] Force tool call via Done button failed:", e);
-      }
-
-      els.done.disabled = true;
-      // Re-enable after a few seconds in case it fails
-      setTimeout(() => {
-        if (!state.finalized && !state.finalizing) {
-          els.done.disabled = false;
-          setStatus("Tool call may have failed. Try clicking Done again, or check the console.");
-        }
-      }, 6000);
     });
 
     els.stop.addEventListener("click", () => stopAll());
