@@ -1111,6 +1111,7 @@
   }
 </style>
 
+<script src="schedule-utils.js"></script>
 <script type="module">
   // Import Firebase SDKs for verification check
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
@@ -1131,38 +1132,6 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
   
-  const getBrowserTimezone = () => {
-    try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const maybeRequestTimezoneChangeEmail = async (user) => {
-    if (!user) return;
-    const tz = getBrowserTimezone();
-    if (!tz) return;
-    const cacheKey = `tzChangeEmail:${user.uid}:${tz}`;
-    const lastSent = Number(localStorage.getItem(cacheKey) || 0);
-    if (Date.now() - lastSent < 6 * 60 * 60 * 1000) return;
-
-    try {
-      const token = await user.getIdToken();
-      await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/requestTimezoneChangeEmail', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ detectedTimezone: tz })
-      });
-      localStorage.setItem(cacheKey, String(Date.now()));
-    } catch (e) {
-      console.warn('[Home] Failed to request timezone change email:', e);
-    }
-  };
-
   const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
   const formatTime12h = (time24) => {
@@ -1188,33 +1157,24 @@
   const buildAgendaEntries = (medications) => {
     const entries = [];
     const now = new Date();
-    const todayIndex = now.getDay();
-
     medications.forEach(med => {
-      const allowedDays = med.days && med.days.length ? med.days.map(d => d.toLowerCase()) : weekdaysConst;
-      if (!allowedDays.includes(weekdaysConst[todayIndex])) return;
-
-      const times = Array.isArray(med.times) && med.times.length ? [...med.times].filter(Boolean).sort() : [null];
-      times.forEach((timeStr, idx) => {
+      const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], now);
+      doses.forEach(dose => {
         entries.push({
-          time: timeStr,
+          time: dose.time,
           name: med.name,
           dosage: med.dosage,
-          doseNumber: idx + 1,
-          totalDoses: times.length
+          doseNumber: dose.doseNumber,
+          totalDoses: doses.length
         });
       });
     });
-
     entries.sort((a, b) => {
-      if (a.time === b.time) {
-        return (a.name || '').localeCompare(b.name || '');
-      }
+      if (a.time === b.time) return (a.name || '').localeCompare(b.name || '');
       if (!a.time) return 1;
       if (!b.time) return -1;
       return a.time.localeCompare(b.time);
     });
-
     return entries;
   };
 
@@ -1314,21 +1274,19 @@
       const medicationsSnapshot = await getDocs(medicationsCollectionRef);
       const medications = [];
       
-        medicationsSnapshot.forEach((doc) => {
-          const medData = doc.data();
-          
+        for (const docSnapshot of medicationsSnapshot.docs) {
+          const medData = docSnapshot.data();
+
           // Only show medications that are not deleted
           if (!medData.deletedStatus) {
-            medications.push({
-              id: doc.id,
+            const med = {
+              id: docSnapshot.id,
               name: medData.name,
               dosage: medData.dosage,
-              days: medData.daysOfWeek,
-              timesPerDay: medData.timesPerDay,
-              times: medData.times,
+              schedules: medData.schedules || [],
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
-              reminder: medData.reminderMethod === 'E' ? 'Email' : 
+              reminder: medData.reminderMethod === 'E' ? 'Email' :
                        medData.reminderMethod === 'S' ? 'SMS' : 'None',
               bottles: medData.bottles ? medData.bottles.map(bottleStr => {
                 const parts = bottleStr.split('/');
@@ -1340,9 +1298,25 @@
                 }
                 return null;
               }).filter(Boolean) : []
-            });
+            };
+
+            // Auto-migrate old format
+            if ((!med.schedules || med.schedules.length === 0) && (medData.daysOfWeek || medData.times)) {
+              const migrated = window.ScheduleUtils.migrateOldFormat(medData);
+              med.schedules = migrated.schedules;
+              // Save back to Firestore
+              try {
+                const medDocRef = doc(window.db, "users", user.uid, "medications", docSnapshot.id);
+                await setDoc(medDocRef, { schedules: migrated.schedules }, { merge: true });
+                console.log('[Home] Auto-migrated schedules for', med.name);
+              } catch (e) {
+                console.warn('[Home] Failed to save migrated schedules:', e);
+              }
+            }
+
+            medications.push(med);
           }
-        });
+        }
 
       listEl.innerHTML = '';
 
@@ -1356,123 +1330,16 @@
       const getWeekdayIndex = (dayName) => weekdaysConst.indexOf(dayName.toLowerCase());
 
       const computeNextDosage = (medication) => {
-        const allowedDays = medication.days && medication.days.length ? medication.days.map(d => d.toLowerCase()) : weekdaysConst;
-        const times = Array.isArray(medication.times) ? medication.times.filter(Boolean) : [];
-
-        const candidates = [];
-        for (let offset = 0; offset < 7; offset++) {
-          const candidateDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-          const weekdayName = weekdaysConst[candidateDate.getDay()];
-          if (!allowedDays.includes(weekdayName)) continue;
-
-          if (times.length > 0) {
-            const sortedTimes = [...times].sort();
-            sortedTimes.forEach((timeStr, index) => {
-              const [h, m] = timeStr.split(':').map(Number);
-              if (Number.isNaN(h) || Number.isNaN(m)) return;
-              const candidateDateTime = new Date(candidateDate);
-              candidateDateTime.setHours(h, m, 0, 0);
-              candidates.push({ dateTime: candidateDateTime, timeStr, weekday: weekdayName, doseNumber: index + 1, totalDoses: sortedTimes.length });
-            });
-          } else {
-            candidates.push({ dateTime: candidateDate, timeStr: null, weekday: weekdayName, doseNumber: 1, totalDoses: 1 });
-          }
+        const result = ScheduleUtils.computeNextDose(medication.schedules || [], new Date());
+        if (!result) return 'N/A';
+        if (result.time) {
+          return `${formatTime12h(result.time)} on ${result.weekday.charAt(0).toUpperCase() + result.weekday.slice(1)}`;
         }
-
-        if (!candidates.length) {
-          return 'N/A';
-        }
-
-        candidates.sort((a, b) => a.dateTime - b.dateTime);
-        const upcoming = candidates.find(c => c.dateTime >= now) || candidates[0];
-
-        if (upcoming.timeStr) {
-          return `${formatTime12h(upcoming.timeStr)} on ${upcoming.weekday.charAt(0).toUpperCase() + upcoming.weekday.slice(1)}`;
-        }
-
-        return upcoming.weekday.charAt(0).toUpperCase() + upcoming.weekday.slice(1);
+        return result.weekday.charAt(0).toUpperCase() + result.weekday.slice(1);
       };
 
-      // Function to determine current dose based on complex logic
       const determineCurrentDose = (medication) => {
-        const allowedDays = medication.days && medication.days.length ? medication.days.map(d => d.toLowerCase()) : weekdaysConst;
-        const times = Array.isArray(medication.times) ? medication.times.filter(Boolean) : [];
-
-        // Build all dose candidates for today and yesterday
-        const candidates = [];
-        for (let offset = -1; offset < 7; offset++) {
-          const candidateDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
-          const weekdayName = weekdaysConst[candidateDate.getDay()];
-          if (!allowedDays.includes(weekdayName)) continue;
-
-          if (times.length > 0) {
-            const sortedTimes = [...times].sort();
-            sortedTimes.forEach((timeStr, index) => {
-              const [h, m] = timeStr.split(':').map(Number);
-              if (Number.isNaN(h) || Number.isNaN(m)) return;
-              const candidateDateTime = new Date(candidateDate);
-              candidateDateTime.setHours(h, m, 0, 0);
-              candidates.push({ 
-                dateTime: candidateDateTime, 
-                timeStr, 
-                weekday: weekdayName, 
-                doseNumber: index + 1, 
-                totalDoses: sortedTimes.length 
-              });
-            });
-          } else {
-            candidates.push({ 
-              dateTime: candidateDate, 
-              timeStr: null, 
-              weekday: weekdayName, 
-              doseNumber: 1, 
-              totalDoses: 1 
-            });
-          }
-        }
-
-        if (!candidates.length) {
-          return null;
-        }
-
-        // Sort by dateTime
-        candidates.sort((a, b) => a.dateTime - b.dateTime);
-
-        // Find next dose (first dose >= now)
-        const nextDose = candidates.find(c => c.dateTime >= now);
-        
-        // Find previous dose (last dose < now)
-        const previousDoses = candidates.filter(c => c.dateTime < now);
-        const previousDose = previousDoses.length > 0 ? previousDoses[previousDoses.length - 1] : null;
-
-        // If no next dose, use the first candidate (wraps around)
-        if (!nextDose) {
-          return candidates[0];
-        }
-
-        // If no previous dose, use next dose
-        if (!previousDose) {
-          return nextDose;
-        }
-
-        // Calculate time differences in minutes
-        const timeToNext = (nextDose.dateTime - now) / (1000 * 60);
-        const timeSincePrevious = (now - previousDose.dateTime) / (1000 * 60);
-        const timeBetweenDoses = (nextDose.dateTime - previousDose.dateTime) / (1000 * 60);
-
-        // Rule 1: If within 45 minutes of previous dose, use previous dose
-        if (timeSincePrevious <= 45) {
-          return previousDose;
-        }
-
-        // Rule 2: If next and previous doses are less than 1.5 hours (90 minutes) apart,
-        // use whichever is closer to current time
-        if (timeBetweenDoses < 90) {
-          return timeToNext < timeSincePrevious ? nextDose : previousDose;
-        }
-
-        // Default: use next dose
-        return nextDose;
+        return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date());
       };
 
       // Store current dose for each medication (will be set when "Taken" is clicked)
@@ -1480,8 +1347,8 @@
 
       medications.forEach((med) => {
         // Calculate per week and per day
-        const perWeek = (med.days ? med.days.length : 0) * (med.timesPerDay || 0);
-        const perDay = med.timesPerDay || 0;
+        const perWeek = ScheduleUtils.getPerWeekCount(med.schedules || []);
+        const perDay = ScheduleUtils.getPerDayMax(med.schedules || []);
         
         // Calculate next dosage
         const nextDosage = computeNextDosage(med);
@@ -1851,8 +1718,6 @@
     console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
 
     if (user) {
-      // If timezone changed, send an email asking whether to update or keep
-      await maybeRequestTimezoneChangeEmail(user);
       // Refresh the display
       console.log('[Home] User authenticated, calling renderList()');
       if (user && user.uid) {
@@ -1936,9 +1801,7 @@
         const medData = {
           name: med.name || '',
           dosage: med.dosage || 0,
-          daysOfWeek: med.days || [],
-          timesPerDay: med.timesPerDay || 0,
-          times: med.times || [],
+          schedules: med.schedules || [],
           startDate: formatDate(med.startDate),
           endDate: formatDate(med.endDate),
           reminderMethod: reminderMethod,
@@ -2017,15 +1880,7 @@
       console.log(`\n💊 MEDICATION #${index + 1}:`);
       console.log(`   name: "${med.name || ''}"`);
       console.log(`   dosage: ${med.dosage || 'N/A'}`);
-      console.log(`   days of week: [${(med.days || []).map(day => `"${day}"`).join(', ')}]`);
-      console.log(`   timesperday: ${med.timesPerDay || 'N/A'}`);
-      
-      // Format times - show all slots up to timesPerDay
-      const timesPerDay = med.timesPerDay || 1;
-      for (let i = 0; i < timesPerDay; i++) {
-        const time = (med.times && med.times[i]) ? med.times[i] : 'N/A';
-        console.log(`      time${i + 1}: ${time}`);
-      }
+      console.log(`   schedules:`, JSON.stringify(med.schedules || []));
       
       // Format dates
       const startDate = med.startDate ? new Date(med.startDate).toLocaleDateString() : 'N/A';
@@ -2119,9 +1974,7 @@
                 console.log(`\n💊 MEDICATION: ${medData.name}`);
                 console.log('name:', medData.name);
                 console.log('dosage:', medData.dosage);
-                console.log('daysOfWeek:', medData.daysOfWeek);
-                console.log('timesPerDay:', medData.timesPerDay);
-                console.log('times:', medData.times);
+                console.log('schedules:', medData.schedules);
                 console.log('startDate:', medData.startDate);
                 console.log('endDate:', medData.endDate);
                 console.log('reminderMethod:', medData.reminderMethod);

@@ -305,6 +305,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     </div>
   </div>
 
+  <script src="schedule-utils.js"></script>
   <script type="module">
     // Import Firebase SDKs
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
@@ -357,13 +358,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
           
           // Only show medications that are deleted
           if (medData.deletedStatus === true) {
+            // Auto-migrate old format to schedules if needed
+            let schedules = medData.schedules || [];
+            if (schedules.length === 0 && window.ScheduleUtils && medData.daysOfWeek) {
+              schedules = ScheduleUtils.migrateToSchedules(medData.daysOfWeek, medData.timesPerDay, medData.times);
+            }
+
             deletedMedications.push({
               id: doc.id,
               name: medData.name,
               dosage: medData.dosage,
-              days: medData.daysOfWeek,
-              timesPerDay: medData.timesPerDay,
-              times: medData.times,
+              schedules: schedules,
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
               reminder: medData.reminderMethod === 'E' ? 'Email' : 
@@ -394,34 +399,25 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
         deletedMedications.forEach((med, i) => {
           // Calculate per week and per day
-          const perWeek = (med.days ? med.days.length : 0) * (med.timesPerDay || 0);
-          const perDay = med.timesPerDay || 0;
+          const perWeek = ScheduleUtils.getPerWeekCount(med.schedules || []);
+          const perDay = ScheduleUtils.getPerDayMax(med.schedules || []);
           
           // Calculate next dosage
           let nextDosage = 'N/A';
-          if (med.days && med.days.length > 0) {
-            const today = new Date().getDay();
-            const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            
-            // Find the next day from the selected days
-            const dayIndices = med.days.map(d => weekdaysConst.indexOf(d.toLowerCase()));
-            const sortedDays = dayIndices.map(i => ((i - today + 7) % 7)).sort((a, b) => a - b);
-            const nextDayOffset = sortedDays[0];
-            const nextDayIndex = (today + nextDayOffset) % 7;
-            const nextDayName = weekdaysConst[nextDayIndex].charAt(0).toUpperCase() + weekdaysConst[nextDayIndex].slice(1);
-            
-            // If they provided times, show time + day
-            if (med.times && med.times.length > 0) {
-              // Convert 24h time to 12h format with AM/PM
-              const time24 = med.times[0];
-              const [hours, minutes] = time24.split(':');
-              const hour = parseInt(hours);
-              const ampm = hour >= 12 ? 'PM' : 'AM';
-              const hour12 = hour % 12 || 12;
-              nextDosage = `${hour12}:${minutes} ${ampm} on ${nextDayName}`;
+          const nextDoseResult = ScheduleUtils.computeNextDose(med.schedules || [], new Date());
+          if (nextDoseResult) {
+            if (nextDoseResult.time) {
+              // Format time to 12h
+              const [hours, minutes] = nextDoseResult.time.split(':').map(Number);
+              let displayHour = hours;
+              let period = 'AM';
+              if (hours === 0) { displayHour = 12; }
+              else if (hours === 12) { period = 'PM'; }
+              else if (hours > 12) { displayHour = hours - 12; period = 'PM'; }
+              const day = nextDoseResult.weekday.charAt(0).toUpperCase() + nextDoseResult.weekday.slice(1);
+              nextDosage = `${displayHour}:${String(minutes).padStart(2, '0')} ${period} on ${day}`;
             } else {
-              // Just show the day
-              nextDosage = nextDayName;
+              nextDosage = nextDoseResult.weekday.charAt(0).toUpperCase() + nextDoseResult.weekday.slice(1);
             }
           }
           

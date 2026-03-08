@@ -918,6 +918,9 @@
   <!-- Chart.js (used by Stats tab) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
+  <!-- Schedule utilities (shared logic for schedules[] format) -->
+  <script src="../schedule-utils.js"></script>
+
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -946,26 +949,35 @@
       return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    function formatDays(daysOfWeek) {
-      if (!Array.isArray(daysOfWeek) || daysOfWeek.length === 0) return 'Every day';
-      // Supports either numbers (0-6) or strings
-      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      const out = daysOfWeek.map(d => {
-        if (typeof d === 'number') return days[d % 7];
-        const s = String(d).toLowerCase();
-        const map = { sunday:'Sun', monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu', friday:'Fri', saturday:'Sat' };
-        return map[s] || s.slice(0,3);
+    function formatDays(schedules) {
+      if (!Array.isArray(schedules) || schedules.length === 0) return 'Every day';
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const uniqueDays = new Set();
+      let hasHourlyInterval = false;
+      schedules.forEach(sch => {
+        if (sch.type === 'WEEKLY') {
+          uniqueDays.add(dayNames[sch.weekday % 7]);
+        } else if (sch.type === 'INTERVAL') {
+          if ((sch.interval?.unit || '').toUpperCase() === 'HOUR') hasHourlyInterval = true;
+        }
       });
-      // de-dupe
-      return Array.from(new Set(out)).join(', ');
+      if (hasHourlyInterval) return 'Every day';
+      return uniqueDays.size > 0 ? Array.from(uniqueDays).join(', ') : 'Every day';
     }
 
-    function formatTimes(times, timesPerDay) {
-      const t = Array.isArray(times) ? times.filter(x => x && String(x).trim()) : [];
-      if (t.length > 0) return t.join(', ');
-      const n = Number(timesPerDay || 0);
-      if (!n) return 'Any time';
-      return `${n}x / day`;
+    function formatTimes(schedules) {
+      if (!Array.isArray(schedules) || schedules.length === 0) return 'Any time';
+      const times = new Set();
+      const intervals = [];
+      schedules.forEach(sch => {
+        if (sch.type === 'WEEKLY' && sch.time) {
+          times.add(sch.time);
+        } else if (sch.type === 'INTERVAL' && sch.interval) {
+          intervals.push(`Every ${sch.interval.value} ${sch.interval.unit.toLowerCase()}(s)`);
+        }
+      });
+      const all = [...Array.from(times).sort(), ...intervals];
+      return all.length > 0 ? all.join(', ') : 'Any time';
     }
 
     function renderHomeShell(titleLine) {
@@ -991,8 +1003,8 @@
       listEl.innerHTML = active.map(m => {
         const name = safeText(m.name || 'Medication');
         const dosage = safeText(m.dosage || '');
-        const days = formatDays(m.daysOfWeek || m.days || []);
-        const times = formatTimes(m.times, m.timesPerDay);
+        const days = formatDays(m.schedules || []);
+        const times = formatTimes(m.schedules || []);
         const stock = (m.stock === 0 || (Array.isArray(m.bottles) && m.bottles.length === 0)) ? 'Out of stock' : 'In stock';
         const chipClass = stock === 'Out of stock' ? 'warn' : 'ok';
 
@@ -1048,7 +1060,21 @@
 
           // Live meds
           onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
-            const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const meds = snap.docs.map(d => {
+              const medData = { id: d.id, ...d.data() };
+              medData.schedules = medData.schedules || [];
+              // Auto-migrate old format if schedules missing but old fields present
+              if (medData.schedules.length === 0 && window.ScheduleUtils) {
+                const oldDays = medData.daysOfWeek || medData.days || [];
+                const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
+                if (oldDays.length > 0 || oldTimes.length > 0 || medData.timesPerDay > 0) {
+                  const migrated = ScheduleUtils.migrateOldFormat(medData);
+                  medData.schedules = migrated.schedules;
+                  console.log(`[Student View] Auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
+                }
+              }
+              return medData;
+            });
             renderMeds(patientName, meds);
           }, (err) => {
             console.warn('[Student View] meds snapshot error:', err);
@@ -1080,12 +1106,18 @@
     }
 
     function shouldShowOnDate(med, dateObj) {
-      // Similar logic to calendar.html: show meds if scheduled OR if any dose exists for that date.
+      // Show meds if scheduled OR if any dose exists for that date.
       const dateStr = toISODateLocal(dateObj);
       const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
       const hasDose = Object.keys(dosesObj).some(k => k.split('_')[0] === dateStr);
       if (hasDose) return true;
 
+      // Use ScheduleUtils if schedules are available
+      if (med.schedules && med.schedules.length > 0 && window.ScheduleUtils) {
+        return ScheduleUtils.isScheduledForDate(med.schedules, dateObj);
+      }
+
+      // Fallback for unmigrated data
       const normalizeDate = (dateStrRaw) => {
         if (!dateStrRaw || dateStrRaw === 'N/A') return null;
         if (/^\d{4}-\d{2}-\d{2}/.test(dateStrRaw)) return dateStrRaw.split('T')[0];
@@ -1114,9 +1146,26 @@
     }
 
     function getDoseItemsForDate(med, dateObj) {
-      // Return dose entries for a date in a stable, user-friendly list.
       const dateStr = toISODateLocal(dateObj);
       const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
+
+      // Use ScheduleUtils if schedules are available
+      if (med.schedules && med.schedules.length > 0 && window.ScheduleUtils) {
+        const scheduledDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules, dateObj);
+        return scheduledDoses.map(dose => {
+          const key = `${dateStr}_${dose.doseNumber}`;
+          const entry = dosesObj[key] || null;
+          const takenBool = entry ? normalizeTaken(entry.taken, entry.autoMarked, entry.takenAt) : undefined;
+          return {
+            doseNumber: dose.doseNumber,
+            time: dose.time,
+            entry: entry,
+            takenBool: takenBool
+          };
+        });
+      }
+
+      // Fallback for unmigrated data
       const times = Array.isArray(med.times) ? med.times.filter(Boolean) : [];
       const timesPerDay = Number(med.timesPerDay || 0);
       const plannedCount = times.length > 0 ? times.length : (timesPerDay || 1);
@@ -1344,7 +1393,21 @@
           }
 
           onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
-            const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const meds = snap.docs.map(d => {
+              const medData = { id: d.id, ...d.data() };
+              medData.schedules = medData.schedules || [];
+              // Auto-migrate old format if schedules missing but old fields present
+              if (medData.schedules.length === 0 && window.ScheduleUtils) {
+                const oldDays = medData.daysOfWeek || medData.days || [];
+                const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
+                if (oldDays.length > 0 || oldTimes.length > 0 || medData.timesPerDay > 0) {
+                  const migrated = ScheduleUtils.migrateOldFormat(medData);
+                  medData.schedules = migrated.schedules;
+                  console.log(`[Student View] Auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
+                }
+              }
+              return medData;
+            });
             renderCalendarTab(patientName, meds);
           }, (err) => {
             console.warn('[Student View] calendar meds snapshot error:', err);
@@ -1382,18 +1445,19 @@
         ? `${med.name || 'Medication'} - Dose ${doseNumber} - ${formatTime12(time)}`
         : `${med.name || 'Medication'} - Dose ${doseNumber}`;
 
-      // Notes stored per med doc: notes[date_doseNumber] = [doseNumber, noteText, feelingRating]
-      // Fall back to old format: notes[date] = [doseNumber, noteText, feelingRating]
+      // Notes stored per med doc: new format notes[YYYY-MM-DD_doseNumber], old format notes[YYYY-MM-DD]
       let noteText = '';
       let feelingRating = 0;
       try {
-        const notesObj = (med.notes && typeof med.notes === 'object') ? med.notes : {};
+        const notes = (med.notes && typeof med.notes === 'object') ? med.notes : {};
+        // Try new format first: notes[date_doseNumber]
         const doseKey = `${dateStr}_${doseNumber}`;
-        let n = notesObj[doseKey];
-        if (!n && notesObj[dateStr]) {
-          const old = notesObj[dateStr];
-          if (Array.isArray(old) && Number(old[0]) === Number(doseNumber)) {
-            n = old;
+        let n = notes[doseKey];
+        if (!n && notes[dateStr]) {
+          // Backward compatibility: old format notes[date]
+          const oldData = notes[dateStr];
+          if (Array.isArray(oldData) && Number(oldData[0]) === Number(doseNumber)) {
+            n = oldData;
           }
         }
         if (Array.isArray(n)) {

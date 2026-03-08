@@ -748,6 +748,7 @@
     </div>
   </div>
 
+  <script src="schedule-utils.js"></script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -793,26 +794,39 @@
         const medicationsSnapshot = await getDocs(medicationsCollectionRef);
         const medications = [];
         
-        medicationsSnapshot.forEach((doc) => {
-          const medData = doc.data();
-          
+        for (const medDoc of medicationsSnapshot.docs) {
+          const medData = medDoc.data();
+
           // Only include active medications (not deleted)
           if (!medData.deletedStatus) {
-            medications.push({
-              id: doc.id,
+            const med = {
+              id: medDoc.id,
               name: medData.name,
               dosage: medData.dosage,
-              days: medData.daysOfWeek.map(d => d.charAt(0).toUpperCase() + d.slice(1)), // Capitalize
-              timesPerDay: medData.timesPerDay,
-              times: medData.times,
+              schedules: medData.schedules || [],
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
               createdAt: medData.createdAt || null, // Include createdAt for fallback
               doses: {}, // Initialize empty - will be loaded on demand
               notes: {}, // Initialize empty - will be loaded on demand
-            });
+            };
+
+            // Auto-migrate old format to new schedules format
+            if ((!med.schedules || med.schedules.length === 0) && (medData.daysOfWeek || medData.times)) {
+              const migrated = ScheduleUtils.migrateOldFormat(medData);
+              med.schedules = migrated.schedules;
+              try {
+                const medDocRef = doc(db, "users", user.uid, "medications", medDoc.id);
+                await setDoc(medDocRef, { schedules: migrated.schedules }, { merge: true });
+                console.log('[Calendar] Auto-migrated schedules for', med.name);
+              } catch (e) {
+                console.warn('[Calendar] Failed to save migrated schedules:', e);
+              }
+            }
+
+            medications.push(med);
           }
-        });
+        }
         
         return medications;
       } catch (error) {
@@ -990,76 +1004,21 @@
 
     // Global function to get medications for a date - used by both calendar.html and notes.html
     window.getMedicationsForDate = function(date) {
-      // Use globalMedications from Firebase instead of localStorage
       const medications = window.globalMedications || [];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      const dateString = date.toISOString().split('T')[0];
-      const today = new Date().toISOString().split('T')[0];
-      
+      const dateString = typeof date === 'string' ? date : (date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0'));
+
       return medications.filter(med => {
-        // Normalize date strings to YYYY-MM-DD format for comparison
-        const normalizeDate = (dateStr) => {
-          if (!dateStr || dateStr === 'N/A') return null;
-          // If it's already in ISO format (YYYY-MM-DD), return as is
-          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-            return dateStr.split('T')[0]; // Extract just the date part
-          }
-          // If it's in M/d/yyyy format, convert to YYYY-MM-DD
-          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-            const parts = dateStr.split('/');
-            const month = parts[0].padStart(2, '0');
-            const day = parts[1].padStart(2, '0');
-            const year = parts[2];
-            return `${year}-${month}-${day}`;
-          }
-          // If it's an ISO timestamp, extract date part
-          if (dateStr.includes('T')) {
-            return dateStr.split('T')[0];
-          }
-          return dateStr;
-        };
+        if (med.deletedStatus === true) return false;
 
-        // Determine effective start date: use startDate if provided, otherwise use createdAt
-        let effectiveStartDate = null;
-        if (med.startDate && med.startDate !== 'N/A') {
-          effectiveStartDate = normalizeDate(med.startDate);
-        } else if (med.createdAt) {
-          // Use createdAt date (extract date from ISO timestamp)
-          const createdDate = new Date(med.createdAt);
-          effectiveStartDate = createdDate.toISOString().split('T')[0];
-        }
-        
-        // If no start date or createdAt, default to today
-        if (!effectiveStartDate) {
-          effectiveStartDate = today;
+        // Check if any historical dose entries exist for this date
+        if (med.doses) {
+          const hasDosesForDate = Object.keys(med.doses).some(key => key.split('_')[0] === dateString);
+          if (hasDosesForDate) return true;
         }
 
-        // Check if there are any doses for this date (to show historical doses even if before startDate)
-        const hasDosesForDate = med.doses && Object.keys(med.doses).some(key => {
-          const doseDate = key.split('_')[0];
-          return doseDate === dateString;
-        });
-        
-        // If there are doses for this date, show it (to display historical doses)
-        if (hasDosesForDate) {
-          return med.days.includes(dayName);
-        }
-        
-        // Check if medication has started
-        if (dateString < effectiveStartDate) {
-          return false; // Medication hasn't started yet
-        }
-
-        // Check end date (normalize for comparison)
-        if (med.endDate && med.endDate !== 'N/A') {
-          const normalizedEndDate = normalizeDate(med.endDate);
-          if (normalizedEndDate && dateString > normalizedEndDate) {
-            return false; // Medication has ended
-          }
-        }
-        
-        // Check if this day of the week is scheduled for this medication
-        return med.days.includes(dayName);
+        // Check if scheduled for this date using the new utility
+        const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
+        return ScheduleUtils.isScheduledForDate(med.schedules || [], dateObj);
       });
     };
 
@@ -1071,56 +1030,29 @@
       const allItems = [];
       
       medications.forEach(med => {
-        // If no times are set, show medication without time
-        if (!med.times || med.times.length === 0 || med.times.every(t => !t)) {
-          const timesPerDay = med.timesPerDay || 1;
-          for (let i = 1; i <= timesPerDay; i++) {
-            allItems.push({
-              name: med.name,
-              time: null,
-              doseNumber: i,
-              timeSort: '9999:99' // Put items without time at the end
-            });
-          }
-        } else {
-          // Show medication for each time (filter out blank times)
-          const validTimes = med.times.filter(time => time && time.trim() !== '');
-          if (validTimes.length === 0) {
-            // If all times are empty, create doses based on timesPerDay
-            const timesPerDay = med.timesPerDay || 1;
-            for (let i = 1; i <= timesPerDay; i++) {
-              allItems.push({
-                name: med.name,
-                time: null,
-                doseNumber: i,
-                timeSort: '9999:99' // Put items without time at the end
-              });
-            }
-          } else {
-            validTimes.forEach((time, index) => {
-              allItems.push({
-                name: med.name,
-                time: time,
-                doseNumber: index + 1,
-                timeSort: time || '9999:99' // Use time for sorting, or '9999:99' for items without time
-              });
-            });
-          }
-        }
+        const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], date);
+        doses.forEach(dose => {
+          allItems.push({
+            name: med.name,
+            time: dose.time,
+            doseNumber: dose.doseNumber,
+            timeSort: dose.time || '99:99'
+          });
+        });
       });
-      
+
       // Sort by time (items without time go to the end)
       allItems.sort((a, b) => {
-        if (a.timeSort === '9999:99' && b.timeSort === '9999:99') {
+        if (a.timeSort === '99:99' && b.timeSort === '99:99') {
           // Both have no time, sort by name
           return a.name.localeCompare(b.name);
         }
-        if (a.timeSort === '9999:99') return 1; // a has no time, put it last
-        if (b.timeSort === '9999:99') return -1; // b has no time, put it last
+        if (a.timeSort === '99:99') return 1; // a has no time, put it last
+        if (b.timeSort === '99:99') return -1; // b has no time, put it last
         // Both have times, sort by time (string comparison works for HH:MM format)
         return a.timeSort.localeCompare(b.timeSort);
       });
-      
+
       // Create medication items in sorted order
       allItems.forEach(item => {
         // Find the medication object to get doses data
@@ -1284,55 +1216,26 @@
       const allItems = [];
       
       medications.forEach(med => {
-        // If no times are set, show medication without time
-        if (!med.times || med.times.length === 0 || med.times.every(t => !t)) {
-          const timesPerDay = med.timesPerDay || 1;
-          for (let i = 1; i <= timesPerDay; i++) {
-            allItems.push({
-              name: med.name,
-              time: null,
-              doseNumber: i,
-              timeSort: '9999:99', // Put items without time at the end
-              medication: med
-            });
-          }
-        } else {
-          // Show medication for each time (filter out blank times)
-          const validTimes = med.times.filter(time => time && time.trim() !== '');
-          if (validTimes.length === 0) {
-            // If all times are empty, create doses based on timesPerDay
-            const timesPerDay = med.timesPerDay || 1;
-            for (let i = 1; i <= timesPerDay; i++) {
-              allItems.push({
-                name: med.name,
-                time: null,
-                doseNumber: i,
-                timeSort: '9999:99', // Put items without time at the end
-                medication: med
-              });
-            }
-          } else {
-            validTimes.forEach((time, index) => {
-              allItems.push({
-                name: med.name,
-                time: time,
-                doseNumber: index + 1,
-                timeSort: time || '9999:99', // Use time for sorting
-                medication: med
-              });
-            });
-          }
-        }
+        const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], date);
+        doses.forEach(dose => {
+          allItems.push({
+            name: med.name,
+            time: dose.time,
+            doseNumber: dose.doseNumber,
+            timeSort: dose.time || '99:99',
+            medication: med
+          });
+        });
       });
-      
+
       // Sort by time (items without time go to the end)
       allItems.sort((a, b) => {
-        if (a.timeSort === '9999:99' && b.timeSort === '9999:99') {
+        if (a.timeSort === '99:99' && b.timeSort === '99:99') {
           // Both have no time, sort by name
           return a.name.localeCompare(b.name);
         }
-        if (a.timeSort === '9999:99') return 1; // a has no time, put it last
-        if (b.timeSort === '9999:99') return -1; // b has no time, put it last
+        if (a.timeSort === '99:99') return 1; // a has no time, put it last
+        if (b.timeSort === '99:99') return -1; // b has no time, put it last
         // Both have times, sort by time (string comparison works for HH:MM format)
         return a.timeSort.localeCompare(b.timeSort);
       });

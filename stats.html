@@ -503,6 +503,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- Firebase -->
+  <script src="schedule-utils.js"></script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -630,11 +631,14 @@
             
             // Get scheduled time if available
             let scheduledDateTime = new Date(scheduledDate);
-            if (medData.times && Array.isArray(medData.times) && medData.times.length > 0) {
-              const sortedTimes = [...medData.times].sort();
-              const timeIndex = (dose.doseNumber || 1) - 1;
-              if (timeIndex >= 0 && timeIndex < sortedTimes.length) {
-                const [hours, minutes] = sortedTimes[timeIndex].split(':').map(Number);
+            const schedules = medData.schedules || [];
+            if (schedules.length > 0 && dose.date) {
+              const [year, month, day] = dose.date.split('-').map(Number);
+              const doseDate = new Date(year, month - 1, day);
+              const dosesForDate = ScheduleUtils.getScheduledDosesForDate(schedules, doseDate);
+              const matchingDose = dosesForDate.find(d => d.doseNumber === (dose.doseNumber || 1));
+              if (matchingDose && matchingDose.time) {
+                const [hours, minutes] = matchingDose.time.split(':').map(Number);
                 if (!isNaN(hours) && !isNaN(minutes)) {
                   scheduledDateTime.setHours(hours, minutes, 0, 0);
                 }

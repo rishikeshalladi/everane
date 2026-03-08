@@ -11,25 +11,9 @@ const nodemailer = require('nodemailer');
 const { DateTime } = require('luxon');
 const { SinchClient } = require('@sinch/sdk-core');
 const cors = require('cors')({ origin: true });
+const ScheduleUtils = require('./schedule-utils');
 
 admin.initializeApp();
-
-// OpenAI (Realtime) configuration
-// For production, set: firebase functions:config:set openai.key="..." openai.realtime_model="..." openai.realtime_voice="..."
-// Or use environment variables: OPENAI_API_KEY, OPENAI_REALTIME_MODEL, OPENAI_REALTIME_VOICE
-const openaiApiKey = functions.config().openai?.key || process.env.OPENAI_API_KEY;
-const openaiRealtimeModel =
-  functions.config().openai?.realtime_model ||
-  process.env.OPENAI_REALTIME_MODEL ||
-  'gpt-realtime';
-const openaiRealtimeVoice =
-  functions.config().openai?.realtime_voice ||
-  process.env.OPENAI_REALTIME_VOICE ||
-  'alloy';
-const openaiStructuredModel =
-  functions.config().openai?.structured_model ||
-  process.env.OPENAI_STRUCTURED_MODEL ||
-  'gpt-4.1-mini';
 
 // Configure your email service (Gmail example)
 // For production, use environment config: firebase functions:config:set gmail.email="your@gmail.com" gmail.password="your-app-password"
@@ -37,29 +21,47 @@ const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
 
 // Base URL for the app (for email links)
-// For production, set: firebase functions:config:set app.baseurl="https://everane.live"
+// For production, set: firebase functions:config:set app.baseurl="https://your-app.netlify.app"
 // Or use environment variable: APP_BASE_URL
-const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://everane.live';
+const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://melodious-selkie-5d4511.netlify.app';
 
 // Sinch configuration
-// For production, set: firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..." sinch.phonenumber="..."
+// For SMS: firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..." sinch.phonenumber="..."
+// For Verification: firebase functions:config:set sinch.appkey="..." sinch.appsecret="..."
 const sinchProjectId = functions.config().sinch?.projectid || process.env.SINCH_PROJECT_ID;
 const sinchKeyId = functions.config().sinch?.keyid || process.env.SINCH_KEY_ID;
 const sinchKeySecret = functions.config().sinch?.keysecret || process.env.SINCH_KEY_SECRET;
 const sinchPhoneNumber = functions.config().sinch?.phonenumber || process.env.SINCH_PHONE_NUMBER;
+const sinchAppKey = functions.config().sinch?.appkey || process.env.SINCH_APP_KEY;
+const sinchAppSecret = functions.config().sinch?.appsecret || process.env.SINCH_APP_SECRET;
 
-// Initialize Sinch client if credentials are available
-let sinchClient = null;
+// Initialize Sinch client for SMS
+let sinchSmsClient = null;
 if (sinchProjectId && sinchKeyId && sinchKeySecret) {
-  sinchClient = new SinchClient({
+  sinchSmsClient = new SinchClient({
     projectId: sinchProjectId,
     keyId: sinchKeyId,
-    keySecret: sinchKeySecret,
+    keySecret: sinchKeySecret
   });
-  console.log('✅ Sinch client initialized');
+  console.log('✅ Sinch SMS client initialized');
 } else {
-  console.error('⚠️ SINCH CONFIGURATION MISSING:');
+  console.error('⚠️ SINCH SMS CONFIGURATION MISSING:');
   console.error('  SMS sending will fail. Please configure Sinch credentials.');
+  console.error('  Run: firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..."');
+}
+
+// Initialize Sinch client for Verification
+let sinchVerificationClient = null;
+if (sinchAppKey && sinchAppSecret) {
+  sinchVerificationClient = new SinchClient({
+    applicationKey: sinchAppKey,
+    applicationSecret: sinchAppSecret
+  });
+  console.log('✅ Sinch Verification client initialized');
+} else {
+  console.error('⚠️ SINCH VERIFICATION CONFIGURATION MISSING:');
+  console.error('  Phone verification will fail. Please configure Sinch app credentials.');
+  console.error('  Run: firebase functions:config:set sinch.appkey="..." sinch.appsecret="..."');
 }
 
 // Verify email configuration
@@ -78,277 +80,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-/**
- * Request a timezone change confirmation email when a user appears to have traveled.
- * POST /requestTimezoneChangeEmail
- * Headers: Authorization: Bearer <Firebase ID token>
- * Body: { detectedTimezone: string }
- */
-exports.requestTimezoneChangeEmail = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      const authHeader = req.get('authorization') || req.get('Authorization') || '';
-      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-      const bodyToken = req.body?.idToken || null;
-      const idToken = headerToken || bodyToken;
-      if (!idToken) {
-        res.status(401).json({ error: 'Missing auth token' });
-        return;
-      }
-
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      const uid = decoded.uid;
-      const email = decoded.email;
-
-      const detectedTimezone = (req.body?.detectedTimezone || '').trim();
-      if (!detectedTimezone) {
-        res.status(400).json({ error: 'detectedTimezone is required' });
-        return;
-      }
-
-      const db = admin.firestore();
-      const userRef = db.collection('users').doc(uid);
-      const userSnap = await userRef.get();
-      const userData = userSnap.exists ? userSnap.data() : {};
-      const originalTimezone = (userData?.timezone || '').trim();
-
-      if (!originalTimezone || originalTimezone === detectedTimezone) {
-        res.status(200).json({ status: 'no_change' });
-        return;
-      }
-
-      const lastDecision = userData?.timezoneChangeLastDecision || null;
-      if (lastDecision?.decision === 'stay' && lastDecision?.newTimezone === detectedTimezone) {
-        const lastAt = lastDecision?.at?.toDate ? lastDecision.at.toDate() : null;
-        if (lastAt && Date.now() - lastAt.getTime() < 30 * 24 * 60 * 60 * 1000) {
-          res.status(200).json({ status: 'suppressed' });
-          return;
-        }
-      }
-
-      const existingReqSnap = await db.collection('timezoneChangeRequests')
-        .where('uid', '==', uid)
-        .where('status', '==', 'pending')
-        .where('newTimezone', '==', detectedTimezone)
-        .limit(1)
-        .get();
-
-      if (!existingReqSnap.empty) {
-        res.status(200).json({ status: 'pending_exists' });
-        return;
-      }
-
-      const requestRef = db.collection('timezoneChangeRequests').doc();
-      await requestRef.set({
-        uid,
-        email: email || userData?.email || null,
-        originalTimezone,
-        newTimezone: detectedTimezone,
-        status: 'pending',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      const requestUrl = `${APP_BASE_URL}/traveltimezone.html?request=${requestRef.id}`;
-      const subject = 'Timezone change detected — update or stay the same?';
-      const html = `
-        <div style="font-family: Arial, sans-serif; color: #1f2a37;">
-          <p>We noticed you changed timezones from <strong>${originalTimezone}</strong> to <strong>${detectedTimezone}</strong>.</p>
-          <p>Would you like to update it or stay the same?</p>
-          <p>
-            <a href="${requestUrl}" style="display:inline-block;padding:10px 16px;background:#0f172a;color:#fff;border-radius:6px;text-decoration:none;">Review &amp; Respond</a>
-          </p>
-          <p style="font-size:12px;color:#6b7280;">If you didn’t expect this, you can ignore this email.</p>
-        </div>
-      `;
-      const text = `We noticed you changed timezones from ${originalTimezone} to ${detectedTimezone}. Would you like to update it or stay the same? Open: ${requestUrl}`;
-
-      if (gmailEmail && gmailPassword && (email || userData?.email)) {
-        await transporter.sendMail({
-          from: `"MedTracker" <${gmailEmail}>`,
-          to: email || userData?.email,
-          subject,
-          text,
-          html
-        });
-      }
-
-      res.status(200).json({ status: 'sent', requestId: requestRef.id });
-    } catch (error) {
-      console.error('Error requesting timezone change email:', error);
-      res.status(500).json({ error: 'Failed to send timezone change email' });
-    }
-  });
-});
-
-/**
- * Fetch timezone change request details for the current user.
- * POST /getTimezoneChangeRequest
- * Headers: Authorization: Bearer <Firebase ID token>
- * Body: { requestId: string }
- */
-exports.getTimezoneChangeRequest = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      const authHeader = req.get('authorization') || req.get('Authorization') || '';
-      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-      const bodyToken = req.body?.idToken || null;
-      const idToken = headerToken || bodyToken;
-      if (!idToken) {
-        res.status(401).json({ error: 'Missing auth token' });
-        return;
-      }
-
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      const uid = decoded.uid;
-      const requestId = (req.body?.requestId || '').trim();
-      if (!requestId) {
-        res.status(400).json({ error: 'requestId is required' });
-        return;
-      }
-
-      const reqRef = admin.firestore().collection('timezoneChangeRequests').doc(requestId);
-      const reqSnap = await reqRef.get();
-      if (!reqSnap.exists) {
-        res.status(404).json({ error: 'Request not found' });
-        return;
-      }
-
-      const data = reqSnap.data();
-      if (data.uid !== uid) {
-        res.status(403).json({ error: 'Wrong account' });
-        return;
-      }
-
-      res.status(200).json({
-        status: data.status,
-        originalTimezone: data.originalTimezone,
-        newTimezone: data.newTimezone
-      });
-    } catch (error) {
-      console.error('Error fetching timezone change request:', error);
-      res.status(500).json({ error: 'Failed to fetch request' });
-    }
-  });
-});
-
-/**
- * Resolve a timezone change request.
- * POST /resolveTimezoneChange
- * Headers: Authorization: Bearer <Firebase ID token>
- * Body: { requestId: string, action: "stay" | "change" }
- */
-exports.resolveTimezoneChange = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      const authHeader = req.get('authorization') || req.get('Authorization') || '';
-      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-      const bodyToken = req.body?.idToken || null;
-      const idToken = headerToken || bodyToken;
-      if (!idToken) {
-        res.status(401).json({ error: 'Missing auth token' });
-        return;
-      }
-
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      const uid = decoded.uid;
-      const requestId = (req.body?.requestId || '').trim();
-      const action = (req.body?.action || '').trim();
-      if (!requestId || !action || !['stay', 'change'].includes(action)) {
-        res.status(400).json({ error: 'requestId and valid action are required' });
-        return;
-      }
-
-      const db = admin.firestore();
-      const reqRef = db.collection('timezoneChangeRequests').doc(requestId);
-      const reqSnap = await reqRef.get();
-      if (!reqSnap.exists) {
-        res.status(404).json({ error: 'Request not found' });
-        return;
-      }
-      const data = reqSnap.data();
-      if (data.uid !== uid) {
-        res.status(403).json({ error: 'Wrong account' });
-        return;
-      }
-      if (data.status !== 'pending') {
-        res.status(400).json({ error: 'Request already resolved' });
-        return;
-      }
-
-      const userRef = db.collection('users').doc(uid);
-      if (action === 'change') {
-        await userRef.set({
-          timezone: data.newTimezone,
-          timezoneUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      }
-
-      await reqRef.set({
-        status: 'resolved',
-        decision: action,
-        resolvedAt: admin.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-
-      await userRef.set({
-        timezoneChangeLastDecision: {
-          decision: action,
-          newTimezone: data.newTimezone,
-          originalTimezone: data.originalTimezone,
-          at: admin.firestore.FieldValue.serverTimestamp()
-        }
-      }, { merge: true });
-
-      res.status(200).json({
-        status: 'ok',
-        decision: action,
-        timezone: action === 'change' ? data.newTimezone : data.originalTimezone
-      });
-    } catch (error) {
-      console.error('Error resolving timezone change request:', error);
-      res.status(500).json({ error: 'Failed to resolve request' });
-    }
-  });
-});
-
 // Verify transporter is configured
 transporter.verify(function(error, success) {
   if (error) {
@@ -362,11 +93,11 @@ transporter.verify(function(error, success) {
  * Helper function to send SMS via Sinch
  * @param {string} phoneNumber - Recipient phone number (E.164 format)
  * @param {string} message - SMS message text
- * @returns {Promise} - Sinch send result
+ * @returns {Promise} - Sinch batch response
  */
 async function sendSMS(phoneNumber, message) {
-  if (!sinchClient) {
-    throw new Error('Sinch client not initialized');
+  if (!sinchSmsClient) {
+    throw new Error('Sinch SMS client not initialized');
   }
 
   if (!sinchPhoneNumber) {
@@ -374,11 +105,12 @@ async function sendSMS(phoneNumber, message) {
   }
 
   try {
-    const result = await sinchClient.sms.batches.send({
+    const result = await sinchSmsClient.sms.batches.send({
       sendSMSRequestBody: {
         to: [phoneNumber],
         from: sinchPhoneNumber,
         body: message,
+        type: 'mt_text'
       }
     });
 
@@ -391,551 +123,28 @@ async function sendSMS(phoneNumber, message) {
 }
 
 /**
- * Generate a short code and store the target URL in Firestore.
- * Returns a short URL like https://everane.live/r/AbC123
- */
-async function createShortLink(targetUrl) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  await admin.firestore().collection('shortLinks').doc(code).set({
-    url: targetUrl,
-    createdAt: Date.now(),
-  });
-  return `${APP_BASE_URL}/r/${code}`;
-}
-
-/**
- * Redirect handler for short links: /r/:code
- * Looks up the code in Firestore and redirects to the full URL.
- */
-exports.redirectShortLink = functions.https.onRequest(async (req, res) => {
-  // Extract code from URL path: /r/AbC123 or /redirectShortLink/r/AbC123
-  const pathParts = req.path.split('/').filter(Boolean);
-  // The code is the last segment
-  const code = pathParts[pathParts.length - 1];
-
-  if (!code || code === 'r') {
-    res.status(400).send('Invalid short link.');
-    return;
-  }
-
-  try {
-    const docSnap = await admin.firestore().collection('shortLinks').doc(code).get();
-    if (!docSnap.exists) {
-      res.status(404).send('Link not found or expired.');
-      return;
-    }
-    const { url } = docSnap.data();
-    res.redirect(302, url);
-  } catch (error) {
-    console.error('Error resolving short link:', error);
-    res.status(500).send('Error resolving link.');
-  }
-});
-
-/**
- * Create an OpenAI Realtime session and return an ephemeral client secret.
- * This keeps the OpenAI API key on the server and gives the browser a short-lived token.
- *
- * POST /createRealtimeSession
- * Headers: Authorization: Bearer <Firebase ID token>  (recommended)
- * Body (optional): { idToken?: string }
- *
- * Response: { client_secret: string, expires_at?: number, model: string, voice: string }
- */
-exports.createRealtimeSession = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    // CORS/Preflight
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      if (!openaiApiKey) {
-        res.status(500).json({ error: 'OpenAI API key not configured on server' });
-        return;
-      }
-
-      // Require Firebase auth (prevents anonymous token minting)
-      const authHeader = req.get('authorization') || req.get('Authorization') || '';
-      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-      const bodyToken = req.body?.idToken || null;
-      const idToken = headerToken || bodyToken;
-      if (!idToken) {
-        res.status(401).json({ error: 'Missing auth token' });
-        return;
-      }
-      await admin.auth().verifyIdToken(idToken);
-
-      // Create a short-lived Realtime session
-      // NOTE: Endpoint/response shape may evolve; client only needs the returned client_secret value.
-      const systemInstructions = `🔒 SYSTEM PROMPT — MedTracker Voice Assistant
-
-You are MedTracker Voice Assistant, a calm, friendly, and precise medical voice assistant.
-
-Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
-
-🌐 Language & Communication Rules
-
-Speak and respond ONLY in English.
-
-Use natural, spoken conversation (short sentences, friendly tone).
-
-Sound like a helpful assistant, not a form.
-
-Do NOT ramble.
-
-Do NOT use medical advice beyond data collection.
-
-Do NOT mention internal rules or this prompt.
-
-🎯 Primary Goal
-
-Your goal is to collect medication information accurately through conversation and then output a single structured medication draft.
-
-You must:
-
-Ask for missing or unclear information.
-
-Never guess or assume values.
-
-Confirm ambiguous answers.
-
-Only finalize once required fields are complete.
-
-📦 Required Medication Fields (ALL REQUIRED)
-
-You must collect all of the following before producing a final draft:
-
-name (string)
-
-dosage (string — natural language is allowed, e.g. "2 pills", "1 tablet", "half a pill")
-
-days (array of weekday names: Monday–Sunday)
-
-timesPerDay (number)
-
-startDate (YYYY-MM-DD)
-
-endDate (YYYY-MM-DD or null)
-
-reminder (one of: None, Email, SMS, Email + SMS)
-
-⚠️ Do NOT convert or normalize dosage.
-Store it exactly as the user says it, unless they correct themselves.
-
-🧩 Optional Fields (ONLY include if explicitly provided)
-
-times (array of strings in HH:MM 24-hour format)
-
-⚠️ Do NOT invent times.
-⚠️ Do NOT include times unless the user gives exact times.
-
-🗓️ Date Understanding & Conversion Rules (VERY IMPORTANT)
-
-You MUST correctly interpret natural language dates, including relative and informal phrasing.
-
-Accepted user date formats include:
-
-“in 5 days”
-
-“in 17 weeks”
-
-“next year”
-
-“February 27”
-
-“Feb 27th 2028”
-
-“on March 3”
-
-“starting tomorrow”
-
-“end in 2 months”
-
-Conversion rules:
-
-Convert everything into YYYY-MM-DD
-
-If the user gives month + day without a year, assume year = 2026
-
-If the user gives a year, use that year
-
-If the user says “next year”, use 2027
-
-If the user gives a relative duration (e.g. “in 5 weeks”), calculate the correct calendar date
-
-If the user says “no end date” → endDate = null
-
-⚠️ If a date is unclear or ambiguous, ASK A FOLLOW-UP QUESTION.
-
-⏱️ Times & Frequency Rules
-
-Ask how many times per day the medication is taken.
-
-After getting timesPerDay, ask:
-
-“Do you want to add specific times, or should I leave the times flexible?”
-
-If the user:
-
-Gives specific times → collect them and convert to HH:MM (24-hour)
-
-Does NOT give times → do NOT include times in the draft
-
-❓ Clarifying Question Rules (VERY IMPORTANT)
-
-Never guess or auto-fill missing values
-
-Ask short, clear clarifying questions
-
-Ask only one question at a time
-
-Ask questions as soon as something is missing or ambiguous
-
-Examples:
-
-“Just to confirm, is that once per day or twice per day?”
-
-“Do you want email reminders, text reminders, or both?”
-
-“What day should this medication start?”
-
-🧠 Conversation Flow Guidelines
-
-Follow this general flow (but stay natural):
-
-Medication name
-
-Dosage
-
-Days of the week
-
-Times per day
-
-Optional exact times
-
-Start date
-
-End date
-
-Reminder preference
-
-You may gently guide the user, but never rush.
-
-✅ Final Output Rules
-
-Once ALL required fields are confirmed, output ONLY a structured medication draft in JSON.
-
-Output format:
-
-Valid JSON only
-
-No extra text
-
-No explanations
-
-No markdown
-
-Example structure:
-{
-  "name": "Ibuprofen",
-  "dosage": "2 pills",
-  "days": ["Monday", "Wednesday", "Friday"],
-  "timesPerDay": 2,
-  "times": ["08:00", "20:00"],
-  "startDate": "2026-02-27",
-  "endDate": null,
-  "reminder": "Email"
-}
-
-
-⚠️ Do NOT include fields the user did not provide.
-⚠️ Do NOT include comments or explanations.
-
-🚫 Absolute Restrictions
-
-Do NOT assume default values
-
-Do NOT infer medical intent
-
-Do NOT auto-correct without confirmation
-
-Do NOT output JSON until all required fields are known
-
-Do NOT speak after outputting final JSON
-
-🧩 If the user changes their mind
-
-If the user corrects or changes something:
-
-Acknowledge it
-
-Update the value
-
-Continue normally
-
-🎙️ Voice-Specific Behavior
-
-Keep responses short and conversational
-
-Avoid long lists
-
-Pause naturally between questions
-
-Speak clearly and calmly`;
-
-      // Mint a short-lived client secret for Realtime (GA endpoint).
-      const clientSecretUrl = 'https://api.openai.com/v1/realtime/client_secrets';
-
-      let sessionResp = null;
-      let sessionJson = null;
-
-      try {
-        const r = await fetch(clientSecretUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            session: {
-              type: 'realtime',
-              model: openaiRealtimeModel,
-              instructions: systemInstructions,
-              audio: {
-                output: { voice: openaiRealtimeVoice },
-              },
-            },
-          }),
-        });
-        const j = await r.json().catch(() => null);
-        if (r.ok) {
-          sessionResp = r;
-          sessionJson = j;
-          console.log('✅ OpenAI Realtime client secret minted via:', clientSecretUrl);
-        } else {
-          console.error('❌ OpenAI Realtime client secret mint failed:', r.status, j);
-          res.status(502).json({ error: 'Failed to create Realtime session', details: { url: clientSecretUrl, status: r.status, body: j } });
-          return;
-        }
-      } catch (e) {
-        console.error('❌ OpenAI Realtime client secret mint exception:', e);
-        res.status(502).json({ error: 'Failed to create Realtime session', details: { url: clientSecretUrl, error: String(e?.message || e) } });
-        return;
-      }
-
-      const clientSecret =
-        sessionJson?.client_secret?.value ||
-        sessionJson?.client_secret ||
-        sessionJson?.client_secret_key ||
-        sessionJson?.value ||
-        null;
-
-      if (!clientSecret) {
-        console.error('❌ OpenAI Realtime response missing client_secret:', sessionJson);
-        res.status(502).json({ error: 'Realtime session created but no client_secret returned' });
-        return;
-      }
-
-      res.status(200).json({
-        client_secret: clientSecret,
-        expires_at: sessionJson?.client_secret?.expires_at || sessionJson?.expires_at || null,
-        model: openaiRealtimeModel,
-        voice: openaiRealtimeVoice,
-      });
-    } catch (err) {
-      console.error('❌ createRealtimeSession error:', err);
-      res.status(500).json({ error: err.message || 'Internal error' });
-    }
-  });
-});
-
-/**
- * Create a structured medication draft JSON via OpenAI Responses API.
- *
- * POST /createMedicationDraft
- * Headers: Authorization: Bearer <Firebase ID token>
- * Body: { assistantText?: string, fullTranscript?: string, buffer?: string, collected?: object }
- *
- * Response: { draft: object }
- */
-exports.createMedicationDraft = functions.https.onRequest((req, res) => {
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      if (!openaiApiKey) {
-        res.status(500).json({ error: 'OpenAI API key not configured on server' });
-        return;
-      }
-
-      const authHeader = req.get('authorization') || req.get('Authorization') || '';
-      const headerToken = authHeader.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : null;
-      const bodyToken = req.body?.idToken || null;
-      const idToken = headerToken || bodyToken;
-      if (!idToken) {
-        res.status(401).json({ error: 'Missing auth token' });
-        return;
-      }
-      await admin.auth().verifyIdToken(idToken);
-
-      const assistantText = String(req.body?.assistantText || '');
-      const fullTranscript = String(req.body?.fullTranscript || '');
-      const buffer = String(req.body?.buffer || '');
-      const collected = req.body?.collected && typeof req.body.collected === 'object'
-        ? req.body.collected
-        : null;
-
-      const schema = {
-        name: 'medication_draft',
-        strict: true,
-        schema: {
-          anyOf: [
-            {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                name: { type: 'string' },
-                dosage: { type: 'string' },
-                days: {
-                  type: 'array',
-                  items: {
-                    type: 'string',
-                    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-                  },
-                },
-                timesPerDay: { type: 'number', minimum: 1 },
-                times: {
-                  type: 'array',
-                  items: { type: 'string', pattern: '^[0-2][0-9]:[0-5][0-9]$' },
-                },
-                startDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
-                endDate: {
-                  anyOf: [
-                    { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
-                    { type: 'null' },
-                  ],
-                },
-                reminder: { type: 'string', enum: ['None', 'Email', 'SMS', 'Email + SMS'] },
-              },
-              required: ['name', 'dosage', 'days', 'timesPerDay', 'startDate', 'endDate', 'reminder'],
-            },
-            {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                error: { type: 'string', enum: ['missing_fields'] },
-                missing: { type: 'array', items: { type: 'string' } },
-              },
-              required: ['error', 'missing'],
-            },
-          ],
-        },
-      };
-
-      const prompt = [
-        'Return ONLY JSON that matches the schema.',
-        'If any required field is missing or unclear, output:',
-        '{"error":"missing_fields","missing":["field1","field2"]}',
-        'Do not include any extra keys or text.',
-        '',
-        'Collected draft (may be partial):',
-        collected ? JSON.stringify(collected) : '{}',
-        '',
-        'Latest assistant message:',
-        assistantText,
-        '',
-        'Full transcript (if needed):',
-        fullTranscript,
-        '',
-        'Raw buffer (if needed):',
-        buffer,
-      ].join('\n');
-
-      const resp = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: openaiStructuredModel,
-          input: prompt,
-          response_format: { type: 'json_schema', json_schema: schema },
-        }),
-      });
-
-      const respJson = await resp.json().catch(() => null);
-      if (!resp.ok) {
-        console.error('❌ OpenAI structured draft error:', resp.status, respJson);
-        res.status(resp.status).json({ error: 'OpenAI error', details: respJson });
-        return;
-      }
-
-      const outputText =
-        respJson?.output_text ||
-        respJson?.output?.[0]?.content?.find((c) => c?.type === 'output_text' || c?.type === 'text')?.text ||
-        respJson?.output?.[0]?.content?.[0]?.text ||
-        '';
-
-      let parsed = null;
-      try {
-        parsed = JSON.parse(outputText);
-      } catch (e) {
-        console.error('❌ Structured draft JSON parse error:', e, outputText);
-      }
-
-      if (!parsed) {
-        res.status(502).json({ error: 'Invalid JSON returned from OpenAI', raw: outputText });
-        return;
-      }
-
-      res.status(200).json({ draft: parsed });
-    } catch (err) {
-      console.error('❌ createMedicationDraft error:', err);
-      res.status(500).json({ error: err.message || 'Internal error' });
-    }
-  });
-});
-
-/**
  * Determines reminder times based on medication settings
  * @param {Object} med - Medication object
  * @returns {Array} - Array of time strings in HH:MM format
  */
-function getReminderTimes(med) {
+function getReminderTimes(med, nowDateTime) {
+  // New: Use schedules if available
+  if (med.schedules && med.schedules.length > 0) {
+    const now = nowDateTime || getNowInZone();
+    const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules, now);
+    const times = doses.map(d => d.time).filter(Boolean);
+    return times.length > 0 ? times : ['09:00'];
+  }
+
+  // Existing fallback logic
   // If user provided specific times, use those
   if (med.times && med.times.length > 0) {
     return med.times;
   }
-  
+
   // Otherwise, use defaults based on timesPerDay
   const timesPerDay = med.timesPerDay || 1;
-  
+
   if (timesPerDay === 1) {
     return ['09:00'];
   } else if (timesPerDay === 2) {
@@ -946,7 +155,7 @@ function getReminderTimes(med) {
     // For more than 3/day, use the 3-time schedule
     return ['09:00', '15:00', '21:00'];
   }
-  
+
   return ['09:00']; // Default fallback
 }
 
@@ -997,7 +206,20 @@ function shouldSendReminderToday(med, nowDateTime = getNowInZone()) {
     console.log(`    -> Skipping ${med.name} (end date ${endDate.toISODate()} has passed, now ${nowDateTime.toISODate()})`);
     return false;
   }
-  
+
+  // New: Check schedules
+  if (med.schedules && med.schedules.length > 0) {
+    const result = ScheduleUtils.isScheduledForDate(med.schedules, nowDateTime);
+    console.log(`    -> Using schedules[] format: isScheduledForDate=${result}`);
+    if (result) {
+      console.log(`    -> PASSED: Should send reminder today (via schedules)`);
+    } else {
+      console.log(`    -> Skipping ${med.name} (not scheduled for today via schedules)`);
+    }
+    return result;
+  }
+
+  // Existing fallback for unmigrated data below...
   // Check if today is in the selected days
   // Normalize daysOfWeek - handle both array of strings and array of numbers
   const daysOfWeek = med.daysOfWeek || med.days || [];
@@ -1213,6 +435,12 @@ function getReminderOption(key) {
  * @returns {Object|null} - Current dose object with {timeStr, doseNumber} or null
  */
 function determineCurrentDoseForEmail(med, nowDateTime = getNowInZone()) {
+  // New: Use schedules if available
+  if (med.schedules && med.schedules.length > 0) {
+    return ScheduleUtils.determineCurrentDose(med.schedules, nowDateTime);
+  }
+
+  // Existing fallback logic below...
   const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const weekdayIndex = nowDateTime.weekday % 7; // Luxon weekday: Monday=1 ... Sunday=7 -> convert to 0-based Sunday
   const todayName = weekdaysConst[weekdayIndex];
@@ -1395,18 +623,32 @@ async function buildTodaysSchedule(uid, nowDateTime = getNowInZone()) {
     if (med.deletedStatus === true) continue;
     if (!shouldSendReminderToday(med, nowDateTime)) continue;
 
-    const times = Array.isArray(med.times) && med.times.length > 0 ? [...med.times].filter(Boolean).sort() : [null];
-    times.forEach((timeStr, index) => {
-      scheduleEntries.push({
-        time: timeStr,
-        name: med.name || 'Medication',
-        dosage: med.dosage || null,
-        doseNumber: index + 1,
-        totalDoses: times.length,
-        medId: med.id || medDoc.id,
-        reminderMethod: med.reminderMethod || 'N'
+    if (med.schedules && med.schedules.length > 0) {
+      const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules, nowDateTime);
+      doses.forEach(dose => {
+        scheduleEntries.push({
+          time: dose.time,
+          name: med.name || 'Medication',
+          dosage: med.dosage || null,
+          doseNumber: dose.doseNumber,
+          totalDoses: doses.length,
+          medId: med.id || medDoc.id
+        });
       });
-    });
+    } else {
+      // Existing fallback logic
+      const times = Array.isArray(med.times) && med.times.length > 0 ? [...med.times].filter(Boolean).sort() : [null];
+      times.forEach((timeStr, index) => {
+        scheduleEntries.push({
+          time: timeStr,
+          name: med.name || 'Medication',
+          dosage: med.dosage || null,
+          doseNumber: index + 1,
+          totalDoses: times.length,
+          medId: med.id || medDoc.id
+        });
+      });
+    }
   }
 
   scheduleEntries.sort((a, b) => {
@@ -1923,15 +1165,18 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 
   const medSections = meds.map((med, index) => {
     const scheduleEntry = findScheduleEntry(med.id);
-    // Prefer dose info carried on the med object (set during grouping), fall back to schedule lookup
-    const doseNumber = med._doseNumber
-      || (scheduleEntry ? scheduleEntry.doseNumber : null)
-      || (meds.length > 1 ? index + 1 : 1);
-    const doseLabel = `Dose ${doseNumber}`;
-    const scheduledTimeRaw = med._scheduledTime
-      || (scheduleEntry && scheduleEntry.time ? scheduleEntry.time : null)
-      || reminderTime;
-    const scheduledTime = format12Hour(scheduledTimeRaw);
+    const doseNumber = scheduleEntry
+      ? scheduleEntry.doseNumber
+      : (meds.length > 1 ? index + 1 : 1);
+    const doseLabel = scheduleEntry
+      ? `Dose ${scheduleEntry.doseNumber}`
+      : (meds.length > 1 ? `Dose ${index + 1}` : 'Scheduled dose');
+    const scheduledTime = scheduleEntry && scheduleEntry.time
+      ? format12Hour(scheduleEntry.time)
+      : time12;
+    const scheduledTimeRaw = scheduleEntry && scheduleEntry.time
+      ? scheduleEntry.time
+      : reminderTime;
     const isAlreadyTaken = med._isAlreadyTaken === true;
     
     // Build URL for email-action.html when isAtTime is true
@@ -2169,11 +1414,12 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
  * @param {string} reminderTime - Time of reminder
  * @param {string} offsetKey - Which reminder preference triggered this SMS
  * @param {Array} alerts - Array of {med, alertType} objects for alerts
+ * @param {Array} todaysSchedule - Array of schedule entries for dose number lookup
  * @param {Array} bottleAlerts - Array of bottle alert objects
  * @param {string} userTimezone - User's timezone
  */
-async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKey = 'at_time', alerts = [], bottleAlerts = [], userTimezone = null) {
-  if (!sinchClient || !sinchPhoneNumber) {
+async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKey = 'at_time', alerts = [], todaysSchedule = [], bottleAlerts = [], userTimezone = null) {
+  if (!sinchSmsClient || !sinchPhoneNumber) {
     throw new Error('Sinch not configured - cannot send SMS');
   }
 
@@ -2185,8 +1431,8 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
   const timezoneAbbr = nowDateTime.toFormat('ZZZZ');
 
   const findScheduleEntry = (medId) => {
-    // This would need todaysSchedule if we want dose numbers - for now, just use index
-    return null;
+    if (!Array.isArray(todaysSchedule)) return null;
+    return todaysSchedule.find(entry => entry.medId === medId && (entry.time || null) === (reminderTime || null));
   };
 
   let messageParts = [];
@@ -2194,18 +1440,18 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
   // Build medication reminders
   if (meds.length > 0) {
     if (isAtTime) {
-      // At-time reminders with short links
-      for (let index = 0; index < meds.length; index++) {
-        const med = meds[index];
-        if (med._isAlreadyTaken) continue;
+      // At-time reminders: "Click here to take your {med name} medication: {link}"
+      meds.forEach((med, index) => {
+        if (med._isAlreadyTaken) {
+          return; // Skip already taken medications
+        }
         const scheduleEntry = findScheduleEntry(med.id);
         const doseNumber = scheduleEntry ? scheduleEntry.doseNumber : (meds.length > 1 ? index + 1 : 1);
         const scheduledTimeRaw = scheduleEntry && scheduleEntry.time ? scheduleEntry.time : reminderTime;
         const todayIso = nowDateTime.toISODate();
-        const fullUrl = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`;
-        const shortLink = await createShortLink(fullUrl);
-        messageParts.push(`Take your ${med.name}: ${shortLink}`);
-      }
+        const link = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`;
+        messageParts.push(`Click here to take your ${med.name} medication: ${link}`);
+      });
     } else {
       // Advance reminders: "Take your {med name} in {minutes} minutes"
       const minutes = Math.abs(option.minutes);
@@ -2256,7 +1502,7 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
  * @param {string} userTimezone - User's timezone
  */
 async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [], userTimezone = null) {
-  if (!sinchClient || !sinchPhoneNumber) {
+  if (!sinchSmsClient || !sinchPhoneNumber) {
     throw new Error('Sinch not configured - cannot send SMS');
   }
 
@@ -2304,7 +1550,7 @@ async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [
 async function sendMissedDoseSMS(phoneNumber, missedDoses) {
   if (missedDoses.length === 0) return;
   
-  if (!sinchClient || !sinchPhoneNumber) {
+  if (!sinchSmsClient || !sinchPhoneNumber) {
     throw new Error('Sinch not configured - cannot send SMS');
   }
 
@@ -2514,9 +1760,17 @@ exports.sendMedicationReminders = functions.pubsub
             bottles: Array.isArray(rawData.bottles) ? rawData.bottles : [],
             stock: rawData.stock || (Array.isArray(rawData.bottles) ? rawData.bottles.length : 0),
             deletedStatus: rawData.deletedStatus === true,
-            doses: rawData.doses || {}
+            doses: rawData.doses || {},
+            schedules: rawData.schedules || null
           };
-          
+
+          // Auto-migrate old format to schedules if needed
+          if (!med.schedules && (med.daysOfWeek.length > 0 || med.times.length > 0)) {
+            const migrated = ScheduleUtils.migrateOldFormat(med);
+            med.schedules = migrated.schedules;
+            console.log(`  -> Auto-migrated ${med.name} to schedules format (${migrated.schedules.length} entries)`);
+          }
+
           // Comprehensive logging
           console.log(`\n=== Checking medication: ${med.name} ===`);
           console.log(`  ID: ${med.id}`);
@@ -2529,6 +1783,7 @@ exports.sendMedicationReminders = functions.pubsub
           console.log(`  endDate: "${med.endDate}"`);
           console.log(`  bottles: ${JSON.stringify(med.bottles)} (length: ${med.bottles.length})`);
           console.log(`  stock: ${med.stock}`);
+          console.log(`  schedules: ${JSON.stringify(med.schedules ? med.schedules.length + ' entries' : 'null')}`);
           
           // Skip if medication is deleted
           if (med.deletedStatus === true) {
@@ -2573,7 +1828,10 @@ exports.sendMedicationReminders = functions.pubsub
             continue;
           }
           
-          console.log(`  -> Current dose: ${currentDose.timeStr || 'any time'}, dose #${currentDose.doseNumber}, scheduled for: ${currentDose.dateTime.toFormat('yyyy-MM-dd HH:mm')}`);
+          const currentDoseDateLabel = currentDose.dateTime && typeof currentDose.dateTime.toFormat === 'function'
+            ? currentDose.dateTime.toFormat('yyyy-MM-dd HH:mm')
+            : (currentDose.dateTime instanceof Date ? currentDose.dateTime.toISOString() : String(currentDose.dateTime));
+          console.log(`  -> Current dose: ${currentDose.timeStr || currentDose.time || 'any time'}, dose #${currentDose.doseNumber}, scheduled for: ${currentDoseDateLabel}`);
           
           // Check if current dose is already taken
           const todayIsoDate = userNowDateTime.toISODate(); // Format: YYYY-MM-DD
@@ -2587,26 +1845,44 @@ exports.sendMedicationReminders = functions.pubsub
             console.log(`  -> Dose not yet taken (key: ${doseKey})`);
           }
           
-          // Get all reminder times for schedule display
-          const reminderTimes = getReminderTimes(med);
-          const sortedReminderTimes = [...reminderTimes].sort();
-          
           // Add to today's schedule for display
-          const scheduleTimes = sortedReminderTimes.length > 0 ? sortedReminderTimes : [null];
-          scheduleTimes.forEach((timeStr, scheduleIndex) => {
-            const key = `${med.id}|${timeStr || 'any'}`;
-            if (!scheduleKeys.has(key)) {
-              scheduleKeys.add(key);
-              todaysSchedule.push({
-                time: timeStr,
-                name: med.name || 'Medication',
-                dosage: med.dosage || null,
-                doseNumber: scheduleTimes.length > 1 && timeStr ? scheduleIndex + 1 : 1,
-                totalDoses: scheduleTimes.length,
-                medId: med.id
-              });
-            }
-          });
+          if (med.schedules && med.schedules.length > 0) {
+            const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules, userNowDateTime);
+            doses.forEach(dose => {
+              const key = `${med.id}|${dose.time || 'any'}`;
+              if (!scheduleKeys.has(key)) {
+                scheduleKeys.add(key);
+                todaysSchedule.push({
+                  time: dose.time,
+                  name: med.name || 'Medication',
+                  dosage: med.dosage || null,
+                  doseNumber: dose.doseNumber,
+                  totalDoses: doses.length,
+                  medId: med.id
+                });
+              }
+            });
+          } else {
+            // Keep existing logic as fallback
+            const reminderTimes = getReminderTimes(med);
+            const sortedReminderTimes = [...reminderTimes].sort();
+
+            const scheduleTimes = sortedReminderTimes.length > 0 ? sortedReminderTimes : [null];
+            scheduleTimes.forEach((timeStr, scheduleIndex) => {
+              const key = `${med.id}|${timeStr || 'any'}`;
+              if (!scheduleKeys.has(key)) {
+                scheduleKeys.add(key);
+                todaysSchedule.push({
+                  time: timeStr,
+                  name: med.name || 'Medication',
+                  dosage: med.dosage || null,
+                  doseNumber: scheduleTimes.length > 1 && timeStr ? scheduleIndex + 1 : 1,
+                  totalDoses: scheduleTimes.length,
+                  medId: med.id
+                });
+              }
+            });
+          }
           
           // Only send reminders for the CURRENT dose's time
           const reminderTime = currentDose.timeStr;
@@ -2633,11 +1909,10 @@ exports.sendMedicationReminders = functions.pubsub
                 if (!sendGroups[groupKey]) {
                   sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], reminderTime: '09:00', offsetKey: preference, reminderKeys: [] };
                 }
-                const medWithDoseInfo = { ...med, _isAlreadyTaken: isAlreadyTaken, _doseNumber: currentDose.doseNumber, _scheduledTime: '09:00' };
-                sendGroups[groupKey].meds.push(medWithDoseInfo);
+                sendGroups[groupKey].meds.push(med);
                 sendGroups[groupKey].reminderKeys.push(reminderKey);
-                if (isEmailReminder) sendGroups[groupKey].emailMeds.push(medWithDoseInfo);
-                if (isSMSReminder) sendGroups[groupKey].smsMeds.push(medWithDoseInfo);
+                if (isEmailReminder) sendGroups[groupKey].emailMeds.push(med);
+                if (isSMSReminder) sendGroups[groupKey].smsMeds.push(med);
                 console.log(`Queued ${med.name} for any time [offset=${preference}] (Email: ${isEmailReminder}, SMS: ${isSMSReminder})`);
               }
             }
@@ -2679,9 +1954,9 @@ exports.sendMedicationReminders = functions.pubsub
                 continue;
               }
               
-              // Mark medication with taken status and dose info for email template
-              const medWithTakenStatus = { ...med, _isAlreadyTaken: isAlreadyTaken, _doseNumber: currentDose.doseNumber, _scheduledTime: reminderTime };
-
+              // Mark medication as already taken for at_time reminders
+              const medWithTakenStatus = { ...med, _isAlreadyTaken: isAlreadyTaken };
+              
               const groupKey = `${preference}|${reminderTime}`;
               if (!sendGroups[groupKey]) {
                 sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], reminderTime, offsetKey: preference, reminderKeys: [] };
@@ -2749,7 +2024,7 @@ exports.sendMedicationReminders = functions.pubsub
                 console.log(`  Offset: ${group.offsetKey}`);
                 console.log(`  User phone: ${userPhoneNumber}`);
                 
-                await sendCombinedReminderSMS(userPhoneNumber, group.smsMeds, group.reminderTime, group.offsetKey, includeAlerts, bottleAlerts, userTimezone);
+                await sendCombinedReminderSMS(userPhoneNumber, group.smsMeds, group.reminderTime, group.offsetKey, includeAlerts, todaysSchedule, bottleAlerts, userTimezone);
                 
                 console.log(`✅ SUCCESS: SMS sent to ${userPhoneNumber} for ${group.smsMeds.length} medications at ${group.reminderTime} [offset=${group.offsetKey}]`);
               } catch (error) {
@@ -2897,21 +2172,14 @@ exports.sendDailyAgenda = functions.pubsub
         // Send email agenda (always send if user has email)
         await sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts);
         
-        // Send SMS agenda only if phone is verified AND at least one medication has SMS enabled
+        // Send SMS agenda if phone is verified
         if (userPhoneNumber && phoneVerified) {
-          const hasSMSMed = scheduleEntries.some(entry => {
-            const rm = entry.reminderMethod || 'N';
-            return rm === 'S' || rm === 'ES';
-          });
-          if (hasSMSMed) {
-            try {
-              await sendDailyAgendaSMS(userPhoneNumber, scheduleEntries, bottleAlerts, userTimezone);
-              console.log(`Daily agenda SMS sent to ${userPhoneNumber} at 9:00 AM ${userTimezone}`);
-            } catch (error) {
-              console.error(`Failed to send daily agenda SMS for ${userPhoneNumber}`, error);
-            }
-          } else {
-            console.log(`Skipping agenda SMS for ${userEmail}: no medications have SMS reminders enabled`);
+          try {
+            await sendDailyAgendaSMS(userPhoneNumber, scheduleEntries, bottleAlerts, userTimezone);
+            console.log(`Daily agenda SMS sent to ${userPhoneNumber} at 9:00 AM ${userTimezone}`);
+          } catch (error) {
+            console.error(`Failed to send daily agenda SMS for ${userPhoneNumber}`, error);
+            // Continue even if SMS fails
           }
         }
         
@@ -4180,12 +3448,11 @@ exports.verifyEmailCode = functions.https.onRequest(async (req, res) => {
 });
 
 /**
- * Send phone verification code via Sinch SMS
- * OTP codes are stored in Firestore (phoneVerifications collection) so they
- * persist across Cloud Function instances.
+ * Send phone verification code via Sinch Verification API
  */
 exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
   console.log('🚀 FUNCTION CALLED - sendPhoneVerificationCode');
+  console.log('  Method:', req.method);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -4209,43 +3476,36 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
 
     try {
       const { phoneNumber } = req.body;
-      console.log('📱 sendPhoneVerificationCode called (Sinch SMS)');
+      console.log('📱 sendPhoneVerificationCode called (Sinch Verification API)');
       console.log('  Phone number:', phoneNumber);
+      console.log('  Sinch Verification client initialized:', !!sinchVerificationClient);
 
       if (!phoneNumber) {
         res.status(400).json({ error: 'Phone number is required' });
         return;
       }
 
-      if (!sinchClient) {
-        console.error('❌ Sinch client not initialized!');
-        res.status(500).json({ error: 'SMS service not configured' });
+      if (!sinchVerificationClient) {
+        console.error('❌ Sinch Verification client not initialized!');
+        res.status(500).json({ error: 'Sinch Verification not configured' });
         return;
       }
 
-      // Generate a 6-digit OTP code
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-
-      // Store the code in Firestore with expiration (10 minutes)
-      const db = admin.firestore();
-      await db.collection('phoneVerifications').doc(phoneNumber).set({
-        code,
-        expiresAt: Date.now() + 10 * 60 * 1000,
-        createdAt: Date.now(),
-      });
-
-      // Send OTP via Sinch SMS
-      const result = await sinchClient.sms.batches.send({
-        sendSMSRequestBody: {
-          to: [phoneNumber],
-          from: sinchPhoneNumber,
-          body: `Your MedTracker verification code is ${code}. It expires in 10 minutes.`,
+      console.log('  Using Sinch Verification API to send SMS verification...');
+      const response = await sinchVerificationClient.verification.verifications.startSms({
+        startVerificationWithSmsRequestBody: {
+          identity: {
+            type: 'number',
+            endpoint: phoneNumber
+          }
         }
       });
 
-      console.log('✅ Sinch SMS verification sent successfully!', result.id);
-
-      res.status(200).json({ success: true, message: 'Verification code sent via SMS' });
+      console.log('✅ Sinch Verification SMS sent successfully!', response.id);
+      res.status(200).json({
+        success: true,
+        message: 'Verification code sent via SMS'
+      });
 
     } catch (error) {
       console.error('❌ Error sending phone verification code:', error);
@@ -4284,51 +3544,40 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
         return;
       }
 
-      console.log('🔐 verifyPhoneCode called');
+      console.log('🔐 verifyPhoneCode called (Sinch Verification API)');
       console.log('  Phone number:', phoneNumber);
       console.log('  Code:', code);
       console.log('  User ID:', userId || 'not provided');
 
-      // Check the code against Firestore
-      const db = admin.firestore();
-      const docRef = db.collection('phoneVerifications').doc(phoneNumber);
-      const docSnap = await docRef.get();
-
-      if (!docSnap.exists) {
-        console.log('❌ No verification code found for this number');
-        res.status(400).json({ error: 'Verification code expired or not found. Please request a new code.' });
+      if (!sinchVerificationClient) {
+        console.error('❌ Sinch Verification client not initialized!');
+        res.status(500).json({ error: 'Sinch Verification not configured' });
         return;
       }
 
-      const stored = docSnap.data();
+      console.log('  Using Sinch Verification API to check code...');
+      const verificationCheck = await sinchVerificationClient.verification.verifications.reportSmsById({
+        id: phoneNumber,
+        reportSmsVerificationByIdRequestBody: {
+          sms: { code: code }
+        }
+      });
 
-      if (Date.now() > stored.expiresAt) {
-        await docRef.delete();
-        console.log('❌ Verification code expired');
-        res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
-        return;
+      if (verificationCheck.status === 'SUCCESSFUL') {
+        console.log('✅ Sinch Verification SMS code approved!');
+        
+        // If userId is provided, update Firestore to mark phone as verified
+        if (userId) {
+          const userDocRef = doc(db, "users", userId);
+          await setDoc(userDocRef, { phoneVerified: true, phoneNumber: phoneNumber }, { merge: true });
+          console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
+        }
+
+        res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
+      } else {
+        console.log('❌ Sinch Verification code failed.', verificationCheck.status);
+        res.status(400).json({ error: 'Invalid verification code', status: verificationCheck.status });
       }
-
-      if (stored.code !== String(code)) {
-        console.log('❌ Invalid verification code');
-        res.status(400).json({ error: 'Invalid verification code. Please try again.' });
-        return;
-      }
-
-      // Code is correct — clean up
-      await docRef.delete();
-      console.log('✅ Verification code approved!');
-
-      // If userId is provided, update Firestore to mark phone as verified
-      if (userId) {
-        await db.collection('users').doc(userId).set(
-          { phoneVerified: true, phoneNumber: phoneNumber },
-          { merge: true }
-        );
-        console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
-      }
-
-      res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
     } catch (error) {
       console.error('❌ Error verifying phone code:', error);
       console.error('  Error message:', error.message);

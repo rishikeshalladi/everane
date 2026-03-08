@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MedTracker – Add/Edit Medication</title>
+  <title>MedTracker – Add/Edit Medication</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     :root {
@@ -108,7 +108,7 @@
       background: var(--text);
       transition: all 0.3s ease;
     }
-    
+
     .menu-overlay {
       display: none;
       position: fixed;
@@ -118,7 +118,7 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-    
+
     @media (max-width: 900px) {
       .hamburger { display: flex !important; }
       nav.sidebar {
@@ -158,7 +158,7 @@
         transform: translateY(0) scale(1) !important;
       }
       .content { margin-left: 0 !important; padding-top: 4rem !important; }
-      nav.sidebar a { 
+      nav.sidebar a {
         display: block !important;
         text-align: center !important;
         padding: .45rem .6rem !important;
@@ -184,7 +184,7 @@
         border: none !important;
         border-left: none !important;
       }
-      
+
       .sidebar-signout {
         width: 100% !important;
         padding: 0.75rem 1rem !important;
@@ -197,7 +197,7 @@
         cursor: pointer !important;
         transition: all 0.2s ease !important;
       }
-      
+
       .sidebar-signout:hover {
         background: color-mix(in oklab, var(--danger) 85%, black) !important;
         transform: translateY(-1px) !important;
@@ -414,9 +414,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(.85);
   cursor: pointer;
 }
-select, option { 
-  background-color: var(--surface); 
-  color: var(--text); 
+select, option {
+  background-color: var(--surface);
+  color: var(--text);
 }
 
 
@@ -437,24 +437,24 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 @media (max-width: 640px) {
   .container { padding-inline: 1rem; }
   .content { padding-block: 1.5rem; padding-top: 4.5rem; }
-  
+
   h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
   h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
-  
+
   .card {
     padding: 0.9rem;
     border-radius: 16px;
   }
-  
+
   .form-group {
     margin-bottom: 0.85rem;
   }
-  
+
   .form-group label {
     font-size: 0.9rem;
     margin-bottom: 0.3rem;
   }
-  
+
   .form-group input[type="text"],
   .form-group input[type="time"],
   .form-group input[type="date"],
@@ -469,40 +469,40 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     font-size: 16px;
     border-radius: 12px;
   }
-  
+
   select option {
     background-color: var(--surface);
     color: var(--text);
     font-size: 16px;
   }
-  
+
   .btn {
     padding: .65rem .85rem;
     font-size: 0.9rem;
     border-radius: 10px;
   }
-  
+
   .btn-sm {
     padding: .45rem .65rem;
     font-size: 0.85rem;
   }
-  
+
   .wizard-nav {
     margin-top: 1rem;
     gap: 0.5rem;
   }
-  
+
   .wizard-nav .btn-primary,
   .wizard-nav .btn-secondary {
     min-width: 110px;
     flex: 1;
   }
-  
+
   .toggle-group {
     gap: 0.4rem;
     justify-content: center;
   }
-  
+
   .toggle-btn {
     padding: .5rem .75rem;
     font-size: 0.85rem;
@@ -511,13 +511,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     flex: 0 0 calc(33.333% - 0.3rem);
     max-width: calc(33.333% - 0.3rem);
   }
-  
+
   .modal { padding: 0.5rem; }
   .modal-content {
     padding: 1rem;
     border-radius: 16px;
   }
-  
+
   #bottle-popup .popup-content {
     padding: 1rem;
     width: min(420px, 95%);
@@ -525,6 +525,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 }
 
 </style>
+<script src="schedule-utils.js"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -533,9 +534,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     <span></span>
     <span></span>
   </label>
-  
+
   <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
-  
+
   <nav class="sidebar">
     <a href="home.html">Home</a>
     <a href="history.html">History</a>
@@ -546,12 +547,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   </nav>
 
   <div class="content">
-    <a href="javascript:void(0)" class="close-btn" id="close-btn">×</a>
+    <a href="javascript:void(0)" class="close-btn" id="close-btn">&times;</a>
     <div class="container">
       <h1 id="form-title">Add Medication</h1>
       <form id="med-form" novalidate>
 
-        <!-- STEP 1 -->
+        <!-- STEP 1: Basic Medication Info -->
         <div id="step-1" class="form-step active">
           <div class="form-group">
             <label>Name of Medication <span style="color: #ff0000; font-weight: bold;">*</span></label>
@@ -560,35 +561,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
           <div class="form-group">
             <label>Dosage (pills per dose) <span style="color: red;">*</span></label>
-            <input id="dosage" type="text" inputmode="numeric" pattern="[0-9]*" min="1">
+            <input id="dosage" type="number" min="1">
             <div id="dosage-error" class="error-message"></div>
-          </div>
-          <div class="form-group">
-            <label>Days of Week <span style="color: red;">*</span></label>
-            <div id="weekday-toggle-group" class="toggle-group"></div>
-            <div id="weekday-error" class="error-message"></div>
-          </div>
-          <div class="form-group">
-            <label>How many times per day? <span style="color: red;">*</span></label>
-            <input id="times-per-day" type="number" min="1" max="20" step="1" inputmode="numeric">
-            <div id="times-error" class="error-message"></div>
-          </div>
-          <div id="time-pickers"></div>
-          <div class="wizard-nav">
-            <span></span>
-            <button type="button" id="to-step-2" class="btn-primary">Continue</button>
-          </div>
-        </div>
-
-        <!-- STEP 2 -->
-        <div id="step-2" class="form-step">
-          <div class="form-group">
-            <label>Start Date</label>
-            <input id="start-date" type="date">
-          </div>
-          <div class="form-group">
-            <label>End Date</label>
-            <input id="end-date" type="date">
           </div>
           <div class="form-group">
             <label>Reminder Method <span style="color: red;">*</span></label>
@@ -602,18 +576,106 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             <div id="reminder-error" class="error-message"></div>
           </div>
           <div class="wizard-nav">
-            <button type="button" id="back-to-step-1" class="btn-secondary">Back</button>
-            <button type="button" id="to-step-3" class="btn-primary">Continue</button>
+            <span></span>
+            <button type="button" id="to-step-2" class="btn-primary">Continue to Add Doses</button>
           </div>
         </div>
 
-        <!-- STEP 3 -->
+        <!-- STEP 2: Add Dose Schedules -->
+        <div id="step-2" class="form-step">
+          <h2>Add Dose Schedules</h2>
+          <p class="muted">Create one or more schedules for when this medication should be taken.</p>
+
+          <div id="schedules-list" style="margin-bottom: 1.5rem;"></div>
+
+          <div style="margin-bottom: 1.5rem; padding: 1rem; background: color-mix(in oklab, var(--surface) 96%, transparent); border-radius: 12px; border: 1px solid var(--border);">
+            <h3 style="margin-top: 0; margin-bottom: 0.75rem; font-size: 1.1rem;">Add New Schedule</h3>
+            <div class="form-group">
+              <label>Schedule Type <span style="color: red;">*</span></label>
+              <select id="schedule-type" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                <option value="">Select type...</option>
+                <option value="WEEKLY">Weekly (specific day + time)</option>
+                <option value="INTERVAL">Interval (every X hours/days/weeks)</option>
+              </select>
+            </div>
+
+            <!-- WEEKLY Schedule Fields -->
+            <div id="weekly-fields" style="display: none;">
+              <div class="form-group">
+                <label>Day of Week <span style="color: red;">*</span></label>
+                <select id="schedule-weekday" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                  <option value="">Select day...</option>
+                  <option value="0">Sunday</option>
+                  <option value="1">Monday</option>
+                  <option value="2">Tuesday</option>
+                  <option value="3">Wednesday</option>
+                  <option value="4">Thursday</option>
+                  <option value="5">Friday</option>
+                  <option value="6">Saturday</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Time <span style="color: red;">*</span></label>
+                <input id="schedule-time" type="time" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+              <div class="form-group">
+                <label>Repeat Every (weeks)</label>
+                <input id="schedule-every-weeks" type="number" min="1" value="1" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                <small class="muted">Default: every week</small>
+              </div>
+              <div class="form-group">
+                <label>Start Date (optional)</label>
+                <input id="schedule-start-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+              <div class="form-group">
+                <label>End Date (optional)</label>
+                <input id="schedule-end-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+            </div>
+
+            <!-- INTERVAL Schedule Fields -->
+            <div id="interval-fields" style="display: none;">
+              <div class="form-group">
+                <label>Interval <span style="color: red;">*</span></label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <input id="interval-value" type="number" min="1" value="1" placeholder="1" style="flex: 1; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                  <select id="interval-unit" style="flex: 1; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                    <option value="HOUR">Hour(s)</option>
+                    <option value="DAY">Day(s)</option>
+                    <option value="WEEK">Week(s)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Start Date & Time <span style="color: red;">*</span></label>
+                <input id="interval-anchor-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); margin-bottom: 0.5rem;">
+                <input id="interval-anchor-time" type="time" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                <small class="muted">First dose will be at this date/time, then repeat every interval</small>
+              </div>
+              <div class="form-group">
+                <label>End Date (optional)</label>
+                <input id="interval-end-date" type="date" style="width: 100%; padding: .8rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+              </div>
+            </div>
+
+            <button type="button" id="add-schedule-btn" class="btn-primary" style="width: 100%; margin-top: 1rem;">Add Schedule</button>
+          </div>
+
+          <div id="schedule-error" class="error-message" style="margin-bottom: 1rem;"></div>
+
+          <div class="wizard-nav">
+            <button type="button" id="back-to-step-1" class="btn-secondary">Back</button>
+            <button type="button" id="to-step-3" class="btn-primary" disabled>Continue to Bottles</button>
+          </div>
+        </div>
+
+        <!-- STEP 3 -->
         <div id="step-3" class="form-step">
           <h2>Add Bottles</h2>
           <p>Add the expiration date and number of pills left of each bottle.</p>
           <p>If you don't add a bottle, you will receive a reminder to add one.</p>
           <div id="bottles-list"></div>
-          <button type="button" id="add-bottle" class="btn-secondary btn-sm">+ Add Bottle</button>
+          <button type="button" id="add-bottle" class="btn-secondary btn-sm">+ Add Bottle</button>
           <div class="wizard-nav">
             <button type="button" id="back-to-step-2" class="btn-secondary">Back</button>
             <button type="submit" class="btn-primary">Save Medication</button>
@@ -657,7 +719,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
-    
+
     // Make auth, db, and Firebase functions globally available
     window.auth = auth;
     window.db = db;
@@ -668,7 +730,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     window.getDocs = getDocs;
     window.deleteDoc = deleteDoc;
     window.addDoc = addDoc;
-    
+
     // Set up auth ready promise
     window.authReady = new Promise((resolve) => {
       onAuthStateChanged(auth, (user) => {
@@ -683,9 +745,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     const params    = new URLSearchParams(window.location.search);
     const editIdx   = params.has('edit') ? params.get('edit') : null; // Keep as string for Firebase ID
     const renewIdx  = params.has('renew') ? +params.get('renew') : null;
-    const isVoice   = params.has('voice') || params.get('source') === 'voice'; // Check if coming from voice page
+    const isVoice   = params.has('voice') ? true : false; // Check if coming from voice page
     const storageKey= 'medications';
-    
+
     console.log('[Add-Medication] Page loaded. URL params:', {
       editIdx: editIdx, renewIdx: renewIdx, isVoice: isVoice
     });
@@ -693,34 +755,21 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     // Check for voice data from localStorage
     let voiceData = null;
     if (isVoice) {
-      console.log('[Add-Medication] isVoice is true. Checking sessionStorage for voiceMedicationDraft.');
-      const sessionDataStr = sessionStorage.getItem('voiceMedicationDraft');
-      if (sessionDataStr) {
+      console.log('[Add-Medication] isVoice is true. Checking localStorage for voiceMedicationData.');
+      const voiceDataStr = localStorage.getItem('voiceMedicationData');
+      if (voiceDataStr) {
+        console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...'); // Log first 100 chars
         try {
-          voiceData = JSON.parse(sessionDataStr);
-          console.log('[Add-Medication] Successfully parsed voiceMedicationDraft from sessionStorage:', voiceData);
-          sessionStorage.removeItem('voiceMedicationDraft');
-          sessionStorage.removeItem('voiceMedicationDraftAt');
+          voiceData = JSON.parse(voiceDataStr);
+          console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
+          // Clear it after reading
+          localStorage.removeItem('voiceMedicationData');
+          console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
         } catch (e) {
-          console.error('[Add-Medication] Error parsing voice data from sessionStorage:', e);
+          console.error('[Add-Medication] Error parsing voice data from localStorage:', e);
         }
       } else {
-        console.log('[Add-Medication] No voiceMedicationDraft found in sessionStorage. Falling back to localStorage.');
-        const voiceDataStr = localStorage.getItem('voiceMedicationData');
-        if (voiceDataStr) {
-          console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...'); // Log first 100 chars
-          try {
-            voiceData = JSON.parse(voiceDataStr);
-            console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
-            // Clear it after reading
-            localStorage.removeItem('voiceMedicationData');
-            console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
-          } catch (e) {
-            console.error('[Add-Medication] Error parsing voice data from localStorage:', e);
-          }
-        } else {
-          console.log('[Add-Medication] No voiceMedicationData found in localStorage despite isVoice being true.');
-        }
+        console.log('[Add-Medication] No voiceMedicationData found in localStorage despite isVoice being true.');
       }
     }
 
@@ -735,115 +784,183 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       document.getElementById('form-title').textContent = 'Renew Medication';
     }
 
-    // Weekday toggles
-    const weekdays  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const tg        = document.getElementById('weekday-toggle-group');
-    weekdays.forEach(day=>{
-      const b = document.createElement('button');
-      b.type='button'; b.className='toggle-btn';
-      b.textContent=day.slice(0,3); b.dataset.day=day;
-      b.onclick=()=>b.classList.toggle('active');
-      tg.appendChild(b);
+    // Schedule management
+    let schedules = []; // Array of schedule objects
+
+    // Schedule type toggle
+    const scheduleTypeSelect = document.getElementById('schedule-type');
+    const weeklyFields = document.getElementById('weekly-fields');
+    const intervalFields = document.getElementById('interval-fields');
+
+    scheduleTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      weeklyFields.style.display = type === 'WEEKLY' ? 'block' : 'none';
+      intervalFields.style.display = type === 'INTERVAL' ? 'block' : 'none';
     });
 
-    // Time pickers
-    const timesInput = document.getElementById('times-per-day');
-    const timePickers= document.getElementById('time-pickers');
-    const MAX_DOSES_PER_DAY = 20;
-    let cachedTimeValues = [];
+    // Render schedules list
+    function renderSchedulesList() {
+      const schedulesList = document.getElementById('schedules-list');
+      schedulesList.innerHTML = '';
 
-    function clampTimesPerDay(value) {
-      if (!Number.isFinite(value)) return 1;
-      return Math.min(MAX_DOSES_PER_DAY, Math.max(1, value));
-    }
-
-    function renderTimeInputs(count, preserveExistingValues = true) {
-      if (preserveExistingValues) {
-        const existingValues = [...timePickers.querySelectorAll('input[type="time"]')].map(inp => inp.value);
-        existingValues.forEach((val, idx) => {
-          cachedTimeValues[idx] = val;
-        });
+      if (schedules.length === 0) {
+        schedulesList.innerHTML = '<p class="muted" style="text-align: center; padding: 1rem;">No schedules added yet. Add your first schedule below.</p>';
+        document.getElementById('to-step-3').disabled = true;
+        return;
       }
 
-      timePickers.innerHTML = '';
+      document.getElementById('to-step-3').disabled = false;
 
-      for (let i = 0; i < count; i++) {
-        const lbl = document.createElement('label');
-        lbl.innerHTML = `Time #${i + 1}`;
-        const inp = document.createElement('input');
-        inp.type = 'time';
-        if (cachedTimeValues[i]) {
-          inp.value = cachedTimeValues[i];
+      schedules.forEach((schedule, index) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.marginBottom = '1rem';
+
+        let scheduleText = '';
+        if (schedule.type === 'WEEKLY') {
+          const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const dayName = weekdays[parseInt(schedule.weekday)];
+          const everyWeeks = schedule.everyWeeks || 1;
+          scheduleText = `Every ${everyWeeks === 1 ? '' : everyWeeks + ' '}week on ${dayName} at ${schedule.time}`;
+        } else if (schedule.type === 'INTERVAL') {
+          const unitText = schedule.interval.unit === 'HOUR' ? 'hour(s)' :
+                           schedule.interval.unit === 'DAY' ? 'day(s)' : 'week(s)';
+          const anchorDate = new Date(schedule.anchorDateTime);
+          const dateStr = anchorDate.toLocaleDateString();
+          const timeStr = anchorDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+          scheduleText = `Every ${schedule.interval.value} ${unitText} starting ${dateStr} at ${timeStr}`;
         }
-        inp.addEventListener('input', () => {
-          cachedTimeValues[i] = inp.value;
-        });
-        lbl.appendChild(inp);
-        timePickers.appendChild(lbl);
-      }
+
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <strong>${scheduleText}</strong>
+              ${schedule.startDate ? `<br><small class="muted">Start: ${new Date(schedule.startDate).toLocaleDateString()}</small>` : ''}
+              ${schedule.endDate ? `<br><small class="muted">End: ${new Date(schedule.endDate).toLocaleDateString()}</small>` : ''}
+            </div>
+            <button type="button" class="btn-danger btn-sm" onclick="removeSchedule(${index})">Remove</button>
+          </div>
+        `;
+        schedulesList.appendChild(card);
+      });
     }
 
-    function setTimesPerDay(count, preserveExistingValues = true) {
-      const clamped = clampTimesPerDay(count || 1);
-      timesInput.value = clamped;
-      renderTimeInputs(clamped, preserveExistingValues);
+    // Make removeSchedule available globally
+    window.removeSchedule = function(index) {
+      schedules.splice(index, 1);
+      renderSchedulesList();
+    };
+
+    // Add schedule button
+    document.getElementById('add-schedule-btn').addEventListener('click', () => {
+      const type = scheduleTypeSelect.value;
+      if (!type) {
+        document.getElementById('schedule-error').textContent = 'Please select a schedule type';
+        return;
       }
 
-    timesInput.addEventListener('input', () => {
-      if (timesInput.value === '') return;
-      const n = parseInt(timesInput.value, 10);
-      if (Number.isNaN(n)) return;
-      setTimesPerDay(n, true);
-    });
+      document.getElementById('schedule-error').textContent = '';
 
-    timesInput.addEventListener('blur', () => {
-      if (!timesInput.value) {
-        const fallback = cachedTimeValues.filter(Boolean).length || 1;
-        setTimesPerDay(fallback, false);
+      let schedule = {
+        scheduleId: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: type
+      };
+
+      if (type === 'WEEKLY') {
+        const weekday = document.getElementById('schedule-weekday').value;
+        const time = document.getElementById('schedule-time').value;
+        const everyWeeks = parseInt(document.getElementById('schedule-every-weeks').value) || 1;
+        const startDate = document.getElementById('schedule-start-date').value;
+        const endDate = document.getElementById('schedule-end-date').value;
+
+        if (!weekday || !time) {
+          document.getElementById('schedule-error').textContent = 'Please fill in weekday and time';
+          return;
+        }
+
+        schedule.weekday = parseInt(weekday);
+        schedule.time = time;
+        schedule.everyWeeks = everyWeeks;
+        if (startDate) schedule.startDate = new Date(startDate).toISOString();
+        if (endDate) schedule.endDate = new Date(endDate).toISOString();
+      } else if (type === 'INTERVAL') {
+        const intervalValue = parseInt(document.getElementById('interval-value').value);
+        const intervalUnit = document.getElementById('interval-unit').value;
+        const anchorDate = document.getElementById('interval-anchor-date').value;
+        const anchorTime = document.getElementById('interval-anchor-time').value;
+        const endDate = document.getElementById('interval-end-date').value;
+
+        if (!intervalValue || !intervalUnit || !anchorDate || !anchorTime) {
+          document.getElementById('schedule-error').textContent = 'Please fill in all required interval fields';
+          return;
+        }
+
+        // Create anchorDateTime with just date and time (no seconds/milliseconds)
+        const anchorDateTime = new Date(`${anchorDate}T${anchorTime}:00`); // Add :00 for seconds
+        schedule.interval = { value: intervalValue, unit: intervalUnit };
+        // Format as YYYY-MM-DDTHH:MM:SS (without milliseconds)
+        const year = anchorDateTime.getFullYear();
+        const month = String(anchorDateTime.getMonth() + 1).padStart(2, '0');
+        const day = String(anchorDateTime.getDate()).padStart(2, '0');
+        const hours = String(anchorDateTime.getHours()).padStart(2, '0');
+        const minutes = String(anchorDateTime.getMinutes()).padStart(2, '0');
+        schedule.anchorDateTime = `${year}-${month}-${day}T${hours}:${minutes}:00`;
+        if (endDate) schedule.endDate = new Date(endDate).toISOString();
       }
-    });
 
-    setTimesPerDay(parseInt(timesInput.value, 10) || 1, false);
+      schedules.push(schedule);
+      renderSchedulesList();
+
+      // Reset form
+      scheduleTypeSelect.value = '';
+      weeklyFields.style.display = 'none';
+      intervalFields.style.display = 'none';
+      document.getElementById('schedule-weekday').value = '';
+      document.getElementById('schedule-time').value = '';
+      document.getElementById('schedule-every-weeks').value = '1';
+      document.getElementById('schedule-start-date').value = '';
+      document.getElementById('schedule-end-date').value = '';
+      document.getElementById('interval-value').value = '1';
+      document.getElementById('interval-unit').value = 'HOUR';
+      document.getElementById('interval-anchor-date').value = '';
+      document.getElementById('interval-anchor-time').value = '';
+      document.getElementById('interval-end-date').value = '';
+    });
 
     // Error helpers
-    function clearErr(id){ document.getElementById(id).textContent=''; }
-    function showErr(id,msg){ document.getElementById(id).textContent=msg; }
+    function clearErr(id){ const el = document.getElementById(id); if (el) el.textContent=''; }
+    function showErr(id,msg){ const el = document.getElementById(id); if (el) el.textContent=msg; }
 
-    // Validate Step 1
+    // Validate Step 1 (name, dosage, reminder)
     function valid1(){
-      ['name-error','dosage-error','weekday-error','times-error']
-        .forEach(clearErr);
-      let ok=true;
-      const nameEl = document.getElementById('med-name'),
-            doseEl = document.getElementById('dosage'),
-            days   = tg.querySelectorAll('.toggle-btn.active'),
-            times  = +timesInput.value;
+      clearErr('name-error');
+      clearErr('dosage-error');
+      clearErr('reminder-error');
+      let ok = true;
+      const nameEl = document.getElementById('med-name');
+      const doseEl = document.getElementById('dosage');
+      const reminderEl = document.getElementById('reminder');
+
       if (!nameEl.value.trim()) {
         showErr('name-error','Enter medication name');
-        ok=false;
+        ok = false;
       }
-      const doseNum = parseInt(String(doseEl.value).match(/\d+/)?.[0], 10);
-      if (!doseEl.value || isNaN(doseNum) || doseNum<1) {
-        showErr('dosage-error','Dosage must be ≥1');
-        ok=false;
+      if (!doseEl.value || +doseEl.value < 1) {
+        showErr('dosage-error','Dosage must be \u22651');
+        ok = false;
       }
-      if (!days.length) {
-        showErr('weekday-error','Select at least one day');
-        ok=false;
-      }
-      if (!times || times<1) {
-        showErr('times-error','Enter times per day');
-        ok=false;
+      if (!reminderEl.value) {
+        showErr('reminder-error','Select a reminder method');
+        ok = false;
       }
       return ok;
     }
 
-    // Validate Step 2
+    // Validate Step 2 (schedules)
     function valid2(){
-      clearErr('reminder-error');
-      const rem = document.getElementById('reminder').value;
-      if (!rem) {
-        showErr('reminder-error','Select a reminder method');
+      clearErr('schedule-error');
+      if (schedules.length === 0) {
+        showErr('schedule-error','Please add at least one schedule');
         return false;
       }
       return true;
@@ -891,16 +1008,16 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           menuToggle.checked = false;
         });
       });
-      
+
       let med;
       let sourceArray;
-      
+
       if (editIdx !== null) {
         console.log('[Add-Medication] Loading medication for edit, ID:', editIdx);
-        
+
         // Wait for auth to be ready
         await window.authReady;
-        
+
         // Load medication directly from Firebase using the ID
         const user = window.currentUser;
         if (!user) {
@@ -909,33 +1026,43 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           window.location.href = 'login.html';
           return;
         }
-        
+
         console.log('[Add-Medication] User authenticated:', user.email);
-        
+
         try {
           const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
           const medDocSnap = await getDoc(medDocRef);
-          
+
           if (!medDocSnap.exists()) {
             console.error('[Add-Medication] Medication not found with ID:', editIdx);
             alert('Medication not found');
             return;
           }
-          
+
           const medData = medDocSnap.data();
           console.log('[Add-Medication] Loaded medication data:', medData);
-          
+
+          // Check if medication has new schedules format, or needs migration from old format
+          let medSchedules = [];
+          if (medData.schedules && Array.isArray(medData.schedules) && medData.schedules.length > 0) {
+            medSchedules = medData.schedules;
+          } else if (medData.daysOfWeek || medData.times) {
+            // Migrate old format using ScheduleUtils
+            if (typeof ScheduleUtils !== 'undefined' && ScheduleUtils.migrateOldFormat) {
+              medSchedules = ScheduleUtils.migrateOldFormat(medData);
+              console.log('[Add-Medication] Migrated old format to schedules:', medSchedules);
+            } else {
+              console.warn('[Add-Medication] ScheduleUtils not available for migration');
+            }
+          }
+
           med = {
             id: editIdx,
             name: medData.name,
             dosage: medData.dosage,
-            days: medData.daysOfWeek,
-            timesPerDay: medData.timesPerDay,
-            times: medData.times,
-            startDate: medData.startDate === 'N/A' ? null : medData.startDate,
-            endDate: medData.endDate === 'N/A' ? null : medData.endDate,
-            reminder: medData.reminderMethod === 'E' ? 'Email' : 
-                     medData.reminderMethod === 'S' ? 'SMS' : 
+            schedules: medSchedules,
+            reminder: medData.reminderMethod === 'E' ? 'Email' :
+                     medData.reminderMethod === 'S' ? 'SMS' :
                      medData.reminderMethod === 'ES' ? 'Email + SMS' : 'None',
             bottles: medData.bottles ? medData.bottles.map(bottleStr => {
               const parts = bottleStr.split('/');
@@ -948,7 +1075,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               return null;
             }).filter(Boolean) : []
           };
-          
+
           console.log('[Add-Medication] Converted medication for form:', med);
         } catch (error) {
           console.error('[Add-Medication] Error loading medication:', error);
@@ -958,7 +1085,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } else if (renewIdx !== null) {
         // Wait for auth to be ready for renew as well
         await window.authReady;
-        
+
         sourceArray = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
         med = sourceArray[renewIdx];
       } else if (voiceData) {
@@ -975,11 +1102,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminder: voiceData.reminder || 'None'
         };
         console.log('[Add-Medication] Converted voice data to medication object:', med);
-        
+
         // Show a message that this came from voice
         const voiceNotice = document.createElement('div');
         voiceNotice.style.cssText = 'background: #10b981; color: white; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;';
-        voiceNotice.textContent = '✓ Form pre-filled from voice conversation. Please review and edit as needed.';
+        voiceNotice.textContent = '\u2713 Form pre-filled from voice conversation. Please review and edit as needed.';
         const container = document.querySelector('.container');
         if (container) {
           container.insertBefore(voiceNotice, container.firstChild);
@@ -987,14 +1114,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } else {
         return;
       }
-      
+
       if (!med) {
         console.log('[Add-Medication] No medication data to populate form.');
         return;
       }
-      
+
       console.log('[Add-Medication] Populating form with medication data:', med);
-      
+
       // If this is a renew flow, reset the reminder select to the placeholder
       if (renewIdx !== null) {
         const sel = document.getElementById('reminder');
@@ -1002,98 +1129,25 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
 
       // Populate form fields
-      const medNameEl = document.getElementById('med-name');
-      const dosageEl = document.getElementById('dosage');
+      document.getElementById('med-name').value = med.name || '';
+      document.getElementById('dosage').value = med.dosage || '';
 
-      medNameEl.value = med.name || '';
-      console.log('[Add-Medication] Set med-name:', medNameEl.value);
-
-      dosageEl.value = med.dosage || '';
-      console.log('[Add-Medication] Set dosage:', dosageEl.value);
-      
-      const medTimeValues = Array.isArray(med.times) ? med.times.filter(Boolean) : [];
-      cachedTimeValues = [...medTimeValues];
-      const initialTimesPerDay = clampTimesPerDay(med.timesPerDay || medTimeValues.length || 1);
-      setTimesPerDay(initialTimesPerDay, false);
-      
-      console.log('[Add-Medication] Set timesPerDay:', initialTimesPerDay, 'and rendered time inputs.');
-      
-      // Set times
-      if (med.times && med.times.length > 0) {
-        med.times.forEach((t,i)=> {
-          const timeInput = timePickers.querySelectorAll('input')[i];
-          if (timeInput) timeInput.value = t;
-        });
-        console.log('[Add-Medication] Set specific times:', med.times);
-      }
-      
-      // Set days
-      tg.querySelectorAll('.toggle-btn').forEach(b=>{
-        const dayLower = b.dataset.day.toLowerCase();
-        const dayTitle = b.dataset.day;
-        if (med.days && (med.days.includes(dayLower) || med.days.includes(dayTitle))) {
-          b.classList.add('active');
-          console.log('[Add-Medication] Activated day:', b.dataset.day);
-        }
-      });
-      console.log('[Add-Medication] Set days:', med.days);
-      
-      // Convert date format from M/d/yyyy to YYYY-MM-DD for HTML date inputs
-      const convertDateForInput = (dateStr) => {
-        if (!dateStr || dateStr === 'N/A' || dateStr === '') return '';
-        // If already in YYYY-MM-DD format, return as is
-        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-          return dateStr;
-        }
-        // If in M/d/yyyy format, convert to YYYY-MM-DD
-        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-          const parts = dateStr.split('/');
-          const month = parts[0].padStart(2, '0');
-          const day = parts[1].padStart(2, '0');
-          const year = parts[2];
-          return `${year}-${month}-${day}`;
-        }
-        // Try parsing as Date object
-        try {
-          const date = new Date(dateStr);
-          if (!isNaN(date.getTime())) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          }
-        } catch (e) {
-          console.warn('[Add-Medication] Could not parse date:', dateStr);
-        }
-        return '';
-      };
-      
-      // Set dates (convert format for HTML date inputs)
-      const startDateValue = convertDateForInput(med.startDate);
-      const endDateValue = convertDateForInput(med.endDate);
-      const startDateEl = document.getElementById('start-date');
-      const endDateEl = document.getElementById('end-date');
-      if (startDateEl) startDateEl.value = startDateValue;
-      if (endDateEl) endDateEl.value = endDateValue;
-      console.log('[Add-Medication] Set start-date:', startDateValue, 'end-date:', endDateValue);
-      
-      // Set reminder (convert from voice format to form format)
-      if (med.reminder) {
-        const reminderSelectEl = document.getElementById('reminder');
-        if (reminderSelectEl) {
-          // Options don't have explicit values, so the <option> value is the visible text.
-          const normalized = (med.reminder || '').trim();
-          const allowed = new Set(['None', 'Email', 'SMS', 'Email + SMS']);
-          const mapped = (normalized === 'Both') ? 'Email + SMS' : normalized;
-          reminderSelectEl.value = allowed.has(mapped) ? mapped : '';
-          console.log('[Add-Medication] Set reminder:', reminderSelectEl.value, 'from voiceData:', med.reminder);
-        }
-      }
       // Set reminder
-      // if (renewIdx === null) {
-      //   document.getElementById('reminder').value = med.reminder || '';
-      //   console.log('[Add-Medication] Set reminder:', med.reminder);
-      // }
+      const reminderSelect = document.getElementById('reminder');
+      if (reminderSelect && med.reminder) {
+        reminderSelect.value = med.reminder;
+      }
+
+      // Load schedules into the schedule builder
+      if (med.schedules && Array.isArray(med.schedules) && med.schedules.length > 0) {
+        schedules = med.schedules.map(s => ({ ...s })); // Clone schedules
+        renderSchedulesList();
+        console.log('[Add-Medication] Loaded schedules:', schedules);
+      } else {
+        schedules = [];
+        renderSchedulesList();
+      }
+
       // Set bottles
       if (med.bottles && med.bottles.length > 0) {
         console.log('[Add-Medication] Setting bottles:', med.bottles);
@@ -1108,56 +1162,73 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } else {
         console.log('[Add-Medication] No bottles to set');
       }
-      
+
       console.log('[Add-Medication] Form population complete');
     });
 
     // Final save
     document.getElementById('med-form').onsubmit = async (e)=>{
       e.preventDefault();
-      // gather Part 1
-      const name        = document.getElementById('med-name').value.trim();
-      const dosage      = parseInt(String(document.getElementById('dosage').value).match(/\d+/)?.[0], 10) || 0;
-      const timesPerDay = +timesInput.value;
-      const days        = [...tg.querySelectorAll('.toggle-btn.active')].map(b=>b.dataset.day.toLowerCase());
-      let times       = [...timePickers.querySelectorAll('input[type="time"]')]
-                            .map(i=>i.value).filter(v=>v);
-      // Sort times chronologically (HH:MM format)
-      times.sort((a, b) => {
-        const [aHour, aMin] = a.split(':').map(Number);
-        const [bHour, bMin] = b.split(':').map(Number);
-        if (aHour !== bHour) return aHour - bHour;
-        return aMin - bMin;
-      });
-      const perWeek     = `${days.length * timesPerDay} times a week`;
-      const perDay      = `${timesPerDay} times a day`;
-      let nextDosage;
-      if (times.length) nextDosage = `${times[0]} ${days[0]}`;
-      else {
-        const today = new Date().getDay();
-        const idxs  = days.map(d=>weekdaysConst.indexOf(d));
-        const offset = idxs.map(i=>((i-today+7)%7)).sort((a,b)=>a-b)[0];
-        nextDosage = offset===0 ? days[0] : weekdaysConst[(today+offset)%7];
+
+      // Gather form data
+      const name = document.getElementById('med-name').value.trim();
+      const dosage = +document.getElementById('dosage').value;
+      const reminder = document.getElementById('reminder').value;
+
+      // Validate schedules
+      if (schedules.length === 0) {
+        alert('Please add at least one dose schedule');
+        return;
       }
-      // Part 2
-      let startDate = document.getElementById('start-date').value||null;
-      const endDate   = document.getElementById('end-date').value  ||null;
-      const reminder  = document.getElementById('reminder').value;
-      
-      // If no start date provided, set to today (for new medications, edits, and renewals)
-      if (!startDate) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        startDate = `${year}-${month}-${day}`;
-        console.log('[Add-Medication] No start date provided, setting to today:', startDate);
+
+      const user = window.auth.currentUser;
+      if (!user) {
+        alert('Please log in to save medications');
+        return;
       }
-      
-      // Build and save
-      const med = {name,dosage,days,timesPerDay,times,perWeek,perDay,nextDosage,
-                   startDate,endDate,reminder,bottles};
-      
+
+      // Format reminder method
+      let reminderMethod = 'N';
+      if (reminder === 'Email') reminderMethod = 'E';
+      else if (reminder === 'SMS') reminderMethod = 'S';
+      else if (reminder === 'Email + SMS') reminderMethod = 'ES';
+
+      // Format bottles
+      const formatDate = (dateStr) => {
+        if (!dateStr || dateStr === 'N/A') return 'N/A';
+
+        // If it's already in MM/DD/YYYY format, return as is
+        if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+          return dateStr;
+        }
+
+        // If it's in YYYY-MM-DD format (from HTML date input), convert properly
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+          const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+          const month = dateObj.getMonth() + 1;
+          const day = dateObj.getDate();
+          const year = dateObj.getFullYear();
+          return `${month}/${day}/${year}`;
+        }
+
+        // For other formats, try to parse and convert
+        const dateObj = new Date(dateStr);
+        if (isNaN(dateObj.getTime())) return 'N/A';
+        const month = dateObj.getMonth() + 1;
+        const day = dateObj.getDate();
+        const year = dateObj.getFullYear();
+        return `${month}/${day}/${year}`;
+      };
+
+      const formattedBottles = [];
+      if (bottles && bottles.length > 0) {
+        bottles.forEach((bottle) => {
+          const expDate = formatDate(bottle.expiration);
+          const quantity = bottle.quantity || 'N/A';
+          formattedBottles.push(`${expDate}/${quantity}`);
+        });
+      }
+
       // If renewing, we need to get the medication ID from the temp data
       let renewMedId = null;
       if (renewIdx !== null) {
@@ -1167,309 +1238,159 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           console.log('[Add-Medication] Found renewal medication ID:', renewMedId);
         }
       }
-      
+
+      // Determine medId and attach to each schedule
+      const medId = editIdx || (renewMedId) || `med_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      schedules.forEach(s => { s.medId = medId; });
+
       if (editIdx !== null) {
         // Edit existing medication - update directly in Firebase
-        const user = window.auth.currentUser;
-        if (!user) {
-          console.error('No user logged in');
-          return;
-        }
-        
         const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
-        
-        // Convert to Firebase format (MM/DD/YYYY)
-        const formatDate = (dateStr) => {
-          if (!dateStr || dateStr === 'N/A') return 'N/A';
-          
-          // If it's already in MM/DD/YYYY format, return as is
-          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-            return dateStr;
-          }
-          
-          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
-          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
-            const month = dateObj.getMonth() + 1;
-            const day = dateObj.getDate();
-            const year = dateObj.getFullYear();
-            return `${month}/${day}/${year}`;
-          }
-          
-          // For other formats, try to parse and convert
-          const dateObj = new Date(dateStr);
-          if (isNaN(dateObj.getTime())) return 'N/A';
-          const month = dateObj.getMonth() + 1;
-          const day = dateObj.getDate();
-          const year = dateObj.getFullYear();
-          return `${month}/${day}/${year}`;
-        };
 
-        let reminderMethod = 'N';
-        if (med.reminder === 'Email') reminderMethod = 'E';
-        else if (med.reminder === 'SMS') reminderMethod = 'S';
-        else if (med.reminder === 'Email + SMS') reminderMethod = 'ES';
-
-        const bottles = [];
-        if (med.bottles && med.bottles.length > 0) {
-          med.bottles.forEach((bottle) => {
-            const expDate = formatDate(bottle.expiration);
-            const quantity = bottle.quantity || 'N/A';
-            bottles.push(`${expDate}/${quantity}`);
-          });
-        }
-
-        const medData = {
-          name: med.name || '',
-          dosage: med.dosage || 0,
-          daysOfWeek: med.days || [],
-          timesPerDay: med.timesPerDay || 0,
-          times: med.times || [],
-          startDate: formatDate(med.startDate),
-          endDate: formatDate(med.endDate),
-          reminderMethod: reminderMethod,
-          stock: med.bottles ? med.bottles.length : 0,
-          bottles: bottles,
-          // deletedStatus is NOT changed during edit - it stays whatever it was
-          updatedAt: new Date().toISOString(),
-          notes: {} // Preserve existing notes from Firebase
-        };
-        
-        // Get existing data to preserve createdAt, notes, and doses
+        // Get existing data to preserve notes, doses, createdAt
+        let existingData = {};
         try {
           const existingDoc = await getDoc(medDocRef);
           if (existingDoc.exists()) {
-            const existingData = existingDoc.data();
-            // Preserve notes if they exist
-            if (existingData.notes) {
-              medData.notes = existingData.notes;
-            }
-            // Preserve doses - keep all historical dose data when editing
-            if (existingData.doses) {
-              medData.doses = existingData.doses;
-              console.log('[Add-Medication] Preserved existing doses history:', Object.keys(existingData.doses).length, 'entries');
-            }
-            // Preserve createdAt - it should only be set when first creating the medication
-            if (existingData.createdAt) {
-              medData.createdAt = existingData.createdAt;
-            }
+            existingData = existingDoc.data();
           }
         } catch (error) {
           console.warn('[Add-Medication] Could not retrieve existing data:', error);
         }
-        
-        // Remove doseStatus and doseHistory if they exist
-        const updateData = { ...medData };
-        try {
-          const existingDoc = await getDoc(medDocRef);
-          if (existingDoc.exists()) {
-            const existingData = existingDoc.data();
-            if (existingData.doseStatus !== undefined) {
-              updateData.doseStatus = deleteField();
-              console.log('[Add-Medication] Removing old doseStatus field');
-            }
-            if (existingData.doseHistory !== undefined) {
-              updateData.doseHistory = deleteField();
-              console.log('[Add-Medication] Removing old doseHistory field');
-            }
-          }
-        } catch (error) {
-          console.warn('[Add-Medication] Could not check for old fields:', error);
+
+        const medData = {
+          name: name,
+          dosage: dosage,
+          schedules: schedules,
+          reminderMethod: reminderMethod,
+          stock: formattedBottles.length,
+          bottles: formattedBottles,
+          updatedAt: new Date().toISOString(),
+          notes: existingData.notes || {},
+          doses: existingData.doses || {}
+        };
+
+        // Preserve createdAt
+        if (existingData.createdAt) {
+          medData.createdAt = existingData.createdAt;
         }
-        
+
+        // Preserve deletedStatus
+        if (existingData.deletedStatus !== undefined) {
+          medData.deletedStatus = existingData.deletedStatus;
+        }
+
+        // Remove old fields if they exist
+        const updateData = { ...medData };
+        if (existingData.doseStatus !== undefined) {
+          updateData.doseStatus = deleteField();
+        }
+        if (existingData.doseHistory !== undefined) {
+          updateData.doseHistory = deleteField();
+        }
+        // Delete old format fields
+        if (existingData.daysOfWeek !== undefined) {
+          updateData.daysOfWeek = deleteField();
+        }
+        if (existingData.timesPerDay !== undefined) {
+          updateData.timesPerDay = deleteField();
+        }
+        if (existingData.times !== undefined) {
+          updateData.times = deleteField();
+        }
+
         await setDoc(medDocRef, updateData);
-        console.log(`[Add-Medication] Updated medication: ${med.name} (ID: ${editIdx})`);
+        console.log(`[Add-Medication] Updated medication: ${name} (ID: ${editIdx})`);
       } else if (renewIdx !== null) {
         // Renew medication - update in Firebase and set deletedStatus: false
-        const user = window.auth.currentUser;
-        if (!user) {
-          console.error('No user logged in');
-          return;
-        }
-        
         if (!renewMedId) {
           console.error('[Add-Medication] No medication ID found for renewal');
           alert('Error: Could not find medication ID for renewal');
           return;
         }
-        
+
         console.log('[Add-Medication] Renewing medication with ID:', renewMedId);
-        
-        // Format dates properly (MM/DD/YYYY)
-        const formatDate = (dateStr) => {
-          if (!dateStr || dateStr === 'N/A') return 'N/A';
-          
-          // If it's already in MM/DD/YYYY format, return as is
-          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-            return dateStr;
-          }
-          
-          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
-          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
-            const month = dateObj.getMonth() + 1;
-            const day = dateObj.getDate();
-            const year = dateObj.getFullYear();
-            return `${month}/${day}/${year}`;
-          }
-          
-          // For other formats, try to parse and convert
-          const dateObj = new Date(dateStr);
-          if (isNaN(dateObj.getTime())) return 'N/A';
-          const month = dateObj.getMonth() + 1;
-          const day = dateObj.getDate();
-          const year = dateObj.getFullYear();
-          return `${month}/${day}/${year}`;
-        };
-        
-        // Prepare medication data for Firebase
-        const medData = {
-          name: med.name,
-          dosage: parseInt(med.dosage) || 0,
-          daysOfWeek: med.days || [],
-          timesPerDay: parseInt(med.timesPerDay) || 0,
-          times: med.times || [],
-          startDate: formatDate(med.startDate),
-          endDate: formatDate(med.endDate),
-          reminderMethod: med.reminder === 'Email' ? 'E' : 
-                         med.reminder === 'SMS' ? 'S' : 
-                         med.reminder === 'Email + SMS' ? 'ES' : 'N',
-          bottles: (med.bottles || []).map(bottle => {
-            const expDate = formatDate(bottle.expiration);
-            const quantity = bottle.quantity || 'N/A';
-            return `${expDate}/${quantity}`;
-          }),
-          stock: (med.bottles || []).length,
-          deletedStatus: false, // Mark as active (not deleted)
-          notes: {} // Preserve existing notes from Firebase
-        };
-        
-        // Update the medication in Firebase
+
         const medDocRef = doc(window.db, "users", user.uid, "medications", renewMedId);
-        
+
         // Get existing data to preserve createdAt, notes, and doses
+        let existingData = {};
         try {
           const existingDoc = await getDoc(medDocRef);
           if (existingDoc.exists()) {
-            const existingData = existingDoc.data();
-            // Preserve notes if they exist
-            if (existingData.notes) {
-              medData.notes = existingData.notes;
-            }
-            // Preserve doses - keep all historical dose data when renewing
-            if (existingData.doses) {
-              medData.doses = existingData.doses;
-              console.log('[Add-Medication] Preserved existing doses history:', Object.keys(existingData.doses).length, 'entries');
-            }
-            // Preserve createdAt - use the original creation date when renewing
-            if (existingData.createdAt) {
-              medData.createdAt = existingData.createdAt;
-            }
+            existingData = existingDoc.data();
           }
         } catch (error) {
           console.warn('[Add-Medication] Could not retrieve existing data:', error);
         }
-        
-        // Remove doseStatus and doseHistory if they exist
-        const updateData = { ...medData };
-        try {
-          const existingDoc = await getDoc(medDocRef);
-          if (existingDoc.exists()) {
-            const existingData = existingDoc.data();
-            if (existingData.doseStatus !== undefined) {
-              updateData.doseStatus = deleteField();
-              console.log('[Add-Medication] Removing old doseStatus field');
-            }
-            if (existingData.doseHistory !== undefined) {
-              updateData.doseHistory = deleteField();
-              console.log('[Add-Medication] Removing old doseHistory field');
-            }
-          }
-        } catch (error) {
-          console.warn('[Add-Medication] Could not check for old fields:', error);
+
+        const medData = {
+          name: name,
+          dosage: dosage,
+          schedules: schedules,
+          reminderMethod: reminderMethod,
+          stock: formattedBottles.length,
+          bottles: formattedBottles,
+          deletedStatus: false, // Mark as active (not deleted)
+          updatedAt: new Date().toISOString(),
+          notes: existingData.notes || {},
+          doses: existingData.doses || {}
+        };
+
+        // Preserve createdAt
+        if (existingData.createdAt) {
+          medData.createdAt = existingData.createdAt;
         }
-        
+
+        // Remove old fields if they exist
+        const updateData = { ...medData };
+        if (existingData.doseStatus !== undefined) {
+          updateData.doseStatus = deleteField();
+        }
+        if (existingData.doseHistory !== undefined) {
+          updateData.doseHistory = deleteField();
+        }
+        // Delete old format fields
+        if (existingData.daysOfWeek !== undefined) {
+          updateData.daysOfWeek = deleteField();
+        }
+        if (existingData.timesPerDay !== undefined) {
+          updateData.timesPerDay = deleteField();
+        }
+        if (existingData.times !== undefined) {
+          updateData.times = deleteField();
+        }
+
         await setDoc(medDocRef, updateData);
-        console.log(`[Add-Medication] Renewed medication: ${med.name} (ID: ${renewMedId}), set deletedStatus to false`);
-        
-// Clean up temporary data
+        console.log(`[Add-Medication] Renewed medication: ${name} (ID: ${renewMedId}), set deletedStatus to false`);
+
+        // Clean up temporary data
         localStorage.removeItem('tempRenewMed');
       } else {
         // Add new medication - create in Firebase
-        const user = window.auth.currentUser;
-        if (!user) {
-          console.error('No user logged in');
-          return;
-        }
-        
-        console.log('[Add-Medication] Adding new medication:', med.name);
-        
-        // Format dates properly (MM/DD/YYYY)
-        const formatDate = (dateStr) => {
-          if (!dateStr || dateStr === 'N/A') return 'N/A';
-          
-          // If it's already in MM/DD/YYYY format, return as is
-          if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-            return dateStr;
-          }
-          
-          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
-          if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
-            const month = dateObj.getMonth() + 1;
-            const day = dateObj.getDate();
-            const year = dateObj.getFullYear();
-            return `${month}/${day}/${year}`;
-          }
-          
-          // For other formats, try to parse and convert
-          const dateObj = new Date(dateStr);
-          if (isNaN(dateObj.getTime())) return 'N/A';
-          const month = dateObj.getMonth() + 1;
-          const day = dateObj.getDate();
-          const year = dateObj.getFullYear();
-          return `${month}/${day}/${year}`;
-        };
-        
-        // Sort times chronologically before saving
-        const sortedTimes = (med.times || []).slice().sort((a, b) => {
-          const [aHour, aMin] = a.split(':').map(Number);
-          const [bHour, bMin] = b.split(':').map(Number);
-          if (aHour !== bHour) return aHour - bHour;
-          return aMin - bMin;
-        });
-        
+        console.log('[Add-Medication] Adding new medication:', name);
+
         // Prepare medication data for Firebase
         const medData = {
-          name: med.name,
-          dosage: parseInt(med.dosage) || 0,
-          daysOfWeek: med.days || [],
-          timesPerDay: parseInt(med.timesPerDay) || 0,
-          times: sortedTimes,
-          startDate: formatDate(med.startDate),
-          endDate: formatDate(med.endDate),
-          reminderMethod: med.reminder === 'Email' ? 'E' : 
-                         med.reminder === 'SMS' ? 'S' : 
-                         med.reminder === 'Email + SMS' ? 'ES' : 'N',
-          bottles: (med.bottles || []).map(bottle => {
-            const expDate = formatDate(bottle.expiration);
-            const quantity = bottle.quantity || 'N/A';
-            return `${expDate}/${quantity}`;
-          }),
-          stock: (med.bottles || []).length,
+          name: name,
+          dosage: dosage,
+          schedules: schedules,
+          reminderMethod: reminderMethod,
+          stock: formattedBottles.length,
+          bottles: formattedBottles,
           deletedStatus: false, // New medications are active
           notes: {}, // Empty notes map
-          doses: {}, // Object map of dose entries: { "date_doseNumber": { date, doseNumber, taken } }
+          doses: {}, // Object map of dose entries
           createdAt: new Date().toISOString()
         };
-        
+
         // Create a new document in Firebase with auto-generated ID
         const medicationsCollectionRef = window.collection(window.db, "users", user.uid, "medications");
         const newMedDocRef = await window.addDoc(medicationsCollectionRef, medData);
-        
-        console.log(`[Add-Medication] Created new medication: ${med.name} (ID: ${newMedDocRef.id})`);
+
+        console.log(`[Add-Medication] Created new medication: ${name} (ID: ${newMedDocRef.id})`);
       }
-      
+
       // Force reload to show updated data
       window.location.href='home.html?t=' + Date.now();
     }
@@ -1506,7 +1427,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   });
 
   // ============ FIRESTORE MEDICATION SYNC HELPERS ============
-  
+
   // Helper function to save medications to Firestore (NEW STRUCTURE)
   async function saveMedicationsToFirestore(medications) {
     const user = window.auth.currentUser;
@@ -1517,13 +1438,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
     try {
       console.log('[Add-Medication] Saving medications to Firestore (new structure):', medications.length, 'items');
-      
+
       // Save each medication as a separate document
       for (let i = 0; i < medications.length; i++) {
         const med = medications[i];
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
-        
+
         // Collect notes as a Map: {date: {dose: message}}
         const notes = {};
         Object.keys(localStorage).forEach(key => {
@@ -1547,12 +1468,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         // Format dates as MM/DD/YYYY
         const formatDate = (dateStr) => {
           if (!dateStr || dateStr === 'N/A') return 'N/A';
-          
+
           // If it's already in MM/DD/YYYY format, return as is
           if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
             return dateStr;
           }
-          
+
           // If it's in YYYY-MM-DD format (from HTML date input), convert properly
           if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
             const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
@@ -1561,7 +1482,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             const year = dateObj.getFullYear();
             return `${month}/${day}/${year}`;
           }
-          
+
           // For other formats, try to parse and convert
           const dateObj = new Date(dateStr);
           if (isNaN(dateObj.getTime())) return 'N/A';
@@ -1591,7 +1512,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         // Get existing medication data to preserve doses and remove old fields
         const existingMedDoc = await getDoc(medDocRef);
         const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
-        
+
         // Sort times chronologically before saving
         const sortedTimes = (med.times || []).slice().sort((a, b) => {
           const [aHour, aMin] = a.split(':').map(Number);
@@ -1599,7 +1520,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           if (aHour !== bHour) return aHour - bHour;
           return aMin - bMin;
         });
-        
+
         const medData = {
           name: med.name || '',
           dosage: med.dosage || 0,
@@ -1617,7 +1538,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           id: medId,
           updatedAt: new Date().toISOString()
         };
-        
+
         // Remove doseStatus and doseHistory if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
@@ -1626,9 +1547,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (existingData.doseHistory !== undefined) {
           updateData.doseHistory = deleteField();
         }
-        
+
         // Log the EXACT hierarchy you specified
-        console.log('🔥 FIREBASE HIERARCHY:');
+        console.log('FIREBASE HIERARCHY:');
         console.log('name:', medData.name);
         console.log('dosage:', medData.dosage);
         console.log('daysOfWeek:', medData.daysOfWeek);
@@ -1642,12 +1563,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         console.log('deletedStatus:', medData.deletedStatus);
         console.log('notes:', updateData.notes);
         console.log('doses:', updateData.doses);
-        
+
         await setDoc(medDocRef, updateData);
         console.log(`[Add-Medication] Saved medication: ${med.name} (ID: ${medId})`);
       }
-      
-      console.log('[Add-Medication] ✅ All medications saved to Firestore successfully!');
+
+      console.log('[Add-Medication] All medications saved to Firestore successfully!');
     } catch (error) {
       console.error('[Add-Medication] Error saving medications:', error);
       console.error('[Add-Medication] Error details:', error.message);
