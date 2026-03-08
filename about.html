@@ -1,0 +1,437 @@
+<!-- File: about.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MedTracker — About Us</title>
+  <meta name="description" content="Learn about MedTracker — our mission, our team, and why we're building a better way to manage medications." />
+
+  <style>
+    /* --- Modern CSS Reset (lean) --- */
+    *,*::before,*::after{box-sizing:border-box}
+    *{margin:0}
+    html{scroll-behavior:smooth}
+    html:focus-within{scroll-behavior:smooth}
+    html,body{height:100%; overflow-x:hidden}
+    body{line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    img,picture,video,canvas,svg{display:block;max-width:100%}
+    input,button,textarea,select{font:inherit}
+    a{text-decoration:none;color:inherit}
+
+    /* --- Theme Tokens (identical to index.html) --- */
+    :root{
+      --bg: #0b1020;
+      --bg-elev: rgba(255,255,255,0.04);
+      --surface: #0f1629;
+      --text: #e7ebf3;
+      --muted: #b1bad4;
+      --border: rgba(255,255,255,0.12);
+      --brand: #4f8cff;
+      --brand-600: #3c74f7;
+      --brand-700: #2b63e6;
+      --accent: #7de2d1;
+      --danger: #ff6b6b;
+      --radius: 20px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.2);
+      --container: 1200px;
+      --glass-bg: rgba(15, 22, 41, 0.6);
+      --glass-border: rgba(255,255,255,0.08);
+      --gradient-brand: linear-gradient(135deg, var(--brand), var(--accent));
+      --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --bg-elev: rgba(0,0,0,0.05);
+        --shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
+        --glass-bg: rgba(255,255,255,0.7);
+        --glass-border: rgba(0,0,0,0.08);
+        --success: #006644;
+        --success-light: #10b981;
+      }
+    }
+
+    /* --- Base --- */
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background:
+        radial-gradient(1000px 600px at 80% -10%, rgba(79,140,255,0.18), transparent 60%),
+        radial-gradient(800px 500px at -10% 20%, rgba(125,226,209,0.18), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    main{flex:1}
+    .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
+    .section{padding-block: clamp(2rem, 6vw, 6rem)}
+    .visually-hidden{position:absolute!important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap}
+    .skip-link{position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden}
+    .skip-link:focus{left:1rem; top:1rem; width:auto; height:auto; background:var(--surface); color:var(--text); padding:.6rem .9rem; border-radius:10px; outline:2px solid var(--brand); z-index:100}
+
+    @media (max-width: 640px){
+      .container{padding-inline:1rem}
+      .section{padding-block:2rem}
+    }
+
+    /* --- Navbar --- */
+    .navbar{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(14px); background:linear-gradient(to bottom, rgba(15,22,41,0.7), rgba(15,22,41,0.4)); border-bottom:1px solid var(--border)}
+
+    @media (prefers-color-scheme: light){
+      .navbar{background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.9)); border-bottom:1px solid var(--border)}
+    }
+    .nav-inner{display:flex; align-items:center; justify-content:space-between; gap:1rem; height:64px}
+    .brand{display:flex; align-items:center; gap:.7rem; font-weight:700}
+    .brand-mark{display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--brand),var(--accent)); box-shadow: var(--shadow)}
+    .brand-title{letter-spacing:.2px}
+
+    @media (max-width: 640px){
+      .nav-inner{height:56px}
+      .brand-mark{width:32px; height:32px; font-size:1.1rem}
+      .brand-title{font-size:.95rem}
+    }
+
+    .nav-links, .auth{display:flex; align-items:center; gap:1rem}
+    .nav-links a, .auth a{padding:.5rem .75rem; border-radius:10px; color:var(--muted); position:relative; transition: color var(--transition-base)}
+    .nav-links a:hover, .auth a:hover{color:var(--text); background:var(--bg-elev)}
+
+    /* Animated underline on hover */
+    .nav-links a::after{
+      content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%) scaleX(0);
+      width:60%; height:2px; background:var(--gradient-brand); border-radius:2px;
+      transition: transform var(--transition-base);
+    }
+    .nav-links a:hover::after, .nav-links a[aria-current="page"]::after{transform:translateX(-50%) scaleX(1)}
+    .nav-links a[aria-current="page"]{color:var(--text)}
+
+    @media (prefers-color-scheme: light){
+      .nav-links a, .auth a{color:var(--text-strong); font-weight:500}
+      .nav-links a:hover, .auth a:hover{color:var(--brand-600); background:rgba(79,140,255,0.1)}
+      .nav-links a[aria-current="page"]{color:var(--brand-600)}
+    }
+
+    /* Mobile nav */
+    .nav-toggle{display:none}
+    .hamburger{display:none; border:1px solid var(--border); border-radius:10px; padding:.5rem; cursor:pointer; background:transparent; color:var(--text)}
+    .hamburger svg{width:22px;height:22px}
+
+    @media (max-width: 900px){
+      .nav-links{display:none}
+      .auth{display:none}
+      .hamburger{display:flex; align-items:center; justify-content:center}
+    }
+
+    .mobile-menu{max-height:0; opacity:0; pointer-events:none; overflow:hidden; transition:max-height .35s ease, opacity .35s ease; border-bottom:1px solid var(--border); background:rgba(15,22,41,0.7); backdrop-filter:blur(14px)}
+    .mobile-list{display:grid; gap:.5rem; padding:1rem}
+    .mobile-list a{padding:.8rem; border-radius:12px; color:var(--text); background:var(--bg-elev); border:1px solid var(--border); font-size:.95rem; text-align:center}
+
+    @media (prefers-color-scheme: light){
+      .mobile-menu{background:rgba(255,255,255,0.98); border-bottom:1px solid var(--border)}
+      .mobile-list a{color:var(--text-strong); background:var(--surface); font-weight:500}
+      .mobile-list a:hover{color:var(--brand-600); background:rgba(79,140,255,0.1)}
+    }
+
+    @media (max-width: 640px){
+      .mobile-list a{padding:.7rem; font-size:.9rem}
+    }
+
+    /* --- Buttons --- */
+    .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.8rem 1rem; border-radius:12px; border:1px solid transparent; cursor:pointer; transition:transform .04s ease, background-color .2s ease, border-color .2s ease; font-size:.95rem; font-weight:500}
+    .btn:active{transform:translateY(1px)}
+
+    .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; box-shadow: var(--shadow)}
+    .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
+    .btn-ghost{background:transparent; border-color:var(--border); color:var(--text)}
+    .btn-ghost:hover{background:var(--bg-elev)}
+
+    @media (max-width: 640px){
+      .btn{padding:.7rem .85rem; font-size:.9rem; border-radius:10px}
+    }
+
+    /* --- Hero --- */
+    .hero{position:relative; isolation:isolate; overflow:hidden; text-align:center}
+    .hero-inner{max-width:760px; margin-inline:auto}
+    .eyebrow{display:inline-block; font-size:.85rem; color:var(--accent); background:rgba(125,226,209,0.12); border:1px solid rgba(125,226,209,0.35); padding:.35rem .6rem; border-radius:999px; margin-bottom:1rem}
+    .hero h1{font-size:clamp(1.75rem, 5vw, 3.25rem); line-height:1.15; letter-spacing:.2px; font-weight:800}
+    .lead{font-size:clamp(0.95rem, 1.2vw, 1.2rem); color:var(--muted); margin-top:1rem; max-width:600px; margin-inline:auto}
+
+    @media (max-width: 640px){
+      .hero h1{font-size:1.75rem; line-height:1.2}
+      .lead{font-size:0.95rem; margin-top:0.75rem}
+      .eyebrow{font-size:.8rem; padding:.3rem .55rem}
+    }
+
+    /* Decorative blob */
+    .blob{
+      position:absolute; right:-8rem; bottom:-20%; width:min(55vw, 680px); aspect-ratio:1/1; border-radius:50%;
+      background:radial-gradient(circle at 30% 30%, rgba(79,140,255,0.5), transparent 65%),
+                 radial-gradient(circle at 70% 60%, rgba(125,226,209,0.5), transparent 55%);
+      filter:blur(60px); opacity:.35; z-index:-1;
+    }
+
+    @media (max-width: 640px){
+      .blob{right:-6rem; bottom:-15%; width:70vw; opacity:.25; filter:blur(50px)}
+    }
+
+    /* --- Glass Cards --- */
+    .glass-card{
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: clamp(1.5rem, 3vw, 2.5rem);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .glass-card h2{font-size:clamp(1.3rem, 2.2vw, 1.8rem); margin-bottom:.75rem; font-weight:700}
+    .glass-card p{color:var(--muted); font-size:clamp(0.9rem, 1.1vw, 1.05rem); line-height:1.7}
+
+    @media (prefers-color-scheme: light){
+      .glass-card{background:var(--glass-bg); border-color:var(--glass-border)}
+    }
+
+    .cards-grid{display:grid; grid-template-columns: repeat(2, 1fr); gap:clamp(1rem, 2.5vw, 1.5rem)}
+
+    @media (max-width: 700px){
+      .cards-grid{grid-template-columns: 1fr}
+    }
+
+    /* --- CTA Band --- */
+    .cta-band{background:linear-gradient(135deg, rgba(79,140,255,0.16), rgba(125,226,209,0.14)); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:clamp(1rem, 4vw, 2rem); text-align:center}
+    .cta-band h2{font-size:clamp(1.4rem, 2.4vw, 2rem); margin-bottom:.5rem}
+    .cta-band .cta-row{display:flex; gap:.8rem; flex-wrap:wrap; margin-top:1.5rem; justify-content:center}
+
+    @media (max-width: 640px){
+      .cta-band{padding:1.25rem; border-radius:16px}
+      .cta-band h2{font-size:1.4rem; margin-bottom:.4rem}
+      .cta-band p{font-size:.9rem}
+      .cta-band .cta-row{margin-top:.75rem}
+      .cta-band .btn{min-width:120px}
+    }
+
+    /* --- Footer --- */
+    footer{border-top:1px solid var(--border); background:rgba(15,22,41,0.35)}
+
+    @media (prefers-color-scheme: light){
+      footer{background:rgba(248,250,252,0.8)}
+    }
+    .footer-grid{display:grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap:2rem}
+    .footer-col h4{font-size:.95rem; font-weight:600; margin-bottom:.75rem; color:var(--text)}
+    .footer-col a{display:block; color:var(--muted); padding:.25rem 0; font-size:.9rem; transition: color var(--transition-base)}
+    .footer-col a:hover{color:var(--text)}
+    .footer-brand-text{color:var(--muted); font-size:.85rem; line-height:1.6; margin-top:.5rem}
+    .copyright{color:var(--muted); font-size:.85rem; margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border); text-align:center}
+
+    @media (prefers-color-scheme: light){
+      .footer-col a{color:var(--muted-strong)}
+      .footer-col a:hover{color:var(--brand-600)}
+      .copyright{color:var(--muted-strong)}
+    }
+
+    @media (max-width: 900px){.footer-grid{grid-template-columns:1fr 1fr; gap:1.5rem}}
+    @media (max-width: 500px){.footer-grid{grid-template-columns:1fr; gap:1.2rem}}
+
+    /* --- Utilities --- */
+    .muted{color:var(--muted)}
+    .spacer{height:1rem}
+
+    /* --- Scroll Animations --- */
+    .fade-up{
+      opacity:0; transform:translateY(30px);
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .fade-up.visible{opacity:1; transform:translateY(0)}
+
+    .scale-in{
+      opacity:0; transform:scale(0.95);
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .scale-in.visible{opacity:1; transform:scale(1)}
+
+    /* Stagger delay helpers */
+    .delay-1{transition-delay:0.1s}
+    .delay-2{transition-delay:0.2s}
+    .delay-3{transition-delay:0.3s}
+
+    @media (prefers-reduced-motion: reduce){
+      .fade-up, .scale-in{opacity:1; transform:none; transition:none}
+    }
+  </style>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a class="brand" href="index.html" aria-label="MedTracker Home">
+        <span class="brand-mark" aria-hidden="true">💊</span>
+        <span class="brand-title">MedTracker</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="index.html">Home</a>
+        <a href="/about" aria-current="page">About</a>
+        <a href="/contact">Contact</a>
+      </nav>
+
+      <nav class="auth" aria-label="Account">
+        <a href="login.html">Log In</a>
+        <a class="btn btn-primary" href="register.html">Register</a>
+      </nav>
+
+      <!-- Mobile menu toggle -->
+      <button class="hamburger" id="hamburger-btn" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+      </button>
+    </div>
+
+    <div id="mobile-menu" class="mobile-menu" role="dialog" aria-modal="false">
+      <div class="container">
+        <div class="mobile-list" role="menu">
+          <a role="menuitem" href="index.html">Home</a>
+          <a role="menuitem" href="/about" aria-current="page">About</a>
+          <a role="menuitem" href="/contact">Contact</a>
+          <a role="menuitem" href="login.html">Log In</a>
+          <a role="menuitem" class="btn btn-primary" href="register.html">Register</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <!-- Hero -->
+    <section class="section hero">
+      <div class="container hero-inner fade-up">
+        <span class="eyebrow">About Us</span>
+        <h1>The Story Behind MedTracker</h1>
+        <p class="lead">We're building a better way to manage medications. More details coming soon.</p>
+      </div>
+      <div class="blob" aria-hidden="true"></div>
+    </section>
+
+    <!-- Mission & Team Cards -->
+    <section class="section">
+      <div class="container">
+        <div class="cards-grid">
+          <article class="glass-card fade-up delay-1">
+            <h2>Our Mission</h2>
+            <p>MedTracker was born from a simple observation: managing medications shouldn't require a spreadsheet, a drawer full of sticky notes, or a constant sense of worry. Our mission is to empower individuals and caregivers with a clean, intuitive tool that brings clarity and confidence to daily medication routines.</p>
+            <div class="spacer"></div>
+            <p>We believe everyone deserves peace of mind when it comes to their health. That means building software that is accessible, secure, and genuinely helpful — not just another app that adds complexity to your day.</p>
+          </article>
+
+          <article class="glass-card fade-up delay-2">
+            <h2>Our Team</h2>
+            <p>We're a small, passionate group of developers, designers, and healthcare advocates who believe technology can make medication management simpler and safer for everyone.</p>
+            <div class="spacer"></div>
+            <p>Our team brings together experience in software engineering, user experience design, and health informatics. We're committed to building with empathy, listening to our users, and iterating relentlessly until MedTracker is the tool we'd want to use ourselves.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Band -->
+    <section class="section">
+      <div class="container">
+        <div class="cta-band scale-in">
+          <h2>Want to Get in Touch?</h2>
+          <p class="muted">We'd love to hear from you — whether it's a question, feedback, or just a hello.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="/contact">Contact Us</a>
+            <a class="btn btn-ghost" href="register.html">Get Started</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container section" style="padding-block:clamp(1.5rem, 4vw, 3rem)">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <a class="brand" href="index.html" aria-label="MedTracker Home" style="margin-bottom:.25rem">
+            <span class="brand-mark" aria-hidden="true">💊</span>
+            <span class="brand-title">MedTracker</span>
+          </a>
+          <p class="footer-brand-text">Your simple, secure way to stay on top of every dose. Built with care for patients and caregivers.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <a href="index.html">Home</a>
+          <a href="/about">About</a>
+          <a href="/contact">Contact</a>
+        </div>
+        <div class="footer-col">
+          <h4>Account</h4>
+          <a href="login.html">Log In</a>
+          <a href="register.html">Register</a>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <a href="privacypolicy.html">Privacy Policy</a>
+          <a href="termsofservice.html">Terms of Service</a>
+        </div>
+      </div>
+      <p class="copyright">&copy; 2026 MedTracker. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    (function(){
+      const btn = document.getElementById('hamburger-btn');
+      const menu = document.getElementById('mobile-menu');
+      if (!btn || !menu) return;
+
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', !expanded);
+        if (!expanded) {
+          menu.style.maxHeight = '420px';
+          menu.style.opacity = '1';
+          menu.style.pointerEvents = 'auto';
+        } else {
+          menu.style.maxHeight = '0';
+          menu.style.opacity = '0';
+          menu.style.pointerEvents = 'none';
+        }
+      });
+
+      // Close menu when any link is clicked
+      menu.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+          btn.setAttribute('aria-expanded', 'false');
+          menu.style.maxHeight = '0';
+          menu.style.opacity = '0';
+          menu.style.pointerEvents = 'none';
+        });
+      });
+    })();
+
+    // Scroll animation observer
+    (function(){
+      const targets = document.querySelectorAll('.fade-up, .scale-in');
+      if (!targets.length) return;
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+      targets.forEach(el => observer.observe(el));
+    })();
+  </script>
+</body>
+</html>

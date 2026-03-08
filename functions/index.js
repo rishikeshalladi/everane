@@ -3584,3 +3584,93 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
   });
 });
 
+/**
+ * Cloud Function to handle contact form submissions
+ * POST /sendContactForm
+ * Body: { name: string, email: string, message: string }
+ */
+exports.sendContactForm = functions.https.onRequest((req, res) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
+    res.status(204).send('');
+    return;
+  }
+
+  return cors(req, res, async () => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      const { name, email, message } = req.body;
+
+      // Validate required fields
+      if (!name || !email || !message) {
+        res.status(400).json({ error: 'Name, email, and message are all required' });
+        return;
+      }
+
+      // Validate email format
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ error: 'A valid email address is required' });
+        return;
+      }
+
+      // Build professional HTML email body
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #4A90D9; color: #ffffff; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h1 style="margin: 0; font-size: 24px;">MedTracker Contact Form</h1>
+          </div>
+          <div style="background-color: #ffffff; border: 1px solid #e0e0e0; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
+            <p style="color: #333333; font-size: 16px; margin-top: 0;">You have received a new message from the MedTracker contact form.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+              <tr>
+                <td style="padding: 10px 12px; font-weight: bold; color: #555555; border-bottom: 1px solid #eeeeee; width: 100px;">Name</td>
+                <td style="padding: 10px 12px; color: #333333; border-bottom: 1px solid #eeeeee;">${name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 12px; font-weight: bold; color: #555555; border-bottom: 1px solid #eeeeee;">Email</td>
+                <td style="padding: 10px 12px; color: #333333; border-bottom: 1px solid #eeeeee;"><a href="mailto:${email}" style="color: #4A90D9;">${email}</a></td>
+              </tr>
+            </table>
+            <div style="margin-top: 20px;">
+              <h3 style="color: #555555; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Message</h3>
+              <div style="background-color: #f9f9f9; border-left: 4px solid #4A90D9; padding: 16px; border-radius: 4px; color: #333333; line-height: 1.6; white-space: pre-wrap;">${message}</div>
+            </div>
+            <hr style="border: none; border-top: 1px solid #eeeeee; margin: 24px 0;" />
+            <p style="color: #999999; font-size: 12px; text-align: center; margin-bottom: 0;">This email was sent from the MedTracker contact form. Reply directly to respond to the sender.</p>
+          </div>
+        </div>
+      `;
+
+      // Send email via nodemailer transporter
+      const mailOptions = {
+        from: gmailEmail,
+        replyTo: email,
+        to: 'rishikeshalladi@gmail.com',
+        subject: `[MedTracker Contact] Message from ${name}`,
+        html: htmlBody
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`✅ Contact form email sent from ${name} (${email})`);
+
+      res.status(200).json({ success: true });
+
+    } catch (error) {
+      console.error('❌ Error sending contact form email:', error);
+      res.status(500).json({ error: 'Failed to send contact form message: ' + error.message });
+    }
+  });
+});
+
