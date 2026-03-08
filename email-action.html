@@ -318,6 +318,47 @@
       font-size: 1.1rem;
       min-width: 150px;
     }
+
+    /* Loading spinner on buttons */
+    .btn.loading {
+      pointer-events: none;
+      opacity: 0.7;
+      position: relative;
+    }
+    .btn.loading::after {
+      content: '';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      margin-top: -9px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Save confirmation */
+    .save-confirmation {
+      display: none;
+      text-align: center;
+      padding: 2rem 1rem;
+      animation: fadeInUp 0.3s ease;
+    }
+    .save-confirmation.show { display: block; }
+    .save-confirmation .checkmark { font-size: 3.5rem; line-height: 1; }
+    .save-confirmation .saved-text {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: var(--success, #22c55e);
+      margin-top: 0.75rem;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -372,9 +413,13 @@
         </div>
       </div>
 
-      <div class="action-buttons">
+      <div class="action-buttons" id="action-buttons">
         <button class="btn btn-success" id="taken-btn">Taken</button>
         <button class="btn btn-danger" id="not-taken-btn">Not Taken</button>
+      </div>
+      <div class="save-confirmation" id="save-confirmation">
+        <div class="checkmark">&#x2705;</div>
+        <div class="saved-text">Saved!</div>
       </div>
     </div>
   </div>
@@ -485,15 +530,19 @@
           const notes = medData.notes || {};
           
           // Check if there's a note for this date and dose
-          if (notes[dateString]) {
-            const noteData = notes[dateString];
-            // Notes are stored as [doseNumber, noteText, feelingRating] (feelingRating is optional for backward compatibility)
-            if (Array.isArray(noteData) && noteData[0] === doseNumber) {
-              document.getElementById('dose-notes').value = noteData[1] || '';
-              // Set feeling rating (default to 0 if not present)
-              const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
-              document.getElementById('dose-feeling').value = feelingRating.toString();
+          // Try new key format first (date_doseNumber), fall back to old format (date only)
+          const doseKey = `${dateString}_${doseNumber}`;
+          let noteData = notes[doseKey];
+          if (!noteData && notes[dateString]) {
+            const oldData = notes[dateString];
+            if (Array.isArray(oldData) && oldData[0] === doseNumber) {
+              noteData = oldData;
             }
+          }
+          if (Array.isArray(noteData)) {
+            document.getElementById('dose-notes').value = noteData[1] || '';
+            const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
+            document.getElementById('dose-feeling').value = feelingRating.toString();
           }
         }
       } catch (error) {
@@ -530,17 +579,15 @@
         const medData = medDoc.data();
         const notes = medData.notes || {};
         
-        // Save note in the same format as notes.html: [doseNumber, noteText, feelingRating]
-        notes[date] = [doseNumber, noteText, feelingRating];
+        // Save note keyed by date_doseNumber to avoid multi-dose overwrites
+        const doseKey = `${date}_${doseNumber}`;
+        notes[doseKey] = [doseNumber, noteText, feelingRating];
 
         await setDoc(medDocRef, {
           notes: notes
         }, { merge: true });
 
         console.log(`[Email-Action] Saved note for ${name} on ${date}, dose ${doseNumber}`);
-        
-        // Navigate back to home
-        window.location.href = 'home.html';
       } catch (error) {
         console.error('[Email-Action] Error saving notes:', error);
         alert('Error saving notes. Please try again.');
@@ -747,37 +794,48 @@
       const takenBtn = document.getElementById('taken-btn');
       const notTakenBtn = document.getElementById('not-taken-btn');
       
+      async function handleDoseAction(isTaken) {
+        const clickedBtn = isTaken ? takenBtn : notTakenBtn;
+
+        // Disable both buttons and show spinner on the clicked one
+        takenBtn.disabled = true;
+        notTakenBtn.disabled = true;
+        clickedBtn.classList.add('loading');
+
+        try {
+          await saveDoseStatus(isTaken);
+          await saveNotes();
+
+          // Hide buttons, show confirmation
+          clickedBtn.classList.remove('loading');
+          document.getElementById('action-buttons').style.display = 'none';
+          document.getElementById('save-confirmation').classList.add('show');
+
+          // Redirect after 1.5s
+          setTimeout(() => {
+            window.location.href = 'home.html';
+          }, 1500);
+        } catch (error) {
+          // Re-enable buttons on error
+          clickedBtn.classList.remove('loading');
+          takenBtn.disabled = false;
+          notTakenBtn.disabled = false;
+        }
+      }
+
       if (takenBtn) {
-        takenBtn.addEventListener('click', async (e) => {
+        takenBtn.addEventListener('click', (e) => {
           e.preventDefault();
           console.log('[Email-Action] Taken button clicked');
-          const statusChanged = await saveDoseStatus(true);
-          if (statusChanged) {
-            // Show success feedback
-            takenBtn.style.opacity = '0.7';
-            setTimeout(() => {
-              takenBtn.style.opacity = '1';
-            }, 200);
-          }
-          // Save notes as well
-          await saveNotes();
+          handleDoseAction(true);
         });
       }
 
       if (notTakenBtn) {
-        notTakenBtn.addEventListener('click', async (e) => {
+        notTakenBtn.addEventListener('click', (e) => {
           e.preventDefault();
           console.log('[Email-Action] Not Taken button clicked');
-          const statusChanged = await saveDoseStatus(false);
-          if (statusChanged) {
-            // Show success feedback
-            notTakenBtn.style.opacity = '0.7';
-            setTimeout(() => {
-              notTakenBtn.style.opacity = '1';
-            }, 200);
-          }
-          // Save notes as well
-          await saveNotes();
+          handleDoseAction(false);
         });
       }
     });

@@ -567,11 +567,13 @@
                 }
               });
               
-              // Get notes for this day
+              // Get notes for this day (both new "date_dose" keys and old "date" key)
               const dayNotes = {};
-              if (allNotes[dateString]) {
-                dayNotes[dateString] = allNotes[dateString];
-              }
+              Object.keys(allNotes).forEach(key => {
+                if (key === dateString || key.startsWith(dateString + '_')) {
+                  dayNotes[key] = allNotes[key];
+                }
+              });
               
               // Merge into medication's doses and notes objects
               med.doses = { ...med.doses, ...dayDoses };
@@ -628,8 +630,9 @@
         }
 
         const notes = medication.notes || {};
-        // Store as [doseNumber, noteText, feelingRating]
-        notes[dateString] = [doseNumber, noteText, feelingRating || 0];
+        // Store keyed by date_doseNumber to avoid multi-dose overwrites
+        const doseKey = `${dateString}_${doseNumber}`;
+        notes[doseKey] = [doseNumber, noteText, feelingRating || 0];
 
         const medDocRef = doc(window.db, "users", user.uid, "medications", medication.id);
         await setDoc(medDocRef, {
@@ -996,15 +999,20 @@
       const dateString = dateStringForDataset;
       
       const medication = window.globalMedications.find(m => m.name === medName);
-      if (medication && medication.notes && medication.notes[dateString]) {
-        const noteData = medication.notes[dateString];
-        // Notes are stored as [doseNumber, noteText, feelingRating] (feelingRating is optional for backward compatibility)
-        if (Array.isArray(noteData) && noteData[0] === doseNumber) {
+      // Try new key format first (date_doseNumber), fall back to old format (date only)
+      if (medication && medication.notes) {
+        const doseKey = `${dateString}_${doseNumber}`;
+        let noteData = medication.notes[doseKey];
+        if (!noteData && medication.notes[dateString]) {
+          const oldData = medication.notes[dateString];
+          if (Array.isArray(oldData) && oldData[0] === doseNumber) {
+            noteData = oldData;
+          }
+        }
+        if (Array.isArray(noteData)) {
           textarea.value = noteData[1] || '';
-          // Set feeling rating (default to 0 if not present)
           const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
           feelingDropdown.value = feelingRating.toString();
-          // Auto-resize after loading existing content
           setTimeout(autoResize, 0);
         }
       }

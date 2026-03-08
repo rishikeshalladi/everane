@@ -1382,12 +1382,21 @@
         ? `${med.name || 'Medication'} - Dose ${doseNumber} - ${formatTime12(time)}`
         : `${med.name || 'Medication'} - Dose ${doseNumber}`;
 
-      // Notes stored per med doc: notes[YYYY-MM-DD] = [doseNumber, noteText, feelingRating]
+      // Notes stored per med doc: notes[date_doseNumber] = [doseNumber, noteText, feelingRating]
+      // Fall back to old format: notes[date] = [doseNumber, noteText, feelingRating]
       let noteText = '';
       let feelingRating = 0;
       try {
-        const n = (med.notes && typeof med.notes === 'object') ? med.notes[dateStr] : null;
-        if (Array.isArray(n) && Number(n[0]) === Number(doseNumber)) {
+        const notesObj = (med.notes && typeof med.notes === 'object') ? med.notes : {};
+        const doseKey = `${dateStr}_${doseNumber}`;
+        let n = notesObj[doseKey];
+        if (!n && notesObj[dateStr]) {
+          const old = notesObj[dateStr];
+          if (Array.isArray(old) && Number(old[0]) === Number(doseNumber)) {
+            n = old;
+          }
+        }
+        if (Array.isArray(n)) {
           noteText = String(n[1] || '');
           feelingRating = Number(n[2] ?? 0) || 0;
         }

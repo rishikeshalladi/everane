@@ -531,6 +531,16 @@
     const emailStatusDiv = document.getElementById('email-verification-status');
     const msg1 = document.getElementById('msg1');
 
+    // Prevent Enter key from submitting the form and reloading the page
+    if (step1Form) {
+      step1Form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (sendVerificationBtn && !sendVerificationBtn.disabled) {
+          sendVerificationBtn.click();
+        }
+      });
+    }
+
     // Store email temporarily (don't create account until final step)
     let storedEmail = null;
     let emailVerificationCode = null;
@@ -813,6 +823,19 @@
     const continueStep3Btn = document.getElementById('continue-step3');
     const phoneStatusDiv = document.getElementById('phone-verification-status');
     const msg3 = document.getElementById('msg3');
+
+    // Prevent Enter key from submitting the form and reloading the page
+    if (step3Form) {
+      step3Form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        // If code section is visible, trigger verify; otherwise trigger send code
+        if (phoneCodeSection && phoneCodeSection.style.display !== 'none' && verifyPhoneCodeBtn && verifyPhoneCodeBtn.style.display !== 'none') {
+          verifyPhoneCodeBtn.click();
+        } else if (sendPhoneCodeBtn && !sendPhoneCodeBtn.disabled && sendPhoneCodeBtn.style.display !== 'none') {
+          sendPhoneCodeBtn.click();
+        }
+      });
+    }
     const backStep3Btn = document.getElementById('back-step3');
 
     // Phone number auto-formatting: (xxx) - xxx - xxxx
@@ -877,7 +900,7 @@
       }
     });
 
-    // Phone verification using Twilio (no reCAPTCHA needed)
+    // Phone verification using Sinch SMS (no reCAPTCHA needed)
 
     sendPhoneCodeBtn.addEventListener('click', async () => {
       // Get phone number digits only
@@ -905,7 +928,7 @@
         sendPhoneCodeBtn.disabled = true;
         sendPhoneCodeBtn.textContent = 'Sending...';
 
-        // Call Twilio Cloud Function to send verification code
+        // Call Cloud Function to send verification code
         const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendPhoneVerificationCode';
         const response = await fetch(functionUrl, {
           method: 'POST',
@@ -986,7 +1009,7 @@
         const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
         const fullPhoneNumber = formattedCountryCode + phoneDigits;
 
-        // Call Twilio Cloud Function to verify code
+        // Call Cloud Function to verify code
         const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyPhoneCode';
         const response = await fetch(functionUrl, {
           method: 'POST',

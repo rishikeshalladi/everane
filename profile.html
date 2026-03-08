@@ -1470,14 +1470,22 @@
       if (phoneNumberInput) phoneNumberInput.value = '';
       if (phoneCodeInput) phoneCodeInput.value = '';
       if (codeSection) codeSection.style.display = 'none';
-      if (sendCodeBtn) sendCodeBtn.style.display = 'inline-flex';
-      if (verifyCodeBtn) verifyCodeBtn.style.display = 'none';
+      if (sendCodeBtn) {
+        sendCodeBtn.style.display = 'inline-flex';
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = 'Send Code';
+      }
+      if (verifyCodeBtn) {
+        verifyCodeBtn.style.display = 'none';
+        verifyCodeBtn.disabled = false;
+        verifyCodeBtn.textContent = 'Verify Code';
+      }
       if (message) {
         message.className = 'msg';
         message.textContent = '';
       }
     };
-    
+
     // Close "Add Phone" modal
     window.closeAddPhoneModal = function() {
       const modal = document.getElementById('add-phone-modal');
@@ -2181,8 +2189,8 @@
         localStorage.removeItem('phoneResendEndTime');
       }
     }
+    */
 
-    
     // Phone number formatting for add phone modal
     const addPhoneInput = document.getElementById('add-phone-number');
     if (addPhoneInput) {
@@ -2207,54 +2215,56 @@
     
     // Send phone code button
     const addPhoneSendCodeBtn = document.getElementById('add-phone-send-code');
+    console.log('[Phone] Send Code button found:', !!addPhoneSendCodeBtn);
     if (addPhoneSendCodeBtn) {
       addPhoneSendCodeBtn.addEventListener('click', async () => {
-        const phoneDigits = addPhoneInput.value.replace(/\D/g, '');
+        console.log('[Phone] Send Code clicked');
+        const phoneInput = document.getElementById('add-phone-number');
+        if (!phoneInput) {
+          console.error('[Phone] add-phone-number input not found');
+          return;
+        }
+        const phoneDigits = phoneInput.value.replace(/\D/g, '');
         const countryCode = document.getElementById('add-phone-country-code').value;
-        
+        console.log('[Phone] digits:', phoneDigits, 'country:', countryCode);
+
         if (!phoneDigits || phoneDigits.length !== 10) {
           document.getElementById('add-phone-message').className = 'msg err';
           document.getElementById('add-phone-message').textContent = 'Please enter a valid 10-digit phone number.';
           return;
         }
-        
+
         const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
         const fullPhoneNumber = formattedCountryCode + phoneDigits;
-        
+        console.log('[Phone] Sending code to:', fullPhoneNumber);
+
         try {
           document.getElementById('add-phone-message').className = 'msg';
           document.getElementById('add-phone-message').textContent = '';
           addPhoneSendCodeBtn.disabled = true;
           addPhoneSendCodeBtn.textContent = 'Sending...';
-          
-          // Call Twilio Cloud Function to send verification code
+
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendPhoneVerificationCode';
           const response = await fetch(functionUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phoneNumber: fullPhoneNumber })
           });
 
           const result = await response.json();
+          console.log('[Phone] Send code response:', response.status, result);
 
           if (!response.ok) {
             throw new Error(result.error || 'Failed to send verification code');
           }
 
-          // For testing: log the code (remove in production)
-          if (result.code) {
-            console.log('Verification code for', fullPhoneNumber, ':', result.code);
-          }
-          
           document.getElementById('add-phone-code-section').style.display = 'block';
           addPhoneSendCodeBtn.style.display = 'none';
           document.getElementById('add-phone-verify-code').style.display = 'inline-flex';
           document.getElementById('add-phone-message').className = 'msg ok';
           document.getElementById('add-phone-message').textContent = 'Verification code sent to your phone.';
         } catch (error) {
-          console.error('Error sending phone code:', error);
+          console.error('[Phone] Error sending code:', error);
           document.getElementById('add-phone-message').className = 'msg err';
           document.getElementById('add-phone-message').textContent = 'Error: ' + (error.message || error.code || 'Failed to send code');
           addPhoneSendCodeBtn.disabled = false;
@@ -2280,19 +2290,20 @@
           document.getElementById('add-phone-message').className = 'msg';
           document.getElementById('add-phone-message').textContent = 'Verifying code...';
           
-          // Verify code with Twilio
+          // Verify code with Cloud Function
           const user = auth.currentUser;
           if (!user) {
             throw new Error('Not signed in');
           }
           
           // Get phone number
-          const phoneDigits = addPhoneInput.value.replace(/\D/g, '');
+          const phoneInput = document.getElementById('add-phone-number');
+          const phoneDigits = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
           const countryCode = document.getElementById('add-phone-country-code').value;
           const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
           const fullPhoneNumber = formattedCountryCode + phoneDigits;
-          
-          // Call Twilio Cloud Function to verify code
+
+          // Call Cloud Function to verify code
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyPhoneCode';
           const response = await fetch(functionUrl, {
             method: 'POST',
@@ -2334,7 +2345,7 @@
           
           // Close modal after 1.5 seconds
           setTimeout(() => {
-            closeAddPhoneModal();
+            window.closeAddPhoneModal();
           }, 1500);
           
         } catch (error) {
@@ -2352,7 +2363,6 @@
         }
       });
     }
-    */
   </script>
 
   <!-- Help Modal with Canva Embed -->

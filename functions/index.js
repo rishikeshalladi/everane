@@ -9,7 +9,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const { DateTime } = require('luxon');
-const twilio = require('twilio');
+const { SinchClient } = require('@sinch/sdk-core');
 const cors = require('cors')({ origin: true });
 
 admin.initializeApp();
@@ -41,21 +41,25 @@ const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PA
 // Or use environment variable: APP_BASE_URL
 const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://everane.live';
 
-// Twilio configuration
-// For production, set: firebase functions:config:set twilio.accountsid="..." twilio.authtoken="..." twilio.phonenumber="..." twilio.verifyservice="..."
-const twilioAccountSid = functions.config().twilio?.accountsid || process.env.TWILIO_ACCOUNT_SID;
-const twilioAuthToken = functions.config().twilio?.authtoken || process.env.TWILIO_AUTH_TOKEN;
-const twilioPhoneNumber = functions.config().twilio?.phonenumber || process.env.TWILIO_PHONE_NUMBER;
-const twilioVerifyServiceSid = functions.config().twilio?.verifyservice || process.env.TWILIO_VERIFY_SERVICE_SID;
+// Sinch configuration
+// For production, set: firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..." sinch.phonenumber="..."
+const sinchProjectId = functions.config().sinch?.projectid || process.env.SINCH_PROJECT_ID;
+const sinchKeyId = functions.config().sinch?.keyid || process.env.SINCH_KEY_ID;
+const sinchKeySecret = functions.config().sinch?.keysecret || process.env.SINCH_KEY_SECRET;
+const sinchPhoneNumber = functions.config().sinch?.phonenumber || process.env.SINCH_PHONE_NUMBER;
 
-// Initialize Twilio client if credentials are available
-let twilioClient = null;
-if (twilioAccountSid && twilioAuthToken) {
-  twilioClient = twilio(twilioAccountSid, twilioAuthToken);
-  console.log('✅ Twilio client initialized');
+// Initialize Sinch client if credentials are available
+let sinchClient = null;
+if (sinchProjectId && sinchKeyId && sinchKeySecret) {
+  sinchClient = new SinchClient({
+    projectId: sinchProjectId,
+    keyId: sinchKeyId,
+    keySecret: sinchKeySecret,
+  });
+  console.log('✅ Sinch client initialized');
 } else {
-  console.error('⚠️ TWILIO CONFIGURATION MISSING:');
-  console.error('  SMS sending will fail. Please configure Twilio credentials.');
+  console.error('⚠️ SINCH CONFIGURATION MISSING:');
+  console.error('  SMS sending will fail. Please configure Sinch credentials.');
 }
 
 // Verify email configuration
@@ -355,34 +359,82 @@ transporter.verify(function(error, success) {
 });
 
 /**
- * Helper function to send SMS via Twilio
+ * Helper function to send SMS via Sinch
  * @param {string} phoneNumber - Recipient phone number (E.164 format)
  * @param {string} message - SMS message text
- * @returns {Promise} - Twilio message result
+ * @returns {Promise} - Sinch send result
  */
 async function sendSMS(phoneNumber, message) {
-  if (!twilioClient) {
-    throw new Error('Twilio client not initialized');
+  if (!sinchClient) {
+    throw new Error('Sinch client not initialized');
   }
-  
-  if (!twilioPhoneNumber) {
-    throw new Error('Twilio phone number not configured');
+
+  if (!sinchPhoneNumber) {
+    throw new Error('Sinch phone number not configured');
   }
-  
+
   try {
-    const result = await twilioClient.messages.create({
-      body: message,
-      from: twilioPhoneNumber,
-      to: phoneNumber
+    const result = await sinchClient.sms.batches.send({
+      sendSMSRequestBody: {
+        to: [phoneNumber],
+        from: sinchPhoneNumber,
+        body: message,
+      }
     });
-    
-    console.log(`✅ SMS sent to ${phoneNumber}: ${result.sid}`);
+
+    console.log(`✅ SMS sent to ${phoneNumber}: ${result.id}`);
     return result;
   } catch (error) {
     console.error(`❌ Error sending SMS to ${phoneNumber}:`, error);
     throw error;
   }
 }
+
+/**
+ * Generate a short code and store the target URL in Firestore.
+ * Returns a short URL like https://everane.live/r/AbC123
+ */
+async function createShortLink(targetUrl) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  await admin.firestore().collection('shortLinks').doc(code).set({
+    url: targetUrl,
+    createdAt: Date.now(),
+  });
+  return `${APP_BASE_URL}/r/${code}`;
+}
+
+/**
+ * Redirect handler for short links: /r/:code
+ * Looks up the code in Firestore and redirects to the full URL.
+ */
+exports.redirectShortLink = functions.https.onRequest(async (req, res) => {
+  // Extract code from URL path: /r/AbC123 or /redirectShortLink/r/AbC123
+  const pathParts = req.path.split('/').filter(Boolean);
+  // The code is the last segment
+  const code = pathParts[pathParts.length - 1];
+
+  if (!code || code === 'r') {
+    res.status(400).send('Invalid short link.');
+    return;
+  }
+
+  try {
+    const docSnap = await admin.firestore().collection('shortLinks').doc(code).get();
+    if (!docSnap.exists) {
+      res.status(404).send('Link not found or expired.');
+      return;
+    }
+    const { url } = docSnap.data();
+    res.redirect(302, url);
+  } catch (error) {
+    console.error('Error resolving short link:', error);
+    res.status(500).send('Error resolving link.');
+  }
+});
 
 /**
  * Create an OpenAI Realtime session and return an ephemeral client secret.
@@ -1351,7 +1403,8 @@ async function buildTodaysSchedule(uid, nowDateTime = getNowInZone()) {
         dosage: med.dosage || null,
         doseNumber: index + 1,
         totalDoses: times.length,
-        medId: med.id || medDoc.id
+        medId: med.id || medDoc.id,
+        reminderMethod: med.reminderMethod || 'N'
       });
     });
   }
@@ -1870,18 +1923,15 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 
   const medSections = meds.map((med, index) => {
     const scheduleEntry = findScheduleEntry(med.id);
-    const doseNumber = scheduleEntry
-      ? scheduleEntry.doseNumber
-      : (meds.length > 1 ? index + 1 : 1);
-    const doseLabel = scheduleEntry
-      ? `Dose ${scheduleEntry.doseNumber}`
-      : (meds.length > 1 ? `Dose ${index + 1}` : 'Scheduled dose');
-    const scheduledTime = scheduleEntry && scheduleEntry.time
-      ? format12Hour(scheduleEntry.time)
-      : time12;
-    const scheduledTimeRaw = scheduleEntry && scheduleEntry.time
-      ? scheduleEntry.time
-      : reminderTime;
+    // Prefer dose info carried on the med object (set during grouping), fall back to schedule lookup
+    const doseNumber = med._doseNumber
+      || (scheduleEntry ? scheduleEntry.doseNumber : null)
+      || (meds.length > 1 ? index + 1 : 1);
+    const doseLabel = `Dose ${doseNumber}`;
+    const scheduledTimeRaw = med._scheduledTime
+      || (scheduleEntry && scheduleEntry.time ? scheduleEntry.time : null)
+      || reminderTime;
+    const scheduledTime = format12Hour(scheduledTimeRaw);
     const isAlreadyTaken = med._isAlreadyTaken === true;
     
     // Build URL for email-action.html when isAtTime is true
@@ -2123,8 +2173,8 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
  * @param {string} userTimezone - User's timezone
  */
 async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKey = 'at_time', alerts = [], bottleAlerts = [], userTimezone = null) {
-  if (!twilioClient || !twilioPhoneNumber) {
-    throw new Error('Twilio not configured - cannot send SMS');
+  if (!sinchClient || !sinchPhoneNumber) {
+    throw new Error('Sinch not configured - cannot send SMS');
   }
 
   const time12 = format12Hour(reminderTime);
@@ -2144,18 +2194,18 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
   // Build medication reminders
   if (meds.length > 0) {
     if (isAtTime) {
-      // At-time reminders: "Click here to take your {med name} medication: {link}"
-      meds.forEach((med, index) => {
-        if (med._isAlreadyTaken) {
-          return; // Skip already taken medications
-        }
+      // At-time reminders with short links
+      for (let index = 0; index < meds.length; index++) {
+        const med = meds[index];
+        if (med._isAlreadyTaken) continue;
         const scheduleEntry = findScheduleEntry(med.id);
         const doseNumber = scheduleEntry ? scheduleEntry.doseNumber : (meds.length > 1 ? index + 1 : 1);
         const scheduledTimeRaw = scheduleEntry && scheduleEntry.time ? scheduleEntry.time : reminderTime;
         const todayIso = nowDateTime.toISODate();
-        const link = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`;
-        messageParts.push(`Click here to take your ${med.name} medication: ${link}`);
-      });
+        const fullUrl = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`;
+        const shortLink = await createShortLink(fullUrl);
+        messageParts.push(`Take your ${med.name}: ${shortLink}`);
+      }
     } else {
       // Advance reminders: "Take your {med name} in {minutes} minutes"
       const minutes = Math.abs(option.minutes);
@@ -2206,8 +2256,8 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
  * @param {string} userTimezone - User's timezone
  */
 async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [], userTimezone = null) {
-  if (!twilioClient || !twilioPhoneNumber) {
-    throw new Error('Twilio not configured - cannot send SMS');
+  if (!sinchClient || !sinchPhoneNumber) {
+    throw new Error('Sinch not configured - cannot send SMS');
   }
 
   const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
@@ -2254,8 +2304,8 @@ async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [
 async function sendMissedDoseSMS(phoneNumber, missedDoses) {
   if (missedDoses.length === 0) return;
   
-  if (!twilioClient || !twilioPhoneNumber) {
-    throw new Error('Twilio not configured - cannot send SMS');
+  if (!sinchClient || !sinchPhoneNumber) {
+    throw new Error('Sinch not configured - cannot send SMS');
   }
 
   const time12 = format12Hour(missedDoses[0].reminderTime);
@@ -2583,10 +2633,11 @@ exports.sendMedicationReminders = functions.pubsub
                 if (!sendGroups[groupKey]) {
                   sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], reminderTime: '09:00', offsetKey: preference, reminderKeys: [] };
                 }
-                sendGroups[groupKey].meds.push(med);
+                const medWithDoseInfo = { ...med, _isAlreadyTaken: isAlreadyTaken, _doseNumber: currentDose.doseNumber, _scheduledTime: '09:00' };
+                sendGroups[groupKey].meds.push(medWithDoseInfo);
                 sendGroups[groupKey].reminderKeys.push(reminderKey);
-                if (isEmailReminder) sendGroups[groupKey].emailMeds.push(med);
-                if (isSMSReminder) sendGroups[groupKey].smsMeds.push(med);
+                if (isEmailReminder) sendGroups[groupKey].emailMeds.push(medWithDoseInfo);
+                if (isSMSReminder) sendGroups[groupKey].smsMeds.push(medWithDoseInfo);
                 console.log(`Queued ${med.name} for any time [offset=${preference}] (Email: ${isEmailReminder}, SMS: ${isSMSReminder})`);
               }
             }
@@ -2628,9 +2679,9 @@ exports.sendMedicationReminders = functions.pubsub
                 continue;
               }
               
-              // Mark medication as already taken for at_time reminders
-              const medWithTakenStatus = { ...med, _isAlreadyTaken: isAlreadyTaken };
-              
+              // Mark medication with taken status and dose info for email template
+              const medWithTakenStatus = { ...med, _isAlreadyTaken: isAlreadyTaken, _doseNumber: currentDose.doseNumber, _scheduledTime: reminderTime };
+
               const groupKey = `${preference}|${reminderTime}`;
               if (!sendGroups[groupKey]) {
                 sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], reminderTime, offsetKey: preference, reminderKeys: [] };
@@ -2846,14 +2897,21 @@ exports.sendDailyAgenda = functions.pubsub
         // Send email agenda (always send if user has email)
         await sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts);
         
-        // Send SMS agenda if phone is verified
+        // Send SMS agenda only if phone is verified AND at least one medication has SMS enabled
         if (userPhoneNumber && phoneVerified) {
-          try {
-            await sendDailyAgendaSMS(userPhoneNumber, scheduleEntries, bottleAlerts, userTimezone);
-            console.log(`Daily agenda SMS sent to ${userPhoneNumber} at 9:00 AM ${userTimezone}`);
-          } catch (error) {
-            console.error(`Failed to send daily agenda SMS for ${userPhoneNumber}`, error);
-            // Continue even if SMS fails
+          const hasSMSMed = scheduleEntries.some(entry => {
+            const rm = entry.reminderMethod || 'N';
+            return rm === 'S' || rm === 'ES';
+          });
+          if (hasSMSMed) {
+            try {
+              await sendDailyAgendaSMS(userPhoneNumber, scheduleEntries, bottleAlerts, userTimezone);
+              console.log(`Daily agenda SMS sent to ${userPhoneNumber} at 9:00 AM ${userTimezone}`);
+            } catch (error) {
+              console.error(`Failed to send daily agenda SMS for ${userPhoneNumber}`, error);
+            }
+          } else {
+            console.log(`Skipping agenda SMS for ${userEmail}: no medications have SMS reminders enabled`);
           }
         }
         
@@ -4122,97 +4180,76 @@ exports.verifyEmailCode = functions.https.onRequest(async (req, res) => {
 });
 
 /**
- * Send phone verification code via Twilio SMS
+ * Send phone verification code via Sinch SMS
+ * OTP codes are stored in Firestore (phoneVerifications collection) so they
+ * persist across Cloud Function instances.
  */
 exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
   console.log('🚀 FUNCTION CALLED - sendPhoneVerificationCode');
-  console.log('  Method:', req.method);
-  console.log('  Origin:', req.headers.origin);
-  console.log('  Headers:', JSON.stringify(req.headers));
-  
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    console.log('  ✅ Handling OPTIONS preflight request');
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.set('Access-Control-Max-Age', '3600');
-    console.log('  ✅ CORS headers set for OPTIONS');
     res.status(204).send('');
-    console.log('  ✅ OPTIONS response sent');
     return;
   }
 
-  console.log('  📝 Processing', req.method, 'request');
   return cors(req, res, async () => {
-    // Set CORS headers for actual request
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    console.log('  ✅ CORS headers set for', req.method);
-    
+
     if (req.method !== 'POST') {
-      console.log('  ❌ Method not allowed:', req.method);
       res.status(405).json({ error: 'Method not allowed' });
       return;
     }
 
     try {
       const { phoneNumber } = req.body;
-      console.log('📱 sendPhoneVerificationCode called (Twilio Verify API)');
+      console.log('📱 sendPhoneVerificationCode called (Sinch SMS)');
       console.log('  Phone number:', phoneNumber);
-      console.log('  Twilio client initialized:', !!twilioClient);
-      console.log('  Twilio Account SID:', twilioAccountSid ? twilioAccountSid.substring(0, 10) + '...' : 'NOT SET');
 
       if (!phoneNumber) {
         res.status(400).json({ error: 'Phone number is required' });
         return;
       }
 
-      if (!twilioClient) {
-        console.error('❌ Twilio client not initialized!');
-        res.status(500).json({ error: 'Twilio not configured' });
+      if (!sinchClient) {
+        console.error('❌ Sinch client not initialized!');
+        res.status(500).json({ error: 'SMS service not configured' });
         return;
       }
 
-      if (!twilioVerifyServiceSid) {
-        console.error('❌ Twilio Verify Service SID not configured!');
-        res.status(500).json({ error: 'Twilio Verify Service not configured' });
-        return;
-      }
+      // Generate a 6-digit OTP code
+      const code = String(Math.floor(100000 + Math.random() * 900000));
 
-      console.log('  Using Twilio Verify API to send SMS verification...');
-      const verification = await twilioClient.verify.v2.services(twilioVerifyServiceSid)
-                                        .verifications
-                                        .create({ to: phoneNumber, channel: 'sms' });
-
-      console.log('✅ Twilio Verify SMS sent successfully!', verification.sid);
-      res.status(200).json({ message: 'Verification code sent via SMS' });
-      setTimeout(() => {
-        if (global.phoneVerificationCodes) {
-          global.phoneVerificationCodes.delete(phoneNumber);
-          console.log('  🗑️ Cleaned up expired code for', phoneNumber);
-        }
-      }, 10 * 60 * 1000);
-
-      res.status(200).json({ 
-        success: true, 
-        message: 'Verification code sent via SMS',
-        code: code, // For testing only
-        twilioSid: smsResult.sid,
-        status: smsResult.status
+      // Store the code in Firestore with expiration (10 minutes)
+      const db = admin.firestore();
+      await db.collection('phoneVerifications').doc(phoneNumber).set({
+        code,
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        createdAt: Date.now(),
       });
+
+      // Send OTP via Sinch SMS
+      const result = await sinchClient.sms.batches.send({
+        sendSMSRequestBody: {
+          to: [phoneNumber],
+          from: sinchPhoneNumber,
+          body: `Your MedTracker verification code is ${code}. It expires in 10 minutes.`,
+        }
+      });
+
+      console.log('✅ Sinch SMS verification sent successfully!', result.id);
+
+      res.status(200).json({ success: true, message: 'Verification code sent via SMS' });
 
     } catch (error) {
       console.error('❌ Error sending phone verification code:', error);
-      console.error('  Error type:', error.constructor.name);
       console.error('  Error message:', error.message);
-      console.error('  Error code:', error.code);
-      console.error('  Error status:', error.status);
-      console.error('  Error statusCode:', error.statusCode);
-      console.error('  Error moreInfo:', error.moreInfo);
-      console.error('  Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      console.error('  Error stack:', error.stack);
       res.status(500).json({ error: 'Failed to send verification code: ' + error.message });
     }
   });
@@ -4232,9 +4269,8 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
   }
 
   return cors(req, res, async () => {
-    // Set CORS headers for actual request
     res.set('Access-Control-Allow-Origin', '*');
-    
+
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method not allowed' });
       return;
@@ -4248,51 +4284,54 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
         return;
       }
 
-      console.log('🔐 verifyPhoneCode called (Twilio Verify API)');
+      console.log('🔐 verifyPhoneCode called');
       console.log('  Phone number:', phoneNumber);
       console.log('  Code:', code);
       console.log('  User ID:', userId || 'not provided');
 
-      if (!twilioClient) {
-        console.error('❌ Twilio client not initialized!');
-        res.status(500).json({ error: 'Twilio not configured' });
+      // Check the code against Firestore
+      const db = admin.firestore();
+      const docRef = db.collection('phoneVerifications').doc(phoneNumber);
+      const docSnap = await docRef.get();
+
+      if (!docSnap.exists) {
+        console.log('❌ No verification code found for this number');
+        res.status(400).json({ error: 'Verification code expired or not found. Please request a new code.' });
         return;
       }
 
-      if (!twilioVerifyServiceSid) {
-        console.error('❌ Twilio Verify Service SID not configured!');
-        res.status(500).json({ error: 'Twilio Verify Service not configured' });
+      const stored = docSnap.data();
+
+      if (Date.now() > stored.expiresAt) {
+        await docRef.delete();
+        console.log('❌ Verification code expired');
+        res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
         return;
       }
-      
-      console.log('  Using Twilio Verify API to check verification...');
-      const verificationCheck = await twilioClient.verify.v2.services(twilioVerifyServiceSid)
-                                                .verificationChecks
-                                                .create({ to: phoneNumber, code: code });
 
-      if (verificationCheck.status === 'approved') {
-        console.log('✅ Twilio Verify SMS code approved!');
-        
-        // If userId is provided, update Firestore to mark phone as verified
-        if (userId) {
-          const userDocRef = doc(db, "users", userId);
-          await setDoc(userDocRef, { phoneVerified: true, phoneNumber: phoneNumber }, { merge: true });
-          console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
-        }
-
-        res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
-      } else {
-        console.log('❌ Twilio Verify SMS code failed or pending.', verificationCheck.status);
-        res.status(400).json({ error: 'Invalid verification code', status: verificationCheck.status });
+      if (stored.code !== String(code)) {
+        console.log('❌ Invalid verification code');
+        res.status(400).json({ error: 'Invalid verification code. Please try again.' });
+        return;
       }
+
+      // Code is correct — clean up
+      await docRef.delete();
+      console.log('✅ Verification code approved!');
+
+      // If userId is provided, update Firestore to mark phone as verified
+      if (userId) {
+        await db.collection('users').doc(userId).set(
+          { phoneVerified: true, phoneNumber: phoneNumber },
+          { merge: true }
+        );
+        console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
+      }
+
+      res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
     } catch (error) {
       console.error('❌ Error verifying phone code:', error);
-      console.error('  Error type:', error.constructor.name);
       console.error('  Error message:', error.message);
-      console.error('  Error code:', error.code);
-      console.error('  Error status:', error.status);
-      console.error('  Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      console.error('  Error stack:', error.stack);
       res.status(500).json({ error: 'Failed to verify code: ' + error.message });
     }
   });

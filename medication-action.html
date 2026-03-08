@@ -450,15 +450,19 @@
           const notes = medData.notes || {};
           
           // Check if there's a note for this date and dose
-          if (notes[dateString]) {
-            const noteData = notes[dateString];
-            // Notes are stored as [doseNumber, noteText, feelingRating] (feelingRating is optional for backward compatibility)
-            if (Array.isArray(noteData) && noteData[0] === doseNumber) {
-              document.getElementById('dose-notes').value = noteData[1] || '';
-              // Set feeling rating (default to 0 if not present)
-              const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
-              document.getElementById('dose-feeling').value = feelingRating.toString();
+          // Try new key format first (date_doseNumber), fall back to old format (date only)
+          const doseKey = `${dateString}_${doseNumber}`;
+          let noteData = notes[doseKey];
+          if (!noteData && notes[dateString]) {
+            const oldData = notes[dateString];
+            if (Array.isArray(oldData) && oldData[0] === doseNumber) {
+              noteData = oldData;
             }
+          }
+          if (Array.isArray(noteData)) {
+            document.getElementById('dose-notes').value = noteData[1] || '';
+            const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
+            document.getElementById('dose-feeling').value = feelingRating.toString();
           }
         }
       } catch (error) {
@@ -495,8 +499,9 @@
         const medData = medDoc.data();
         const notes = medData.notes || {};
         
-        // Save note in the same format as notes.html: [doseNumber, noteText, feelingRating]
-        notes[date] = [doseNumber, noteText, feelingRating];
+        // Save note keyed by date_doseNumber to avoid multi-dose overwrites
+        const doseKey = `${date}_${doseNumber}`;
+        notes[doseKey] = [doseNumber, noteText, feelingRating];
 
         await setDoc(medDocRef, {
           notes: notes

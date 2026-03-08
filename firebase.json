@@ -16,6 +16,12 @@
       "**/.*",
       "**/node_modules/**",
       "functions/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/r/**",
+        "function": "redirectShortLink"
+      }
     ]
   }
 }

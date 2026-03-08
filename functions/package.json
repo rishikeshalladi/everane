@@ -19,7 +19,7 @@
     "firebase-functions": "^4.5.0",
     "luxon": "^3.4.4",
     "nodemailer": "^6.9.7",
-    "twilio": "^5.11.1"
+    "@sinch/sdk-core": "^1.1.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^3.1.0"

@@ -560,7 +560,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
           <div class="form-group">
             <label>Dosage (pills per dose) <span style="color: red;">*</span></label>
-            <input id="dosage" type="number" min="1">
+            <input id="dosage" type="text" inputmode="numeric" pattern="[0-9]*" min="1">
             <div id="dosage-error" class="error-message"></div>
           </div>
           <div class="form-group">
@@ -822,7 +822,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         showErr('name-error','Enter medication name');
         ok=false;
       }
-      if (!doseEl.value || +doseEl.value<1) {
+      const doseNum = parseInt(String(doseEl.value).match(/\d+/)?.[0], 10);
+      if (!doseEl.value || isNaN(doseNum) || doseNum<1) {
         showErr('dosage-error','Dosage must be ≥1');
         ok=false;
       }
@@ -1116,7 +1117,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       e.preventDefault();
       // gather Part 1
       const name        = document.getElementById('med-name').value.trim();
-      const dosage      = +document.getElementById('dosage').value;
+      const dosage      = parseInt(String(document.getElementById('dosage').value).match(/\d+/)?.[0], 10) || 0;
       const timesPerDay = +timesInput.value;
       const days        = [...tg.querySelectorAll('.toggle-btn.active')].map(b=>b.dataset.day.toLowerCase());
       let times       = [...timePickers.querySelectorAll('input[type="time"]')]
