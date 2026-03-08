@@ -69,6 +69,9 @@
         --shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
         --glass-bg: rgba(255,255,255,0.7);
         --glass-border: rgba(15,23,42,0.08);
+        --accent: #0d9488;
+        --accent-bg: rgba(13,148,136,0.08);
+        --accent-border: rgba(13,148,136,0.25);
       }
     }
 
@@ -236,8 +239,8 @@
       display:inline-flex;align-items:center;gap:.4rem;
       font-size:.85rem;font-weight:600;
       color:var(--accent);
-      background:rgba(125,226,209,0.1);
-      border:1px solid rgba(125,226,209,0.25);
+      background:var(--accent-bg, rgba(125,226,209,0.1));
+      border:1px solid var(--accent-border, rgba(125,226,209,0.25));
       padding:.4rem .85rem;border-radius:999px;
       margin-bottom:1.25rem;
     }
