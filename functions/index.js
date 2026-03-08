@@ -26,15 +26,11 @@ const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PA
 const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://melodious-selkie-5d4511.netlify.app';
 
 // Sinch configuration
-// For SMS: firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..." sinch.phonenumber="..."
-// For Verification: firebase functions:config:set sinch.appkey="..." sinch.appsecret="..."
+// firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..." sinch.phonenumber="..."
 const sinchProjectId = functions.config().sinch?.projectid || process.env.SINCH_PROJECT_ID;
 const sinchKeyId = functions.config().sinch?.keyid || process.env.SINCH_KEY_ID;
 const sinchKeySecret = functions.config().sinch?.keysecret || process.env.SINCH_KEY_SECRET;
 const sinchPhoneNumber = functions.config().sinch?.phonenumber || process.env.SINCH_PHONE_NUMBER;
-const sinchAppKey = functions.config().sinch?.appkey || process.env.SINCH_APP_KEY;
-const sinchAppSecret = functions.config().sinch?.appsecret || process.env.SINCH_APP_SECRET;
-
 // Initialize Sinch client for SMS
 let sinchSmsClient = null;
 if (sinchProjectId && sinchKeyId && sinchKeySecret) {
@@ -50,19 +46,6 @@ if (sinchProjectId && sinchKeyId && sinchKeySecret) {
   console.error('  Run: firebase functions:config:set sinch.projectid="..." sinch.keyid="..." sinch.keysecret="..."');
 }
 
-// Initialize Sinch client for Verification
-let sinchVerificationClient = null;
-if (sinchAppKey && sinchAppSecret) {
-  sinchVerificationClient = new SinchClient({
-    applicationKey: sinchAppKey,
-    applicationSecret: sinchAppSecret
-  });
-  console.log('✅ Sinch Verification client initialized');
-} else {
-  console.error('⚠️ SINCH VERIFICATION CONFIGURATION MISSING:');
-  console.error('  Phone verification will fail. Please configure Sinch app credentials.');
-  console.error('  Run: firebase functions:config:set sinch.appkey="..." sinch.appsecret="..."');
-}
 
 // Verify email configuration
 if (!gmailEmail || !gmailPassword) {
@@ -3448,7 +3431,8 @@ exports.verifyEmailCode = functions.https.onRequest(async (req, res) => {
 });
 
 /**
- * Send phone verification code via Sinch Verification API
+ * Send phone verification code via Sinch SMS API
+ * Generates a 6-digit OTP, stores in Firestore, sends via SMS
  */
 exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
   console.log('🚀 FUNCTION CALLED - sendPhoneVerificationCode');
@@ -3476,32 +3460,37 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
 
     try {
       const { phoneNumber } = req.body;
-      console.log('📱 sendPhoneVerificationCode called (Sinch Verification API)');
+      console.log('📱 sendPhoneVerificationCode called (Sinch SMS)');
       console.log('  Phone number:', phoneNumber);
-      console.log('  Sinch Verification client initialized:', !!sinchVerificationClient);
 
       if (!phoneNumber) {
         res.status(400).json({ error: 'Phone number is required' });
         return;
       }
 
-      if (!sinchVerificationClient) {
-        console.error('❌ Sinch Verification client not initialized!');
-        res.status(500).json({ error: 'Sinch Verification not configured' });
+      if (!sinchSmsClient || !sinchPhoneNumber) {
+        console.error('❌ Sinch SMS client not initialized!');
+        res.status(500).json({ error: 'SMS not configured' });
         return;
       }
 
-      console.log('  Using Sinch Verification API to send SMS verification...');
-      const response = await sinchVerificationClient.verification.verifications.startSms({
-        startVerificationWithSmsRequestBody: {
-          identity: {
-            type: 'number',
-            endpoint: phoneNumber
-          }
-        }
+      // Generate 6-digit OTP
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      // Store in Firestore
+      const db = admin.firestore();
+      await db.collection('phoneVerifications').doc(phoneNumber).set({
+        code: code,
+        expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      console.log('✅ Sinch Verification SMS sent successfully!', response.id);
+      // Send via Sinch SMS
+      const message = `Your MedTracker verification code is: ${code}. It expires in 10 minutes.`;
+      await sendSMS(phoneNumber, message);
+
+      console.log('✅ Verification SMS sent successfully to', phoneNumber);
       res.status(200).json({
         success: true,
         message: 'Verification code sent via SMS'
@@ -3544,40 +3533,49 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
         return;
       }
 
-      console.log('🔐 verifyPhoneCode called (Sinch Verification API)');
+      console.log('🔐 verifyPhoneCode called');
       console.log('  Phone number:', phoneNumber);
-      console.log('  Code:', code);
       console.log('  User ID:', userId || 'not provided');
 
-      if (!sinchVerificationClient) {
-        console.error('❌ Sinch Verification client not initialized!');
-        res.status(500).json({ error: 'Sinch Verification not configured' });
+      const db = admin.firestore();
+      const verDoc = await db.collection('phoneVerifications').doc(phoneNumber).get();
+
+      if (!verDoc.exists) {
+        res.status(400).json({ error: 'No verification code found. Please request a new one.' });
         return;
       }
 
-      console.log('  Using Sinch Verification API to check code...');
-      const verificationCheck = await sinchVerificationClient.verification.verifications.reportSmsById({
-        id: phoneNumber,
-        reportSmsVerificationByIdRequestBody: {
-          sms: { code: code }
-        }
-      });
+      const verification = verDoc.data();
+      const expiresAt = verification.expiresAt.toDate();
 
-      if (verificationCheck.status === 'SUCCESSFUL') {
-        console.log('✅ Sinch Verification SMS code approved!');
-        
-        // If userId is provided, update Firestore to mark phone as verified
-        if (userId) {
-          const userDocRef = doc(db, "users", userId);
-          await setDoc(userDocRef, { phoneVerified: true, phoneNumber: phoneNumber }, { merge: true });
-          console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
-        }
-
-        res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
-      } else {
-        console.log('❌ Sinch Verification code failed.', verificationCheck.status);
-        res.status(400).json({ error: 'Invalid verification code', status: verificationCheck.status });
+      // Check expiry
+      if (new Date() > expiresAt) {
+        await db.collection('phoneVerifications').doc(phoneNumber).delete();
+        res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
+        return;
       }
+
+      // Check code
+      if (verification.code !== code) {
+        res.status(400).json({ error: 'Invalid verification code' });
+        return;
+      }
+
+      // Code matches — clean up
+      await db.collection('phoneVerifications').doc(phoneNumber).delete();
+      console.log('✅ Phone verification code approved!');
+
+      // If userId is provided, update Firestore to mark phone as verified
+      if (userId) {
+        await db.collection('users').doc(userId).set(
+          { phoneVerified: true, phoneNumber: phoneNumber },
+          { merge: true }
+        );
+        console.log(`  ✅ User ${userId} phone marked as verified in Firestore.`);
+      }
+
+      res.status(200).json({ message: 'Phone number verified successfully!', status: 'approved' });
+
     } catch (error) {
       console.error('❌ Error verifying phone code:', error);
       console.error('  Error message:', error.message);

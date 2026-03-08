@@ -360,8 +360,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
           if (medData.deletedStatus === true) {
             // Auto-migrate old format to schedules if needed
             let schedules = medData.schedules || [];
-            if (schedules.length === 0 && window.ScheduleUtils && medData.daysOfWeek) {
-              schedules = ScheduleUtils.migrateToSchedules(medData.daysOfWeek, medData.timesPerDay, medData.times);
+            if (schedules.length === 0 && window.ScheduleUtils && (medData.daysOfWeek || medData.times)) {
+              const migrated = ScheduleUtils.migrateOldFormat(medData);
+              schedules = migrated.schedules;
             }
 
             deletedMedications.push({
