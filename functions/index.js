@@ -1,5 +1,5 @@
 /**
- * Firebase Cloud Functions for MedTracker Email Reminders
+ * Firebase Cloud Functions for Everane Email Reminders
  * 
  * This function runs on a schedule (every hour) and checks which medications
  * need reminders sent based on the user's settings.
@@ -712,11 +712,11 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
                 `).join('')}
               </div>
             ` : ''}
-            <p style="margin-top:24px;">This agenda includes every dose scheduled for today. Tap "Taken" in MedTracker after each medication so we can keep your history up to date.</p>
-            <a href="${APP_BASE_URL}/home.html" class="cta">Open MedTracker</a>
+            <p style="margin-top:24px;">This agenda includes every dose scheduled for today. Tap "Taken" in Everane after each medication so we can keep your history up to date.</p>
+            <a href="${APP_BASE_URL}/home.html" class="cta">Open Everane</a>
           </div>
           <div class="footer">
-            This is an automated message from MedTracker.<br/>You can update reminder preferences anytime from your profile.
+            This is an automated message from Everane.<br/>You can update reminder preferences anytime from your profile.
           </div>
         </div>
       </div>
@@ -742,13 +742,13 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
     '',
     textSchedule,
     textBottleAlerts,
-    'This agenda includes every dose scheduled for today. Remember to mark each medication as taken inside MedTracker after you complete it.',
+    'This agenda includes every dose scheduled for today. Remember to mark each medication as taken inside Everane after you complete it.',
     '',
-    'MedTracker'
+    'Everane'
   ].join('\n');
 
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: userEmail,
     subject: `Today’s Medication Agenda`,
     text: textBody,
@@ -842,18 +842,18 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
             <div class="warning-box">
               <p class="warning-title">⚠️ Missed Medication${missedDoses.length > 1 ? 's' : ''}</p>
               <div>We noticed you haven't marked ${missedDoses.length === 1 ? 'this dose' : 'these doses'} as taken. ${missedDoses.length === 1 ? 'It' : 'They'} ${missedDoses.length === 1 ? 'has' : 'have'} been automatically marked as "Not Taken".</div>
-              <div style="margin-top: 12px;">If this is a mistake and you did take ${missedDoses.length === 1 ? 'it' : 'them'}, please update the status in MedTracker.</div>
+              <div style="margin-top: 12px;">If this is a mistake and you did take ${missedDoses.length === 1 ? 'it' : 'them'}, please update the status in Everane.</div>
             </div>
             <div class="content-section">
               <h2 class="section-title">Missed ${missedDoses.length === 1 ? 'Dose' : 'Doses'}</h2>
               ${medSections}
             </div>
             <div class="cta-wrap">
-              <a class="cta" href="${APP_BASE_URL}/home.html">Update in MedTracker</a>
+              <a class="cta" href="${APP_BASE_URL}/home.html">Update in Everane</a>
             </div>
           </div>
           <div class="footer">
-            This is an automated notification from MedTracker.<br/>
+            This is an automated notification from Everane.<br/>
             Doses are automatically marked as "Not Taken" if not marked within 45 minutes of the scheduled time.
           </div>
         </div>
@@ -876,14 +876,14 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
     textLines.push(`Time since scheduled: ${minutesLate} minutes`);
     textLines.push('');
   });
-  textLines.push('If this is a mistake and you did take the medication, please update the status in MedTracker.');
+  textLines.push('If this is a mistake and you did take the medication, please update the status in Everane.');
   textLines.push('');
-  textLines.push('MedTracker');
+  textLines.push('Everane');
   
   const textBody = textLines.join('\n');
   
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: userEmail,
     subject,
     text: textBody,
@@ -1115,9 +1115,9 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
     if (totalItems === 1 && meds.length === 1) {
       subject = `Medication Reminder: ${meds[0].name}`;
     } else if (totalItems === 1 && alerts.length === 1) {
-      subject = `MedTracker Alert: ${alerts[0].med.name}`;
+      subject = `Everane Alert: ${alerts[0].med.name}`;
     } else {
-      subject = `MedTracker: ${meds.length > 0 ? `${meds.length} Reminder${meds.length > 1 ? 's' : ''}` : ''}${meds.length > 0 && alerts.length > 0 ? ' + ' : ''}${alerts.length > 0 ? `${alerts.length} Alert${alerts.length > 1 ? 's' : ''}` : ''}`;
+      subject = `Everane: ${meds.length > 0 ? `${meds.length} Reminder${meds.length > 1 ? 's' : ''}` : ''}${meds.length > 0 && alerts.length > 0 ? ' + ' : ''}${alerts.length > 0 ? `${alerts.length} Alert${alerts.length > 1 ? 's' : ''}` : ''}`;
     }
   } else {
     const snippet = option.subjectSnippet || 'soon';
@@ -1255,9 +1255,9 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
     if (hasTakenMeds && !hasUntakenMeds) {
       closingHtmlLine = `<p class="closing-note">✅ All medications for this time have already been taken. No action needed.</p>`;
     } else if (hasTakenMeds && hasUntakenMeds) {
-      closingHtmlLine = `<p class="closing-note">✅ Some medications are already taken. Please mark the remaining ones as "Taken" in MedTracker.</p>`;
+      closingHtmlLine = `<p class="closing-note">✅ Some medications are already taken. Please mark the remaining ones as "Taken" in Everane.</p>`;
     } else {
-      closingHtmlLine = `<p class="closing-note">✅ Please tap "Taken" in MedTracker after each dose so we can keep your history up to date.</p>`;
+      closingHtmlLine = `<p class="closing-note">✅ Please tap "Taken" in Everane after each dose so we can keep your history up to date.</p>`;
     }
   } else if (!isAtTime && option.bodyNoteHtml) {
     closingHtmlLine = `<p class="closing-note">${option.bodyNoteHtml}</p>`;
@@ -1292,11 +1292,11 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
             ${todaysScheduleHtml}
             ${bottleAlertsHtml}
             <div class="cta-wrap">
-              <a class="cta" href="${APP_BASE_URL}/home.html">Open MedTracker</a>
+              <a class="cta" href="${APP_BASE_URL}/home.html">Open Everane</a>
             </div>
           </div>
           <div class="footer">
-            This is an automated reminder from MedTracker.<br/>
+            This is an automated reminder from Everane.<br/>
             You can update reminder times anytime from your profile.
           </div>
         </div>
@@ -1352,12 +1352,12 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
   if (textLines[textLines.length - 1] !== '') {
     textLines.push('');
   }
-  textLines.push('MedTracker');
+  textLines.push('Everane');
 
   const textBody = textLines.join('\n');
 
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: userEmail,
     subject,
     text: textBody,
@@ -1512,7 +1512,7 @@ async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [
   }
 
   messageParts.push('');
-  messageParts.push('Remember to mark each medication as taken in MedTracker.');
+  messageParts.push('Remember to mark each medication as taken in Everane.');
 
   const fullMessage = messageParts.join('\n');
 
@@ -1549,7 +1549,7 @@ async function sendMissedDoseSMS(phoneNumber, missedDoses) {
     messageParts.push('');
   });
 
-  messageParts.push('Please mark these doses in MedTracker.');
+  messageParts.push('Please mark these doses in Everane.');
 
   const fullMessage = messageParts.join('\n');
 
@@ -1606,14 +1606,14 @@ async function sendReminderEmail(userEmail, med, reminderTime, isAdvance = false
             ${med.stock ? `<div class="detail"><span class="label">Bottles in stock:</span> ${med.stock}</div>` : ''}
           </div>
           
-          ${isAdvance ? '<p>⏰ This is a 30-minute advance reminder. You\'ll receive another reminder at the scheduled time.</p>' : '<p>✅ Remember to mark this dose as taken in your MedTracker app!</p>'}
+          ${isAdvance ? '<p>⏰ This is a 30-minute advance reminder. You\'ll receive another reminder at the scheduled time.</p>' : '<p>✅ Remember to mark this dose as taken in your Everane app!</p>'}
           
           <p style="text-align: center; margin-top: 30px;">
-            <a href="${APP_BASE_URL}/home.html" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Open MedTracker</a>
+            <a href="${APP_BASE_URL}/home.html" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Open Everane</a>
           </p>
         </div>
         <div class="footer">
-          <p>This is an automated reminder from MedTracker</p>
+          <p>This is an automated reminder from Everane</p>
           <p>To change your reminder settings, visit your profile</p>
         </div>
       </div>
@@ -1631,11 +1631,11 @@ ${med.stock ? `Bottles in stock: ${med.stock}` : ''}
 
 ${isAdvance ? 'This is a 30-minute advance reminder.' : 'Remember to mark this dose as taken!'}
 
-MedTracker
+Everane
   `;
   
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: userEmail,
     subject: subject,
     text: textBody,
@@ -2247,10 +2247,10 @@ async function sendEmailVerificationCode(email, code) {
         <div class="container">
           <div class="header">
             <h1>Verify Your Email</h1>
-            <p>MedTracker Registration</p>
+            <p>Everane Registration</p>
           </div>
           <div class="content">
-            <p>Thank you for registering with MedTracker! Please use the verification code below to complete your registration:</p>
+            <p>Thank you for registering with Everane! Please use the verification code below to complete your registration:</p>
             <div class="code-box">
               <div class="code">${code}</div>
             </div>
@@ -2261,7 +2261,7 @@ async function sendEmailVerificationCode(email, code) {
             <p>If you have any questions, please contact our support team.</p>
           </div>
           <div class="footer">
-            This is an automated message from MedTracker.<br/>
+            This is an automated message from Everane.<br/>
             Please do not reply to this email.
           </div>
         </div>
@@ -2271,9 +2271,9 @@ async function sendEmailVerificationCode(email, code) {
   `;
 
   const textBody = `
-Verify Your Email - MedTracker Registration
+Verify Your Email - Everane Registration
 
-Thank you for registering with MedTracker! Please use the verification code below to complete your registration:
+Thank you for registering with Everane! Please use the verification code below to complete your registration:
 
 ${code}
 
@@ -2284,14 +2284,14 @@ Enter this code in the registration form to verify your email address.
 If you have any questions, please contact our support team.
 
 ---
-This is an automated message from MedTracker.
+This is an automated message from Everane.
 Please do not reply to this email.
   `;
 
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: email,
-    subject: `MedTracker: Email Verification Code`,
+    subject: `Everane: Email Verification Code`,
     text: textBody,
     html: htmlBody
   };
@@ -2335,11 +2335,11 @@ async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, care
       <div class="wrapper">
         <div class="container">
           <div class="header">
-            <h1>Invitation to monitor medications on MedTracker</h1>
+            <h1>Invitation to monitor medications on Everane</h1>
           </div>
           <div class="content">
             <p>Hello ${patientFirstName},</p>
-            <p>${caregiverName} has invited you to share medication updates through MedTracker.</p>
+            <p>${caregiverName} has invited you to share medication updates through Everane.</p>
             <p>If you accept, ${caregiverName} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on the preferences you choose. Your medications cannot be changed by anyone else.</p>
             ${messageBoxHtml}
             <p>To review this request and decide whether to allow access, click the link below:</p>
@@ -2350,7 +2350,7 @@ async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, care
           </div>
           <div class="footer">
             Best regards,<br/>
-            MedTracker<br/>
+            Everane<br/>
             <br/>
             Supporting safer, clearer medication management
           </div>
@@ -2361,11 +2361,11 @@ async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, care
   `;
 
   const textBody = `
-Invitation to monitor medications on MedTracker
+Invitation to monitor medications on Everane
 
 Hello ${patientFirstName},
 
-${caregiverName} has invited you to share medication updates through MedTracker.
+${caregiverName} has invited you to share medication updates through Everane.
 
 If you accept, ${caregiverName} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on the preferences you choose. Your medications cannot be changed by anyone else.
 
@@ -2376,15 +2376,15 @@ ${customMessage ? `Message from ${caregiverName}:\n\n"${customMessage}"\n\n` : '
 You can decline or revoke access at any time. If you were not expecting this request, you may safely ignore this email.
 
 Best regards,
-MedTracker
+Everane
 
 Supporting safer, clearer medication management
   `;
 
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: patientEmail,
-    subject: `Invitation to monitor medications on MedTracker`,
+    subject: `Invitation to monitor medications on Everane`,
     text: textBody,
     html: htmlBody
   };
@@ -2511,11 +2511,11 @@ async function sendCaregiverAcceptanceEmail(caregiverEmail, caregiverName, patie
             <p>Hello ${caregiverName},</p>
             <p><strong>${patientName}</strong> has accepted your invitation and is now registered as a patient under your name!</p>
             <p>You can now receive medication-related updates for ${patientName} based on their preferences. You can manage your notification settings in your caregiver profile.</p>
-            <p>Thank you for using MedTracker to help manage medications safely and effectively.</p>
+            <p>Thank you for using Everane to help manage medications safely and effectively.</p>
           </div>
           <div class="footer">
             Best regards,<br/>
-            MedTracker<br/>
+            Everane<br/>
             <br/>
             Supporting safer, clearer medication management
           </div>
@@ -2526,7 +2526,7 @@ async function sendCaregiverAcceptanceEmail(caregiverEmail, caregiverName, patie
   `;
 
   const textBody = `
-Patient Accepted Your Invitation - MedTracker
+Patient Accepted Your Invitation - Everane
 
 Hello ${caregiverName},
 
@@ -2534,16 +2534,16 @@ ${patientName} has accepted your invitation and is now registered as a patient u
 
 You can now receive medication-related updates for ${patientName} based on their preferences. You can manage your notification settings in your caregiver profile.
 
-Thank you for using MedTracker to help manage medications safely and effectively.
+Thank you for using Everane to help manage medications safely and effectively.
 
 Best regards,
-MedTracker
+Everane
 
 Supporting safer, clearer medication management
   `;
 
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to: caregiverEmail,
     subject: `${patientName} accepted your caregiver invitation`,
     text: textBody,
@@ -2880,7 +2880,7 @@ function computeAdherenceForRange(meds, nowDateTime, days) {
 
 async function sendCaregiverEmail(to, subject, htmlBody, textBody) {
   const mailOptions = {
-    from: `MedTracker <${gmailEmail}>`,
+    from: `Everane <${gmailEmail}>`,
     to,
     subject,
     text: textBody,
@@ -2959,7 +2959,7 @@ exports.sendCaregiverExpirationDatesEmails = functions.pubsub
         continue;
       }
 
-      const subject = 'MedTracker: Patient expiration alerts';
+      const subject = 'Everane: Patient expiration alerts';
       const htmlBody = `
         <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
           <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
@@ -3040,7 +3040,7 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions.pubsub
 
       if (rowsHtml.length === 0) continue;
 
-      const subject = 'MedTracker: Adherence below 80%';
+      const subject = 'Everane: Adherence below 80%';
       const htmlBody = `
         <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
           <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
@@ -3124,7 +3124,7 @@ exports.sendCaregiverWeeklyReports = functions.pubsub
 
       if (rowsHtml.length === 0) continue;
 
-      const subject = 'MedTracker: Weekly patient report';
+      const subject = 'Everane: Weekly patient report';
       const htmlBody = `
         <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
           <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
@@ -3208,7 +3208,7 @@ exports.sendCaregiverMonthlyReports = functions.pubsub
 
       if (rowsHtml.length === 0) continue;
 
-      const subject = 'MedTracker: Monthly patient report';
+      const subject = 'Everane: Monthly patient report';
       const htmlBody = `
         <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
           <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
@@ -3487,7 +3487,7 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
       });
 
       // Send via Sinch SMS
-      const message = `Your MedTracker verification code is: ${code}. It expires in 10 minutes.`;
+      const message = `Your Everane verification code is: ${code}. It expires in 10 minutes.`;
       await sendSMS(phoneNumber, message);
 
       console.log('✅ Verification SMS sent successfully to', phoneNumber);
@@ -3629,10 +3629,10 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
       const htmlBody = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background-color: #4A90D9; color: #ffffff; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-            <h1 style="margin: 0; font-size: 24px;">MedTracker Contact Form</h1>
+            <h1 style="margin: 0; font-size: 24px;">Everane Contact Form</h1>
           </div>
           <div style="background-color: #ffffff; border: 1px solid #e0e0e0; border-top: none; padding: 24px; border-radius: 0 0 8px 8px;">
-            <p style="color: #333333; font-size: 16px; margin-top: 0;">You have received a new message from the MedTracker contact form.</p>
+            <p style="color: #333333; font-size: 16px; margin-top: 0;">You have received a new message from the Everane contact form.</p>
             <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
               <tr>
                 <td style="padding: 10px 12px; font-weight: bold; color: #555555; border-bottom: 1px solid #eeeeee; width: 100px;">Name</td>
@@ -3648,7 +3648,7 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
               <div style="background-color: #f9f9f9; border-left: 4px solid #4A90D9; padding: 16px; border-radius: 4px; color: #333333; line-height: 1.6; white-space: pre-wrap;">${message}</div>
             </div>
             <hr style="border: none; border-top: 1px solid #eeeeee; margin: 24px 0;" />
-            <p style="color: #999999; font-size: 12px; text-align: center; margin-bottom: 0;">This email was sent from the MedTracker contact form. Reply directly to respond to the sender.</p>
+            <p style="color: #999999; font-size: 12px; text-align: center; margin-bottom: 0;">This email was sent from the Everane contact form. Reply directly to respond to the sender.</p>
           </div>
         </div>
       `;
@@ -3658,7 +3658,7 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
         from: gmailEmail,
         replyTo: email,
         to: 'rishikeshalladi@gmail.com',
-        subject: `[MedTracker Contact] Message from ${name}`,
+        subject: `[Everane Contact] Message from ${name}`,
         html: htmlBody
       };
 
@@ -3670,6 +3670,98 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
     } catch (error) {
       console.error('❌ Error sending contact form email:', error);
       res.status(500).json({ error: 'Failed to send contact form message: ' + error.message });
+    }
+  });
+});
+
+/**
+ * createRealtimeSession
+ * Creates an ephemeral OpenAI Realtime session and returns the client_secret.
+ * The client uses this secret to connect directly to OpenAI via WebRTC.
+ */
+exports.createRealtimeSession = functions.https.onRequest((req, res) => {
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
+    res.status(204).send('');
+    return;
+  }
+
+  return cors(req, res, async () => {
+    res.set('Access-Control-Allow-Origin', '*');
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    try {
+      // Verify Firebase auth token
+      const authHeader = req.headers.authorization || '';
+      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+
+      await admin.auth().verifyIdToken(idToken);
+
+      // Get OpenAI API key from functions config
+      const openaiKey = functions.config().openai?.key;
+      if (!openaiKey) {
+        res.status(500).json({ error: 'OpenAI API key not configured' });
+        return;
+      }
+
+      // Create ephemeral Realtime client secret (GA endpoint — matches /v1/realtime/calls on client)
+      const sessionResp = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session: {
+            type: 'realtime',
+            model: 'gpt-realtime',
+            audio: {
+              output: { voice: 'verse' },
+            },
+          },
+        }),
+      });
+
+      if (!sessionResp.ok) {
+        const errText = await sessionResp.text().catch(() => '');
+        console.error('OpenAI client_secrets error:', sessionResp.status, errText.slice(0, 500));
+        res.status(502).json({ error: `OpenAI returned ${sessionResp.status}`, details: errText.slice(0, 300) });
+        return;
+      }
+
+      const sessionData = await sessionResp.json();
+      // GA response shape: { value: "ek_...", expires_at: ..., session: { id, model, ... } }
+      const clientSecret = sessionData.value
+        || sessionData.client_secret?.value
+        || sessionData.client_secret;
+
+      if (!clientSecret) {
+        console.error('❌ Could not extract client_secret from response:', JSON.stringify(sessionData).slice(0, 500));
+        res.status(500).json({ error: 'Could not extract client_secret from OpenAI response' });
+        return;
+      }
+
+      console.log('✅ Created Realtime client secret for session:', sessionData.session?.id || 'unknown');
+
+      res.status(200).json({
+        client_secret: clientSecret,
+        session_id: sessionData.session?.id,
+      });
+
+    } catch (error) {
+      console.error('❌ createRealtimeSession error:', error);
+      res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });
 });

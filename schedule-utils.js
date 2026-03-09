@@ -1,5 +1,5 @@
 /**
- * MedTracker Schedule Utilities (Client-Side)
+ * Everane Schedule Utilities (Client-Side)
  *
  * Shared schedule logic for all HTML pages.
  * Supports WEEKLY and INTERVAL schedule types.

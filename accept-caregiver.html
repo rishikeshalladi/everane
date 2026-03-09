@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Accept Caregiver Invitation – MedTracker</title>
+  <title>Accept Caregiver Invitation – Everane</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     :root {
@@ -276,7 +276,7 @@
 
         contentDiv.innerHTML = `
           <h1>Caregiver Invitation</h1>
-          <p><strong>${invitationData.caregiverName.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</strong> has invited you to share medication updates through MedTracker.</p>
+          <p><strong>${invitationData.caregiverName.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</strong> has invited you to share medication updates through Everane.</p>
           <p>If you accept, ${invitationData.caregiverName.replace(/</g, '&lt;').replace(/>/g, '&gt;')} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on your preferences. Your medications cannot be changed by anyone else.</p>
           ${messageHtml}
           <button id="accept-btn" class="btn">Accept Caregiver</button>

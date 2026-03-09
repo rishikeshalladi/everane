@@ -203,6 +203,14 @@
     .toggle:focus{outline:2px solid transparent; box-shadow:0 0 0 3px rgba(79,140,255,.25)}
     .input-wrap input[type="password"], .input-wrap input[type="text"]{padding-right:3rem}
 
+    /* Email combo */
+    .email-combo{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+    .email-combo input[name="email_local"]{flex:1;min-width:0}
+    .email-at{color:var(--muted);font-size:1.1rem;font-weight:600;flex-shrink:0}
+    .email-domain-select{flex:1;min-width:0;padding:.9rem .75rem;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;appearance:auto}
+    .email-domain-select:focus{outline:2px solid transparent;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,140,255,.25)}
+    .email-custom-input{flex:1;min-width:0;margin-top:.4rem;width:100%}
+
     /* Phase indicators */
     .phase{display:none}
     .phase.active{display:block}
@@ -213,6 +221,19 @@
     .confirmation-text strong{color:var(--text);display:block;font-size:1.1rem;margin-bottom:.5rem}
     .resend-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;cursor:pointer;background:none;border:none;font:inherit;font-size:.95rem}
     .resend-link:hover{color:var(--accent)}
+
+    /* Open email provider button */
+    .open-email-btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+      padding:.85rem 1.5rem;border-radius:14px;border:none;cursor:pointer;
+      font-size:1rem;font-weight:600;color:#fff;
+      background:linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow:var(--shadow);
+      transition:background .2s var(--ease), transform .15s var(--ease);
+      text-decoration:none;
+    }
+    .open-email-btn:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700));transform:translateY(-1px)}
+    .open-email-btn svg{width:20px;height:20px;flex-shrink:0}
   </style>
 </head>
 <body>
@@ -264,33 +285,36 @@
         <form id="form-info" novalidate>
           <div class="grid">
             <div>
-              <label for="reg-name">Name</label>
+              <label for="reg-email-local">Email</label>
+              <div class="email-combo">
+                <input id="reg-email-local" name="email_local" type="text" placeholder="yourname" autocomplete="email" required />
+                <span class="email-at">@</span>
+                <select id="reg-email-domain" class="email-domain-select">
+                  <option value="gmail.com">gmail.com</option>
+                  <option value="yahoo.com">yahoo.com</option>
+                  <option value="hotmail.com">hotmail.com</option>
+                  <option value="outlook.com">outlook.com</option>
+                  <option value="aol.com">aol.com</option>
+                  <option value="comcast.net">comcast.net</option>
+                  <option value="icloud.com">icloud.com</option>
+                  <option value="custom">Other...</option>
+                </select>
+                <input id="reg-email-custom" name="email_custom" type="text" placeholder="yourdomain.com" class="email-custom-input" style="display:none" />
+              </div>
+            </div>
+
+            <div>
+              <label for="reg-name">Name (Initials)</label>
               <div class="input-wrap">
                 <input id="reg-name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
               </div>
             </div>
 
-            <div class="row">
-              <div>
-                <label for="reg-pass">Password</label>
-                <div class="input-wrap">
-                  <input id="reg-pass" name="password" type="password" placeholder="Min 8 characters" minlength="8" autocomplete="new-password" required />
-                  <button type="button" class="toggle" aria-label="Show password" data-target="reg-pass">&#x1F441;</button>
-                </div>
-              </div>
-              <div>
-                <label for="reg-confirm">Confirm Password</label>
-                <div class="input-wrap">
-                  <input id="reg-confirm" name="confirm" type="password" placeholder="Re-enter password" minlength="8" autocomplete="new-password" required />
-                  <button type="button" class="toggle" aria-label="Show password" data-target="reg-confirm">&#x1F441;</button>
-                </div>
-              </div>
-            </div>
-
             <div>
-              <label for="reg-email">Email</label>
+              <label for="reg-pass">Password</label>
               <div class="input-wrap">
-                <input id="reg-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+                <input id="reg-pass" name="password" type="password" placeholder="Min 8 characters" minlength="8" autocomplete="new-password" required />
+                <button type="button" class="toggle" aria-label="Show password" data-target="reg-pass">&#x1F441;</button>
               </div>
             </div>
           </div>
@@ -309,7 +333,13 @@
           <strong>An email has been sent to confirm your account!</strong>
           Click the link in the email to verify your account and get started.
         </div>
-        <div style="text-align:center; margin-top:1.25rem;">
+        <div id="open-email-wrap" style="text-align:center; margin-top:1.25rem; display:none;">
+          <a id="open-email-btn" class="open-email-btn" href="#" target="_blank" rel="noopener">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <span id="open-email-label">Open Email</span>
+          </a>
+        </div>
+        <div style="text-align:center; margin-top:.75rem;">
           <button class="resend-link" type="button" id="resend-btn">Resend verification email</button>
         </div>
         <p id="msg-sent" class="msg" role="status" aria-live="polite" style="text-align:center"></p>
@@ -367,12 +397,62 @@
       });
     }
 
+    // Email domain dropdown toggle
+    var domainSelect = document.getElementById('reg-email-domain');
+    var customInput = document.getElementById('reg-email-custom');
+    if (domainSelect && customInput) {
+      domainSelect.addEventListener('change', function() {
+        if (domainSelect.value === 'custom') {
+          customInput.style.display = '';
+          customInput.focus();
+        } else {
+          customInput.style.display = 'none';
+          customInput.value = '';
+        }
+      });
+    }
+
+    // Email provider URLs for quick-open button
+    var EMAIL_PROVIDERS = {
+      'gmail.com':    { label: 'Open Gmail',       url: 'https://mail.google.com/mail/u/0/#inbox' },
+      'yahoo.com':    { label: 'Open Yahoo Mail',  url: 'https://mail.yahoo.com' },
+      'hotmail.com':  { label: 'Open Outlook',     url: 'https://outlook.live.com' },
+      'outlook.com':  { label: 'Open Outlook',     url: 'https://outlook.live.com' },
+      'aol.com':      { label: 'Open AOL Mail',    url: 'https://mail.aol.com' },
+      'icloud.com':   { label: 'Open iCloud Mail', url: 'https://www.icloud.com/mail' },
+      'comcast.net':  { label: 'Open Xfinity Mail',url: 'https://connect.xfinity.com/appsuite/' },
+      'proton.me':    { label: 'Open Proton Mail',  url: 'https://mail.proton.me' },
+      'protonmail.com':{ label: 'Open Proton Mail', url: 'https://mail.proton.me' },
+    };
+
+    function showEmailProviderLink(emailDomain) {
+      var wrap = document.getElementById('open-email-wrap');
+      var btn = document.getElementById('open-email-btn');
+      var label = document.getElementById('open-email-label');
+      if (!wrap || !btn || !label) return;
+
+      var domain = (emailDomain || '').toLowerCase().trim();
+      var provider = EMAIL_PROVIDERS[domain];
+      if (provider) {
+        label.textContent = provider.label;
+        btn.href = provider.url;
+        wrap.style.display = '';
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+
     // Phase navigation helper
     function showPhase(phaseName) {
       document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
       document.getElementById('phase-' + phaseName).classList.add('active');
+      // Hide title, subtitle, and footers after leaving first phase
       if (phaseName !== 'info') {
+        var title = document.getElementById('reg-title');
+        var lead = document.getElementById('reg-lead');
         var footers = document.getElementById('auth-footers');
+        if (title) title.style.display = 'none';
+        if (lead) lead.style.display = 'none';
         if (footers) footers.style.display = 'none';
       }
     }
@@ -417,11 +497,31 @@
       msgInfo.className = 'msg';
       msgInfo.textContent = '';
 
+      // Build email from local + domain
+      const emailLocal = document.getElementById('reg-email-local').value.trim();
+      const domainSel = document.getElementById('reg-email-domain');
+      const customDomain = document.getElementById('reg-email-custom').value.trim();
+      const domain = domainSel.value === 'custom' ? customDomain : domainSel.value;
+      const email = emailLocal && domain ? (emailLocal + '@' + domain) : '';
+
       const name = document.getElementById('reg-name').value.trim();
       const pw = document.getElementById('reg-pass').value;
-      const cf = document.getElementById('reg-confirm').value;
-      const email = document.getElementById('reg-email').value.trim();
 
+      if (!emailLocal) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Please enter your email.';
+        return;
+      }
+      if (domainSel.value === 'custom' && !customDomain) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Please enter your email domain.';
+        return;
+      }
+      if (!email || !isValidEmail(email)) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Please enter a valid email address.';
+        return;
+      }
       if (!name) {
         msgInfo.className = 'msg err';
         msgInfo.textContent = 'Please enter your name.';
@@ -430,16 +530,6 @@
       if (!pw || pw.length < 8) {
         msgInfo.className = 'msg err';
         msgInfo.textContent = 'Password must be at least 8 characters.';
-        return;
-      }
-      if (pw !== cf) {
-        msgInfo.className = 'msg err';
-        msgInfo.textContent = 'Passwords do not match.';
-        return;
-      }
-      if (!email || !isValidEmail(email)) {
-        msgInfo.className = 'msg err';
-        msgInfo.textContent = 'Please enter a valid email address.';
         return;
       }
 
@@ -455,7 +545,7 @@
         createdUser = userCredential.user;
 
         const actionCodeSettings = {
-          url: window.location.origin + '/home.html',
+          url: 'https://medtracker-8c467.web.app/home.html',
           handleCodeInApp: false
         };
         await sendEmailVerification(userCredential.user, actionCodeSettings);
@@ -473,6 +563,9 @@
         localStorage.setItem('userId', userId);
         localStorage.setItem('userEmail', email);
 
+        // Show confirmation phase with email provider link
+        const emailDomain = domainSel.value === 'custom' ? customDomain : domainSel.value;
+        showEmailProviderLink(emailDomain);
         showPhase('sent');
 
       } catch (error) {
@@ -507,7 +600,7 @@
 
       try {
         const actionCodeSettings = {
-          url: window.location.origin + '/home.html',
+          url: 'https://medtracker-8c467.web.app/home.html',
           handleCodeInApp: false
         };
         await sendEmailVerification(createdUser, actionCodeSettings);

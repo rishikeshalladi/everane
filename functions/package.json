@@ -1,6 +1,6 @@
 {
   "name": "medtracker-functions",
-  "description": "Cloud Functions for MedTracker medication reminders",
+  "description": "Cloud Functions for Everane medication reminders",
   "scripts": {
     "lint": "echo 'No linting configured'",
     "serve": "firebase emulators:start --only functions",

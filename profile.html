@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MedTracker – Profile</title>
+  <title>Everane – Profile</title>
   <link rel="stylesheet" href="styles.css">
   <style>
     :root {
@@ -229,15 +229,18 @@
     .card p { color: var(--muted); margin: 0; }
     .card strong { color: var(--text); }
 
-    .profile-container { max-width: 95%; margin: 0 auto; padding: 1rem; }
+    .profile-container { max-width: 95%; margin: 0 auto; padding: 0.5rem; }
 
     .profile-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 2rem; padding: 1rem; background: var(--surface); border-radius: 12px;
+      margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--surface); border-radius: 12px;
       box-shadow: var(--shadow); border: 1px solid var(--border);
     }
 
     .profile-title { font-size: 1.5rem; font-weight: bold; color: var(--text); margin: 0; }
+
+    .profile-header-btns { display: flex; gap: 0.5rem; align-items: center; }
+    .profile-header-btns .btn { font-size: 0.85rem; padding: 0.5rem 1rem; }
 
     .help-question-btn {
       position: fixed;
@@ -270,17 +273,15 @@
       transform: scale(1.05) rotate(0deg);
     }
 
-    .profile-content { margin-top: 2rem; }
+    .profile-content { margin-top: 0.5rem; }
 
-    .profile-card { background: var(--surface); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); position: relative; border: 1px solid var(--border); }
+    .profile-card { background: var(--surface); padding: 1rem 1.25rem; margin-bottom: 0; border-radius: var(--radius); box-shadow: var(--shadow); position: relative; border: 1px solid var(--border); }
 
-    .profile-card h2 { margin-top: 0; font-weight: 700; color: var(--text); font-size: 1.2rem; margin-bottom: 1rem; }
+    .profile-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 1rem; }
 
-    .profile-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 1.5rem; }
+    .form-group { margin-bottom: 0.5rem; }
 
-    .form-group { margin-bottom: 1rem; }
-
-    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text); }
+    .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; color: var(--text); }
 
     .form-group input,
     .form-group select,
@@ -343,7 +344,7 @@
       justify-content: center;
     }
 
-    .actions { margin-top: 2rem; display: flex; justify-content: flex-end; }
+    .actions { margin-top: 1rem; display: flex; justify-content: flex-end; }
 
     /* buttons */
     .btn {
@@ -479,6 +480,14 @@
     }
     .notification-selected-summary strong { color: var(--text); font-weight: 600; }
 
+    /* Desktop: fit to screen, no scrolling */
+    @media (min-width: 901px) {
+      html, body { overflow: hidden; height: 100vh; }
+      .content { height: 100vh; overflow: hidden; padding-block: 1rem; }
+      .profile-container { max-width: 95%; }
+      .profile-form { grid-template-columns: repeat(3, 1fr); }
+    }
+
     /* Error message styling - just text, no box */
     .error-message { 
       color: var(--danger); 
@@ -532,9 +541,6 @@
     }
 
     .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
-
-    /* Reduce spacing between allergies and conditions */
-    .health-info-section .form-group:first-child { margin-bottom: 0.5rem; }
 
     /* Toast (bottom-right) */
     .toast-container { position: fixed; right: 1rem; bottom: 1rem; display: grid; gap: 0.5rem; z-index: 1100; }
@@ -591,13 +597,16 @@
       
       .profile-header {
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.5rem;
         padding: 0.75rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
         align-items: flex-start;
       }
-      
+
       .profile-title { font-size: 1.25rem; }
+
+      .profile-header-btns { width: 100%; }
+      .profile-header-btns .btn { flex: 1; font-size: 0.8rem; padding: 0.45rem 0.75rem; }
       
       .btn-group {
         width: 100%;
@@ -742,11 +751,14 @@
     <div class="profile-container">
       <div class="profile-header">
         <h1 class="profile-title">Your Profile</h1>
+        <div class="profile-header-btns">
+          <button type="button" id="header-save-btn" class="btn btn-primary">Save Changes</button>
+          <button type="button" id="header-sign-out-btn" class="btn btn-danger">Sign Out</button>
+        </div>
       </div>
 
       <div class="profile-content">
         <div class="profile-card">
-          <h2>Account Information</h2>
           <form id="profile-form" novalidate>
             <div class="profile-form">
               <div class="form-group">
@@ -759,10 +771,6 @@
                 <input id="name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
                 <div id="name-error" class="error-message"></div>
               </div>
-              <div class="form-group">
-                <label for="password">Password</label>
-                  <input id="password" name="password" type="password" placeholder="••••••••" readonly />
-                </div>
               <!-- Phone Number section -->
               <div class="form-group">
                 <label for="phone">Phone Number <small>(optional)</small></label>
@@ -772,75 +780,7 @@
                 </div>
                 <div id="phone-error" class="error-message"></div>
               </div>
-            </div>
-
-            <h2>Personal Information</h2>
-            <div class="profile-form">
-              <div class="form-group">
-                <label for="age">Age <small>(optional)</small></label>
-                <input id="age" name="age" type="number" min="0" max="130" inputmode="numeric" placeholder="e.g., 24" />
-              </div>
-              <div class="form-group">
-                <label for="gender">Gender <small>(optional)</small></label>
-                <select id="gender" name="gender">
-                  <option value="">Select…</option>
-                  <option>Female</option>
-                  <option>Male</option>
-                  <option>Non-binary</option>
-                  <option>Prefer not to say</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div class="form-group" id="gender-other-wrap" style="display:none">
-                <label for="gender-other">Please specify</label>
-                <input id="gender-other" name="gender_other" type="text" placeholder="Self-described" />
-              </div>
-            </div>
-
-            <h2>Health Information</h2>
-            <div class="profile-form health-info-section">
-              <div class="form-group full-width">
-                <label for="allergies">Allergies <small>(optional)</small></label>
-                <textarea id="allergies" name="allergies" placeholder="e.g., penicillin, peanuts"></textarea>
-              </div>
-              <div class="form-group full-width">
-                <label for="conditions">Conditions <small>(optional)</small></label>
-                <textarea id="conditions" name="conditions" placeholder="e.g., hypertension, asthma"></textarea>
-              </div>
-            </div>
-
-            <h2>Preferences</h2>
-            <div class="profile-form">
-              <div class="form-group">
-                <label for="unit">Units <small>(optional)</small></label>
-                <select id="unit" name="units">
-                  <option value="">Select…</option>
-                  <option>mg</option>
-                  <option>mL</option>
-                  <option>tablets</option>
-                  <option>drops</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="tz">Time zone <small>(auto)</small></label>
-                <input id="tz" name="timezone" type="text" readonly />
-              </div>
-            </div>
-
-            <h2>Emergency Contact</h2>
-            <div class="profile-form">
-              <div class="form-group">
-                <label for="emg-name">Emergency contact name <small>(optional)</small></label>
-                <input id="emg-name" name="emg_name" type="text" placeholder="Full name" />
-              </div>
-              <div class="form-group">
-                <label for="emg-phone">Emergency contact phone <small>(optional)</small></label>
-                <input id="emg-phone" name="emg_phone" type="tel" placeholder="(123) 456-7890" />
-                <div id="emg-phone-error" class="error-message"></div>
-              </div>
-            </div>
-
-            <div class="form-group full-width notification-reminders">
+              <div class="form-group notification-reminders">
               <label for="notification-dropdown-toggle">Notification reminders <small>(choose as many as you like)</small></label>
               <div class="notification-dropdown">
                 <button type="button" class="notification-dropdown-toggle" id="notification-dropdown-toggle" aria-haspopup="listbox" aria-expanded="false">
@@ -901,14 +841,27 @@
                 </div>
               </div>
               <div class="notification-selected-summary" id="notification-selected-summary">No reminders selected.</div>
+              </div>
+              <div class="form-group">
+                <label for="age">Age <small>(optional)</small></label>
+                <select id="age" name="age">
+                  <option value="">Select…</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="gender">Gender <small>(optional)</small></label>
+                <select id="gender" name="gender">
+                  <option value="">Select…</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="tz">Time zone <small>(auto)</small></label>
+                <input id="tz" name="timezone" type="text" readonly />
+              </div>
             </div>
 
-            <div class="actions">
-              <button type="submit" class="btn-primary">Save Changes</button>
-            </div>
-            <div class="actions" style="margin-top: 1rem;">
-              <button type="button" id="sign-out-btn" class="btn-danger" style="padding: 1rem 1.5rem; font-size: 1rem; font-weight: 600;">Sign Out</button>
-            </div>
             <p id="message" class="msg" role="status" aria-live="polite"></p>
           </form>
         </div>
@@ -1026,6 +979,17 @@
       });
       if (window.initNotificationReminders) {
         window.initNotificationReminders();
+      }
+
+      // Populate age dropdown (1-100)
+      const ageSel = document.getElementById('age');
+      if (ageSel) {
+        for (let i = 1; i <= 100; i++) {
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.textContent = i;
+          ageSel.appendChild(opt);
+        }
       }
     });
     
@@ -1163,13 +1127,6 @@
       updateNotificationSummary();
     };
 
-    // Gender other field
-    const gender = document.getElementById('gender');
-    const gWrap = document.getElementById('gender-other-wrap');
-    gender.addEventListener('change', () => {
-      gWrap.style.display = gender.value === 'other' ? 'block' : 'none';
-    });
-
     // Timezone auto-fill
     const tz = document.getElementById('tz');
     try { tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tz.value = ''; }
@@ -1193,7 +1150,6 @@
       const profileData = JSON.parse(localStorage.getItem('userProfile') || '{}');
       if (profileData.email) document.getElementById('email').value = profileData.email;
       if (profileData.name) document.getElementById('name').value = profileData.name;
-      if (profileData.password) document.getElementById('password').value = profileData.password;
       
       // Update phone display
       updatePhoneDisplay(profileData.phone);
@@ -1215,16 +1171,7 @@
       }
       if (profileData.gender) {
         document.getElementById('gender').value = profileData.gender;
-        if (profileData.gender === 'other' && profileData.gender_other) {
-          document.getElementById('gender-other-wrap').style.display = 'block';
-          document.getElementById('gender-other').value = profileData.gender_other;
-        }
       }
-      if (profileData.allergies) document.getElementById('allergies').value = profileData.allergies;
-      if (profileData.conditions) document.getElementById('conditions').value = profileData.conditions;
-      if (profileData.units) document.getElementById('unit').value = profileData.units;
-      if (profileData.emg_name) document.getElementById('emg-name').value = profileData.emg_name;
-      if (profileData.emg_phone) document.getElementById('emg-phone').value = profileData.emg_phone;
       if (window.setNotificationReminders) {
         window.setNotificationReminders(profileData.notification_reminders || []);
       }
@@ -1234,13 +1181,6 @@
     function validateEmail(email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(email);
-    }
-
-    function validatePhone(phone) {
-      if (!phone || phone.trim() === '') return true; // Phone is optional
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-      const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
-      return phoneRegex.test(cleanPhone);
     }
 
     function validateName(name) {
@@ -1281,10 +1221,7 @@
       
       const emailInput = document.getElementById('email');
       const nameInput = document.getElementById('name');
-      // Phone input is commented out, so don't access it
-      // const phoneInput = document.getElementById('phone');
-      const emgPhoneInput = document.getElementById('emg-phone');
-      
+
       if (!emailInput || !nameInput) {
         console.error('Required form elements not found');
         if (message) {
@@ -1293,13 +1230,10 @@
         }
         return;
       }
-      
+
       const email = emailInput.value.trim();
       const name = nameInput.value.trim();
-      // Phone is commented out, so set to empty string
-      const phone = '';
-      const emgPhone = emgPhoneInput ? emgPhoneInput.value.trim() : '';
-      
+
       let hasErrors = false;
 
       // Validate required fields
@@ -1316,16 +1250,6 @@
         hasErrors = true;
       } else if (!validateName(name)) {
         showValidationError('name-error', 'Name must be at least 2 characters long');
-        hasErrors = true;
-      }
-
-      if (phone && !validatePhone(phone)) {
-        showValidationError('phone-error', 'Please enter a valid phone number');
-        hasErrors = true;
-      }
-
-      if (emgPhone && !validatePhone(emgPhone)) {
-        showValidationError('emg-phone-error', 'Please enter a valid emergency contact phone number');
         hasErrors = true;
       }
 
@@ -1385,32 +1309,15 @@
 
     // Real-time validation - clear errors when user starts typing
     function setupRealTimeValidation() {
-      const emailInput = document.getElementById('email');
       const nameInput = document.getElementById('name');
-      // Phone input is commented out, so don't access it
-      // const phoneInput = document.getElementById('phone');
-      const emgPhoneInput = document.getElementById('emg-phone');
-
-      // Email is readonly, no need for input listener
 
       if (nameInput) {
-      nameInput.addEventListener('input', () => {
+        nameInput.addEventListener('input', () => {
           const nameError = document.getElementById('name-error');
           if (nameError && nameError.textContent) {
             nameError.textContent = '';
-        }
-      });
-        }
-
-      // Phone input is commented out, no need for input listener
-
-      if (emgPhoneInput) {
-      emgPhoneInput.addEventListener('input', () => {
-          const emgPhoneError = document.getElementById('emg-phone-error');
-          if (emgPhoneError && emgPhoneError.textContent) {
-            emgPhoneError.textContent = '';
-        }
-      });
+          }
+        });
       }
     }
 
@@ -1524,9 +1431,17 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Setup sign out button
+    // Setup header buttons
     document.addEventListener('DOMContentLoaded', () => {
-      const signOutBtn = document.getElementById('sign-out-btn');
+      // Header save button triggers form submit
+      const headerSaveBtn = document.getElementById('header-save-btn');
+      if (headerSaveBtn) {
+        headerSaveBtn.addEventListener('click', () => {
+          document.getElementById('profile-form').requestSubmit();
+        });
+      }
+
+      const signOutBtn = document.getElementById('header-sign-out-btn');
       if (signOutBtn) {
         signOutBtn.addEventListener('click', async () => {
           try {
@@ -1570,10 +1485,8 @@
           if (userDoc.exists()) {
             const profileData = userDoc.data();
             
-            // Update localStorage with Firebase data + preserve password
-            const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-            const mergedProfile = {...profileData, password: currentProfile.password};
-            localStorage.setItem('userProfile', JSON.stringify(mergedProfile));
+            // Update localStorage with Firebase data
+            localStorage.setItem('userProfile', JSON.stringify(profileData));
             localStorage.setItem('userId', user.uid);
             localStorage.setItem('userEmail', profileData.email);
             
@@ -1659,10 +1572,7 @@
       
       const emailInput = document.getElementById('email');
       const nameInput = document.getElementById('name');
-      // Phone input is commented out, so don't try to access it
-      // const phoneInput = document.getElementById('phone');
-      const emgPhoneInput = document.getElementById('emg-phone');
-      
+
       if (!emailInput || !nameInput) {
         console.error('Required form elements not found');
         if (message) {
@@ -1671,16 +1581,13 @@
         }
         return;
       }
-      
+
       const email = emailInput.value.trim();
       const name = nameInput.value.trim();
-      // Phone is commented out, so set to empty string
-      const phone = '';
-      const emgPhone = emgPhoneInput ? emgPhoneInput.value.trim() : '';
-      
+
       let hasErrors = false;
 
-      // Validate required fields using original functions
+      // Validate required fields
       if (!email) {
         if (window.showValidationError) {
           window.showValidationError('email-error', 'Email is required');
@@ -1701,21 +1608,6 @@
       } else if (window.validateName && !window.validateName(name)) {
         if (window.showValidationError) {
           window.showValidationError('name-error', 'Name must be at least 2 characters long');
-        }
-        hasErrors = true;
-      }
-
-      // Phone validation skipped - phone input is commented out
-      // if (phone && window.validatePhone && !window.validatePhone(phone)) {
-      //   if (window.showValidationError) {
-      //     window.showValidationError('phone-error', 'Please enter a valid phone number');
-      //   }
-      //   hasErrors = true;
-      // }
-
-      if (emgPhone && window.validatePhone && !window.validatePhone(emgPhone)) {
-        if (window.showValidationError) {
-          window.showValidationError('emg-phone-error', 'Please enter a valid emergency contact phone number');
         }
         hasErrors = true;
       }
@@ -1791,17 +1683,13 @@
 
         const user = auth.currentUser;
         if (user) {
-          // Save to Firestore (without password)
+          // Save to Firestore
           const userDocRef = doc(db, "users", user.uid);
-          const firestoreData = {...profileData};
-          delete firestoreData.password;
-          
+
           // Use setDoc instead of updateDoc to create document if it doesn't exist
-          await setDoc(userDocRef, firestoreData, { merge: true });
-          
-          // Also update localStorage with password preserved
-          const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-          profileData.password = currentProfile.password;
+          await setDoc(userDocRef, profileData, { merge: true });
+
+          // Update localStorage
           localStorage.setItem('userProfile', JSON.stringify(profileData));
           
           if (message) {
@@ -2359,7 +2247,7 @@
   <div id="help-modal" class="help-modal">
     <div class="help-modal-content">
       <button class="help-modal-close" id="close-help-modal">×</button>
-      <h2 class="help-modal-title">How to Use MedTracker</h2>
+      <h2 class="help-modal-title">How to Use Everane</h2>
       <div class="help-modal-slideshow">
         <div class="slideshow-container">
           <div class="slide active" data-slide="0">

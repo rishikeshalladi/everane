@@ -219,15 +219,10 @@
         <div class="row">
           <button class="btn btn-primary" id="start-btn" type="button">Start AI Voice</button>
           <button class="btn btn-secondary" id="mute-btn" type="button" disabled>Mute</button>
-          <button class="btn btn-danger" id="stop-btn" type="button" disabled>Stop</button>
         </div>
 
         <div class="status" id="status">Not started.</div>
         <audio id="ai-audio" autoplay></audio>
-        <div class="hint">
-          Tip: If the AI doesn't respond, check your browser mic permissions and confirm your OpenAI key is configured on Firebase Functions.
-          Once the AI finishes collecting all fields, it will automatically save and redirect you to the form.
-        </div>
 
         <div class="log" id="log"></div>
       </div>
@@ -263,7 +258,6 @@
       log: document.getElementById('log'),
       start: document.getElementById('start-btn'),
       mute: document.getElementById('mute-btn'),
-      stop: document.getElementById('stop-btn'),
       audio: document.getElementById('ai-audio'),
     };
 
@@ -302,16 +296,17 @@
       const normalized = normalizeDraft(obj);
       if (!String(normalized.name || "").trim()) issues.push("name");
       if (!String(normalized.dosage || "").trim()) issues.push("dosage");
-      if (!Array.isArray(normalized.schedules) || normalized.schedules.length === 0) issues.push("schedules");
+      if (!Array.isArray(normalized.schedule) || normalized.schedule.length === 0) issues.push("schedule");
       else {
-        // Validate each schedule entry
-        for (const s of normalized.schedules) {
-          if (!s.type || (s.type !== "WEEKLY" && s.type !== "INTERVAL")) { issues.push("schedules"); break; }
-          if (!s.time || !/^\d{2}:\d{2}$/.test(s.time)) { issues.push("schedules"); break; }
-          if (s.type === "WEEKLY" && (typeof s.weekday !== "number" || s.weekday < 0 || s.weekday > 6)) { issues.push("schedules"); break; }
-          if (s.type === "INTERVAL" && (!s.interval || !s.interval.unit || !s.interval.value)) { issues.push("schedules"); break; }
+        for (const s of normalized.schedule) {
+          const t = (s.type || "").toLowerCase();
+          if (t !== "weekly" && t !== "interval") { issues.push("schedule"); break; }
+          if (!Array.isArray(s.times) || s.times.length === 0) { issues.push("schedule"); break; }
+          if (t === "weekly" && (!Array.isArray(s.days) || s.days.length === 0)) { issues.push("schedule"); break; }
+          if (t === "interval" && (!s.every || !s.unit)) { issues.push("schedule"); break; }
         }
       }
+      if (!String(normalized.startDate || "").trim()) issues.push("startDate");
       if (!(normalized.endDate === null || normalized.endDate === undefined || (typeof normalized.endDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(normalized.endDate)))) issues.push("endDate");
       const allowedReminder = new Set(["None", "Email", "SMS", "Email + SMS"]);
       if (typeof normalized.reminder !== "string" || !allowedReminder.has(normalized.reminder)) issues.push("reminder");
@@ -417,6 +412,12 @@
         else if (!rem) normalized.reminder = "None";
       }
 
+      // Normalize startDate
+      if (typeof normalized.startDate === "string") {
+        const sd = normalizeDateString(normalized.startDate);
+        if (sd) normalized.startDate = sd;
+      }
+
       // Normalize endDate
       if (typeof normalized.endDate === "string") {
         const end = normalized.endDate.trim().toLowerCase();
@@ -427,70 +428,52 @@
         if (endNorm) normalized.endDate = endNorm;
       }
 
-      // Normalize schedules array
-      if (Array.isArray(normalized.schedules)) {
-        normalized.schedules = normalized.schedules.map(s => {
-          const schedule = { ...s };
-          // Normalize time
-          if (schedule.time) {
-            const normTime = normalizeTimeString(schedule.time);
-            if (normTime) schedule.time = normTime;
+      // Normalize schedule array (new format: { type, days[], times[], every, unit })
+      if (Array.isArray(normalized.schedule)) {
+        normalized.schedule = normalized.schedule.map(s => {
+          const entry = { ...s };
+          // Normalize type casing
+          if (entry.type) entry.type = entry.type.toLowerCase();
+          // Normalize times array
+          if (Array.isArray(entry.times)) {
+            entry.times = entry.times.map(t => normalizeTimeString(t)).filter(Boolean);
           }
-          // Normalize dates within schedule
-          if (schedule.startDate) {
-            const sd = normalizeDateString(schedule.startDate);
-            if (sd) schedule.startDate = sd;
+          // Normalize days for weekly
+          if (entry.type === "weekly" && Array.isArray(entry.days)) {
+            entry.days = entry.days.map(d => normalizeDayToken(d) || d);
           }
-          if (schedule.endDate && typeof schedule.endDate === "string") {
-            const ed = schedule.endDate.trim().toLowerCase();
-            if (!ed || ed === "none" || ed === "null") schedule.endDate = null;
-            else {
-              const edNorm = normalizeDateString(schedule.endDate);
-              if (edNorm) schedule.endDate = edNorm;
-            }
-          }
-          // Add scheduleId if missing
-          if (!schedule.scheduleId) {
-            schedule.scheduleId = 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-          }
-          // Default everyWeeks for WEEKLY
-          if (schedule.type === "WEEKLY" && !schedule.everyWeeks) schedule.everyWeeks = 1;
-          // Build anchorDateTime for INTERVAL if missing
-          if (schedule.type === "INTERVAL" && !schedule.anchorDateTime && schedule.startDate && schedule.time) {
-            schedule.anchorDateTime = schedule.startDate + "T" + schedule.time + ":00";
-          }
-          return schedule;
+          return entry;
         });
       }
 
-      // Legacy fallback: if AI returned old days/times format, convert to schedules
-      if ((!Array.isArray(normalized.schedules) || normalized.schedules.length === 0) && (normalized.days || normalized.times)) {
-        const schedules = [];
-        let days = normalized.days;
-        if (typeof days === "string") days = expandDaysFromString(days);
-        if (Array.isArray(days) && days.length > 0) {
-          const times = Array.isArray(normalized.times) && normalized.times.length > 0
-            ? normalized.times.map(t => normalizeTimeString(t)).filter(Boolean)
-            : ["09:00"]; // fallback time
-          const dayNameToNum = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
-          for (const day of days) {
-            const dayNorm = normalizeDayToken(day);
-            const weekday = dayNorm ? dayNameToNum[dayNorm] : undefined;
-            if (weekday === undefined) continue;
-            for (const time of times) {
-              schedules.push({
-                scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                type: "WEEKLY",
-                weekday: weekday,
-                time: time,
-                everyWeeks: 1,
-                startDate: normalized.startDate || new Date().toISOString().split('T')[0],
-                endDate: normalized.endDate || null
-              });
-            }
+      // Legacy fallback: if AI returned old schedules[] format (with weekday/time), convert to new schedule[]
+      if ((!Array.isArray(normalized.schedule) || normalized.schedule.length === 0) && Array.isArray(normalized.schedules)) {
+        const newSchedule = [];
+        const weeklyGroup = {};
+        for (const s of normalized.schedules) {
+          if (s.type === "WEEKLY" || s.type === "weekly") {
+            const dayNum = s.weekday;
+            const numToName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = numToName[dayNum] || 'Monday';
+            const time = normalizeTimeString(s.time) || s.time;
+            const key = time; // group by time
+            if (!weeklyGroup[key]) weeklyGroup[key] = { type: "weekly", days: [], times: [time] };
+            if (!weeklyGroup[key].days.includes(dayName)) weeklyGroup[key].days.push(dayName);
+          } else if (s.type === "INTERVAL" || s.type === "interval") {
+            const time = normalizeTimeString(s.time) || s.time;
+            newSchedule.push({
+              type: "interval",
+              every: s.interval?.value || 1,
+              unit: (s.interval?.unit || "days").toLowerCase() + "s",
+              times: time ? [time] : [],
+            });
           }
         }
-        if (schedules.length > 0) normalized.schedules = schedules;
+        for (const entry of Object.values(weeklyGroup)) {
+          newSchedule.push(entry);
+        }
+        if (newSchedule.length > 0) normalized.schedule = newSchedule;
+        delete normalized.schedules;
       }
 
       return normalized;
@@ -500,15 +483,16 @@
       const rows = [
         { field: "name", value: draft?.name ?? "" },
         { field: "dosage", value: draft?.dosage ?? "" },
-        { field: "schedules", value: Array.isArray(draft?.schedules) ? draft.schedules.length + " schedule(s)" : "none" },
+        { field: "schedule", value: Array.isArray(draft?.schedule) ? draft.schedule.length + " entry(ies)" : "none" },
+        { field: "startDate", value: draft?.startDate ?? "none" },
         { field: "endDate", value: draft?.endDate ?? "none" },
         { field: "reminder", value: draft?.reminder ?? "" },
       ];
       console.log("[AI Voice] Final medication draft:");
       console.table(rows);
-      if (Array.isArray(draft?.schedules)) {
-        console.log("[AI Voice] Schedules detail:");
-        console.table(draft.schedules);
+      if (Array.isArray(draft?.schedule)) {
+        console.log("[AI Voice] Schedule detail:");
+        console.table(draft.schedule);
       }
       console.log("[AI Voice] Final JSON object:", draft);
     }
@@ -558,6 +542,68 @@
       }, 150);
     }
 
+    /**
+     * Convert the new AI voice format (schedule[] with days[], times[]) into the
+     * internal format that add-medication.html expects (schedules[] with individual
+     * weekday/time entries for WEEKLY, or interval{} for INTERVAL).
+     */
+    function convertToInternalFormat(normalized) {
+      const internal = {
+        name: normalized.name,
+        dosage: normalized.dosage,
+        endDate: normalized.endDate,
+        reminder: normalized.reminder,
+        schedules: [],
+      };
+
+      const dayNameToNum = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+      const startDate = normalized.startDate || new Date().toISOString().split('T')[0];
+
+      if (!Array.isArray(normalized.schedule)) return internal;
+
+      for (const entry of normalized.schedule) {
+        const type = (entry.type || "").toLowerCase();
+        const times = Array.isArray(entry.times) ? entry.times : [];
+
+        if (type === "weekly") {
+          const days = Array.isArray(entry.days) ? entry.days : [];
+          for (const day of days) {
+            const weekday = dayNameToNum[day];
+            if (weekday === undefined) continue;
+            for (const time of times) {
+              internal.schedules.push({
+                scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                type: "WEEKLY",
+                weekday: weekday,
+                time: time,
+                everyWeeks: 1,
+                startDate: startDate,
+                endDate: normalized.endDate || null,
+              });
+            }
+          }
+        } else if (type === "interval") {
+          const unitMap = { hours: "HOUR", hour: "HOUR", days: "DAY", day: "DAY", weeks: "WEEK", week: "WEEK" };
+          const unit = unitMap[(entry.unit || "").toLowerCase()] || "DAY";
+          const value = entry.every || 1;
+          const time = times[0] || "09:00";
+          const anchorDateTime = startDate + "T" + time + ":00";
+
+          internal.schedules.push({
+            scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            type: "INTERVAL",
+            time: time,
+            interval: { unit, value },
+            anchorDateTime: anchorDateTime,
+            startDate: startDate,
+            endDate: normalized.endDate || null,
+          });
+        }
+      }
+
+      return internal;
+    }
+
     async function handleMedicationComplete(draft) {
       if (state.finalized) return true;
       const normalized = normalizeDraft(draft);
@@ -573,7 +619,11 @@
 
       setStatus("Done. Saving and opening the form…");
       printFinalDraftToConsole(normalized);
-      await saveDraftToFirebase(normalized);
+
+      // Convert to internal format for add-medication.html
+      const internalDraft = convertToInternalFormat(normalized);
+      console.log("[AI Voice] Internal format for form:", internalDraft);
+      await saveDraftToFirebase(internalDraft);
       redirectToForm();
       return true;
     }
@@ -748,6 +798,8 @@
       "so here's",
       // The system prompt tells the AI to say this exact phrase before calling the tool.
       // If we see it as TEXT instead of a tool call, the tool call didn't fire.
+      "finalized",
+      "add your bottles",
       "finalizing",
       "now you will be redirected",
       "you will be redirected",
@@ -784,22 +836,43 @@
 
     /**
      * Try to extract a medication draft JSON object from the AI's text output.
-     * The AI sometimes prints the draft as text instead of calling the tool.
+     * The AI sometimes prints JSON as text instead of calling the tool.
+     * Handles alternate field names the AI might use.
      */
     function tryExtractDraftFromText(text) {
       if (!text || typeof text !== "string") return null;
-      // Look for a JSON object containing "name" key (medication draft signature)
-      const jsonMatch = text.match(/\{[\s\S]*?"name"\s*:\s*"[\s\S]*?\}/);
+      // Look for any JSON object in the text
+      const jsonMatch = text.match(/\{[\s\S]*?\}/);
       if (!jsonMatch) return null;
       const parsed = safeJsonParse(jsonMatch[0]);
       if (!parsed || typeof parsed !== "object") return null;
-      // Must have at least name + dosage to be a medication draft
-      if (!parsed.name || !parsed.dosage) return null;
-      return parsed;
+      // Normalize alternate field names the AI might use
+      const draft = {};
+      draft.name = parsed.name || parsed.medication_name || parsed.medication || "";
+      draft.dosage = parsed.dosage || parsed.dose || "";
+      draft.reminder = parsed.reminder || parsed.reminders || "None";
+      draft.startDate = parsed.startDate || parsed.start_date || new Date().toISOString().split('T')[0];
+      draft.endDate = parsed.endDate || parsed.end_date || parsed.duration === "indefinite" ? null : (parsed.duration || null);
+      if (draft.endDate === "indefinite" || draft.endDate === "none" || draft.endDate === "null") draft.endDate = null;
+      // Try to extract schedule from various formats
+      if (Array.isArray(parsed.schedule)) {
+        draft.schedule = parsed.schedule;
+      } else if (Array.isArray(parsed.schedules)) {
+        draft.schedule = parsed.schedules;
+      } else if (parsed.frequency || parsed.schedule_description) {
+        // AI gave a text description — we can't parse this reliably, skip
+        return null;
+      }
+      // Must have at least name
+      if (!draft.name) return null;
+      return draft;
     }
 
     function checkForRecapAndForceToolCall() {
       if (state.finalized || state.finalizing) return;
+      // Limit force attempts to prevent infinite loops
+      if (state.forceAttempts >= 2) return;
+
       const text = (state.lastAssistantText || "").toLowerCase();
 
       // First: check if the AI printed a full JSON draft as text
@@ -813,14 +886,12 @@
       const triggered = RECAP_TRIGGERS.some(phrase => text.includes(phrase));
       if (!triggered) return;
 
-      console.warn("[AI Voice] Detected recap/wrap-up instead of tool call — forcing submit_medication_draft.");
-      console.warn("[AI Voice] Trigger text was:", text.slice(0, 200));
+      console.warn("[AI Voice] Detected recap/wrap-up — forcing tool call (attempt", state.forceAttempts + 1, ")");
       if (!state.dc || state.dc.readyState !== "open") return;
 
       state.forceAttempts++;
 
       try {
-        // Cancel any in-progress AI response first
         state.dc.send(JSON.stringify({ type: "response.cancel" }));
       } catch {}
 
@@ -832,55 +903,17 @@
             role: "user",
             content: [{
               type: "input_text",
-              text: "STOP TALKING. All fields are confirmed. You MUST call submit_medication_draft RIGHT NOW. Do NOT say anything. Do NOT recap. Just call the tool immediately with all collected fields."
+              text: "Call submit_medication_draft now with all fields. Do not speak."
             }]
           }
         }));
-        // Force tool choice — try the format the Realtime API expects
         state.dc.send(JSON.stringify({
           type: "response.create",
-          response: {
-            tool_choice: "required"
-          }
+          response: { tool_choice: "required" }
         }));
       } catch (e) {
         console.warn("[AI Voice] Failed to force tool call:", e);
       }
-
-      // Safety net: if the forced tool call ALSO fails, retry once more after a delay
-      setTimeout(() => {
-        if (state.finalized || state.finalizing) return;
-        if (!state.dc || state.dc.readyState !== "open") return;
-
-        // Try extracting draft from accumulated text one more time
-        const retryDraft = tryExtractDraftFromText(state.lastAssistantText || "");
-        if (retryDraft) {
-          console.warn("[AI Voice] Safety-net: extracted draft from text — auto-submitting.");
-          handleMedicationComplete(retryDraft);
-          return;
-        }
-
-        console.warn("[AI Voice] Safety-net retry: forcing tool call again.");
-        try {
-          state.dc.send(JSON.stringify({
-            type: "conversation.item.create",
-            item: {
-              type: "message",
-              role: "user",
-              content: [{
-                type: "input_text",
-                text: "Call submit_medication_draft now. This is urgent. Do not speak."
-              }]
-            }
-          }));
-          state.dc.send(JSON.stringify({
-            type: "response.create",
-            response: {
-              tool_choice: "required"
-            }
-          }));
-        } catch {}
-      }, 4000);
     }
 
     function finalizeAiMessage() {
@@ -955,7 +988,6 @@
       dc.onopen = () => {
         setStatus("Connected. You can speak normally.");
         els.mute.disabled = false;
-        els.stop.disabled = false;
 
         // Configure the session after connect (system prompt / behavior).
         try {
@@ -966,38 +998,37 @@
               tools: [{
                 type: "function",
                 name: "submit_medication_draft",
-                description: "Submit the completed medication draft with schedules array.",
+                description: "Submit the completed medication draft with schedule array.",
                 parameters: {
                   type: "object",
                   additionalProperties: false,
                   properties: {
                     name: { type: "string", description: "Medication name" },
-                    dosage: { type: "string", description: "Dosage as spoken, e.g. '2 pills', '1 tablet'" },
-                    schedules: {
+                    dosage: { type: "string", description: "Dosage as spoken, e.g. '2 pills', '1 tablet', 'half a pill'" },
+                    schedule: {
                       type: "array",
-                      description: "Array of schedule objects. Each schedule is either WEEKLY or INTERVAL type.",
+                      description: "Array of schedule entries. Each is either weekly or interval type.",
                       items: {
                         type: "object",
                         properties: {
-                          type: { type: "string", enum: ["WEEKLY", "INTERVAL"] },
-                          weekday: { type: "number", description: "0=Sunday,1=Monday,...6=Saturday. Required for WEEKLY." },
-                          time: { type: "string", description: "HH:MM in 24-hour format. REQUIRED for all schedules." },
-                          everyWeeks: { type: "number", description: "Every N weeks. Default 1. For WEEKLY only." },
-                          startDate: { type: "string", description: "YYYY-MM-DD start date" },
-                          endDate: { anyOf: [{ type: "string" }, { type: "null" }], description: "YYYY-MM-DD or null" },
-                          interval: {
-                            type: "object",
-                            description: "For INTERVAL type only.",
-                            properties: {
-                              unit: { type: "string", enum: ["HOUR", "DAY", "WEEK"] },
-                              value: { type: "number" }
-                            }
+                          type: { type: "string", enum: ["weekly", "interval"], description: "Schedule type" },
+                          days: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "Day names for weekly, e.g. ['Monday', 'Wednesday', 'Friday']"
                           },
-                          anchorDateTime: { type: "string", description: "ISO datetime for INTERVAL anchor, e.g. 2026-03-08T09:00:00" }
+                          times: {
+                            type: "array",
+                            items: { type: "string" },
+                            description: "Times in HH:MM 24-hour format, e.g. ['08:00', '20:00']"
+                          },
+                          every: { type: "number", description: "Interval value, e.g. 2 for 'every 2 days'" },
+                          unit: { type: "string", enum: ["hours", "days", "weeks"], description: "Interval unit" }
                         },
-                        required: ["type", "time"]
+                        required: ["type", "times"]
                       }
                     },
+                    startDate: { type: "string", description: "YYYY-MM-DD start date" },
                     endDate: {
                       anyOf: [
                         { type: "string", description: "YYYY-MM-DD" },
@@ -1006,105 +1037,107 @@
                     },
                     reminder: { type: "string", enum: ["None", "Email", "SMS", "Email + SMS"] }
                   },
-                  required: ["name", "dosage", "schedules", "endDate", "reminder"]
+                  required: ["name", "dosage", "schedule", "startDate", "endDate", "reminder"]
                 }
               }],
               tool_choice: "auto",
               instructions: `🔒 SYSTEM PROMPT — Everane Voice Assistant
 
 ⚠️ CRITICAL FINALIZATION RULE — READ THIS FIRST:
-Once ALL required fields are confirmed, you MUST call submit_medication_draft IMMEDIATELY.
-Do NOT recap or list the fields. Say ONLY: "Finalizing now." — then IMMEDIATELY call submit_medication_draft.
-NEVER speak after collecting the reminder preference. Just call the tool.
+Once ALL required fields are confirmed (including reminder preference), you MUST call submit_medication_draft IMMEDIATELY.
+Do NOT recap or list the fields. Say ONLY: "Finalized! Add your bottles in manually!" — then IMMEDIATELY call submit_medication_draft.
+NEVER speak anything else after collecting the reminder preference. Just say that line and call the tool.
 The tool call IS the finalization. You MUST call submit_medication_draft. This is non-negotiable.
+NEVER output JSON as text. ALWAYS use the submit_medication_draft tool function call.
 
-You are Everane Voice Assistant, a calm, friendly, and precise medication voice assistant. Your job is to conversationally help the user add a medication, then produce a structured medication draft with a schedules array.
+You are Everane Voice Assistant, a calm, friendly, and precise medical voice assistant. Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
 
 🌐 Language & Communication Rules
 - Speak and respond ONLY in English.
 - Use natural, spoken conversation (short sentences, friendly tone).
+- Sound like a helpful assistant, not a form.
+- Do NOT ramble. Do NOT use medical advice beyond data collection.
 - Ask only ONE question at a time.
-- Do NOT move to the next question until the current field is clearly answered.
+- Do NOT move to the next question until the current required field is clearly answered.
 - If the user gives silence, unclear audio, or an incomplete response, politely repeat the same question.
-- Never skip required fields. Do NOT ramble.
+- If a response is cut off or incomplete, restate the full question clearly before continuing.
+- Never skip required fields.
 
 🎯 Primary Goal
-Collect medication information accurately through conversation and output a structured draft with a schedules[] array.
-Never guess or assume values. Confirm ambiguous answers. Only finalize once all required fields are complete.
+Collect medication information accurately through conversation and output a single structured medication draft.
+You must: Ask for missing or unclear information. Never guess or assume values. Confirm ambiguous answers.
+Only finalize once required fields are complete. Do NOT move forward if a required field is still missing.
+If the user gives unrelated information, gently redirect back to the current required question.
 
-📦 SCHEDULE TYPES — VERY IMPORTANT
-There are TWO schedule types. You must determine which one applies based on what the user says:
-
-**WEEKLY** — Used when the user specifies particular days of the week.
-Examples: "every Monday at 6 AM", "Monday, Wednesday, Friday at 9 AM", "every day at 8 PM", "weekdays at noon"
-Each WEEKLY schedule has:
-- type: "WEEKLY"
-- weekday: 0-6 (0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday)
-- time: "HH:MM" (24-hour, REQUIRED)
-- everyWeeks: 1 (default, or higher if "every 2 weeks" etc.)
-- startDate: "YYYY-MM-DD"
-- endDate: "YYYY-MM-DD" or null
-
-If the user says "every day at 9 AM" → create 7 WEEKLY schedules, one for each weekday (0-6), all at "09:00".
-If the user says "Monday and Friday at 6 PM" → create 2 WEEKLY schedules: weekday 1 at "18:00" and weekday 5 at "18:00".
-If the user says "twice a day at 8 AM and 8 PM every day" → create 14 WEEKLY schedules: one for each day at "08:00" and one for each day at "20:00".
-
-**INTERVAL** — Used when the user specifies a repeating interval NOT tied to specific days.
-Examples: "every 4 days at 9 PM", "every 8 hours starting tomorrow", "every 2 weeks on Tuesdays at 10 AM"
-Each INTERVAL schedule has:
-- type: "INTERVAL"
-- time: "HH:MM" (24-hour, REQUIRED — the time of the first dose)
-- interval: { unit: "HOUR" | "DAY" | "WEEK", value: number }
-- anchorDateTime: "YYYY-MM-DDTHH:MM:00" (start date + time combined)
-- endDate: "YYYY-MM-DD" or null
-
-If the user says "every 4 days at 9 PM" → INTERVAL with interval: { unit: "DAY", value: 4 }, time: "21:00"
-If the user says "every 8 hours" → INTERVAL with interval: { unit: "HOUR", value: 8 }
-
-⏱️ TIME IS MANDATORY
-You MUST ask for a specific time for every schedule. Do NOT leave times flexible. If the user says "morning", ask "What exact time in the morning? For example, 8 AM?" Always convert to HH:MM 24-hour format.
-
-📦 Required Fields
-- name (string) — medication name
-- dosage (string) — as spoken, e.g. "2 pills", "1 tablet"
-- schedules (array) — one or more WEEKLY or INTERVAL schedule objects, each with a time
-- endDate (YYYY-MM-DD or null) — overall end date
+📦 Required Medication Fields (ALL REQUIRED)
+- name (string)
+- dosage (string — natural language allowed, e.g. "2 pills", "1 tablet", "half a pill")
+- schedule (array of one or more schedule entries — see Schedule Types below)
+- startDate (YYYY-MM-DD)
+- endDate (YYYY-MM-DD or null)
 - reminder (one of: None, Email, SMS, Email + SMS)
 
-⚠️ Do NOT convert or normalize dosage. Store it exactly as the user says it.
-You MUST explicitly ask for reminder preference. You MUST NOT finalize until reminder is answered.
+⚠️ Do NOT convert or normalize dosage. Store it exactly as the user says it, unless they correct themselves.
+⚠️ You MUST collect at least one complete schedule entry with exact times before finalizing.
+⚠️ You MUST explicitly ask for reminder preference. You MUST NOT finalize until reminder is clearly answered.
+
+🗓️ SCHEDULE TYPES — VERY IMPORTANT
+
+📅 WEEKLY Schedule — Used when the user specifies specific day(s) of the week and times.
+Examples:
+• "Every Monday at 5pm" → { "type": "weekly", "days": ["Monday"], "times": ["17:00"] }
+• "Every weekend at 6am and 3pm" → { "type": "weekly", "days": ["Saturday", "Sunday"], "times": ["06:00", "15:00"] }
+• "Monday and Thursday at 8am" → { "type": "weekly", "days": ["Monday", "Thursday"], "times": ["08:00"] }
+• "Weekdays at noon" → { "type": "weekly", "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "times": ["12:00"] }
+
+⏱️ INTERVAL Schedule — Used when the user specifies a repeating interval.
+Examples:
+• "Every 2 days at 4pm" → { "type": "interval", "every": 2, "unit": "days", "times": ["16:00"] }
+• "Every 3 hours" → { "type": "interval", "every": 3, "unit": "hours", "times": [] }
+  ⚠️ If no exact start time for hourly interval, ask: "What time should the first dose be?"
+• "Every week on Tuesday at 9am" → { "type": "interval", "every": 1, "unit": "weeks", "times": ["09:00"] }
+
+🔀 MIXED — User can combine multiple weekly and/or interval entries for a single medication.
+
+⚠️ After the user describes a schedule, ask: "Is that the only schedule, or would you like to add another?"
+⚠️ Times are REQUIRED for every schedule entry. If no exact times, ask for them.
+If the user says "morning" or "evening" without a clock time, ask: "What exact time is that? For example, 7am or 8:30am?"
 
 🗓️ Date Rules
-- Convert all dates into YYYY-MM-DD. Today is 2026-03-08.
-- "tomorrow" = 2026-03-09, "next year" = 2027, month + day without year = 2026.
+- Convert all dates into YYYY-MM-DD. Today is ${new Date().toISOString().split('T')[0]}.
+- "tomorrow" = next day, "next year" = 2027, month + day without year = current year.
 - "no end date" → endDate = null.
 - If a date is unclear, ASK a follow-up question. Never guess dates.
 
-🧠 Conversation Flow
-1. Medication name
-2. Dosage
-3. Schedule — ask "When do you take this medication?" Listen for patterns:
-   - If they say specific days → WEEKLY
-   - If they say "every X days/hours" → INTERVAL
+🧠 Conversation Flow (FOLLOW THIS EXACT ORDER)
+1. Medication name — ask: "Hi there! What's the name of the medication you'd like to add?"
+2. Dosage — ask: "What's the dosage?"
+3. Schedule — ask: "When do you take this medication?" Listen for patterns:
+   - If they say specific days → weekly
+   - If they say "every X days/hours" → interval
    - Ask for specific time(s) for each schedule entry
-4. Start date (default today if they say "starting now/today")
-5. End date (or "no end date")
-6. Reminder preference (Email, SMS, Both, or None)
+   - After each entry ask: "Is that the only schedule, or would you like to add another?"
+4. Start date — ask: "When would you like to start taking it?" (default today if they say "starting now/today")
+5. End date — ask: "And when should it end? Or is there no end date?"
+6. Reminder preference — YOU MUST ASK: "How would you like to be reminded? Email, text message, both, or none?"
+   ⚠️ THIS STEP IS MANDATORY. Do NOT skip it. Do NOT finalize without asking this.
 
-Ask one question at a time. Stay natural. Do not skip steps.
+Ask one question at a time. Stay natural. Do not skip steps. NEVER skip step 6.
 
 ALWAYS START WITH: "Hi there! What's the name of the medication you'd like to add?"
 
 ✅ Final Output
-Once ALL fields are confirmed, say only "Finalizing now." then IMMEDIATELY call submit_medication_draft.
-Do NOT print JSON. Do NOT recap. The LAST question is reminders. After the answer, call the tool.
+Once ALL fields are confirmed (name, dosage, schedule, startDate, endDate, reminder), say ONLY "Finalized! Add your bottles in manually!" then IMMEDIATELY call submit_medication_draft.
+Do NOT print JSON as text. Do NOT recap. The LAST question MUST be reminders. After the user answers the reminder question, say the finalization line and call the tool.
+You MUST ask "How would you like to be reminded? Email, text message, both, or none?" before finalizing.
 
 🚫 Restrictions
 - Do NOT assume defaults. Do NOT infer medical intent.
-- Do NOT finalize until reminder is answered.
+- Do NOT finalize until reminder is answered. ALWAYS ask for reminder preference.
 - Do NOT speak after calling the tool.
 - Do NOT recap or summarize. NEVER list back what was collected.
-- After reminder is answered, your ONLY action is to call submit_medication_draft.`
+- NEVER output JSON as text. Always use the submit_medication_draft tool.
+- After reminder is answered, say "Finalized! Add your bottles in manually!" then IMMEDIATELY call submit_medication_draft.`
             }
           }));
         } catch (e) {
@@ -1209,7 +1242,6 @@ Do NOT print JSON. Do NOT recap. The LAST question is reminders. After the answe
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
-      els.stop.disabled = true;
       setStatus("Stopped.");
     }
 
@@ -1237,8 +1269,6 @@ Do NOT print JSON. Do NOT recap. The LAST question is reminders. After the answe
         state.localStream?.getAudioTracks()?.forEach(t => t.enabled = !state.muted);
       } catch {}
     });
-
-    els.stop.addEventListener("click", () => stopAll());
 
     // Inform user if not logged in
     onAuthStateChanged(auth, (user) => {

@@ -162,7 +162,7 @@ function testReminderLogic() {
   const todayName = weekdays[today.getDay()];
   
   console.log('═══════════════════════════════════════════════════════════');
-  console.log('  MedTracker Reminder Logic Test');
+  console.log('  Everane Reminder Logic Test');
   console.log('═══════════════════════════════════════════════════════════');
   console.log(`  Today: ${todayName}, ${today.toLocaleDateString()}`);
   console.log('═══════════════════════════════════════════════════════════\n');

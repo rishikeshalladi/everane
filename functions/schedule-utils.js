@@ -1,5 +1,5 @@
 /**
- * MedTracker Schedule Utilities (Server-Side / Node.js)
+ * Everane Schedule Utilities (Server-Side / Node.js)
  *
  * Luxon-based version for Cloud Functions.
  * Same logic as the client-side schedule-utils.js but uses Luxon DateTime
