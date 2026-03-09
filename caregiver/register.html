@@ -104,8 +104,6 @@
     }
     .nav-links a:hover{color:var(--text)}
     .nav-links a:hover::after{width:60%;left:20%}
-    .nav-links a[aria-current="page"]{color:var(--brand)}
-    .nav-links a[aria-current="page"]::after{width:60%;left:20%}
 
     .auth{display:flex;align-items:center;gap:.75rem}
     .auth-login{color:var(--muted);font-size:.95rem;font-weight:500;padding:.5rem .75rem;border-radius:var(--radius-xs);transition:color .2s var(--ease)}
@@ -175,7 +173,6 @@
     input,select,textarea{width:100%;padding:.9rem 1rem;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text)}
     input:focus,select:focus{outline:2px solid transparent;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,140,255,.25)}
     small{opacity:.85}
-    #email-verification-code::placeholder{letter-spacing:normal}
 
     .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.9rem 1rem; border-radius:14px; border:1px solid transparent; cursor:pointer; font-size:1rem}
     .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; box-shadow: var(--shadow)}
@@ -206,18 +203,16 @@
     .toggle:focus{outline:2px solid transparent; box-shadow:0 0 0 3px rgba(79,140,255,.25)}
     .input-wrap input[type="password"], .input-wrap input[type="text"]{padding-right:3rem}
 
-    /* Verification status */
-    .verification-status{display:flex; align-items:center; gap:.5rem; padding:.75rem; border-radius:12px; margin-top:.5rem}
-    .verification-status.verified{background:rgba(125,226,209,0.1); border:1px solid var(--accent); color:var(--accent)}
-    @media (prefers-color-scheme: light){
-      .verification-status.verified{background:rgba(5,150,105,0.12); border:1px solid var(--success); color:var(--success); font-weight:500}
-    }
-    .verification-status.pending{background:rgba(255,193,7,0.1); border:1px solid #ffc107; color:#ffc107}
-    .verification-status.error{background:rgba(255,107,107,0.1); border:1px solid var(--danger); color:var(--danger)}
-
     /* Phase indicators */
     .phase{display:none}
     .phase.active{display:block}
+
+    /* Confirmation screen */
+    .confirmation-icon{font-size:3rem;text-align:center;margin-bottom:1rem}
+    .confirmation-text{text-align:center;color:var(--muted);font-size:1rem;line-height:1.6}
+    .confirmation-text strong{color:var(--text);display:block;font-size:1.1rem;margin-bottom:.5rem}
+    .resend-link{color:var(--brand);text-decoration:underline;text-underline-offset:3px;cursor:pointer;background:none;border:none;font:inherit;font-size:.95rem}
+    .resend-link:hover{color:var(--accent)}
   </style>
 </head>
 <body>
@@ -301,42 +296,23 @@
           </div>
 
           <div style="margin-top:1rem">
-            <button class="btn btn-primary" type="submit" id="send-verification" style="width:100%">Send Verification Email</button>
+            <button class="btn btn-primary" type="submit" id="create-btn" style="width:100%">Create Account</button>
           </div>
           <p id="msg-info" class="msg" role="status" aria-live="polite"></p>
         </form>
       </div>
 
-      <!-- Phase 2: Verify email code -->
-      <div id="phase-verify" class="phase">
-        <div id="email-verification-status" class="verification-status pending" style="margin-bottom:1rem">
-          &#x1F4E7; Verification email sent! Check your inbox and enter the code below.
+      <!-- Phase 2: Confirmation — email sent -->
+      <div id="phase-sent" class="phase">
+        <div class="confirmation-icon">&#x2709;&#xFE0F;</div>
+        <div class="confirmation-text">
+          <strong>An email has been sent to confirm your account!</strong>
+          Click the link in the email to verify your account and get started.
         </div>
-        <form id="form-verify" novalidate>
-          <div class="grid">
-            <div>
-              <label for="email-verification-code">Verification Code</label>
-              <div class="input-wrap">
-                <input id="email-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align:center; letter-spacing:0.5rem; font-size:1.2rem;" />
-              </div>
-            </div>
-          </div>
-          <div style="margin-top:1rem; display:flex; flex-direction:column; gap:.5rem;">
-            <button class="btn btn-primary" type="submit" id="verify-code-btn" style="width:100%">Verify Code</button>
-            <button class="btn btn-secondary" type="button" id="resend-btn" style="width:100%">Resend Verification Email</button>
-          </div>
-          <p style="margin-top:.5rem; font-size:.85rem; color:var(--muted); text-align:center;">Check your email for the verification code</p>
-          <p id="msg-verify" class="msg" role="status" aria-live="polite"></p>
-        </form>
-      </div>
-
-      <!-- Phase 3: Create account -->
-      <div id="phase-create" class="phase">
-        <div class="verification-status verified" style="margin-bottom:1rem">
-          &#x2713; Email verified! Click below to create your account.
+        <div style="text-align:center; margin-top:1.25rem;">
+          <button class="resend-link" type="button" id="resend-btn">Resend verification email</button>
         </div>
-        <button class="btn btn-primary" id="create-account-btn" style="width:100%">Create Account</button>
-        <p id="msg-create" class="msg" role="status" aria-live="polite"></p>
+        <p id="msg-sent" class="msg" role="status" aria-live="polite" style="text-align:center"></p>
       </div>
 
       <div id="auth-footers">
@@ -395,7 +371,6 @@
     function showPhase(phaseName) {
       document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
       document.getElementById('phase-' + phaseName).classList.add('active');
-      // Hide footers after leaving first phase
       if (phaseName !== 'info') {
         var footers = document.getElementById('auth-footers');
         if (footers) footers.style.display = 'none';
@@ -404,7 +379,6 @@
   </script>
 
   <script type="module">
-    // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import {
       getAuth,
@@ -413,7 +387,6 @@
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
       authDomain: "medtracker-8c467.firebaseapp.com",
@@ -424,26 +397,20 @@
       measurementId: "G-GGHXPT2Q5L"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Stored data across phases
-    let storedName = '';
-    let storedPassword = '';
-    let storedEmail = '';
-    let emailVerified = false;
-
-    // Helpers
     function isValidEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    // ── Phase 1: Collect info & send verification email ──
+    let createdUser = null;
+
+    // ── Phase 1: Collect info & create account ──
     const formInfo = document.getElementById('form-info');
     const msgInfo = document.getElementById('msg-info');
-    const sendBtn = document.getElementById('send-verification');
+    const createBtn = document.getElementById('create-btn');
 
     formInfo.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -455,7 +422,6 @@
       const cf = document.getElementById('reg-confirm').value;
       const email = document.getElementById('reg-email').value.trim();
 
-      // Validation
       if (!name) {
         msgInfo.className = 'msg err';
         msgInfo.textContent = 'Please enter your name.';
@@ -477,202 +443,86 @@
         return;
       }
 
-      // Store values
-      storedName = name;
-      storedPassword = pw;
-      storedEmail = email;
-
-      try {
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Sending...';
-
-        // Call Cloud Function to send verification email
-        const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email })
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to send verification email');
-        }
-
-        if (result.code) {
-          console.log('Verification code for', email, ':', result.code);
-        }
-
-        // Move to verify phase
-        showPhase('verify');
-
-      } catch (error) {
-        console.error('Error:', error);
-        msgInfo.className = 'msg err';
-        msgInfo.textContent = error.message || 'Failed to send verification email.';
-        sendBtn.disabled = false;
-        sendBtn.textContent = 'Send Verification Email';
-      }
-    });
-
-    // ── Phase 2: Verify email code ──
-    const formVerify = document.getElementById('form-verify');
-    const msgVerify = document.getElementById('msg-verify');
-    const verifyBtn = document.getElementById('verify-code-btn');
-    const resendBtn = document.getElementById('resend-btn');
-    const emailStatusDiv = document.getElementById('email-verification-status');
-
-    formVerify.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      msgVerify.className = 'msg';
-      msgVerify.textContent = '';
-
-      const code = document.getElementById('email-verification-code').value.trim();
-      if (!code || code.length !== 6) {
-        msgVerify.className = 'msg err';
-        msgVerify.textContent = 'Please enter a 6-digit verification code.';
-        return;
-      }
-
-      try {
-        verifyBtn.disabled = true;
-        verifyBtn.textContent = 'Verifying...';
-
-        const verifyUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyEmailCode';
-        const verifyResponse = await fetch(verifyUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: storedEmail, code: code })
-        });
-
-        const verifyResult = await verifyResponse.json();
-        if (!verifyResponse.ok) {
-          throw new Error(verifyResult.error || 'Invalid verification code');
-        }
-
-        // Code verified
-        emailVerified = true;
-        showPhase('create');
-
-      } catch (error) {
-        console.error('Verification error:', error);
-        msgVerify.className = 'msg err';
-        msgVerify.textContent = error.message || 'Invalid verification code. Please try again.';
-        emailStatusDiv.className = 'verification-status error';
-        emailStatusDiv.innerHTML = '&#x2717; Verification failed. Try again.';
-        verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify Code';
-      }
-    });
-
-    // Resend verification
-    resendBtn.addEventListener('click', async () => {
-      resendBtn.disabled = true;
-      resendBtn.textContent = 'Sending...';
-      msgVerify.className = 'msg';
-      msgVerify.textContent = '';
-
-      try {
-        const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: storedEmail })
-        });
-
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to send verification email');
-        }
-
-        if (result.code) {
-          console.log('Verification code for', storedEmail, ':', result.code);
-        }
-
-        emailStatusDiv.className = 'verification-status pending';
-        emailStatusDiv.innerHTML = '&#x1F4E7; Verification email resent! Check your inbox.';
-        msgVerify.className = 'msg';
-        msgVerify.textContent = '';
-
-        resendBtn.disabled = false;
-        resendBtn.textContent = 'Resend Verification Email';
-
-      } catch (error) {
-        console.error('Error:', error);
-        msgVerify.className = 'msg err';
-        msgVerify.textContent = error.message || 'Failed to resend verification email.';
-        resendBtn.disabled = false;
-        resendBtn.textContent = 'Resend Verification Email';
-      }
-    });
-
-    // ── Phase 3: Create account ──
-    const createBtn = document.getElementById('create-account-btn');
-    const msgCreate = document.getElementById('msg-create');
-
-    createBtn.addEventListener('click', async () => {
-      if (!emailVerified) {
-        msgCreate.className = 'msg err';
-        msgCreate.textContent = 'Please verify your email first.';
-        return;
-      }
-
       try {
         createBtn.disabled = true;
         createBtn.textContent = 'Creating account...';
-        msgCreate.className = 'msg ok';
-        msgCreate.textContent = 'Creating your account...';
 
-        // Detect timezone
         let timezone = '';
         try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {}
 
-        // Create Firebase Auth account
-        const userCredential = await createUserWithEmailAndPassword(auth, storedEmail, storedPassword);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pw);
         const userId = userCredential.user.uid;
+        createdUser = userCredential.user;
 
-        // Send Firebase email verification
-        await sendEmailVerification(userCredential.user);
+        const actionCodeSettings = {
+          url: window.location.origin + '/home.html',
+          handleCodeInApp: false
+        };
+        await sendEmailVerification(userCredential.user, actionCodeSettings);
 
-        // Save minimal profile to Firestore
         const firestoreData = {
-          email: storedEmail,
-          name: storedName,
+          email: email,
+          name: name,
           type: 'C',
           timezone: timezone
         };
 
-        console.log('Saving to Firestore:', firestoreData);
         await setDoc(doc(db, "users", userId), firestoreData);
-        console.log('Successfully saved to Firestore');
 
-        // Save to localStorage
         localStorage.setItem('userProfile', JSON.stringify(firestoreData));
         localStorage.setItem('userId', userId);
-        localStorage.setItem('userEmail', storedEmail);
+        localStorage.setItem('userEmail', email);
 
-        // Redirect
-        msgCreate.className = 'msg ok';
-        msgCreate.textContent = 'Account created! Redirecting to login...';
-        setTimeout(() => {
-          window.location.href = '../login.html?registered=true';
-        }, 1500);
+        showPhase('sent');
 
       } catch (error) {
         console.error('Registration error:', error);
         createBtn.disabled = false;
         createBtn.textContent = 'Create Account';
-        msgCreate.className = 'msg err';
+        msgInfo.className = 'msg err';
 
         if (error.code === 'auth/email-already-in-use') {
-          msgCreate.textContent = 'This email is already registered. Please log in instead.';
+          msgInfo.textContent = 'This email is already registered. Please log in instead.';
         } else if (error.code === 'auth/invalid-email') {
-          msgCreate.textContent = 'Please enter a valid email address.';
+          msgInfo.textContent = 'Please enter a valid email address.';
         } else if (error.code === 'auth/weak-password') {
-          msgCreate.textContent = 'Password should be at least 6 characters.';
+          msgInfo.textContent = 'Password should be at least 6 characters.';
         } else {
-          msgCreate.textContent = 'Registration failed: ' + error.message;
+          msgInfo.textContent = 'Registration failed: ' + error.message;
         }
+      }
+    });
+
+    // ── Phase 2: Resend verification email ──
+    const resendBtn = document.getElementById('resend-btn');
+    const msgSent = document.getElementById('msg-sent');
+
+    resendBtn.addEventListener('click', async () => {
+      if (!createdUser) return;
+
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending...';
+      msgSent.className = 'msg';
+      msgSent.textContent = '';
+
+      try {
+        const actionCodeSettings = {
+          url: window.location.origin + '/home.html',
+          handleCodeInApp: false
+        };
+        await sendEmailVerification(createdUser, actionCodeSettings);
+
+        msgSent.className = 'msg ok';
+        msgSent.textContent = 'Verification email resent!';
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend verification email';
+
+      } catch (error) {
+        console.error('Resend error:', error);
+        msgSent.className = 'msg err';
+        msgSent.textContent = error.message || 'Failed to resend. Please try again.';
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend verification email';
       }
     });
   </script>
