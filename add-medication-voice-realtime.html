@@ -608,7 +608,15 @@
       if (state.finalized) return true;
       const normalized = normalizeDraft(draft);
       const issues = validateMedicationDraft(normalized);
-      if (issues.length) {
+
+      // If we have at least a name, accept and redirect (form handles the rest)
+      const hasName = !!String(normalized?.name || "").trim();
+      if (issues.length && !hasName) {
+        requestFixFromModel(issues);
+        return false;
+      }
+      // If we have a name but other things are missing, only retry a few times
+      if (issues.length && hasName && (state.fixAttempts || 0) < 3) {
         requestFixFromModel(issues);
         return false;
       }
@@ -640,6 +648,12 @@
     }
 
     function requestFixFromModel(issues) {
+      // Limit fix requests to prevent infinite loops
+      state.fixAttempts = (state.fixAttempts || 0) + 1;
+      if (state.fixAttempts > 3) {
+        console.warn("[AI Voice] Too many fix attempts, accepting draft as-is");
+        return;
+      }
       if (!state.dc || state.dc.readyState !== "open") return;
       const missingList = Array.from(new Set(issues)).join(", ");
       setStatus(`Missing or invalid: ${missingList}`);
@@ -848,21 +862,25 @@
       if (!parsed || typeof parsed !== "object") return null;
       // Normalize alternate field names the AI might use
       const draft = {};
-      draft.name = parsed.name || parsed.medication_name || parsed.medication || "";
-      draft.dosage = parsed.dosage || parsed.dose || "";
-      draft.reminder = parsed.reminder || parsed.reminders || "None";
-      draft.startDate = parsed.startDate || parsed.start_date || new Date().toISOString().split('T')[0];
-      draft.endDate = parsed.endDate || parsed.end_date || parsed.duration === "indefinite" ? null : (parsed.duration || null);
-      if (draft.endDate === "indefinite" || draft.endDate === "none" || draft.endDate === "null") draft.endDate = null;
+      draft.name = parsed.name || parsed.medication_name || parsed.medication || parsed.med_name || "";
+      draft.dosage = parsed.dosage || parsed.dose || parsed.quantity || parsed.amount || "";
+      draft.reminder = parsed.reminder || parsed.reminders || parsed.notification || "None";
+      draft.startDate = parsed.startDate || parsed.start_date || parsed.start || new Date().toISOString().split('T')[0];
+      // Handle endDate / duration
+      const rawEnd = parsed.endDate || parsed.end_date || parsed.end || parsed.duration || null;
+      if (!rawEnd || rawEnd === "indefinite" || rawEnd === "none" || rawEnd === "null" || rawEnd === "no end date") {
+        draft.endDate = null;
+      } else {
+        draft.endDate = rawEnd;
+      }
       // Try to extract schedule from various formats
       if (Array.isArray(parsed.schedule)) {
         draft.schedule = parsed.schedule;
       } else if (Array.isArray(parsed.schedules)) {
         draft.schedule = parsed.schedules;
-      } else if (parsed.frequency || parsed.schedule_description) {
-        // AI gave a text description — we can't parse this reliably, skip
-        return null;
       }
+      // If no structured schedule but there's a frequency string, store name/dosage and skip schedule
+      // (form will handle it)
       // Must have at least name
       if (!draft.name) return null;
       return draft;
@@ -916,14 +934,51 @@
       }
     }
 
+    // Banned phrases — if the AI says any of these, immediately cancel and correct it
+    const BANNED_PHRASES = [
+      "milligram", "milligrams", " mg ", " mg?", " mg.", "strength of",
+      "dosage or strength", "dosage amount", "what strength",
+      "morning, evening", "morning, afternoon", "morning or evening",
+      "morning or night", "evening or night", "time of day",
+      "do you take it in the morning", "is that morning", "is that evening",
+    ];
+
+    function checkForBannedPhrases() {
+      if (!state.dc || state.dc.readyState !== "open") return;
+      const text = (state.lastAssistantText || "").toLowerCase();
+      const hasBanned = BANNED_PHRASES.some(p => text.includes(p));
+      if (!hasBanned) return;
+
+      console.warn("[AI Voice] BANNED phrase detected — cancelling and correcting. Text:", text.slice(0, 200));
+
+      // Cancel the current AI response immediately
+      try { state.dc.send(JSON.stringify({ type: "response.cancel" })); } catch {}
+
+      // Tell it to move on
+      try {
+        state.dc.send(JSON.stringify({
+          type: "conversation.item.create",
+          item: {
+            type: "message",
+            role: "user",
+            content: [{
+              type: "input_text",
+              text: "That's fine, move to the next question. Do not ask about milligrams, strength, or time of day. Just ask the next question in the flow."
+            }]
+          }
+        }));
+        state.dc.send(JSON.stringify({ type: "response.create" }));
+      } catch {}
+    }
+
     function finalizeAiMessage() {
-      // Always check for recap, even if no text element was created
-      // (the AI may have spoken audio-only without text deltas)
       state.currentAiEl = null;
       state.currentAiText = '';
+      // Check for banned phrases first
+      checkForBannedPhrases();
       // Check if the AI just recapped instead of calling the tool
       checkForRecapAndForceToolCall();
-      // Reset per-response accumulator AFTER the check
+      // Reset per-response accumulator AFTER the checks
       state.lastAssistantText = "";
     }
 
@@ -1004,7 +1059,7 @@
                   additionalProperties: false,
                   properties: {
                     name: { type: "string", description: "Medication name" },
-                    dosage: { type: "string", description: "Dosage as spoken, e.g. '2 pills', '1 tablet', 'half a pill'" },
+                    dosage: { type: "string", description: "Number of pills/tablets, e.g. '1 pill', '2 tablets'. Never ask for mg or strength." },
                     schedule: {
                       type: "array",
                       description: "Array of schedule entries. Each is either weekly or interval type.",
@@ -1041,103 +1096,39 @@
                 }
               }],
               tool_choice: "auto",
-              instructions: `🔒 SYSTEM PROMPT — Everane Voice Assistant
+              instructions: `You are Everane, a medication assistant. Be brief and direct. Ask one question, get the answer, move on. No small talk. No elaboration.
 
-⚠️ CRITICAL FINALIZATION RULE — READ THIS FIRST:
-Once ALL required fields are confirmed (including reminder preference), you MUST call submit_medication_draft IMMEDIATELY.
-Do NOT recap or list the fields. Say ONLY: "Finalized! Add your bottles in manually!" — then IMMEDIATELY call submit_medication_draft.
-NEVER speak anything else after collecting the reminder preference. Just say that line and call the tool.
-The tool call IS the finalization. You MUST call submit_medication_draft. This is non-negotiable.
-NEVER output JSON as text. ALWAYS use the submit_medication_draft tool function call.
+RULES:
+- NEVER ask for milligrams, strength, or mg. EVER.
+- NEVER ask "morning, evening, or night?" or suggest time-of-day options.
+- NEVER output JSON as text. ALWAYS use the submit_medication_draft tool.
+- NEVER recap or summarize what was collected.
 
-You are Everane Voice Assistant, a calm, friendly, and precise medical voice assistant. Your job is to conversationally help the user add a medication, then produce a clean, structured medication draft.
+Ask these 6 questions IN ORDER. One at a time. Move on as soon as you get an answer.
 
-🌐 Language & Communication Rules
-- Speak and respond ONLY in English.
-- Use natural, spoken conversation (short sentences, friendly tone).
-- Sound like a helpful assistant, not a form.
-- Do NOT ramble. Do NOT use medical advice beyond data collection.
-- Ask only ONE question at a time.
-- Do NOT move to the next question until the current required field is clearly answered.
-- If the user gives silence, unclear audio, or an incomplete response, politely repeat the same question.
-- If a response is cut off or incomplete, restate the full question clearly before continuing.
-- Never skip required fields.
+1. "What medication would you like to add?"
+2. "How many pills do you take per dose?" — Accept their answer ("1 pill", "2 tablets", etc.) and move on. Do NOT ask about mg or strength.
+3. "What's your schedule for taking it?" — Listen carefully:
+   - If they mention specific days (e.g. "every Monday", "Monday and Friday", "every day", "weekdays") → this is a WEEKLY schedule. Use type "weekly" with days array and times array.
+   - If they mention an interval (e.g. "every 4 days", "every 8 hours", "every 2 weeks") → this is an INTERVAL schedule. Use type "interval" with every, unit, and times.
+   - The user's answer MUST include a specific clock time (e.g. "5pm", "8:00 AM"). If they don't give one, ask: "What time?"
+   - Then ask: "Any other schedules for this medication, or is that it?"
+4. "When do you want to start?" — If they say "today" or "now", use today's date: ${new Date().toISOString().split('T')[0]}.
+5. "Is there an end date, or should it continue indefinitely?" — "no end date" or "indefinitely" → endDate = null.
+6. "How do you want to be reminded — email, text, both, or none?" — THIS IS MANDATORY. NEVER SKIP THIS.
 
-🎯 Primary Goal
-Collect medication information accurately through conversation and output a single structured medication draft.
-You must: Ask for missing or unclear information. Never guess or assume values. Confirm ambiguous answers.
-Only finalize once required fields are complete. Do NOT move forward if a required field is still missing.
-If the user gives unrelated information, gently redirect back to the current required question.
+After they answer #6, say EXACTLY: "Finalized! Add your bottles in manually!" then IMMEDIATELY call submit_medication_draft with all collected data. Do not say anything else. Do not recap.
 
-📦 Required Medication Fields (ALL REQUIRED)
-- name (string)
-- dosage (string — natural language allowed, e.g. "2 pills", "1 tablet", "half a pill")
-- schedule (array of one or more schedule entries — see Schedule Types below)
-- startDate (YYYY-MM-DD)
-- endDate (YYYY-MM-DD or null)
-- reminder (one of: None, Email, SMS, Email + SMS)
+Date rules: Convert all dates to YYYY-MM-DD. Today is ${new Date().toISOString().split('T')[0]}.
 
-⚠️ Do NOT convert or normalize dosage. Store it exactly as the user says it, unless they correct themselves.
-⚠️ You MUST collect at least one complete schedule entry with exact times before finalizing.
-⚠️ You MUST explicitly ask for reminder preference. You MUST NOT finalize until reminder is clearly answered.
+Schedule examples:
+- "Every Monday at 5pm" → { type: "weekly", days: ["Monday"], times: ["17:00"] }
+- "Every day at 9am" → { type: "weekly", days: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], times: ["09:00"] }
+- "Monday and Friday at 6pm" → { type: "weekly", days: ["Monday","Friday"], times: ["18:00"] }
+- "Every 4 days at 9pm" → { type: "interval", every: 4, unit: "days", times: ["21:00"] }
+- "Every 8 hours" → { type: "interval", every: 8, unit: "hours", times: ["08:00"] } (ask for first dose time if not given)
 
-🗓️ SCHEDULE TYPES — VERY IMPORTANT
-
-📅 WEEKLY Schedule — Used when the user specifies specific day(s) of the week and times.
-Examples:
-• "Every Monday at 5pm" → { "type": "weekly", "days": ["Monday"], "times": ["17:00"] }
-• "Every weekend at 6am and 3pm" → { "type": "weekly", "days": ["Saturday", "Sunday"], "times": ["06:00", "15:00"] }
-• "Monday and Thursday at 8am" → { "type": "weekly", "days": ["Monday", "Thursday"], "times": ["08:00"] }
-• "Weekdays at noon" → { "type": "weekly", "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "times": ["12:00"] }
-
-⏱️ INTERVAL Schedule — Used when the user specifies a repeating interval.
-Examples:
-• "Every 2 days at 4pm" → { "type": "interval", "every": 2, "unit": "days", "times": ["16:00"] }
-• "Every 3 hours" → { "type": "interval", "every": 3, "unit": "hours", "times": [] }
-  ⚠️ If no exact start time for hourly interval, ask: "What time should the first dose be?"
-• "Every week on Tuesday at 9am" → { "type": "interval", "every": 1, "unit": "weeks", "times": ["09:00"] }
-
-🔀 MIXED — User can combine multiple weekly and/or interval entries for a single medication.
-
-⚠️ After the user describes a schedule, ask: "Is that the only schedule, or would you like to add another?"
-⚠️ Times are REQUIRED for every schedule entry. If no exact times, ask for them.
-If the user says "morning" or "evening" without a clock time, ask: "What exact time is that? For example, 7am or 8:30am?"
-
-🗓️ Date Rules
-- Convert all dates into YYYY-MM-DD. Today is ${new Date().toISOString().split('T')[0]}.
-- "tomorrow" = next day, "next year" = 2027, month + day without year = current year.
-- "no end date" → endDate = null.
-- If a date is unclear, ASK a follow-up question. Never guess dates.
-
-🧠 Conversation Flow (FOLLOW THIS EXACT ORDER)
-1. Medication name — ask: "Hi there! What's the name of the medication you'd like to add?"
-2. Dosage — ask: "What's the dosage?"
-3. Schedule — ask: "When do you take this medication?" Listen for patterns:
-   - If they say specific days → weekly
-   - If they say "every X days/hours" → interval
-   - Ask for specific time(s) for each schedule entry
-   - After each entry ask: "Is that the only schedule, or would you like to add another?"
-4. Start date — ask: "When would you like to start taking it?" (default today if they say "starting now/today")
-5. End date — ask: "And when should it end? Or is there no end date?"
-6. Reminder preference — YOU MUST ASK: "How would you like to be reminded? Email, text message, both, or none?"
-   ⚠️ THIS STEP IS MANDATORY. Do NOT skip it. Do NOT finalize without asking this.
-
-Ask one question at a time. Stay natural. Do not skip steps. NEVER skip step 6.
-
-ALWAYS START WITH: "Hi there! What's the name of the medication you'd like to add?"
-
-✅ Final Output
-Once ALL fields are confirmed (name, dosage, schedule, startDate, endDate, reminder), say ONLY "Finalized! Add your bottles in manually!" then IMMEDIATELY call submit_medication_draft.
-Do NOT print JSON as text. Do NOT recap. The LAST question MUST be reminders. After the user answers the reminder question, say the finalization line and call the tool.
-You MUST ask "How would you like to be reminded? Email, text message, both, or none?" before finalizing.
-
-🚫 Restrictions
-- Do NOT assume defaults. Do NOT infer medical intent.
-- Do NOT finalize until reminder is answered. ALWAYS ask for reminder preference.
-- Do NOT speak after calling the tool.
-- Do NOT recap or summarize. NEVER list back what was collected.
-- NEVER output JSON as text. Always use the submit_medication_draft tool.
-- After reminder is answered, say "Finalized! Add your bottles in manually!" then IMMEDIATELY call submit_medication_draft.`
+START by saying: "What medication would you like to add?"`
             }
           }));
         } catch (e) {
@@ -1151,7 +1142,7 @@ You MUST ask "How would you like to be reminded? Email, text message, both, or n
             item: {
               type: "message",
               role: "user",
-              content: [{ type: "input_text", text: "Let's add a medication. Please start by asking me the medication name." }]
+              content: [{ type: "input_text", text: "Start." }]
             }
           }));
           dc.send(JSON.stringify({ type: "response.create" }));
@@ -1239,6 +1230,7 @@ You MUST ask "How would you like to be reminded? Email, text message, both, or n
       state.finalRedirected = false;
       state.responseCount = 0;
       state.forceAttempts = 0;
+      state.fixAttempts = 0;
       els.audio.srcObject = null;
       els.mute.textContent = "Mute";
       els.mute.disabled = true;
