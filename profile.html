@@ -812,14 +812,6 @@
             <h2>Preferences</h2>
             <div class="profile-form">
               <div class="form-group">
-                <label for="quiet-start">Do‑Not‑Disturb start <small>(optional)</small></label>
-                <input id="quiet-start" name="quiet_start" type="time" />
-              </div>
-              <div class="form-group">
-                <label for="quiet-end">Do‑Not‑Disturb end <small>(optional)</small></label>
-                <input id="quiet-end" name="quiet_end" type="time" />
-              </div>
-              <div class="form-group">
                 <label for="unit">Units <small>(optional)</small></label>
                 <select id="unit" name="units">
                   <option value="">Select…</option>
@@ -1230,8 +1222,6 @@
       }
       if (profileData.allergies) document.getElementById('allergies').value = profileData.allergies;
       if (profileData.conditions) document.getElementById('conditions').value = profileData.conditions;
-      if (profileData.quiet_start) document.getElementById('quiet-start').value = profileData.quiet_start;
-      if (profileData.quiet_end) document.getElementById('quiet-end').value = profileData.quiet_end;
       if (profileData.units) document.getElementById('unit').value = profileData.units;
       if (profileData.emg_name) document.getElementById('emg-name').value = profileData.emg_name;
       if (profileData.emg_phone) document.getElementById('emg-phone').value = profileData.emg_phone;

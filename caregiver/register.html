@@ -1,12 +1,12 @@
-<!-- File: register.html (four-step with verification) -->
+<!-- File: caregiver/register.html (single-screen registration) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MedTracker — Register</title>
+  <title>Everane — Caregiver Register</title>
   <style>
-    /* --- Reset & tokens (match welcome/login) --- */
+    /* --- Reset & tokens --- */
     *,*::before,*::after{box-sizing:border-box}
     *{margin:0}
     html:focus-within{scroll-behavior:smooth}
@@ -16,14 +16,49 @@
     a{text-decoration:none;color:inherit}
 
     :root{
-      --bg:#0b1020; --bg-elev:rgba(255,255,255,0.04);
-      --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
-      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6; --accent:#7de2d1; --danger:#ff6b6b;
-      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
-      --container:1200px;
+      --bg: #0b1020;
+      --bg-elev: rgba(255,255,255,0.04);
+      --surface: #0f1629;
+      --text: #e7ebf3;
+      --muted: #b1bad4;
+      --border: rgba(255,255,255,0.12);
+      --brand: #4f8cff;
+      --brand-600: #3c74f7;
+      --brand-700: #2b63e6;
+      --accent: #7de2d1;
+      --danger: #ff6b6b;
+
+      --radius: 20px;
+      --radius-sm: 12px;
+      --radius-xs: 8px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.2);
+      --shadow-lg: 0 20px 50px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.25);
+      --container: 1200px;
+
+      --glass-bg: rgba(15,22,41,0.6);
+      --glass-border: rgba(255,255,255,0.08);
+
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
     }
+
     @media (prefers-color-scheme: light){
-      :root{--bg:#ffffff;--surface:#ffffff;--text:#000000;--muted:#1a1a1a;--border:#1a1a1a;--shadow:0 4px 12px rgba(0,0,0,0.15),0 2px 4px rgba(0,0,0,0.1);--text-strong:#000000;--muted-strong:#1a1a1a;--success:#006644;--success-light:#008855}
+      :root{
+        --bg: #f8fafc;
+        --bg-elev: rgba(0,0,0,0.04);
+        --surface: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --border: rgba(15,23,42,0.12);
+        --shadow: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+        --shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
+        --glass-bg: rgba(255,255,255,0.7);
+        --glass-border: rgba(15,23,42,0.08);
+        --accent: #0d9488;
+        --accent-bg: rgba(13,148,136,0.08);
+        --accent-border: rgba(13,148,136,0.25);
+        --success: #006644;
+        --success-light: #008855;
+      }
     }
 
     body{
@@ -35,34 +70,95 @@
         var(--bg);
     }
 
-    /* --- Navbar (identical to index.html) --- */
+    /* --- Navbar --- */
     .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
-    .navbar{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(14px); background:linear-gradient(to bottom, rgba(15,22,41,0.7), rgba(15,22,41,0.4)); border-bottom:1px solid var(--border)}
+    .navbar{
+      position:sticky;top:0;z-index:100;
+      backdrop-filter:saturate(180%) blur(16px);
+      -webkit-backdrop-filter:saturate(180%) blur(16px);
+      background:linear-gradient(to bottom, rgba(11,16,32,0.8), rgba(11,16,32,0.6));
+      border-bottom:1px solid var(--glass-border);
+    }
     @media (prefers-color-scheme: light){
-      .navbar{background:linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.9)); border-bottom:1px solid var(--border)}
+      .navbar{background:linear-gradient(to bottom, rgba(248,250,252,0.92), rgba(248,250,252,0.85))}
     }
-    .nav-inner{display:flex; align-items:center; justify-content:space-between; gap:1rem; height:64px}
-    .brand{display:flex; align-items:center; gap:.7rem; font-weight:700}
-    .brand-mark{display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--brand),var(--accent)); box-shadow: var(--shadow)}
-    .brand-title{letter-spacing:.2px}
 
-    .nav-links, .auth{display:flex; align-items:center; gap:1rem}
-    .nav-links a, .auth a{padding:.5rem .75rem; border-radius:10px; color:var(--muted)}
-    .nav-links a:hover, .auth a:hover{color:var(--text); background:var(--bg-elev)}
+    .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem;height:68px}
 
-    .nav-toggle{display:none}
-    .hamburger{display:none; border:1px solid var(--border); border-radius:10px; padding:.5rem; cursor:pointer}
+    .brand{display:flex;align-items:center;gap:.65rem;font-weight:700;font-size:1.05rem}
+    .brand-mark{font-size:1.4rem;line-height:1}
+
+    .nav-links{display:flex;align-items:center;gap:.25rem}
+    .nav-links a{
+      position:relative;
+      padding:.5rem .85rem;border-radius:var(--radius-xs);
+      color:var(--muted);font-size:.95rem;font-weight:500;
+      transition:color .2s var(--ease);
+    }
+    .nav-links a::after{
+      content:'';position:absolute;bottom:2px;left:50%;
+      width:0;height:2px;
+      background:linear-gradient(90deg, var(--brand), var(--accent));
+      border-radius:2px;
+      transition:width .3s var(--ease), left .3s var(--ease);
+    }
+    .nav-links a:hover{color:var(--text)}
+    .nav-links a:hover::after{width:60%;left:20%}
+    .nav-links a[aria-current="page"]{color:var(--brand)}
+    .nav-links a[aria-current="page"]::after{width:60%;left:20%}
+
+    .auth{display:flex;align-items:center;gap:.75rem}
+    .auth-login{color:var(--muted);font-size:.95rem;font-weight:500;padding:.5rem .75rem;border-radius:var(--radius-xs);transition:color .2s var(--ease)}
+    .auth-login:hover{color:var(--text)}
+
+    @media (prefers-color-scheme: light){
+      .nav-links a{color:var(--muted)}
+      .nav-links a:hover{color:var(--text)}
+      .auth-login{color:var(--muted)}
+      .auth-login:hover{color:var(--text)}
+    }
+
+    /* Hamburger */
+    .hamburger{
+      display:none;align-items:center;justify-content:center;
+      background:none;border:1px solid var(--border);border-radius:var(--radius-xs);
+      padding:.55rem;cursor:pointer;color:var(--text);
+      transition:background .2s var(--ease);
+    }
+    .hamburger:hover{background:var(--bg-elev)}
     .hamburger svg{width:22px;height:22px}
+    .hamburger .icon-close{display:none}
 
-    @media (max-width: 900px){
-      .nav-links{display:none}
-      .auth{display:none}
-      .hamburger{display:flex; align-items:center; justify-content:center}
+    @media (max-width:900px){
+      .nav-links,.auth{display:none}
+      .hamburger{display:flex}
     }
 
-    .mobile-menu{max-height:0; opacity:0; pointer-events:none; overflow:hidden; transition:max-height .35s ease, opacity .35s ease; border-bottom:1px solid var(--border); background:rgba(15,22,41,0.7); backdrop-filter:blur(14px)}
-    .mobile-list{display:grid; gap:.5rem; padding:1rem}
-    .mobile-list a{padding:.8rem; border-radius:12px; color:var(--text); background:var(--bg-elev); border:1px solid var(--border)}
+    /* Mobile Menu */
+    .mobile-menu{
+      max-height:0;opacity:0;pointer-events:none;overflow:hidden;
+      transition:max-height .4s var(--ease), opacity .3s var(--ease);
+      background:var(--glass-bg);
+      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--glass-border);
+    }
+    .mobile-menu.is-open{
+      max-height:420px;opacity:1;pointer-events:auto;
+    }
+    .mobile-list{display:grid;gap:.5rem;padding:1rem}
+    .mobile-list a{
+      display:block;padding:.85rem 1rem;border-radius:var(--radius-sm);
+      color:var(--text);background:var(--bg-elev);border:1px solid var(--border);
+      font-size:.95rem;font-weight:500;
+      transition:background .2s var(--ease), border-color .2s var(--ease);
+    }
+    .mobile-list a:hover{background:rgba(79,140,255,0.08);border-color:var(--brand)}
+    .mobile-list .btn-primary{text-align:center}
+
+    @media (prefers-color-scheme: light){
+      .mobile-menu{background:rgba(248,250,252,0.97)}
+      .mobile-list a{background:var(--surface);color:var(--text)}
+    }
 
     /* --- Page layout --- */
     main{max-width:620px;margin:clamp(3rem,8vw,5rem) auto;padding:0 1rem}
@@ -77,30 +173,23 @@
     label{display:block;color:var(--muted);margin-bottom:.35rem}
     .input-wrap{position:relative}
     input,select,textarea{width:100%;padding:.9rem 1rem;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text)}
-    textarea{min-height:92px;resize:vertical}
-    input:focus,select:focus,textarea:focus{outline:2px solid transparent;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,140,255,.25)}
+    input:focus,select:focus{outline:2px solid transparent;border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,140,255,.25)}
     small{opacity:.85}
-    /* Prevent wide letter-spacing from visually clipping placeholder's first character (e.g., "Enter...") */
-    #email-verification-code::placeholder,
-    #phone-code::placeholder{letter-spacing:normal}
+    #email-verification-code::placeholder{letter-spacing:normal}
 
     .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.9rem 1rem; border-radius:14px; border:1px solid transparent; cursor:pointer; font-size:1rem}
     .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; box-shadow: var(--shadow)}
     .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
     .btn-primary:disabled{opacity:0.5; cursor:not-allowed}
-    .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text)}
-    .btn-ghost:hover{background:var(--bg-elev)}
     .btn-secondary{background:var(--bg-elev); border:1px solid var(--border); color:var(--text)}
     .btn-secondary:hover{background:rgba(255,255,255,0.08)}
 
     .foot{margin-top:1rem;color:var(--muted);font-size:.95rem;text-align:center}
-    /* Underlined helper links (login / switch-to-patient) */
     .link{
       text-decoration: underline;
       text-underline-offset: 3px;
       text-decoration-thickness: 2px;
     }
-    /* Cross-link under the login line (always underlined, on its own line) */
     .alt-link{
       text-decoration: underline;
       text-underline-offset: 3px;
@@ -126,55 +215,45 @@
     .verification-status.pending{background:rgba(255,193,7,0.1); border:1px solid #ffc107; color:#ffc107}
     .verification-status.error{background:rgba(255,107,107,0.1); border:1px solid var(--danger); color:var(--danger)}
 
-    /* reCAPTCHA container */
-    /* --- Steps --- */
-    .steps{display:flex; align-items:center; gap:.5rem; margin-bottom:1rem}
-    .pill{height:8px; flex:1; background:var(--bg-elev); border-radius:999px; overflow:hidden}
-    .pill > span{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--brand),var(--accent)); transition:width .25s ease}
-    .pill[data-step="1"] > span{width:25%}
-    .pill[data-step="2"] > span{width:50%}
-    .pill[data-step="3"] > span{width:75%}
-    .pill[data-step="4"] > span{width:100%}
-
-    .step{display:none}
-    .step.active{display:block}
-    .actions{margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;justify-content:space-between}
+    /* Phase indicators */
+    .phase{display:none}
+    .phase.active{display:block}
   </style>
 </head>
 <body>
-  <!-- Navbar: same markup as index.html -->
+  <!-- Navbar -->
   <header class="navbar">
     <div class="container nav-inner">
-      <a class="brand" href="../index.html" aria-label="MedTracker Home">
-        <span class="brand-mark" aria-hidden="true">🏥</span>
-        <span class="brand-title">MedTracker</span>
+      <a class="brand" href="../index.html" aria-label="Everane Home">
+        <span class="brand-mark" aria-hidden="true">&#x1F48A;</span>
+        <span>Everane</span>
       </a>
 
       <nav class="nav-links" aria-label="Primary">
-        <a href="../index.html">Home</a>
-        <a href="../index.html#about">About</a>
-        <a href="../index.html#donate">Donate</a>
+        <a href="../index.html#features">Features</a>
+        <a href="../index.html#how-it-works">How It Works</a>
+        <a href="../index.html#caregivers">Caregivers</a>
       </nav>
 
-      <nav class="auth" aria-label="Account">
-        <a href="../login.html">Log In</a>
+      <div class="auth" aria-label="Account">
+        <a class="auth-login" href="../login.html">Log In</a>
         <a class="btn btn-primary" href="../register.html">Register</a>
-      </nav>
+      </div>
 
-      <label for="menu-toggle" class="hamburger" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
-      </label>
-      <input class="nav-toggle" type="checkbox" id="menu-toggle" aria-hidden="true" />
+      <button class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg class="icon-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        <svg class="icon-close" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
     </div>
 
-    <div id="mobile-menu" class="mobile-menu" role="dialog" aria-modal="false">
+    <div id="mobile-menu" class="mobile-menu" role="navigation" aria-label="Mobile navigation">
       <div class="container">
-        <div class="mobile-list" role="menu">
-          <a role="menuitem" href="../index.html">Home</a>
-          <a role="menuitem" href="../index.html#about">About</a>
-          <a role="menuitem" href="../index.html#donate">Donate</a>
-          <a role="menuitem" href="../login.html">Log In</a>
-          <a role="menuitem" class="btn btn-primary" href="../register.html">Register</a>
+        <div class="mobile-list">
+          <a href="../index.html#features">Features</a>
+          <a href="../index.html#how-it-works">How It Works</a>
+          <a href="../index.html#caregivers">Caregivers</a>
+          <a href="../login.html">Log In</a>
+          <a class="btn btn-primary" href="../register.html">Register</a>
         </div>
       </div>
     </div>
@@ -182,154 +261,83 @@
 
   <main>
     <div class="card" role="region" aria-labelledby="reg-title">
-      <div class="steps" aria-hidden="true">
-        <div class="pill" id="progress" data-step="1"><span></span></div>
-        <span style="color:var(--muted); font-size:.9rem">Step <strong id="step-num">1</strong> of 4</span>
-      </div>
-
       <h1 id="reg-title">Caregiver Register</h1>
-      <p class="lead" id="reg-lead">Create your account to get started.</p>
+      <p class="lead" id="reg-lead">Create your caregiver account to get started.</p>
 
-      <!-- Step 1: Email Verification -->
-      <form id="form-step1" class="step active" novalidate>
-        <div class="grid">
-          <div>
-            <label for="reg-email">Email</label>
-            <div class="input-wrap">
-              <input id="reg-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:1rem">
-          <button class="btn btn-primary" type="button" id="send-verification">Send Verification Email</button>
-        </div>
-        <div id="email-verification-status" class="verification-status" style="display:none"></div>
-        <div id="email-code-input" style="display:none;"></div>
-        <div id="continue-container" style="display:none; margin-top:1rem;">
-          <button class="btn btn-primary" type="button" id="continue-step1">Continue</button>
-        </div>
-        <p id="msg1" class="msg" role="status" aria-live="polite"></p>
-      </form>
-
-      <!-- Step 2: Name and Password -->
-      <form id="form-step2" class="step" novalidate>
-        <div class="grid">
-          <div>
-            <label for="reg-name">Name</label>
-            <div class="input-wrap">
-              <input id="reg-name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
-            </div>
-          </div>
-          <div class="row">
+      <!-- Phase 1: Name, Password, Email — all on one screen -->
+      <div id="phase-info" class="phase active">
+        <form id="form-info" novalidate>
+          <div class="grid">
             <div>
-              <label for="reg-pass">Password</label>
+              <label for="reg-name">Name</label>
               <div class="input-wrap">
-                <input id="reg-pass" name="password" type="password" placeholder="••••••••" minlength="8" autocomplete="new-password" required />
-                <button type="button" class="toggle" aria-label="Show password" data-target="reg-pass">👁</button>
+                <input id="reg-name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
               </div>
             </div>
-            <div>
-              <label for="reg-confirm">Confirm Password</label>
-              <div class="input-wrap">
-                <input id="reg-confirm" name="confirm" type="password" placeholder="••••••••" minlength="8" autocomplete="new-password" required />
-                <button type="button" class="toggle" aria-label="Show password" data-target="reg-confirm">👁</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="actions">
-          <button class="btn btn-ghost" type="button" id="back-step2">Back</button>
-          <button class="btn btn-primary" type="submit">Continue</button>
-        </div>
-        <p id="msg2" class="msg" role="status" aria-live="polite"></p>
-      </form>
 
-      <!-- Step 3: Phone Verification -->
-      <form id="form-step3" class="step" novalidate>
-        <div class="grid">
-          <div>
-            <label for="reg-phone">Phone Number</label>
-            <div style="display: flex; gap: 0.5rem; align-items: stretch;">
-              <div style="flex: 0 0 140px; min-width: 140px;">
-                <select id="country-code" name="country-code" style="width: 100%; padding: 0.9rem 1rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 1rem; box-sizing: border-box;">
-                  <option value="+1">🇺🇸 +1 (US)</option>
-                  <option value="+44">🇬🇧 +44 (UK)</option>
-                  <option value="+91">🇮🇳 +91 (IN)</option>
-                  <option value="+86">🇨🇳 +86 (CN)</option>
-                  <option value="+81">🇯🇵 +81 (JP)</option>
-                  <option value="+49">🇩🇪 +49 (DE)</option>
-                  <option value="+33">🇫🇷 +33 (FR)</option>
-                  <option value="+39">🇮🇹 +39 (IT)</option>
-                  <option value="+34">🇪🇸 +34 (ES)</option>
-                  <option value="+61">🇦🇺 +61 (AU)</option>
-                  <option value="+55">🇧🇷 +55 (BR)</option>
-                  <option value="+52">🇲🇽 +52 (MX)</option>
-                  <option value="+7">🇷🇺 +7 (RU)</option>
-                  <option value="+82">🇰🇷 +82 (KR)</option>
-                  <option value="+65">🇸🇬 +65 (SG)</option>
-                  <option value="+971">🇦🇪 +971 (AE)</option>
-                  <option value="+966">🇸🇦 +966 (SA)</option>
-                  <option value="+27">🇿🇦 +27 (ZA)</option>
-                  <option value="+234">🇳🇬 +234 (NG)</option>
-                  <option value="+20">🇪🇬 +20 (EG)</option>
-                </select>
+            <div class="row">
+              <div>
+                <label for="reg-pass">Password</label>
+                <div class="input-wrap">
+                  <input id="reg-pass" name="password" type="password" placeholder="Min 8 characters" minlength="8" autocomplete="new-password" required />
+                  <button type="button" class="toggle" aria-label="Show password" data-target="reg-pass">&#x1F441;</button>
+                </div>
               </div>
-              <div style="flex: 1; min-width: 0;">
-                <div class="input-wrap" style="position: relative; z-index: 10;">
-                  <input id="reg-phone" name="phone" type="tel" placeholder="(123) 456-7890" autocomplete="tel" style="position: relative; z-index: 10;" />
+              <div>
+                <label for="reg-confirm">Confirm Password</label>
+                <div class="input-wrap">
+                  <input id="reg-confirm" name="confirm" type="password" placeholder="Re-enter password" minlength="8" autocomplete="new-password" required />
+                  <button type="button" class="toggle" aria-label="Show password" data-target="reg-confirm">&#x1F441;</button>
                 </div>
               </div>
             </div>
-          </div>
-          <div id="phone-code-section" style="display:none">
-            <div>
-              <label for="phone-code">Verification Code</label>
-            <div class="input-wrap">
-                <input id="phone-code" name="phone-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align: center; letter-spacing: 0.5rem; font-size: 1.2rem;" />
-            </div>
-          </div>
-        </div>
-        </div>
-        <div id="phone-verification-status" class="verification-status" style="display:none"></div>
-        <div class="actions">
-          <button class="btn btn-ghost" type="button" id="back-step3">Back</button>
-          <div style="display: flex; gap: 0.5rem; margin-left: auto; flex-direction: column;">
-            <button class="btn btn-primary" type="button" id="send-phone-code" style="display:inline-flex;">Send Code</button>
-            <button class="btn btn-primary" type="button" id="verify-phone-code" style="display:none;">Verify Code</button>
-            <button class="btn btn-secondary" type="button" id="resend-phone-code" style="display:none;">Resend Code</button>
-            <button class="btn btn-primary" type="button" id="continue-step3" style="display:none;">Continue</button>
-            <button class="btn btn-ghost" type="button" id="skip-phone">Skip</button>
-        </div>
-        </div>
-        <p id="msg3" class="msg" role="status" aria-live="polite"></p>
-      </form>
 
-      <!-- Step 4: Relation to patient (optional) -->
-      <form id="form-step4" class="step" novalidate>
-        <div class="grid">
             <div>
-            <label for="relation">Relation to Patient <small>(optional)</small></label>
+              <label for="reg-email">Email</label>
               <div class="input-wrap">
-              <select id="relation" name="relation">
-                  <option value="">Select…</option>
-                <option>Spouse</option>
-                <option>Kid</option>
-                <option>Nephew</option>
-                <option>Niece</option>
-                <option>Doctor</option>
-                <option>Guardian</option>
-                <option>Parent</option>
-                </select>
+                <input id="reg-email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="actions">
-          <button class="btn btn-ghost" type="button" id="back-step4">Back</button>
-          <button class="btn btn-primary" type="submit">Finish</button>
+          <div style="margin-top:1rem">
+            <button class="btn btn-primary" type="submit" id="send-verification" style="width:100%">Send Verification Email</button>
+          </div>
+          <p id="msg-info" class="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <!-- Phase 2: Verify email code -->
+      <div id="phase-verify" class="phase">
+        <div id="email-verification-status" class="verification-status pending" style="margin-bottom:1rem">
+          &#x1F4E7; Verification email sent! Check your inbox and enter the code below.
         </div>
-        <p id="msg4" class="msg" role="status" aria-live="polite"></p>
-      </form>
+        <form id="form-verify" novalidate>
+          <div class="grid">
+            <div>
+              <label for="email-verification-code">Verification Code</label>
+              <div class="input-wrap">
+                <input id="email-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align:center; letter-spacing:0.5rem; font-size:1.2rem;" />
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:1rem; display:flex; flex-direction:column; gap:.5rem;">
+            <button class="btn btn-primary" type="submit" id="verify-code-btn" style="width:100%">Verify Code</button>
+            <button class="btn btn-secondary" type="button" id="resend-btn" style="width:100%">Resend Verification Email</button>
+          </div>
+          <p style="margin-top:.5rem; font-size:.85rem; color:var(--muted); text-align:center;">Check your email for the verification code</p>
+          <p id="msg-verify" class="msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <!-- Phase 3: Create account -->
+      <div id="phase-create" class="phase">
+        <div class="verification-status verified" style="margin-bottom:1rem">
+          &#x2713; Email verified! Click below to create your account.
+        </div>
+        <button class="btn btn-primary" id="create-account-btn" style="width:100%">Create Account</button>
+        <p id="msg-create" class="msg" role="status" aria-live="polite"></p>
+      </div>
 
       <div id="auth-footers">
         <p class="foot">Already have an account? <a class="link" href="../login.html">Log in</a></p>
@@ -340,8 +348,8 @@
 
   <script>
     // Password toggles
-    document.querySelectorAll('.toggle').forEach(btn=>{
-      btn.addEventListener('click',()=>{
+    document.querySelectorAll('.toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-target');
         const input = document.getElementById(id);
         const visible = input.type === 'text';
@@ -350,67 +358,47 @@
       });
     });
 
+    // Mobile menu toggle
+    var hamburger = document.querySelector('.hamburger');
+    var mobileMenu = document.getElementById('mobile-menu');
+    var iconOpen = hamburger ? hamburger.querySelector('.icon-open') : null;
+    var iconClose = hamburger ? hamburger.querySelector('.icon-close') : null;
 
-    // Mobile menu toggle functionality
-    const toggle = document.getElementById('menu-toggle');
-    const label = document.querySelector('label[for="menu-toggle"]');
-    const mobileMenu = document.getElementById('mobile-menu');
-    if (toggle && label && mobileMenu){
-      toggle.addEventListener('change', () => {
-        const isChecked = toggle.checked;
-        label.setAttribute('aria-expanded', isChecked ? 'true' : 'false');
-        if (isChecked) {
-          mobileMenu.style.maxHeight = '420px';
-          mobileMenu.style.opacity = '1';
-          mobileMenu.style.pointerEvents = 'auto';
-        } else {
-          mobileMenu.style.maxHeight = '0';
-          mobileMenu.style.opacity = '0';
-          mobileMenu.style.pointerEvents = 'none';
-        }
-      });
-      
-      // Close menu when any link is clicked
-      const mobileLinks = mobileMenu.querySelectorAll('a');
-      mobileLinks.forEach(link => {
-        link.addEventListener('click', () => {
-          toggle.checked = false;
-          toggle.dispatchEvent(new Event('change'));
+    function toggleMobileMenu() {
+      var isOpen = mobileMenu.classList.contains('is-open');
+      if (isOpen) {
+        mobileMenu.classList.remove('is-open');
+        hamburger.setAttribute('aria-expanded', 'false');
+        if (iconOpen) iconOpen.style.display = '';
+        if (iconClose) iconClose.style.display = 'none';
+      } else {
+        mobileMenu.classList.add('is-open');
+        hamburger.setAttribute('aria-expanded', 'true');
+        if (iconOpen) iconOpen.style.display = 'none';
+        if (iconClose) iconClose.style.display = '';
+      }
+    }
+
+    if (hamburger && mobileMenu) {
+      hamburger.addEventListener('click', toggleMobileMenu);
+      var mobileLinks = mobileMenu.querySelectorAll('a');
+      mobileLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (mobileMenu.classList.contains('is-open')) {
+            toggleMobileMenu();
+          }
         });
       });
     }
 
-    // Step navigation helper
-    function goToStep(stepNum) {
-      
-      // Hide all steps
-      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-      // Show target step
-      const stepElement = document.getElementById(`form-step${stepNum}`);
-      if (stepElement) {
-        stepElement.classList.add('active');
-      }
-      // Update progress
-      document.getElementById('progress').setAttribute('data-step', stepNum.toString());
-      // Update step counter
-      document.getElementById('step-num').textContent = stepNum.toString();
-      
-      // Update title and lead
-      const titles = {
-        1: { title: 'Register', lead: 'Create your account to get started.' },
-        2: { title: 'Account Details', lead: 'Enter your name and create a secure password.' },
-        3: { title: 'Phone Verification', lead: 'Verify your phone number for SMS reminders.' },
-        4: { title: 'Relation to Patient', lead: 'Optional: How are you related to the patient?' }
-      };
-      if (titles[stepNum]) {
-        document.getElementById('reg-title').textContent = titles[stepNum].title;
-        document.getElementById('reg-lead').textContent = titles[stepNum].lead;
-      }
-
-      // Only show the bottom "Log in / Patient register" prompts on Step 1 before email is verified.
-      const footers = document.getElementById('auth-footers');
-      if (footers) {
-        footers.style.display = (stepNum === 1) ? '' : 'none';
+    // Phase navigation helper
+    function showPhase(phaseName) {
+      document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+      document.getElementById('phase-' + phaseName).classList.add('active');
+      // Hide footers after leaving first phase
+      if (phaseName !== 'info') {
+        var footers = document.getElementById('auth-footers');
+        if (footers) footers.style.display = 'none';
       }
     }
   </script>
@@ -418,15 +406,10 @@
   <script type="module">
     // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-    import { 
-      getAuth, 
-      createUserWithEmailAndPassword, 
-      sendEmailVerification,
-      onAuthStateChanged,
-      signOut,
-      EmailAuthProvider,
-      reauthenticateWithCredential,
-      updatePassword
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      sendEmailVerification
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
@@ -446,695 +429,253 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Global state
-    let tempUser = null;
-    let tempPassword = null;
+    // Stored data across phases
+    let storedName = '';
+    let storedPassword = '';
+    let storedEmail = '';
     let emailVerified = false;
-    let phoneVerified = false;
-    let verifiedPhoneNumber = null; // Store verified phone number for step 4
 
-    // Step 1: Email Verification
-    const step1Form = document.getElementById('form-step1');
-    const emailInput = document.getElementById('reg-email');
-    const sendVerificationBtn = document.getElementById('send-verification');
-    const continueStep1Btn = document.getElementById('continue-step1');
-    const emailStatusDiv = document.getElementById('email-verification-status');
-    const msg1 = document.getElementById('msg1');
-
-    // Prevent Enter key from submitting the form and reloading the page
-    if (step1Form) {
-      step1Form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (sendVerificationBtn && !sendVerificationBtn.disabled) {
-          sendVerificationBtn.click();
-        }
-      });
-    }
-
-    // Store email temporarily (don't create account until final step)
-    let storedEmail = null;
-    let emailVerificationCode = null;
-
-    // Simple email validation
+    // Helpers
     function isValidEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
-    // Generate a simple verification code (6 digits)
-    function generateVerificationCode() {
-      return Math.floor(100000 + Math.random() * 900000).toString();
-    }
+    // ── Phase 1: Collect info & send verification email ──
+    const formInfo = document.getElementById('form-info');
+    const msgInfo = document.getElementById('msg-info');
+    const sendBtn = document.getElementById('send-verification');
 
-    sendVerificationBtn.addEventListener('click', async () => {
-      const email = emailInput.value.trim();
-      if (!email) {
-        msg1.className = 'msg err';
-        msg1.textContent = 'Please enter your email address.';
+    formInfo.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msgInfo.className = 'msg';
+      msgInfo.textContent = '';
+
+      const name = document.getElementById('reg-name').value.trim();
+      const pw = document.getElementById('reg-pass').value;
+      const cf = document.getElementById('reg-confirm').value;
+      const email = document.getElementById('reg-email').value.trim();
+
+      // Validation
+      if (!name) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Please enter your name.';
+        return;
+      }
+      if (!pw || pw.length < 8) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+      if (pw !== cf) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Passwords do not match.';
+        return;
+      }
+      if (!email || !isValidEmail(email)) {
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = 'Please enter a valid email address.';
         return;
       }
 
-      if (!isValidEmail(email)) {
-        msg1.className = 'msg err';
-        msg1.textContent = 'Please enter a valid email address.';
-        return;
-      }
+      // Store values
+      storedName = name;
+      storedPassword = pw;
+      storedEmail = email;
 
       try {
-        msg1.className = 'msg';
-        msg1.textContent = '';
-        sendVerificationBtn.disabled = true;
-        sendVerificationBtn.textContent = 'Sending...';
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending...';
 
         // Call Cloud Function to send verification email
         const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
         const response = await fetch(functionUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email })
         });
 
         const result = await response.json();
-
         if (!response.ok) {
           throw new Error(result.error || 'Failed to send verification email');
         }
 
-        storedEmail = email;
-        
-        // For testing: log the code (remove in production)
         if (result.code) {
           console.log('Verification code for', email, ':', result.code);
         }
-        
-        emailStatusDiv.style.display = 'flex';
-        emailStatusDiv.className = 'verification-status pending';
-        emailStatusDiv.innerHTML = '📧 Verification email sent! Please check your inbox and enter the code below.';
-        
-        // Show code input
-        const codeInput = document.getElementById('email-code-input');
-        codeInput.style.display = 'block';
-        codeInput.innerHTML = `
-          <div style="margin-top: 1rem;">
-            <label for="email-verification-code">Verification Code</label>
-            <div class="input-wrap">
-              <input id="email-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align: center; letter-spacing: 0.5rem; font-size: 1.2rem;" />
-            </div>
-            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-direction: column;">
-              <button class="btn btn-primary" type="button" id="verify-email-code" style="width: 100%;">Verify Code</button>
-              <button class="btn btn-secondary" type="button" id="resend-verification" style="width: 100%;">Resend Verification Email</button>
-            </div>
-            <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted); text-align: center;">Check your email for the verification code</p>
-          </div>
-        `;
-        
-        // Yellow status banner above already communicates this; avoid duplicate green message.
-        msg1.className = 'msg';
-        msg1.textContent = '';
-        
-        // Update send button to resend (grey/secondary)
-        sendVerificationBtn.disabled = false;
-        sendVerificationBtn.className = 'btn btn-secondary';
-        sendVerificationBtn.textContent = 'Resend Verification Email';
-        sendVerificationBtn.style.display = 'none'; // Hide the original button, we have resend button in code input
-        
-        // Handle code verification
-        const verifyBtn = document.getElementById('verify-email-code');
-        verifyBtn.addEventListener('click', async () => {
-          const enteredCode = document.getElementById('email-verification-code').value.trim();
-          
-          if (!enteredCode || enteredCode.length !== 6) {
-            msg1.className = 'msg err';
-            msg1.textContent = 'Please enter a 6-digit verification code.';
-            return;
-          }
 
-          try {
-            verifyBtn.disabled = true;
-            verifyBtn.textContent = 'Verifying...';
-            
-            // Call Cloud Function to verify code
-            const verifyUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyEmailCode';
-            const verifyResponse = await fetch(verifyUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ email: email, code: enteredCode })
-            });
+        // Move to verify phase
+        showPhase('verify');
 
-            const verifyResult = await verifyResponse.json();
-
-            if (!verifyResponse.ok) {
-              throw new Error(verifyResult.error || 'Invalid verification code');
-            }
-
-            // Code verified successfully
-            emailVerified = true;
-            emailStatusDiv.style.display = 'flex';
-            emailStatusDiv.className = 'verification-status verified';
-            emailStatusDiv.innerHTML = '✓ Email verified! You can continue.';
-            
-            // Hide code input and show continue button
-            codeInput.style.display = 'none';
-            const continueContainer = document.getElementById('continue-container');
-            continueContainer.style.display = 'block';
-            
-            // Status banner above already confirms verification; avoid duplicate success text.
-            msg1.className = 'msg';
-            msg1.textContent = '';
-
-            // Hide bottom prompts after verification (keep the screen clean for the rest of registration).
-            const footers = document.getElementById('auth-footers');
-            if (footers) footers.style.display = 'none';
-            
-          } catch (error) {
-            console.error('Verification error:', error);
-            msg1.className = 'msg err';
-            msg1.textContent = error.message || 'Invalid verification code. Please try again.';
-            verifyBtn.disabled = false;
-            verifyBtn.textContent = 'Verify Code';
-          }
-        });
-        
-        // Handle resend verification email
-        const resendBtn = document.getElementById('resend-verification');
-        resendBtn.addEventListener('click', async () => {
-          // Re-run the send verification flow
-          resendBtn.disabled = true;
-          resendBtn.textContent = 'Sending...';
-          
-          try {
-            const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
-            const response = await fetch(functionUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ email: email })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-              throw new Error(result.error || 'Failed to send verification email');
-            }
-
-            // For testing: log the code (remove in production)
-            if (result.code) {
-              console.log('Verification code for', email, ':', result.code);
-            }
-            
-            emailStatusDiv.style.display = 'flex';
-            emailStatusDiv.className = 'verification-status pending';
-            emailStatusDiv.innerHTML = '📧 Verification email sent! Please check your inbox and enter the code below.';
-            
-            // Yellow status banner above already communicates this; avoid duplicate green message.
-            msg1.className = 'msg';
-            msg1.textContent = '';
-            
-            resendBtn.disabled = false;
-            resendBtn.textContent = 'Resend Verification Email';
-            
-          } catch (error) {
-            console.error('Error:', error);
-            msg1.className = 'msg err';
-            msg1.textContent = 'Error: ' + (error.message || 'Failed to send verification email');
-            emailStatusDiv.style.display = 'flex';
-            emailStatusDiv.className = 'verification-status error';
-            emailStatusDiv.innerHTML = '✗ Error sending verification email.';
-            resendBtn.disabled = false;
-            resendBtn.textContent = 'Resend Verification Email';
-          }
-        });
-        
       } catch (error) {
         console.error('Error:', error);
-        msg1.className = 'msg err';
-        msg1.textContent = 'Error: ' + (error.message || 'Failed to send verification email');
-        emailStatusDiv.style.display = 'flex';
-        emailStatusDiv.className = 'verification-status error';
-        emailStatusDiv.innerHTML = '✗ Error sending verification email.';
-        sendVerificationBtn.disabled = false;
-        sendVerificationBtn.className = 'btn btn-primary';
-        sendVerificationBtn.textContent = 'Send Verification Email';
-        sendVerificationBtn.style.display = 'block';
-        // Hide code input if it was shown
-        const codeInput = document.getElementById('email-code-input');
-        if (codeInput) {
-          codeInput.style.display = 'none';
-        }
+        msgInfo.className = 'msg err';
+        msgInfo.textContent = error.message || 'Failed to send verification email.';
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Verification Email';
       }
     });
 
-    continueStep1Btn.addEventListener('click', () => {
-      if (emailVerified && storedEmail) {
-        window.storedEmail = storedEmail; // Store for final step
-        goToStep(2);
-      } else {
-        msg1.className = 'msg err';
-        msg1.textContent = 'Please verify your email before continuing.';
-      }
-    });
+    // ── Phase 2: Verify email code ──
+    const formVerify = document.getElementById('form-verify');
+    const msgVerify = document.getElementById('msg-verify');
+    const verifyBtn = document.getElementById('verify-code-btn');
+    const resendBtn = document.getElementById('resend-btn');
+    const emailStatusDiv = document.getElementById('email-verification-status');
 
-    // Step 2: Name and Password
-    const step2Form = document.getElementById('form-step2');
-    const msg2 = document.getElementById('msg2');
-    const backStep2Btn = document.getElementById('back-step2');
-
-    step2Form.addEventListener('submit', async (e) => {
+    formVerify.addEventListener('submit', async (e) => {
       e.preventDefault();
-      msg2.className = 'msg';
-      msg2.textContent = '';
+      msgVerify.className = 'msg';
+      msgVerify.textContent = '';
 
-      const name = step2Form.name.value.trim();
-      const pw = step2Form.password.value;
-      const cf = step2Form.confirm.value;
-
-      if (!name || !pw || !cf) {
-        msg2.className = 'msg err';
-        msg2.textContent = 'Please fill all required fields.';
-        return;
-      }
-
-      if (pw.length < 8) {
-        msg2.className = 'msg err';
-        msg2.textContent = 'Password must be at least 8 characters.';
-        return;
-      }
-
-      if (pw !== cf) {
-        msg2.className = 'msg err';
-        msg2.textContent = 'Passwords do not match.';
-        return;
-      }
-
-      // Store the password and name for final submission
-      window.finalPassword = pw;
-      window.tempName = name;
-      
-      // Go to step 3 (phone verification)
-      goToStep(3);
-    });
-
-    backStep2Btn.addEventListener('click', () => {
-      goToStep(1);
-    });
-
-    // Step 3: Phone Verification
-    const step3Form = document.getElementById('form-step3');
-    const phoneInput = document.getElementById('reg-phone');
-    const countryCodeSelect = document.getElementById('country-code');
-    const phoneCodeInput = document.getElementById('phone-code');
-    const phoneCodeSection = document.getElementById('phone-code-section');
-    const sendPhoneCodeBtn = document.getElementById('send-phone-code');
-    const verifyPhoneCodeBtn = document.getElementById('verify-phone-code');
-    const continueStep3Btn = document.getElementById('continue-step3');
-    const phoneStatusDiv = document.getElementById('phone-verification-status');
-    const msg3 = document.getElementById('msg3');
-    const backStep3Btn = document.getElementById('back-step3');
-
-    // Prevent Enter key from submitting the form and reloading the page
-    if (step3Form) {
-      step3Form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (phoneCodeSection && phoneCodeSection.style.display !== 'none' && verifyPhoneCodeBtn && verifyPhoneCodeBtn.style.display !== 'none') {
-          verifyPhoneCodeBtn.click();
-        } else if (sendPhoneCodeBtn && !sendPhoneCodeBtn.disabled && sendPhoneCodeBtn.style.display !== 'none') {
-          sendPhoneCodeBtn.click();
-        }
-      });
-    }
-
-    // Phone number auto-formatting: (xxx) - xxx - xxxx
-    phoneInput.addEventListener('input', (e) => {
-      let value = e.target.value.replace(/\D/g, ''); // Remove all non-digits
-      
-      // Limit to 10 digits (US phone number)
-      if (value.length > 10) {
-        value = value.slice(0, 10);
-      }
-      
-      // Format: (xxx) - xxx - xxxx
-      let formatted = '';
-      if (value.length > 0) {
-        if (value.length <= 3) {
-          formatted = '(' + value;
-        } else if (value.length <= 6) {
-          formatted = '(' + value.slice(0, 3) + ') - ' + value.slice(3);
-        } else {
-          formatted = '(' + value.slice(0, 3) + ') - ' + value.slice(3, 6) + ' - ' + value.slice(6, 10);
-        }
-      }
-      
-      e.target.value = formatted;
-    });
-    
-    // Also handle paste events
-    phoneInput.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-      const digits = pastedText.replace(/\D/g, '').slice(0, 10);
-      phoneInput.value = '';
-      phoneInput.dispatchEvent(new Event('input', { bubbles: true }));
-      // Manually set the value
-      let formatted = '';
-      if (digits.length > 0) {
-        if (digits.length <= 3) {
-          formatted = '(' + digits;
-        } else if (digits.length <= 6) {
-          formatted = '(' + digits.slice(0, 3) + ') - ' + digits.slice(3);
-        } else {
-          formatted = '(' + digits.slice(0, 3) + ') - ' + digits.slice(3, 6) + ' - ' + digits.slice(6, 10);
-        }
-      }
-      phoneInput.value = formatted;
-    });
-
-    // Prevent non-numeric input
-    phoneInput.addEventListener('keydown', (e) => {
-      // Allow: backspace, delete, tab, escape, enter, and arrow keys
-      if ([8, 9, 27, 13, 46, 37, 38, 39, 40].indexOf(e.keyCode) !== -1 ||
-          // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-          (e.keyCode === 65 && e.ctrlKey === true) ||
-          (e.keyCode === 67 && e.ctrlKey === true) ||
-          (e.keyCode === 86 && e.ctrlKey === true) ||
-          (e.keyCode === 88 && e.ctrlKey === true)) {
-        return;
-      }
-      // Ensure that it is a number and stop the keypress
-      if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
-        e.preventDefault();
-      }
-    });
-
-    // Phone verification using Sinch SMS (no reCAPTCHA needed)
-
-    sendPhoneCodeBtn.addEventListener('click', async () => {
-      // Get phone number digits only
-      const phoneDigits = phoneInput.value.replace(/\D/g, '');
-      const countryCode = countryCodeSelect.value;
-      
-      if (!phoneDigits || phoneDigits.length !== 10) {
-        msg3.className = 'msg err';
-        msg3.textContent = 'Please enter a valid 10-digit phone number.';
-        return;
-      }
-
-      // Format phone number with country code (E.164 format)
-      const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
-      const fullPhoneNumber = formattedCountryCode + phoneDigits;
-      
-      console.log('Phone number formatting:');
-      console.log('  Country code from dropdown:', countryCode);
-      console.log('  Phone digits:', phoneDigits);
-      console.log('  Full phone number:', fullPhoneNumber);
-
-      try {
-        msg3.className = 'msg';
-        msg3.textContent = '';
-        sendPhoneCodeBtn.disabled = true;
-        sendPhoneCodeBtn.textContent = 'Sending...';
-
-        // Call Cloud Function to send verification code
-        const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendPhoneVerificationCode';
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ phoneNumber: fullPhoneNumber })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to send verification code');
-        }
-
-        // For testing: log the code (remove in production)
-        if (result.code) {
-          console.log('Verification code for', fullPhoneNumber, ':', result.code);
-        }
-
-        // Show code input section
-        phoneCodeSection.style.display = 'block';
-        
-        // Hide send code button, show verify and resend buttons
-        sendPhoneCodeBtn.style.display = 'none';
-        verifyPhoneCodeBtn.style.display = 'inline-flex';
-        verifyPhoneCodeBtn.className = 'btn btn-primary';
-        const resendBtn = document.getElementById('resend-phone-code');
-        resendBtn.style.display = 'inline-flex';
-        resendBtn.className = 'btn btn-secondary';
-        
-        phoneStatusDiv.style.display = 'flex';
-        phoneStatusDiv.className = 'verification-status pending';
-        phoneStatusDiv.innerHTML = '📱 Verification code sent! Enter the code you received.<br><small style="opacity: 0.7; margin-top: 0.5rem; display: block;">If you don\'t receive it within 2 minutes, check your spam folder or try again.</small>';
-        
-        msg3.className = 'msg ok';
-        msg3.textContent = 'Verification code sent to your phone. SMS delivery can take 1-2 minutes.';
-        
-      } catch (error) {
-        console.error('Error sending phone verification:', error);
-        msg3.className = 'msg err';
-        phoneStatusDiv.style.display = 'flex';
-        phoneStatusDiv.className = 'verification-status error';
-        
-        const errorMsg = error.message || 'Failed to send verification code. Please try again.';
-        msg3.textContent = errorMsg;
-        phoneStatusDiv.innerHTML = '✗ Error sending code.';
-        
-        sendPhoneCodeBtn.disabled = false;
-        sendPhoneCodeBtn.textContent = 'Send Code';
-      }
-    });
-
-    // Handle resend phone code button
-    const resendPhoneCodeBtn = document.getElementById('resend-phone-code');
-    resendPhoneCodeBtn.addEventListener('click', async () => {
-      // Re-run the send code flow
-      sendPhoneCodeBtn.click();
-    });
-
-    verifyPhoneCodeBtn.addEventListener('click', async () => {
-      const code = phoneCodeInput.value.trim();
+      const code = document.getElementById('email-verification-code').value.trim();
       if (!code || code.length !== 6) {
-        msg3.className = 'msg err';
-        msg3.textContent = 'Please enter the 6-digit verification code.';
+        msgVerify.className = 'msg err';
+        msgVerify.textContent = 'Please enter a 6-digit verification code.';
         return;
       }
 
       try {
-        msg3.className = 'msg';
-        msg3.textContent = '';
-        verifyPhoneCodeBtn.disabled = true;
-        verifyPhoneCodeBtn.textContent = 'Verifying...';
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Verifying...';
 
-        // Get phone number
-        const phoneDigits = phoneInput.value.replace(/\D/g, '');
-        const countryCode = countryCodeSelect.value;
-        const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
-        const fullPhoneNumber = formattedCountryCode + phoneDigits;
+        const verifyUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyEmailCode';
+        const verifyResponse = await fetch(verifyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: storedEmail, code: code })
+        });
 
-        // Call Cloud Function to verify code
-        const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyPhoneCode';
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResponse.ok) {
+          throw new Error(verifyResult.error || 'Invalid verification code');
+        }
+
+        // Code verified
+        emailVerified = true;
+        showPhase('create');
+
+      } catch (error) {
+        console.error('Verification error:', error);
+        msgVerify.className = 'msg err';
+        msgVerify.textContent = error.message || 'Invalid verification code. Please try again.';
+        emailStatusDiv.className = 'verification-status error';
+        emailStatusDiv.innerHTML = '&#x2717; Verification failed. Try again.';
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify Code';
+      }
+    });
+
+    // Resend verification
+    resendBtn.addEventListener('click', async () => {
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending...';
+      msgVerify.className = 'msg';
+      msgVerify.textContent = '';
+
+      try {
+        const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendEmailVerificationCode';
         const response = await fetch(functionUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            phoneNumber: fullPhoneNumber,
-            code: code
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: storedEmail })
         });
 
         const result = await response.json();
-
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to verify code');
+          throw new Error(result.error || 'Failed to send verification email');
         }
 
-        // Store verified phone number for step 4
-        window.verifiedPhoneNumber = fullPhoneNumber;
-        phoneVerified = true;
+        if (result.code) {
+          console.log('Verification code for', storedEmail, ':', result.code);
+        }
 
-        phoneStatusDiv.style.display = 'flex';
-        phoneStatusDiv.className = 'verification-status verified';
-        phoneStatusDiv.innerHTML = '✓ Phone verified!';
-        
-        // Hide verify and resend buttons, show continue button
-        verifyPhoneCodeBtn.style.display = 'none';
-        const resendBtn = document.getElementById('resend-phone-code');
-        resendBtn.style.display = 'none';
-        continueStep3Btn.style.display = 'inline-flex';
-        continueStep3Btn.className = 'btn btn-primary';
-        continueStep3Btn.disabled = false;
-        
-        msg3.className = 'msg ok';
-        msg3.textContent = 'Phone number verified successfully!';
-        
+        emailStatusDiv.className = 'verification-status pending';
+        emailStatusDiv.innerHTML = '&#x1F4E7; Verification email resent! Check your inbox.';
+        msgVerify.className = 'msg';
+        msgVerify.textContent = '';
+
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend Verification Email';
+
       } catch (error) {
-        console.error('Error verifying phone code:', error);
-        msg3.className = 'msg err';
-        phoneStatusDiv.style.display = 'flex';
-        phoneStatusDiv.className = 'verification-status error';
-        
-        const errorMsg = error.message || 'Failed to verify code. Please try again.';
-        msg3.textContent = errorMsg;
-        phoneStatusDiv.innerHTML = '✗ Verification failed.';
-        
-        verifyPhoneCodeBtn.disabled = false;
-        verifyPhoneCodeBtn.textContent = 'Verify Code';
+        console.error('Error:', error);
+        msgVerify.className = 'msg err';
+        msgVerify.textContent = error.message || 'Failed to resend verification email.';
+        resendBtn.disabled = false;
+        resendBtn.textContent = 'Resend Verification Email';
       }
     });
 
-    continueStep3Btn.addEventListener('click', () => {
-      if (phoneVerified) {
-        goToStep(4);
-      } else {
-        msg3.className = 'msg err';
-        msg3.textContent = 'Please verify your phone number before continuing, or click "Skip" to continue without phone.';
+    // ── Phase 3: Create account ──
+    const createBtn = document.getElementById('create-account-btn');
+    const msgCreate = document.getElementById('msg-create');
+
+    createBtn.addEventListener('click', async () => {
+      if (!emailVerified) {
+        msgCreate.className = 'msg err';
+        msgCreate.textContent = 'Please verify your email first.';
+        return;
       }
-    });
-
-    // Skip phone verification button
-    const skipPhoneBtn = document.getElementById('skip-phone');
-    skipPhoneBtn.addEventListener('click', () => {
-      // Mark that phone was skipped
-      phoneVerified = false;
-      window.verifiedPhoneNumber = null;
-      window.phoneVerificationId = null;
-      window.phoneVerificationCode = null;
-      
-      // Clear any phone input
-      phoneInput.value = '';
-      
-      // Proceed to step 4
-      msg3.className = 'msg';
-      msg3.textContent = 'Phone verification skipped. You can add a phone number later in your profile.';
-      goToStep(4);
-    });
-
-    backStep3Btn.addEventListener('click', () => {
-      goToStep(2);
-    });
-
-    // Step 4: Health Preferences and Final Submission
-    const step4Form = document.getElementById('form-step4');
-    const msg4 = document.getElementById('msg4');
-    const backStep4Btn = document.getElementById('back-step4');
-
-    step4Form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      msg4.className = 'msg';
-      msg4.textContent = '';
 
       try {
-        msg4.classList.add('ok');
-        msg4.textContent = 'Creating your account...';
+        createBtn.disabled = true;
+        createBtn.textContent = 'Creating account...';
+        msgCreate.className = 'msg ok';
+        msgCreate.textContent = 'Creating your account...';
 
-        // Collect all form data
-        const email = window.storedEmail || emailInput.value.trim();
-        // Phone verification is temporarily disabled - no phone value collected
-        const phoneValue = window.verifiedPhoneNumber || '';
-        
-        const profileData = {
-          email: email,
-          name: window.tempName || step2Form.name.value.trim(),
-          relation: step4Form.relation.value
-        };
-        
-        // Only include phone if it was verified or provided
-        if (phoneValue) {
-          profileData.phone = phoneValue;
-        }
+        // Detect timezone
+        let timezone = '';
+        try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch {}
 
-        // Get password - check both stored value and form
-        const passwordField = step2Form.querySelector('#reg-pass') || step2Form.querySelector('[name="password"]');
-        const finalPassword = window.finalPassword || (passwordField ? passwordField.value : step2Form.password?.value || '');
-        
-        console.log('Password check:', {
-          stored: !!window.finalPassword,
-          fromField: !!passwordField?.value,
-          length: finalPassword?.length
-        });
-        
-        if (!finalPassword || finalPassword.length < 8) {
-          msg4.className = 'msg err';
-          msg4.textContent = 'Password is required and must be at least 8 characters. Please go back to Step 2 and enter your password.';
-          return;
-        }
-
-        // NOW create the Firebase account (only at the final step)
-        const userCredential = await createUserWithEmailAndPassword(auth, email, finalPassword);
+        // Create Firebase Auth account
+        const userCredential = await createUserWithEmailAndPassword(auth, storedEmail, storedPassword);
         const userId = userCredential.user.uid;
-        
-        // Save phone number and verification status if phone was verified
-        if (phoneVerified && verifiedPhoneNumber) {
-          console.log('Phone verified, will save to profile:', verifiedPhoneNumber);
-          // Phone number and phoneVerified will be saved in profileData below
-        }
-        
-        // Send email verification
+
+        // Send Firebase email verification
         await sendEmailVerification(userCredential.user);
 
-        // Save profile to Firestore (without password)
-        // For caregivers, only save: email, name, phone, relation
+        // Save minimal profile to Firestore
         const firestoreData = {
-          email: profileData.email,
-          name: profileData.name,
-          relation: profileData.relation || ''
+          email: storedEmail,
+          name: storedName,
+          type: 'C',
+          timezone: timezone
         };
-
-        // Add phone number and verification status if phone was verified
-        if (phoneVerified && verifiedPhoneNumber) {
-          firestoreData.phone = verifiedPhoneNumber;
-          firestoreData.phoneVerified = true;
-        }
-
-        // Set user type: C for Caregiver
-        firestoreData.type = 'C';
 
         console.log('Saving to Firestore:', firestoreData);
         await setDoc(doc(db, "users", userId), firestoreData);
         console.log('Successfully saved to Firestore');
 
-        // Save to localStorage for offline access (don't save password for security)
-        localStorage.setItem('userProfile', JSON.stringify(profileData));
+        // Save to localStorage
+        localStorage.setItem('userProfile', JSON.stringify(firestoreData));
         localStorage.setItem('userId', userId);
-        localStorage.setItem('userEmail', profileData.email);
+        localStorage.setItem('userEmail', storedEmail);
 
-        // Success - redirect to login with success message
-        msg4.textContent = 'Account created! Redirecting to login...';
+        // Redirect
+        msgCreate.className = 'msg ok';
+        msgCreate.textContent = 'Account created! Redirecting to login...';
         setTimeout(() => {
           window.location.href = '../login.html?registered=true';
         }, 1500);
 
       } catch (error) {
         console.error('Registration error:', error);
-        msg4.classList.add('err');
+        createBtn.disabled = false;
+        createBtn.textContent = 'Create Account';
+        msgCreate.className = 'msg err';
 
-        // User-friendly error messages
         if (error.code === 'auth/email-already-in-use') {
-          msg4.textContent = 'This email is already registered. Please log in instead.';
+          msgCreate.textContent = 'This email is already registered. Please log in instead.';
         } else if (error.code === 'auth/invalid-email') {
-          msg4.textContent = 'Please enter a valid email address.';
+          msgCreate.textContent = 'Please enter a valid email address.';
         } else if (error.code === 'auth/weak-password') {
-          msg4.textContent = 'Password should be at least 6 characters.';
+          msgCreate.textContent = 'Password should be at least 6 characters.';
         } else {
-          msg4.textContent = 'Registration failed: ' + error.message;
+          msgCreate.textContent = 'Registration failed: ' + error.message;
         }
       }
     });
-
-    backStep4Btn.addEventListener('click', () => {
-      goToStep(3);
-    });
-</script>
+  </script>
 
 </body>
 </html>
