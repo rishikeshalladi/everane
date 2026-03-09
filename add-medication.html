@@ -1091,14 +1091,47 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } else if (voiceData) {
         // Handle voice data - pre-fill form with voice conversation data
         console.log('[Add-Medication] Voice data received:', voiceData);
+
+        // Voice data now provides schedules[] array directly
+        let voiceSchedules = [];
+        if (Array.isArray(voiceData.schedules) && voiceData.schedules.length > 0) {
+          // AI voice provides schedules in the correct format
+          voiceSchedules = voiceData.schedules.map(s => {
+            const schedule = { ...s };
+            // Generate scheduleId if missing
+            if (!schedule.scheduleId) {
+              schedule.scheduleId = 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            }
+            return schedule;
+          });
+          console.log('[Add-Medication] Voice schedules (new format):', voiceSchedules);
+        } else if (voiceData.days && voiceData.times) {
+          // Legacy fallback: convert old days/times format to WEEKLY schedules
+          const dayNameToNum = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+          const days = Array.isArray(voiceData.days) ? voiceData.days : [];
+          const times = Array.isArray(voiceData.times) ? voiceData.times : [];
+          for (const day of days) {
+            const weekday = dayNameToNum[day];
+            if (weekday === undefined) continue;
+            for (const time of times) {
+              voiceSchedules.push({
+                scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                type: 'WEEKLY',
+                weekday: weekday,
+                time: time,
+                everyWeeks: 1,
+                startDate: voiceData.startDate || new Date().toISOString().split('T')[0],
+                endDate: voiceData.endDate || null
+              });
+            }
+          }
+          console.log('[Add-Medication] Voice schedules (legacy converted):', voiceSchedules);
+        }
+
         med = {
           name: voiceData.name || '',
           dosage: voiceData.dosage || '',
-          days: voiceData.days || [],
-          timesPerDay: voiceData.timesPerDay || 1,
-          times: voiceData.times || [],
-          startDate: voiceData.startDate || null,
-          endDate: voiceData.endDate || null,
+          schedules: voiceSchedules,
           reminder: voiceData.reminder || 'None'
         };
         console.log('[Add-Medication] Converted voice data to medication object:', med);
