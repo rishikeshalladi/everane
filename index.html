@@ -1,1022 +1,1046 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MedTracker - A Simple Dashboard For All Your Medications</title>
-  <meta name="description" content="MedTracker keeps your medications, schedules, and refills organized in one clean view. Never miss a dose or run out of pills." />
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Everane — Your Medication, Simplified</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    /* ========================================
-       CSS Reset (lean)
-       ======================================== */
-    *,*::before,*::after{box-sizing:border-box}
-    *{margin:0}
-    html{scroll-behavior:smooth}
-    html:focus-within{scroll-behavior:smooth}
-    html,body{height:100%;overflow-x:hidden}
-    body{line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-    img,picture,video,canvas,svg{display:block;max-width:100%}
-    input,button,textarea,select{font:inherit}
-    a{text-decoration:none;color:inherit}
-    ul,ol{list-style:none;padding:0}
-
-    /* ========================================
-       Design Tokens
-       ======================================== */
-    :root{
-      /* Colors - Dark Mode (default) */
-      --bg: #0b1020;
-      --bg-elev: rgba(255,255,255,0.04);
-      --surface: #0f1629;
-      --text: #e7ebf3;
-      --muted: #b1bad4;
-      --border: rgba(255,255,255,0.12);
-      --brand: #4f8cff;
-      --brand-600: #3c74f7;
-      --brand-700: #2b63e6;
-      --accent: #7de2d1;
-      --danger: #ff6b6b;
-
-      /* Spacing & Layout */
-      --radius: 20px;
-      --radius-sm: 12px;
-      --radius-xs: 8px;
-      --shadow: 0 10px 30px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.2);
-      --shadow-lg: 0 20px 50px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.25);
-      --container: 1200px;
-
-      /* Glass */
-      --glass-bg: rgba(15,22,41,0.6);
-      --glass-border: rgba(255,255,255,0.08);
-
-      /* Transitions */
-      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --cream: #FFF9F0;
+      --warm-white: #FFFDFB;
+      --sage: #7BA68A;
+      --sage-deep: #5A8A6A;
+      --sage-light: #D4E8DA;
+      --terracotta: #D4845A;
+      --terracotta-light: #F0D4C0;
+      --charcoal: #2C2C2C;
+      --soft-gray: #8A8A8A;
+      --light-border: rgba(0,0,0,0.06);
+      --font-display: 'DM Serif Display', Georgia, serif;
+      --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow-soft: 0 4px 24px rgba(0,0,0,0.06);
+      --shadow-hover: 0 8px 40px rgba(0,0,0,0.10);
     }
-
-    /* ========================================
-       Light Mode Overrides
-       ======================================== */
-    @media (prefers-color-scheme: light){
-      :root{
-        --bg: #f8fafc;
-        --bg-elev: rgba(0,0,0,0.04);
-        --surface: #ffffff;
-        --text: #0f172a;
-        --muted: #475569;
-        --border: rgba(15,23,42,0.12);
-        --shadow: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
-        --shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08);
-        --glass-bg: rgba(255,255,255,0.7);
-        --glass-border: rgba(15,23,42,0.08);
-        --accent: #0d9488;
-        --accent-bg: rgba(13,148,136,0.08);
-        --accent-border: rgba(13,148,136,0.25);
+    html { scroll-behavior: smooth; font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--charcoal);
+      line-height: 1.7;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* ===== NAV ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 18px 40px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,249,240,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--light-border);
+      transition: all 0.3s ease;
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      color: var(--sage-deep);
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-logo .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--sage);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 1.1rem;
+    }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a {
+      text-decoration: none; color: var(--soft-gray);
+      font-size: 0.92rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--charcoal); }
+    .nav-cta {
+      background: var(--sage) !important; color: white !important;
+      padding: 10px 24px !important; border-radius: 50px !important;
+      font-weight: 600 !important;
+      transition: all 0.3s ease !important;
+    }
+    .nav-cta:hover { background: var(--sage-deep) !important; transform: translateY(-1px); }
+    .mobile-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+    .mobile-toggle span { display: block; width: 22px; height: 2px; background: var(--charcoal); margin: 5px 0; transition: 0.3s; border-radius: 2px; }
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 120px 40px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -200px; right: -200px;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, var(--sage-light) 0%, transparent 70%);
+      opacity: 0.5;
+      z-index: 0;
+    }
+    .hero::after {
+      content: '';
+      position: absolute; bottom: -100px; left: -100px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, var(--terracotta-light) 0%, transparent 70%);
+      opacity: 0.4;
+      z-index: 0;
+    }
+    .hero-inner {
+      max-width: 1200px; margin: 0 auto; width: 100%;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+      position: relative; z-index: 1;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--sage-light); color: var(--sage-deep);
+      padding: 8px 18px; border-radius: 50px;
+      font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 24px;
+      animation: fadeInUp 0.8s ease both;
+    }
+    .hero-badge .pulse {
+      width: 8px; height: 8px; background: var(--sage);
+      border-radius: 50%; position: relative;
+    }
+    .hero-badge .pulse::after {
+      content: ''; position: absolute; inset: -3px;
+      border-radius: 50%; border: 2px solid var(--sage);
+      animation: pulseRing 2s ease infinite;
+    }
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.8rem, 5vw, 4.2rem);
+      line-height: 1.15;
+      color: var(--charcoal);
+      margin-bottom: 24px;
+      animation: fadeInUp 0.8s ease 0.1s both;
+    }
+    .hero h1 em {
+      font-style: italic; color: var(--sage-deep);
+    }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--soft-gray);
+      line-height: 1.8; max-width: 480px;
+      margin-bottom: 40px;
+      animation: fadeInUp 0.8s ease 0.2s both;
+    }
+    .hero-actions {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      animation: fadeInUp 0.8s ease 0.3s both;
+    }
+    .btn-primary {
+      background: var(--sage); color: white;
+      padding: 16px 36px; border-radius: 50px;
+      font-size: 1rem; font-weight: 600;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex; align-items: center; gap: 10px;
+      font-family: var(--font-body);
+    }
+    .btn-primary:hover { background: var(--sage-deep); transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+    .btn-secondary {
+      background: transparent; color: var(--charcoal);
+      padding: 16px 36px; border-radius: 50px;
+      font-size: 1rem; font-weight: 500;
+      text-decoration: none; border: 2px solid var(--light-border);
+      transition: all 0.3s ease; cursor: pointer;
+      font-family: var(--font-body);
+    }
+    .btn-secondary:hover { border-color: var(--sage); color: var(--sage-deep); }
+    /* Hero visual */
+    .hero-visual {
+      position: relative;
+      animation: fadeInUp 0.8s ease 0.4s both;
+    }
+    .phone-mockup {
+      width: 320px; margin: 0 auto;
+      background: white;
+      border-radius: 32px;
+      padding: 20px;
+      box-shadow: 0 20px 80px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+      transform: rotate(2deg);
+      position: relative;
+    }
+    .phone-notch {
+      width: 100px; height: 6px;
+      background: #E8E8E8; border-radius: 10px;
+      margin: 0 auto 20px;
+    }
+    .phone-header {
+      text-align: center; margin-bottom: 20px;
+    }
+    .phone-header .greeting {
+      font-size: 0.8rem; color: var(--soft-gray); margin-bottom: 4px;
+    }
+    .phone-header .name {
+      font-family: var(--font-display); font-size: 1.3rem;
+    }
+    .med-card {
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 14px;
+      transition: all 0.3s ease;
+    }
+    .med-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+    }
+    .med-card:nth-child(1) .med-icon { background: #E8F5E9; }
+    .med-card:nth-child(2) .med-icon { background: #FFF3E0; }
+    .med-card:nth-child(3) .med-icon { background: #E3F2FD; }
+    .med-card:nth-child(4) .med-icon { background: #F3E5F5; }
+    .med-info .med-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 2px; }
+    .med-info .med-time { font-size: 0.78rem; color: var(--soft-gray); }
+    .med-status {
+      margin-left: auto; font-size: 0.72rem; font-weight: 600;
+      padding: 4px 10px; border-radius: 50px;
+    }
+    .status-taken { background: #E8F5E9; color: #2E7D32; }
+    .status-upcoming { background: #FFF3E0; color: #E65100; }
+    .status-done { background: #E3F2FD; color: #1565C0; }
+    /* Floating elements */
+    .float-card {
+      position: absolute;
+      background: white;
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      box-shadow: var(--shadow-soft);
+      font-size: 0.82rem;
+      animation: float 6s ease-in-out infinite;
+    }
+    .float-reminder {
+      top: 20px; right: -40px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .float-reminder .bell { font-size: 1.2rem; }
+    .float-reminder .fr-text { font-weight: 600; }
+    .float-reminder .fr-sub { font-size: 0.72rem; color: var(--soft-gray); }
+    .float-voice {
+      bottom: 60px; left: -50px;
+      display: flex; align-items: center; gap: 10px;
+      background: var(--sage); color: white;
+    }
+    .float-voice .mic { font-size: 1.2rem; }
+    /* ===== SECTION HELPERS ===== */
+    section { padding: 100px 40px; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--sage); margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 3.5vw, 2.8rem);
+      line-height: 1.2; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--soft-gray);
+      max-width: 560px; line-height: 1.8;
+    }
+    /* ===== PROBLEM / SOLUTION ===== */
+    .problem-section { background: white; }
+    .problem-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+      margin-top: 60px; align-items: start;
+    }
+    .problem-side h3, .solution-side h3 {
+      font-family: var(--font-display);
+      font-size: 1.5rem; margin-bottom: 24px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .problem-side h3 .icon { color: var(--terracotta); }
+    .solution-side h3 .icon { color: var(--sage); }
+    .pain-point, .sol-point {
+      display: flex; gap: 16px; padding: 18px 0;
+      border-bottom: 1px solid var(--light-border);
+    }
+    .pain-point:last-child, .sol-point:last-child { border: none; }
+    .pain-point .marker {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #FDECEA; color: #C62828;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .sol-point .marker {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--sage-light); color: var(--sage-deep);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem; flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .point-text strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+    .point-text span { font-size: 0.88rem; color: var(--soft-gray); }
+    /* ===== FEATURES ===== */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+      margin-top: 60px;
+    }
+    .feature-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 36px 30px;
+      border: 1px solid var(--light-border);
+      transition: all 0.4s ease;
+      position: relative; overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; background: var(--sage);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .feature-card:hover::before { transform: scaleX(1); }
+    .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 20px;
+    }
+    .feature-card:nth-child(1) .feature-icon { background: #E8F5E9; }
+    .feature-card:nth-child(2) .feature-icon { background: #FFF3E0; }
+    .feature-card:nth-child(3) .feature-icon { background: #E3F2FD; }
+    .feature-card:nth-child(4) .feature-icon { background: #F3E5F5; }
+    .feature-card:nth-child(5) .feature-icon { background: #FFF9C4; }
+    .feature-card:nth-child(6) .feature-icon { background: #FFEBEE; }
+    .feature-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem; margin-bottom: 10px;
+    }
+    .feature-card p {
+      font-size: 0.9rem; color: var(--soft-gray); line-height: 1.7;
+    }
+    /* ===== HOW IT WORKS ===== */
+    .how-section { background: white; }
+    .steps-track {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
+      margin-top: 60px; position: relative;
+    }
+    .steps-track::before {
+      content: '';
+      position: absolute; top: 40px;
+      left: calc(16.66% + 20px); right: calc(16.66% + 20px);
+      height: 2px;
+      background: linear-gradient(to right, var(--sage-light), var(--sage), var(--sage-light));
+    }
+    .step {
+      text-align: center; position: relative;
+    }
+    .step-number {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--sage); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 1.5rem;
+      margin: 0 auto 24px; position: relative; z-index: 1;
+      box-shadow: 0 4px 20px rgba(123,166,138,0.3);
+    }
+    .step h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem; margin-bottom: 10px;
+    }
+    .step p {
+      font-size: 0.9rem; color: var(--soft-gray);
+      max-width: 280px; margin: 0 auto; line-height: 1.7;
+    }
+    .step-detail {
+      margin-top: 20px; padding: 16px;
+      background: var(--cream); border-radius: var(--radius-sm);
+      font-size: 0.82rem; color: var(--sage-deep);
+      font-weight: 500;
+    }
+    /* ===== VOICE SECTION ===== */
+    .voice-section {
+      background: linear-gradient(135deg, var(--sage-deep) 0%, #4A7A5E 100%);
+      color: white; border-radius: 0;
+    }
+    .voice-inner {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+    }
+    .voice-section .section-label { color: var(--sage-light); }
+    .voice-section .section-title { color: white; }
+    .voice-section .section-sub { color: rgba(255,255,255,0.75); }
+    .voice-features { margin-top: 32px; }
+    .voice-feature {
+      display: flex; gap: 16px; margin-bottom: 20px;
+      padding: 16px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+    }
+    .voice-feature .vf-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .voice-feature strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+    .voice-feature span { font-size: 0.85rem; opacity: 0.75; }
+    .voice-demo {
+      background: rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      padding: 40px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+    .voice-waves {
+      display: flex; align-items: center; justify-content: center;
+      gap: 4px; height: 60px; margin-bottom: 20px;
+    }
+    .voice-waves .bar {
+      width: 4px; border-radius: 4px;
+      background: rgba(255,255,255,0.6);
+      animation: wave 1.2s ease-in-out infinite;
+    }
+    .voice-waves .bar:nth-child(1) { height: 20px; animation-delay: 0s; }
+    .voice-waves .bar:nth-child(2) { height: 35px; animation-delay: 0.1s; }
+    .voice-waves .bar:nth-child(3) { height: 50px; animation-delay: 0.2s; }
+    .voice-waves .bar:nth-child(4) { height: 40px; animation-delay: 0.3s; }
+    .voice-waves .bar:nth-child(5) { height: 55px; animation-delay: 0.15s; }
+    .voice-waves .bar:nth-child(6) { height: 30px; animation-delay: 0.25s; }
+    .voice-waves .bar:nth-child(7) { height: 45px; animation-delay: 0.35s; }
+    .voice-waves .bar:nth-child(8) { height: 25px; animation-delay: 0.05s; }
+    .voice-demo .transcript {
+      font-family: var(--font-display); font-size: 1.3rem;
+      font-style: italic; margin-bottom: 8px;
+    }
+    .voice-demo .transcript-sub {
+      font-size: 0.8rem; opacity: 0.6;
+    }
+    /* ===== CAREGIVER ===== */
+    .caregiver-section { }
+    .caregiver-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
+      margin-top: 60px; align-items: center;
+    }
+    .caregiver-visual {
+      background: white;
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: var(--shadow-soft);
+    }
+    .cg-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px;
+    }
+    .cg-avatar {
+      width: 44px; height: 44px;
+      background: var(--terracotta-light);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .cg-name { font-weight: 600; font-size: 0.95rem; }
+    .cg-role { font-size: 0.78rem; color: var(--soft-gray); }
+    .cg-alert {
+      background: #FFF3E0;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex; gap: 12px; align-items: start;
+    }
+    .cg-alert .alert-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .cg-alert strong { display: block; font-size: 0.88rem; margin-bottom: 2px; color: #E65100; }
+    .cg-alert span { font-size: 0.82rem; color: var(--soft-gray); }
+    .cg-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    .cg-stat {
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      padding: 16px; text-align: center;
+    }
+    .cg-stat .number {
+      font-family: var(--font-display);
+      font-size: 1.6rem; color: var(--sage-deep);
+    }
+    .cg-stat .label {
+      font-size: 0.72rem; color: var(--soft-gray);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+    .caregiver-benefits { list-style: none; margin-top: 28px; }
+    .caregiver-benefits li {
+      display: flex; gap: 14px; margin-bottom: 16px;
+      font-size: 0.95rem;
+    }
+    .caregiver-benefits .check {
+      width: 24px; height: 24px;
+      background: var(--sage-light); color: var(--sage-deep);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; flex-shrink: 0; margin-top: 2px;
+    }
+    /* ===== PRICING ===== */
+    .pricing-section { background: white; text-align: center; }
+    .price-card {
+      max-width: 480px; margin: 50px auto 0;
+      background: var(--cream);
+      border-radius: var(--radius);
+      padding: 48px 40px;
+      border: 2px solid var(--sage-light);
+      position: relative;
+    }
+    .price-badge {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      background: var(--sage); color: white;
+      padding: 6px 24px; border-radius: 50px;
+      font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .price-amount {
+      font-family: var(--font-display);
+      font-size: 3.5rem; margin: 20px 0 8px;
+    }
+    .price-desc {
+      font-size: 1rem; color: var(--soft-gray); margin-bottom: 32px;
+    }
+    .price-features {
+      list-style: none; text-align: left;
+      margin-bottom: 32px;
+    }
+    .price-features li {
+      display: flex; gap: 12px; align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--light-border);
+      font-size: 0.92rem;
+    }
+    .price-features li:last-child { border: none; }
+    .price-features li .pf-check { color: var(--sage); font-weight: 700; }
+    /* ===== CTA ===== */
+    .cta-section {
+      text-align: center;
+      background: linear-gradient(180deg, var(--cream) 0%, var(--sage-light) 100%);
+      padding: 120px 40px;
+    }
+    .cta-section .section-title {
+      max-width: 600px; margin: 0 auto 16px;
+    }
+    .cta-section .section-sub {
+      max-width: 480px; margin: 0 auto 40px;
+    }
+    /* ===== FOOTER ===== */
+    footer {
+      background: var(--charcoal); color: rgba(255,255,255,0.6);
+      padding: 60px 40px 30px;
+    }
+    .footer-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px;
+    }
+    .footer-brand .f-logo {
+      font-family: var(--font-display);
+      font-size: 1.4rem; color: white;
+      margin-bottom: 12px;
+    }
+    .footer-brand p {
+      font-size: 0.85rem; line-height: 1.7;
+    }
+    .footer-col h4 {
+      color: white; font-size: 0.85rem;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 16px;
+    }
+    .footer-col a {
+      display: block; color: rgba(255,255,255,0.5);
+      text-decoration: none; font-size: 0.88rem;
+      margin-bottom: 10px; transition: color 0.2s;
+    }
+    .footer-col a:hover { color: white; }
+    .footer-bottom {
+      max-width: 1100px; margin: 40px auto 0;
+      padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.8rem;
+      display: flex; justify-content: space-between;
+    }
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.5); }
+      50% { transform: scaleY(1); }
+    }
+    @keyframes pulseRing {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(2); }
+    }
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0; transform: translateY(40px);
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.visible {
+      opacity: 1; transform: translateY(0);
+    }
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      nav { padding: 14px 24px; }
+      .nav-links { display: none; }
+      .mobile-toggle { display: block; }
+      .nav-links.open {
+        display: flex; flex-direction: column;
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: rgba(255,249,240,0.97);
+        backdrop-filter: blur(20px);
+        padding: 20px 24px; gap: 16px;
+        border-bottom: 1px solid var(--light-border);
       }
+      section { padding: 60px 24px; }
+      .hero { padding: 100px 24px 60px; }
+      .hero-inner { grid-template-columns: 1fr; gap: 50px; }
+      .hero-visual { order: -1; }
+      .phone-mockup { width: 280px; transform: rotate(0); }
+      .float-reminder { right: -10px; top: 10px; }
+      .float-voice { left: -10px; bottom: 40px; }
+      .problem-grid { grid-template-columns: 1fr; gap: 40px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps-track { grid-template-columns: 1fr; gap: 30px; }
+      .steps-track::before { display: none; }
+      .voice-inner { grid-template-columns: 1fr; gap: 40px; }
+      .caregiver-grid { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr 1fr; gap: 30px; }
+      .footer-bottom { flex-direction: column; gap: 8px; }
     }
-
-    /* ========================================
-       Base Styles
-       ======================================== */
-    body{
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-      background:
-        radial-gradient(1000px 600px at 80% -10%, rgba(79,140,255,0.15), transparent 60%),
-        radial-gradient(800px 500px at -10% 20%, rgba(125,226,209,0.12), transparent 60%),
-        var(--bg);
-      color: var(--text);
-    }
-
-    .container{max-width:var(--container);margin-inline:auto;padding-inline:clamp(1rem,3vw,2rem)}
-    .section{padding-block:clamp(3rem,8vw,7rem)}
-    .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
-    .skip-link{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
-    .skip-link:focus{left:1rem;top:1rem;width:auto;height:auto;background:var(--surface);color:var(--text);padding:.6rem .9rem;border-radius:10px;outline:2px solid var(--brand);z-index:100}
-
-    .section-label{text-align:center;margin-bottom:clamp(2rem,4vw,3.5rem)}
-    .section-label h2{font-size:clamp(1.6rem,3vw,2.4rem);font-weight:800;line-height:1.2;margin-bottom:.75rem}
-    .section-label p{color:var(--muted);font-size:clamp(.95rem,1.1vw,1.15rem);max-width:600px;margin-inline:auto}
-
-    .gradient-text{
-      background:linear-gradient(135deg, var(--brand), var(--accent));
-      -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent;
-      background-clip:text;
-    }
-
-    /* ========================================
-       Buttons
-       ======================================== */
-    .btn{
-      display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
-      padding:.85rem 1.5rem;border-radius:var(--radius-sm);border:1px solid transparent;
-      cursor:pointer;font-size:.95rem;font-weight:600;
-      transition:all .25s var(--ease);
-      white-space:nowrap;
-    }
-    .btn:active{transform:translateY(1px)}
-
-    .btn-primary{
-      background:linear-gradient(180deg, var(--brand), var(--brand-600));
-      color:#fff;
-      box-shadow:0 4px 14px rgba(79,140,255,0.35);
-    }
-    .btn-primary:hover{
-      background:linear-gradient(180deg, var(--brand-600), var(--brand-700));
-      box-shadow:0 6px 24px rgba(79,140,255,0.5);
-      transform:translateY(-1px);
-    }
-
-    .btn-ghost{
-      background:transparent;
-      border-color:var(--border);
-      color:var(--text);
-    }
-    .btn-ghost:hover{
-      background:var(--bg-elev);
-      border-color:var(--brand);
-      color:var(--brand);
-    }
-
-    /* ========================================
-       Navbar
-       ======================================== */
-    .navbar{
-      position:sticky;top:0;z-index:100;
-      backdrop-filter:saturate(180%) blur(16px);
-      -webkit-backdrop-filter:saturate(180%) blur(16px);
-      background:linear-gradient(to bottom, rgba(11,16,32,0.8), rgba(11,16,32,0.6));
-      border-bottom:1px solid var(--glass-border);
-    }
-    @media (prefers-color-scheme: light){
-      .navbar{background:linear-gradient(to bottom, rgba(248,250,252,0.92), rgba(248,250,252,0.85))}
-    }
-
-    .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem;height:68px}
-
-    .brand{display:flex;align-items:center;gap:.65rem;font-weight:700;font-size:1.05rem}
-    .brand-mark{font-size:1.4rem;line-height:1}
-
-    .nav-links{display:flex;align-items:center;gap:.25rem}
-    .nav-links a{
-      position:relative;
-      padding:.5rem .85rem;border-radius:var(--radius-xs);
-      color:var(--muted);font-size:.95rem;font-weight:500;
-      transition:color .2s var(--ease);
-    }
-    .nav-links a::after{
-      content:'';position:absolute;bottom:2px;left:50%;
-      width:0;height:2px;
-      background:linear-gradient(90deg, var(--brand), var(--accent));
-      border-radius:2px;
-      transition:width .3s var(--ease), left .3s var(--ease);
-    }
-    .nav-links a:hover{color:var(--text)}
-    .nav-links a:hover::after{width:60%;left:20%}
-    .nav-links a[aria-current="page"]{color:var(--brand)}
-    .nav-links a[aria-current="page"]::after{width:60%;left:20%}
-
-    .auth{display:flex;align-items:center;gap:.75rem}
-    .auth-login{color:var(--muted);font-size:.95rem;font-weight:500;padding:.5rem .75rem;border-radius:var(--radius-xs);transition:color .2s var(--ease)}
-    .auth-login:hover{color:var(--text)}
-
-    @media (prefers-color-scheme: light){
-      .nav-links a{color:var(--muted)}
-      .nav-links a:hover{color:var(--text)}
-      .auth-login{color:var(--muted)}
-      .auth-login:hover{color:var(--text)}
-    }
-
-    /* Hamburger */
-    .hamburger{
-      display:none;align-items:center;justify-content:center;
-      background:none;border:1px solid var(--border);border-radius:var(--radius-xs);
-      padding:.55rem;cursor:pointer;color:var(--text);
-      transition:background .2s var(--ease);
-    }
-    .hamburger:hover{background:var(--bg-elev)}
-    .hamburger svg{width:22px;height:22px}
-    .hamburger .icon-close{display:none}
-
-    @media (max-width:900px){
-      .nav-links,.auth{display:none}
-      .hamburger{display:flex}
-    }
-
-    /* Mobile Menu */
-    .mobile-menu{
-      max-height:0;opacity:0;pointer-events:none;overflow:hidden;
-      transition:max-height .4s var(--ease), opacity .3s var(--ease);
-      background:var(--glass-bg);
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      border-bottom:1px solid var(--glass-border);
-    }
-    .mobile-menu.is-open{
-      max-height:420px;opacity:1;pointer-events:auto;
-    }
-    .mobile-list{display:grid;gap:.5rem;padding:1rem}
-    .mobile-list a{
-      display:block;padding:.85rem 1rem;border-radius:var(--radius-sm);
-      color:var(--text);background:var(--bg-elev);border:1px solid var(--border);
-      font-size:.95rem;font-weight:500;
-      transition:background .2s var(--ease), border-color .2s var(--ease);
-    }
-    .mobile-list a:hover{background:rgba(79,140,255,0.08);border-color:var(--brand)}
-    .mobile-list .btn-primary{text-align:center}
-
-    @media (prefers-color-scheme: light){
-      .mobile-menu{background:rgba(248,250,252,0.97)}
-      .mobile-list a{background:var(--surface);color:var(--text)}
-    }
-
-    /* ========================================
-       Hero Section
-       ======================================== */
-    .hero{position:relative;isolation:isolate;overflow:hidden;padding-top:clamp(2rem,6vw,5rem);padding-bottom:clamp(2rem,6vw,5rem)}
-    .hero-content{max-width:720px;margin-inline:auto;text-align:center}
-
-    .eyebrow{
-      display:inline-flex;align-items:center;gap:.4rem;
-      font-size:.85rem;font-weight:600;
-      color:var(--accent);
-      background:var(--accent-bg, rgba(125,226,209,0.1));
-      border:1px solid var(--accent-border, rgba(125,226,209,0.25));
-      padding:.4rem .85rem;border-radius:999px;
-      margin-bottom:1.25rem;
-    }
-
-    .hero h1{
-      font-size:clamp(2rem,5.5vw,3.5rem);
-      line-height:1.12;letter-spacing:-.02em;font-weight:800;
-      margin-bottom:1.25rem;
-    }
-
-    .hero .lead{
-      font-size:clamp(1rem,1.3vw,1.2rem);
-      color:var(--muted);line-height:1.7;
-      max-width:580px;margin-inline:auto;
-    }
-
-    .cta-row{display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:2rem}
-
-    /* Animated Gradient Blob */
-    .hero-blob{
-      position:absolute;top:50%;left:50%;
-      width:min(70vw,800px);aspect-ratio:1/1;
-      border-radius:50%;
-      background:
-        radial-gradient(circle at 30% 30%, rgba(79,140,255,0.4), transparent 60%),
-        radial-gradient(circle at 70% 60%, rgba(125,226,209,0.35), transparent 55%);
-      filter:blur(80px);opacity:.3;z-index:-1;
-      transform:translate(-50%,-50%);
-      animation:blobDrift 20s ease-in-out infinite;
-    }
-    @keyframes blobDrift{
-      0%,100%{transform:translate(-50%,-50%) scale(1) rotate(0deg)}
-      25%{transform:translate(-45%,-55%) scale(1.05) rotate(5deg)}
-      50%{transform:translate(-55%,-48%) scale(.95) rotate(-3deg)}
-      75%{transform:translate(-48%,-52%) scale(1.03) rotate(4deg)}
-    }
-
-    @media (max-width:640px){
-      .hero{padding-top:1.5rem;padding-bottom:2rem}
-      .hero h1{font-size:1.85rem}
-      .hero .lead{font-size:.95rem}
-      .cta-row{flex-direction:column;align-items:stretch}
-      .cta-row .btn{justify-content:center}
-      .hero-blob{width:90vw;opacity:.2;filter:blur(60px)}
-    }
-
-    /* ========================================
-       Pain vs Solution
-       ======================================== */
-    .pain-solution-grid{
-      display:grid;grid-template-columns:1fr 1fr;gap:clamp(1rem,2vw,1.5rem);
-    }
-
-    .ps-card{
-      border-radius:var(--radius);padding:clamp(1.5rem,3vw,2rem);
-      border:1px solid var(--border);
-      position:relative;overflow:hidden;
-    }
-    .ps-card h3{font-size:1.15rem;font-weight:700;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem}
-    .ps-card ul{display:grid;gap:.85rem}
-    .ps-card li{display:flex;align-items:flex-start;gap:.65rem;font-size:.95rem;color:var(--muted);line-height:1.5}
-    .ps-card li .ps-icon{flex-shrink:0;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.75rem;font-weight:700;margin-top:1px}
-
-    .ps-problem{
-      background:linear-gradient(135deg, rgba(255,107,107,0.06), rgba(255,107,107,0.02));
-      border-color:rgba(255,107,107,0.2);
-    }
-    .ps-problem h3{color:var(--danger)}
-    .ps-problem .ps-icon{background:rgba(255,107,107,0.15);color:var(--danger)}
-
-    .ps-solution{
-      background:linear-gradient(135deg, rgba(125,226,209,0.06), rgba(125,226,209,0.02));
-      border-color:rgba(125,226,209,0.2);
-    }
-    .ps-solution h3{color:var(--accent)}
-    .ps-solution .ps-icon{background:rgba(125,226,209,0.15);color:var(--accent)}
-
-    @media (max-width:640px){
-      .pain-solution-grid{grid-template-columns:1fr}
-      .ps-card{padding:1.25rem}
-    }
-
-    /* ========================================
-       Features Grid
-       ======================================== */
-    .features-grid{
-      display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(1rem,2vw,1.5rem);
-    }
-
-    .feature-card{
-      background:var(--glass-bg);
-      border:1px solid var(--glass-border);
-      border-radius:var(--radius);
-      padding:clamp(1.25rem,2.5vw,1.75rem);
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      transition:transform .3s var(--ease), border-color .3s var(--ease), box-shadow .3s var(--ease);
-    }
-    .feature-card:hover{
-      transform:translateY(-6px);
-      border-color:rgba(79,140,255,0.4);
-      box-shadow:0 12px 40px rgba(79,140,255,0.12), 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .feature-icon{
-      width:48px;height:48px;border-radius:14px;
-      display:grid;place-items:center;
-      background:linear-gradient(135deg, var(--brand), var(--accent));
-      margin-bottom:1rem;
-      transition:transform .3s var(--ease);
-    }
-    .feature-card:hover .feature-icon{transform:scale(1.1)}
-    .feature-icon svg{width:24px;height:24px;color:#0f1629}
-
-    .feature-card h3{font-size:1.05rem;font-weight:700;margin-bottom:.4rem}
-    .feature-card p{color:var(--muted);font-size:.92rem;line-height:1.6}
-
-    @media (max-width:900px){.features-grid{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:640px){
-      .features-grid{grid-template-columns:1fr}
-      .feature-card{padding:1.15rem}
-      .feature-icon{width:42px;height:42px;border-radius:12px;margin-bottom:.75rem}
-      .feature-icon svg{width:20px;height:20px}
-    }
-
-    /* ========================================
-       How It Works
-       ======================================== */
-    .steps-row{display:flex;align-items:flex-start;gap:0;position:relative}
-
-    .step{flex:1;text-align:center;position:relative;padding:0 clamp(.5rem,2vw,1.5rem)}
-    .step-badge{
-      width:56px;height:56px;border-radius:50%;
-      display:grid;place-items:center;
-      background:linear-gradient(135deg, var(--brand), var(--accent));
-      font-size:1rem;font-weight:800;color:#0f1629;
-      margin:0 auto 1.25rem;
-      position:relative;z-index:2;
-    }
-    .step h3{font-size:1.05rem;font-weight:700;margin-bottom:.4rem}
-    .step p{color:var(--muted);font-size:.92rem;line-height:1.5}
-
-    /* Connecting line */
-    .steps-row::before{
-      content:'';position:absolute;
-      top:28px;left:calc(16.66% + 28px);right:calc(16.66% + 28px);
-      height:2px;
-      background:linear-gradient(90deg, var(--brand), var(--accent));
-      opacity:.35;z-index:1;
-    }
-
-    @media (max-width:640px){
-      .steps-row{flex-direction:column;gap:2rem;align-items:center}
-      .steps-row::before{
-        top:0;bottom:0;left:27px;right:auto;
-        width:2px;height:100%;
-      }
-      .step{text-align:left;display:grid;grid-template-columns:56px 1fr;gap:1rem;align-items:start;padding:0}
-      .step-badge{margin:0}
-      .step-text{padding-top:.25rem}
-    }
-
-    /* ========================================
-       Personas / Who It's For
-       ======================================== */
-    .persona-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(1rem,2vw,1.5rem)}
-
-    .persona-card{
-      background:var(--glass-bg);
-      border:1px solid var(--glass-border);
-      border-radius:var(--radius);
-      padding:clamp(1.5rem,3vw,2rem);
-      text-align:center;
-      backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-      transition:transform .3s var(--ease), border-color .3s var(--ease), box-shadow .3s var(--ease);
-    }
-    .persona-card:hover{
-      transform:translateY(-6px);
-      border-color:rgba(79,140,255,0.3);
-      box-shadow:0 12px 40px rgba(79,140,255,0.1);
-    }
-
-    .persona-icon{
-      width:56px;height:56px;border-radius:16px;
-      display:grid;place-items:center;
-      background:linear-gradient(135deg, rgba(79,140,255,0.15), rgba(125,226,209,0.1));
-      border:1px solid rgba(79,140,255,0.2);
-      margin:0 auto 1rem;
-    }
-    .persona-icon svg{width:26px;height:26px;color:var(--brand)}
-
-    .persona-card h3{font-size:1.05rem;font-weight:700;margin-bottom:.4rem}
-    .persona-card p{color:var(--muted);font-size:.92rem;line-height:1.5}
-
-    @media (max-width:640px){
-      .persona-grid{grid-template-columns:1fr}
-    }
-
-    /* ========================================
-       Final CTA
-       ======================================== */
-    .final-cta-wrapper{
-      max-width:700px;margin-inline:auto;
-      background:var(--glass-bg);
-      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      border-radius:var(--radius);
-      padding:clamp(2rem,5vw,3.5rem);
-      text-align:center;
-      position:relative;
-      border:1px solid transparent;
-      background-clip:padding-box;
-    }
-    /* Gradient border trick */
-    .final-cta-outer{
-      background:linear-gradient(135deg, var(--brand), var(--accent));
-      border-radius:calc(var(--radius) + 2px);
-      padding:2px;
-    }
-    .final-cta-wrapper{
-      background:var(--surface);
-    }
-    @media (prefers-color-scheme:light){
-      .final-cta-wrapper{background:var(--surface)}
-    }
-
-    .final-cta-wrapper h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;margin-bottom:.75rem}
-    .final-cta-wrapper p{color:var(--muted);font-size:clamp(.95rem,1.1vw,1.1rem);margin-bottom:1.75rem;max-width:480px;margin-inline:auto}
-    .final-cta-wrapper .cta-row{margin-top:0}
-
-    @media (max-width:640px){
-      .final-cta-wrapper{padding:1.75rem 1.25rem}
-      .final-cta-wrapper .cta-row{flex-direction:column;align-items:stretch}
-      .final-cta-wrapper .btn{justify-content:center}
-    }
-
-    /* ========================================
-       Footer
-       ======================================== */
-    footer{border-top:1px solid var(--border);background:rgba(11,16,32,0.5)}
-    @media (prefers-color-scheme: light){footer{background:rgba(248,250,252,0.8)}}
-
-    .footer-grid{
-      display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:2rem;
-      padding-block:clamp(2rem,4vw,3rem);
-    }
-    .footer-brand{font-weight:700;font-size:1.05rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem}
-    .footer-tagline{color:var(--muted);font-size:.9rem;line-height:1.6}
-
-    .footer-col h4{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem}
-    .footer-col ul{display:grid;gap:.45rem}
-    .footer-col a{color:var(--muted);font-size:.9rem;transition:color .2s var(--ease)}
-    .footer-col a:hover{color:var(--brand)}
-
-    .footer-bottom{
-      display:flex;align-items:center;justify-content:center;
-      border-top:1px solid var(--border);
-      padding-block:1.25rem;
-    }
-    .footer-bottom p{color:var(--muted);font-size:.85rem}
-
-    @media (max-width:900px){
-      .footer-grid{grid-template-columns:1fr 1fr;gap:1.5rem}
-    }
-    @media (max-width:640px){
-      .footer-grid{grid-template-columns:1fr;gap:1.25rem}
-    }
-
-    /* ========================================
-       Scroll Animations
-       ======================================== */
-    .fade-up,
-    .fade-left,
-    .fade-right,
-    .scale-in{
-      opacity:0;
-      transition:opacity .7s var(--ease), transform .7s var(--ease);
-    }
-    .fade-up{transform:translateY(32px)}
-    .fade-left{transform:translateX(-32px)}
-    .fade-right{transform:translateX(32px)}
-    .scale-in{transform:scale(0.92)}
-
-    .fade-up.is-visible,
-    .fade-left.is-visible,
-    .fade-right.is-visible,
-    .scale-in.is-visible{
-      opacity:1;transform:translate(0) scale(1);
-    }
-
-    /* Stagger delays */
-    .stagger-1{transition-delay:.05s}
-    .stagger-2{transition-delay:.12s}
-    .stagger-3{transition-delay:.19s}
-    .stagger-4{transition-delay:.26s}
-    .stagger-5{transition-delay:.33s}
-    .stagger-6{transition-delay:.40s}
-
-    /* Respect reduced motion */
-    @media (prefers-reduced-motion: reduce){
-      *,*::before,*::after{
-        animation-duration:0.01ms!important;
-        animation-iteration-count:1!important;
-        transition-duration:0.01ms!important;
-      }
-      .fade-up,.fade-left,.fade-right,.scale-in{
-        opacity:1;transform:none;
-      }
-      html{scroll-behavior:auto}
-    }
-
-    /* ========================================
-       Utility
-       ======================================== */
-    @media (max-width:640px){
-      .section{padding-block:clamp(2rem,6vw,3rem)}
+    @media (max-width: 600px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .cg-stats { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr; }
     }
   </style>
 </head>
-
 <body>
-  <a class="skip-link" href="#main-content">Skip to content</a>
-
-  <!-- ============================
-       Navbar
-       ============================ -->
-  <header class="navbar">
-    <div class="container nav-inner">
-      <a class="brand" href="index.html" aria-label="MedTracker Home">
-        <span class="brand-mark" aria-hidden="true">&#x1F48A;</span>
-        <span>MedTracker</span>
-      </a>
-
-      <nav class="nav-links" aria-label="Primary">
-        <a href="index.html" aria-current="page">Home</a>
-        <a href="/about">About</a>
-        <a href="/contact">Contact</a>
-      </nav>
-
-      <div class="auth" aria-label="Account">
-        <a class="auth-login" href="login.html">Log In</a>
-        <a class="btn btn-primary" href="register.html">Register</a>
-      </div>
-
-      <button class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-menu">
-        <svg class="icon-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-        <svg class="icon-close" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
+  <!-- NAV -->
+  <nav>
+    <a href="index.html" class="nav-logo">
+      <div class="logo-icon">💊</div>
+      Everane
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#caregivers">Caregivers</a>
+      <a href="login.html">Log In</a>
+      <a href="register.html" class="nav-cta">Get Started Free</a>
     </div>
-
-    <div id="mobile-menu" class="mobile-menu" role="navigation" aria-label="Mobile navigation">
-      <div class="container">
-        <div class="mobile-list">
-          <a href="index.html" aria-current="page">Home</a>
-          <a href="/about">About</a>
-          <a href="/contact">Contact</a>
-          <a href="login.html">Log In</a>
-          <a class="btn btn-primary" href="register.html">Register</a>
+    <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="hero-badge">
+          <span class="pulse"></span>
+          100% Free — No Catch
+        </div>
+        <h1>Never miss a pill.<br>Never run out <em>again.</em></h1>
+        <p class="hero-sub">
+          Everane tracks your medications and supplements, sends you reminders,
+          and keeps your caregivers in the loop — all with a simple voice command.
+        </p>
+        <div class="hero-actions">
+          <a href="register.html" class="btn-primary">
+            Start Tracking Free →
+          </a>
+          <a href="#how-it-works" class="btn-secondary">
+            See How It Works
+          </a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="phone-mockup">
+          <div class="phone-notch"></div>
+          <div class="phone-header">
+            <div class="greeting">Good morning</div>
+            <div class="name">Margaret</div>
+          </div>
+          <div class="med-card">
+            <div class="med-icon">💚</div>
+            <div class="med-info">
+              <div class="med-name">Metformin 500mg</div>
+              <div class="med-time">8:00 AM · With breakfast</div>
+            </div>
+            <span class="med-status status-taken">Taken ✓</span>
+          </div>
+          <div class="med-card">
+            <div class="med-icon">🧡</div>
+            <div class="med-info">
+              <div class="med-name">Vitamin D3</div>
+              <div class="med-time">8:00 AM · 1 capsule</div>
+            </div>
+            <span class="med-status status-taken">Taken ✓</span>
+          </div>
+          <div class="med-card">
+            <div class="med-icon">💙</div>
+            <div class="med-info">
+              <div class="med-name">Lisinopril 10mg</div>
+              <div class="med-time">12:00 PM · With lunch</div>
+            </div>
+            <span class="med-status status-upcoming">12:00 PM</span>
+          </div>
+          <div class="med-card">
+            <div class="med-icon">💜</div>
+            <div class="med-info">
+              <div class="med-name">Magnesium</div>
+              <div class="med-time">9:00 PM · Before bed</div>
+            </div>
+            <span class="med-status status-done">9:00 PM</span>
+          </div>
+        </div>
+        <div class="float-card float-reminder">
+          <span class="bell">🔔</span>
+          <div>
+            <div class="fr-text">Lisinopril in 30 min</div>
+            <div class="fr-sub">Tap to mark as taken</div>
+          </div>
+        </div>
+        <div class="float-card float-voice">
+          <span class="mic">🎙️</span>
+          <div>"I took my vitamin"</div>
         </div>
       </div>
     </div>
-  </header>
-
-  <main id="main-content">
-
-    <!-- ============================
-         Section 1: Hero
-         ============================ -->
-    <section class="section hero">
-      <div class="container">
-        <div class="hero-content">
-          <span class="eyebrow">Your Medication Command Center</span>
-          <h1>A Simple Dashboard For <span class="gradient-text">All Your Medications</span></h1>
-          <p class="lead">MedTracker keeps your medications, schedules, and refills organized in one clean view &mdash; so you never miss a dose or run out of pills.</p>
-          <div class="cta-row">
-            <a class="btn btn-primary" href="register.html">Start Tracking for Free</a>
-            <a class="btn btn-ghost" href="#how-it-works">See How It Works</a>
-          </div>
-        </div>
-      </div>
-      <div class="hero-blob" aria-hidden="true"></div>
-    </section>
-
-    <!-- ============================
-         Section 2: Pain vs Solution
-         ============================ -->
-    <section class="section">
-      <div class="container">
-        <div class="section-label">
-          <h2>Meds are important. Your system <span class="gradient-text">shouldn't be confusing.</span></h2>
-        </div>
-
-        <div class="pain-solution-grid">
-          <div class="ps-card ps-problem fade-left stagger-1">
-            <h3>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
-              The Problem
-            </h3>
-            <ul>
-              <li>
-                <span class="ps-icon" aria-hidden="true">&times;</span>
-                <span>Scattered pill bottles and random notes</span>
-              </li>
-              <li>
-                <span class="ps-icon" aria-hidden="true">&times;</span>
-                <span>"Did I take that already?" moments</span>
-              </li>
-              <li>
-                <span class="ps-icon" aria-hidden="true">&times;</span>
-                <span>Forgetting refills until the bottle is empty</span>
-              </li>
-            </ul>
-          </div>
-
-          <div class="ps-card ps-solution fade-right stagger-2">
-            <h3>
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
-              The Solution
-            </h3>
-            <ul>
-              <li>
-                <span class="ps-icon" aria-hidden="true">&#10003;</span>
-                <span>All your meds in one clean dashboard</span>
-              </li>
-              <li>
-                <span class="ps-icon" aria-hidden="true">&#10003;</span>
-                <span>Simple reminders for each dose</span>
-              </li>
-              <li>
-                <span class="ps-icon" aria-hidden="true">&#10003;</span>
-                <span>Stock tracking so you know when to refill</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================
-         Section 3: Features Grid
-         ============================ -->
-    <section class="section">
-      <div class="container">
-        <div class="section-label">
-          <h2>Everything you need to <span class="gradient-text">stay on track</span></h2>
-        </div>
-
-        <div class="features-grid">
-          <!-- 1: Dashboard -->
-          <article class="feature-card fade-up stagger-1">
-            <div class="feature-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-            </div>
-            <h3>Unified Medication Dashboard</h3>
-            <p>See all your medications, doses, and schedules in one clean view. Everything you need at a glance.</p>
-          </article>
-
-          <!-- 2: Reminders -->
-          <article class="feature-card fade-up stagger-2">
-            <div class="feature-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 3.53 2.13 6.5 4 8.5V20a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-2.5c1.87-2 4-4.97 4-8.5a7 7 0 0 0-7-7Zm-1.5 20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-.5h-3v.5Z"/></svg>
-            </div>
-            <h3>Personalized Reminders</h3>
-            <p>Get timely email and SMS notifications so you never miss a dose, no matter how busy life gets.</p>
-          </article>
-
-          <!-- 3: Refill Tracking -->
-          <article class="feature-card fade-up stagger-3">
-            <div class="feature-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2ZM10 4h4v3h-4V4Zm5 10h-2v2a1 1 0 1 1-2 0v-2H9a1 1 0 1 1 0-2h2v-2a1 1 0 1 1 2 0v2h2a1 1 0 1 1 0 2Z"/></svg>
-            </div>
-            <h3>Refill &amp; Stock Tracking</h3>
-            <p>Monitor pill counts and get low-stock alerts before you run out. Never scramble for a refill.</p>
-          </article>
-
-          <!-- 4: History & Notes -->
-          <article class="feature-card fade-up stagger-4">
-            <div class="feature-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm-1 2.5L17.5 9H13V4.5ZM8 13h8v2H8v-2Zm0 4h5v2H8v-2Zm0-8h3v2H8V9Z"/></svg>
-            </div>
-            <h3>Simple History &amp; Notes</h3>
-            <p>Log missed doses, add quick notes, and keep a clear record of what's working and what's not.</p>
-          </article>
-
-          <!-- 5: Mobile-Friendly -->
-          <article class="feature-card fade-up stagger-5">
-            <div class="feature-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2v1h-2z" fill="#0f1629"/></svg>
-            </div>
-            <h3>Mobile-Friendly Design</h3>
-            <p>Your schedule stays easy to manage on any device &mdash; phone, tablet, or desktop.</p>
-          </article>
-
-          <!-- 6: Private & Secure -->
-          <article class="feature-card fade-up stagger-6">
-            <div class="feature-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8Z"/></svg>
-            </div>
-            <h3>Private &amp; Secure Storage</h3>
-            <p>Your medication data is safely stored and synced with encrypted Firebase backend infrastructure.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================
-         Section 4: How It Works
-         ============================ -->
-    <section id="how-it-works" class="section">
-      <div class="container">
-        <div class="section-label">
-          <h2>From sign-up to organized <span class="gradient-text">in under 5 minutes</span></h2>
-        </div>
-
-        <div class="steps-row">
-          <div class="step fade-up stagger-1">
-            <div class="step-badge" aria-hidden="true">01</div>
-            <div class="step-text">
-              <h3>Create Your Account</h3>
-              <p>Sign up with your email, verify in seconds, and set your time zone.</p>
+  </section>
+  <!-- PROBLEM / SOLUTION -->
+  <section class="problem-section">
+    <div class="section-inner reveal">
+      <div class="section-label">⸻ Why Everane</div>
+      <h2 class="section-title">Managing meds shouldn't<br>feel this hard.</h2>
+      <div class="problem-grid">
+        <div class="problem-side">
+          <h3><span class="icon">✕</span> Without Everane</h3>
+          <div class="pain-point">
+            <div class="marker">✕</div>
+            <div class="point-text">
+              <strong>"Did I already take that?"</strong>
+              <span>You second-guess yourself every morning, sometimes double-dosing by accident.</span>
             </div>
           </div>
-
-          <div class="step fade-up stagger-2">
-            <div class="step-badge" aria-hidden="true">02</div>
-            <div class="step-text">
-              <h3>Add Your Medications</h3>
-              <p>Enter your meds, how often you take them, and optional refill info.</p>
+          <div class="pain-point">
+            <div class="marker">✕</div>
+            <div class="point-text">
+              <strong>The bottle is empty — again</strong>
+              <span>You only realize you're out when you reach for the pill and it's gone.</span>
             </div>
           </div>
-
-          <div class="step fade-up stagger-3">
-            <div class="step-badge" aria-hidden="true">03</div>
-            <div class="step-text">
-              <h3>Get Reminders &amp; Stay on Track</h3>
-              <p>MedTracker handles the schedule and alerts &mdash; you just follow the plan.</p>
+          <div class="pain-point">
+            <div class="marker">✕</div>
+            <div class="point-text">
+              <strong>Family is left guessing</strong>
+              <span>Your caregiver has no idea if you've been taking your meds or missing doses.</span>
+            </div>
+          </div>
+        </div>
+        <div class="solution-side">
+          <h3><span class="icon">✓</span> With Everane</h3>
+          <div class="sol-point">
+            <div class="marker">✓</div>
+            <div class="point-text">
+              <strong>One clear dashboard</strong>
+              <span>See exactly what you've taken, what's next, and what you missed — at a glance.</span>
+            </div>
+          </div>
+          <div class="sol-point">
+            <div class="marker">✓</div>
+            <div class="point-text">
+              <strong>Low-stock alerts</strong>
+              <span>Know days in advance when a refill is needed, so you're never caught off guard.</span>
+            </div>
+          </div>
+          <div class="sol-point">
+            <div class="marker">✓</div>
+            <div class="point-text">
+              <strong>Caregivers stay informed</strong>
+              <span>Automatic updates to family members — missed doses, refill needs, and adherence reports.</span>
             </div>
           </div>
         </div>
       </div>
-    </section>
-
-    <!-- ============================
-         Section 5: Who It's For
-         ============================ -->
-    <section class="section">
-      <div class="container">
-        <div class="section-label">
-          <h2>Built for <span class="gradient-text">real life.</span></h2>
+    </div>
+  </section>
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="section-inner reveal">
+      <div class="section-label">⸻ Features</div>
+      <h2 class="section-title">Simple tools that actually help.</h2>
+      <p class="section-sub">No bloated features. Just the things that matter when you're managing medications and supplements every day.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Medication Dashboard</h3>
+          <p>All your meds and supplements in one clean view — doses, schedules, and stock levels at a glance.</p>
         </div>
-
-        <div class="persona-grid">
-          <!-- Students -->
-          <article class="persona-card fade-up stagger-1">
-            <div class="persona-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 2.69 3 6 3s6-1.34 6-3v-5"/></svg>
-            </div>
-            <h3>Students</h3>
-            <p>Balance classes, activities, and meds without forgetting doses.</p>
-          </article>
-
-          <!-- Parents & Caregivers -->
-          <article class="persona-card fade-up stagger-2">
-            <div class="persona-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            </div>
-            <h3>Parents &amp; Caregivers</h3>
-            <p>Watch over loved ones and their medication schedules.</p>
-          </article>
-
-          <!-- Chronic Conditions -->
-          <article class="persona-card fade-up stagger-3">
-            <div class="persona-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </div>
-            <h3>Chronic Conditions</h3>
-            <p>Stay consistent with long-term treatments and refills.</p>
-          </article>
+        <div class="feature-card">
+          <div class="feature-icon">⏰</div>
+          <h3>Smart Reminders</h3>
+          <p>Timely notifications by email or SMS so you never miss a dose, no matter how busy the day gets.</p>
         </div>
-      </div>
-    </section>
-
-    <!-- ============================
-         Section 6: Final CTA
-         ============================ -->
-    <section class="section">
-      <div class="container">
-        <div class="final-cta-outer scale-in">
-          <div class="final-cta-wrapper">
-            <h2>Ready to Finally Feel <span class="gradient-text">Organized?</span></h2>
-            <p>Start tracking your medications in a few minutes. You can always stop if it's not for you.</p>
-            <div class="cta-row">
-              <a class="btn btn-primary" href="register.html">Start Tracking for Free</a>
-              <a class="btn btn-ghost" href="login.html">I Already Have an Account</a>
-            </div>
-          </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Refill Tracking</h3>
+          <p>Monitors your pill counts and alerts you before you run low — days ahead, not the morning of.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👨‍👩‍👧</div>
+          <h3>Caregiver Sharing</h3>
+          <p>Automatically share adherence reports, missed doses, and refill needs with family or caregivers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎤</div>
+          <h3>Voice-Enabled</h3>
+          <p>Just say "I took my vitamin" — no typing, no tapping. Perfect for older adults or anyone on the go.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Private & Secure</h3>
+          <p>Your health data is encrypted and stored securely. We never sell or share your information with third parties.</p>
         </div>
       </div>
-    </section>
-
-  </main>
-
-  <!-- ============================
-       Footer
-       ============================ -->
-  <footer>
-    <div class="container">
-      <div class="footer-grid">
+    </div>
+  </section>
+  <!-- HOW IT WORKS -->
+  <section class="how-section" id="how-it-works">
+    <div class="section-inner reveal">
+      <div class="section-label">⸻ How It Works</div>
+      <h2 class="section-title">Up and running in under 5 minutes.</h2>
+      <p class="section-sub">No confusing setup. No long forms. Just a few simple steps and you're organized.</p>
+      <div class="steps-track">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Create Your Account</h3>
+          <p>Sign up with your email. Verify in seconds. That's it — no credit card, no commitment.</p>
+          <div class="step-detail">✨ Simple onboarding designed for everyone</div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Add Your Medications</h3>
+          <p>Type or speak your meds, doses, and schedule. Add supplements too — Everane tracks them all.</p>
+          <div class="step-detail">🎙️ Voice input makes this effortless</div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Stay on Track</h3>
+          <p>Get reminders, track your doses, and share updates with caregivers automatically.</p>
+          <div class="step-detail">👨‍👩‍👧 Your family stays informed without nagging</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- VOICE SECTION -->
+  <section class="voice-section" id="voice">
+    <div class="section-inner">
+      <div class="voice-inner reveal">
         <div>
-          <div class="footer-brand">
-            <span aria-hidden="true">&#x1F48A;</span>
-            <span>MedTracker</span>
+          <div class="section-label">⸻ Voice-First Design</div>
+          <h2 class="section-title">Just talk to Everane.</h2>
+          <p class="section-sub">
+            No tiny buttons. No complicated menus. Just speak naturally and Everane handles the rest —
+            designed especially for older adults and anyone who prefers simplicity.
+          </p>
+          <div class="voice-features">
+            <div class="voice-feature">
+              <div class="vf-icon">🗣️</div>
+              <div>
+                <strong>Natural Language</strong>
+                <span>"I took my morning pills" — Everane understands plain speech.</span>
+              </div>
+            </div>
+            <div class="voice-feature">
+              <div class="vf-icon">➕</div>
+              <div>
+                <strong>Add Meds by Voice</strong>
+                <span>"Add Vitamin D, one capsule every morning" — done in seconds.</span>
+              </div>
+            </div>
+            <div class="voice-feature">
+              <div class="vf-icon">❓</div>
+              <div>
+                <strong>Ask Questions</strong>
+                <span>"Did I take my blood pressure pill today?" — instant answer.</span>
+              </div>
+            </div>
           </div>
-          <p class="footer-tagline">Your medications, schedules, and refills &mdash; organized in one clean view.</p>
         </div>
-
-        <div class="footer-col">
-          <h4>Navigation</h4>
-          <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="/about">About</a></li>
-            <li><a href="/contact">Contact</a></li>
-          </ul>
+        <div class="voice-demo">
+          <div class="voice-waves">
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          </div>
+          <div class="transcript">"I just took my Metformin"</div>
+          <div class="transcript-sub">✓ Metformin 500mg marked as taken at 8:04 AM</div>
         </div>
-
-        <div class="footer-col">
-          <h4>Account</h4>
-          <ul>
-            <li><a href="login.html">Log In</a></li>
-            <li><a href="register.html">Register</a></li>
-          </ul>
+      </div>
+    </div>
+  </section>
+  <!-- CAREGIVER SECTION -->
+  <section class="caregiver-section" id="caregivers">
+    <div class="section-inner reveal">
+      <div class="section-label">⸻ For Caregivers</div>
+      <h2 class="section-title">Peace of mind for the<br>whole family.</h2>
+      <p class="section-sub">Caregivers get automatic updates — no need to call and ask "Did you take your pills today?"</p>
+      <div class="caregiver-grid">
+        <div class="caregiver-visual">
+          <div class="cg-header">
+            <div class="cg-avatar">👩</div>
+            <div>
+              <div class="cg-name">Sarah's Dashboard</div>
+              <div class="cg-role">Caring for Mom (Margaret)</div>
+            </div>
+          </div>
+          <div class="cg-alert">
+            <span class="alert-icon">⚠️</span>
+            <div>
+              <strong>Missed Dose Alert</strong>
+              <span>Margaret missed her 12:00 PM Lisinopril yesterday. She has taken all other medications this week.</span>
+            </div>
+          </div>
+          <div class="cg-stats">
+            <div class="cg-stat">
+              <div class="number">94%</div>
+              <div class="label">Adherence</div>
+            </div>
+            <div class="cg-stat">
+              <div class="number">1</div>
+              <div class="label">Missed (7d)</div>
+            </div>
+            <div class="cg-stat">
+              <div class="number">8</div>
+              <div class="label">Days of stock</div>
+            </div>
+          </div>
         </div>
-
-        <div class="footer-col">
-          <h4>Legal</h4>
-          <ul>
-            <li><a href="privacypolicy.html">Privacy Policy</a></li>
-            <li><a href="termsofservice.html">Terms of Service</a></li>
+        <div>
+          <ul class="caregiver-benefits">
+            <li>
+              <span class="check">✓</span>
+              <div><strong>Automatic Reports</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Get periodic summaries of adherence, missed doses, and refill needs without asking.</span></div>
+            </li>
+            <li>
+              <span class="check">✓</span>
+              <div><strong>Missed Dose Alerts</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Get notified when a dose is missed so you can gently follow up when it matters.</span></div>
+            </li>
+            <li>
+              <span class="check">✓</span>
+              <div><strong>Refill Visibility</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Know when medications are running low so you can help coordinate refills in time.</span></div>
+            </li>
+            <li>
+              <span class="check">✓</span>
+              <div><strong>No More Nagging</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Everane handles the reminding so you can focus on being family, not the pill police.</span></div>
+            </li>
           </ul>
         </div>
       </div>
-
-      <div class="footer-bottom">
-        <p>&copy; <span id="y">2026</span> Everane. All rights reserved.</p>
+    </div>
+  </section>
+  <!-- PRICING -->
+  <section class="pricing-section" id="pricing">
+    <div class="section-inner reveal">
+      <div class="section-label">⸻ Pricing</div>
+      <h2 class="section-title">Completely free. Seriously.</h2>
+      <p class="section-sub" style="margin: 0 auto">Everane is a free service — no premium tier, no hidden fees, no "upgrade to unlock" games.</p>
+      <div class="price-card">
+        <div class="price-badge">FOREVER FREE</div>
+        <div class="price-amount">$0</div>
+        <div class="price-desc">Everything included. No limits.</div>
+        <ul class="price-features">
+          <li><span class="pf-check">✓</span> Unlimited medications & supplements</li>
+          <li><span class="pf-check">✓</span> Email & SMS reminders</li>
+          <li><span class="pf-check">✓</span> Refill & stock tracking</li>
+          <li><span class="pf-check">✓</span> Voice-enabled input</li>
+          <li><span class="pf-check">✓</span> Caregiver sharing & reports</li>
+          <li><span class="pf-check">✓</span> Secure encrypted storage</li>
+        </ul>
+        <a href="register.html" class="btn-primary" style="width:100%; justify-content:center">
+          Get Started Free →
+        </a>
       </div>
+    </div>
+  </section>
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="section-inner reveal">
+      <div class="section-label">⸻ Get Started</div>
+      <h2 class="section-title">Your medications deserve<br>a better system.</h2>
+      <p class="section-sub">
+        Set up in under 5 minutes. Free forever. Stop worrying about missed pills and empty bottles.
+      </p>
+      <a href="register.html" class="btn-primary" style="font-size: 1.1rem; padding: 18px 44px;">
+        Start Tracking Free →
+      </a>
+    </div>
+  </section>
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="f-logo">💊 Everane</div>
+        <p>Your medications, supplements, and refills — tracked, reminded, and shared with the people who care about you.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#caregivers">Caregivers</a>
+        <a href="#pricing">Pricing</a>
+      </div>
+      <div class="footer-col">
+        <h4>Account</h4>
+        <a href="login.html">Log In</a>
+        <a href="register.html">Register</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="privacypolicy.html">Privacy Policy</a>
+        <a href="termsofservice.html">Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Everane. All rights reserved.</span>
+      <span>Built with care for the people who need it most.</span>
     </div>
   </footer>
-
-  <!-- ============================
-       JavaScript
-       ============================ -->
+  <!-- SCROLL REVEAL -->
   <script>
-    (function () {
-      'use strict';
-
-      /* ----------------------------------
-         1. Auto copyright year
-         ---------------------------------- */
-      var yearEl = document.getElementById('y');
-      if (yearEl) yearEl.textContent = new Date().getFullYear();
-
-      /* ----------------------------------
-         2. IntersectionObserver scroll animations
-         ---------------------------------- */
-      var animatedEls = document.querySelectorAll('.fade-up, .fade-left, .fade-right, .scale-in');
-
-      if ('IntersectionObserver' in window) {
-        var observer = new IntersectionObserver(function (entries) {
-          entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              observer.unobserve(entry.target);
-            }
-          });
-        }, {
-          threshold: 0.12,
-          rootMargin: '0px 0px -40px 0px'
-        });
-
-        animatedEls.forEach(function (el) {
-          observer.observe(el);
-        });
-      } else {
-        // Fallback: show everything immediately
-        animatedEls.forEach(function (el) {
-          el.classList.add('is-visible');
-        });
-      }
-
-      /* ----------------------------------
-         3. Mobile menu toggle
-         ---------------------------------- */
-      var hamburger = document.querySelector('.hamburger');
-      var mobileMenu = document.getElementById('mobile-menu');
-      var iconOpen = hamburger ? hamburger.querySelector('.icon-open') : null;
-      var iconClose = hamburger ? hamburger.querySelector('.icon-close') : null;
-
-      function toggleMobileMenu() {
-        var isOpen = mobileMenu.classList.contains('is-open');
-        if (isOpen) {
-          mobileMenu.classList.remove('is-open');
-          hamburger.setAttribute('aria-expanded', 'false');
-          if (iconOpen) iconOpen.style.display = '';
-          if (iconClose) iconClose.style.display = 'none';
-        } else {
-          mobileMenu.classList.add('is-open');
-          hamburger.setAttribute('aria-expanded', 'true');
-          if (iconOpen) iconOpen.style.display = 'none';
-          if (iconClose) iconClose.style.display = '';
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
         }
-      }
-
-      if (hamburger && mobileMenu) {
-        hamburger.addEventListener('click', toggleMobileMenu);
-
-        // Close menu when a link inside is clicked
-        var mobileLinks = mobileMenu.querySelectorAll('a');
-        mobileLinks.forEach(function (link) {
-          link.addEventListener('click', function () {
-            if (mobileMenu.classList.contains('is-open')) {
-              toggleMobileMenu();
-            }
-          });
-        });
-      }
-
-      /* ----------------------------------
-         4. Smooth scroll for anchor links
-         ---------------------------------- */
-      function smoothScrollToHash(hash) {
-        var targetId = hash.substring(1);
-        var targetElement = document.getElementById(targetId);
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-
-      document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
-        anchor.addEventListener('click', function (e) {
-          var href = this.getAttribute('href');
-          if (!href || href === '#' || href === '#!') return;
-          var targetElement = document.getElementById(href.substring(1));
-          if (targetElement) {
-            e.preventDefault();
-            smoothScrollToHash(href);
-          }
-        });
       });
-
-      // Handle cross-page anchor links (e.g., index.html#how-it-works)
-      var path = window.location.pathname;
-      if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
-        document.querySelectorAll('a[href*="index.html#"]').forEach(function (anchor) {
-          anchor.addEventListener('click', function (e) {
-            var href = this.getAttribute('href');
-            var hashMatch = href.match(/#(.+)$/);
-            if (hashMatch) {
-              var target = document.getElementById(hashMatch[1]);
-              if (target) {
-                e.preventDefault();
-                window.history.pushState(null, '', '#' + hashMatch[1]);
-                smoothScrollToHash('#' + hashMatch[1]);
-              }
-            }
-          });
-        });
-      }
-
-      // Scroll to hash on load (for links from other pages)
-      if (window.location.hash) {
-        window.addEventListener('load', function () {
-          setTimeout(function () {
-            smoothScrollToHash(window.location.hash);
-          }, 100);
-        });
-      }
-
-    })();
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   </script>
 </body>
 </html>

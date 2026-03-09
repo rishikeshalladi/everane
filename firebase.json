@@ -21,14 +21,6 @@
       {
         "source": "/r/**",
         "function": "redirectShortLink"
-      },
-      {
-        "source": "/about",
-        "destination": "/about.html"
-      },
-      {
-        "source": "/contact",
-        "destination": "/contact.html"
       }
     ]
   }
