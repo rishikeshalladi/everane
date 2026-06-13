@@ -1,0 +1,1081 @@
+<!-- File: doctor/home.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
+  <title>Everane — Doctor Dashboard</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    *{margin:0}
+    html:focus-within{scroll-behavior:smooth}
+    body{min-height:100dvh;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    img,svg{display:block;max-width:100%}
+    input,button{font:inherit}
+    a{text-decoration:none;color:inherit}
+
+    :root{
+      --bg: #0b1020;
+      --bg-elev: rgba(255,255,255,0.04);
+      --surface: #0f1629;
+      --text: #e7ebf3;
+      --muted: #b1bad4;
+      --border: rgba(255,255,255,0.12);
+      --brand: #4f8cff;
+      --brand-600: #3c74f7;
+      --brand-700: #2b63e6;
+      --accent: #7de2d1;
+      --danger: #ff6b6b;
+      --success: #22c55e;
+      --radius: 20px;
+      --radius-sm: 12px;
+      --radius-xs: 8px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.2);
+      --container: 1200px;
+      --glass-bg: rgba(15,22,41,0.6);
+      --glass-border: rgba(255,255,255,0.08);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --panel-width: 380px;
+    }
+
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #ffffff;
+        --bg-elev: rgba(0,0,0,0.04);
+        --surface: #ffffff;
+        --text: #000000;
+        --muted: #1a1a1a;
+        --border: #1a1a1a;
+        --shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        --glass-bg: rgba(255,255,255,0.7);
+        --glass-border: rgba(15,23,42,0.08);
+        --accent: #0d9488;
+      }
+    }
+
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+
+    .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
+
+    /* Navbar */
+    .navbar{
+      position:sticky;top:0;z-index:100;
+      backdrop-filter:saturate(180%) blur(16px);
+      -webkit-backdrop-filter:saturate(180%) blur(16px);
+      background:linear-gradient(to bottom, rgba(11,16,32,0.8), rgba(11,16,32,0.6));
+      border-bottom:1px solid var(--glass-border);
+    }
+    @media (prefers-color-scheme: light){
+      .navbar{background:linear-gradient(to bottom, rgba(248,250,252,0.92), rgba(248,250,252,0.85))}
+    }
+    .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem;height:68px}
+    .nav-left{display:flex;align-items:center;gap:1.5rem}
+    .nav-left .info-item{display:flex;flex-direction:column;line-height:1.2}
+    .nav-left .info-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);opacity:.7}
+    .nav-left .info-value{font-size:.92rem;font-weight:600;color:var(--text)}
+    .nav-right{display:flex;align-items:center;gap:.75rem;margin-left:auto}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem 1.2rem;border-radius:12px;border:1px solid transparent;cursor:pointer;font-size:.9rem;font-weight:600;transition:transform .04s ease, background-color .2s ease}
+    .btn:active{transform:translateY(1px)}
+    .btn-danger{background:var(--danger);color:#fff;box-shadow:0 4px 12px rgba(255,107,107,.25)}
+    .btn-danger:hover{filter:brightness(1.1)}
+    .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600));color:#fff;box-shadow:0 10px 20px rgba(79,140,255,.35)}
+    .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
+
+    /* Page content — needs bottom padding for sticky button */
+    .page-content{
+      padding-top: clamp(2rem, 4vw, 3rem);
+      padding-bottom: 120px;
+      transition: margin-right .35s var(--ease);
+    }
+    .page-content.panel-open{
+      margin-right: var(--panel-width);
+    }
+
+    h1{
+      font-size: clamp(1.6rem, 3.5vw, 2rem);
+      font-weight: 800;
+      letter-spacing: .2px;
+      margin: 0;
+    }
+
+    .home-header{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:1.5rem;
+    }
+
+    /* ---- Chat-style edit feed ---- */
+    .edit-feed{
+      display:flex;
+      flex-direction:column;
+      gap:1rem;
+      max-width:700px;
+      margin-inline:auto;
+    }
+
+    .edit-feed-loading{
+      text-align:center;
+      padding:2rem 0;
+      color:var(--muted);
+      font-size:.95rem;
+    }
+
+    .edit-feed-empty{
+      text-align:center;
+      padding:3rem 0;
+      color:var(--muted);
+    }
+    .edit-feed-empty svg{width:48px;height:48px;margin:0 auto .75rem;opacity:.4}
+    .edit-feed-empty p{font-size:.95rem}
+    .edit-feed-empty .empty-sub{font-size:.82rem;margin-top:.25rem;opacity:.7}
+
+    /* Single edit bubble */
+    .edit-bubble{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:1.1rem 1.25rem;
+      box-shadow:0 4px 16px rgba(0,0,0,.12);
+      position:relative;
+      animation:bubbleIn .35s var(--ease) both;
+    }
+    @keyframes bubbleIn{
+      from{opacity:0;transform:translateY(12px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+
+    .edit-bubble-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:.75rem;
+      margin-bottom:.6rem;
+    }
+
+    .edit-type-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:.35rem;
+      font-size:.78rem;
+      font-weight:700;
+      padding:.25rem .7rem;
+      border-radius:999px;
+    }
+    /* Color per type */
+    .edit-type-badge[data-type="Add Medication"]{background:color-mix(in oklab, var(--success) 15%, transparent);color:var(--success)}
+    .edit-type-badge[data-type="Remove Medication"]{background:color-mix(in oklab, var(--danger) 15%, transparent);color:var(--danger)}
+    .edit-type-badge[data-type="Change Dosage"]{background:color-mix(in oklab, var(--brand) 15%, transparent);color:var(--brand)}
+    .edit-type-badge[data-type="Change Schedule"]{background:color-mix(in oklab, var(--accent) 15%, transparent);color:var(--accent)}
+    .edit-type-badge[data-type="Pause Medication"]{background:color-mix(in oklab, #f59e0b 15%, transparent);color:#f59e0b}
+    .edit-type-badge[data-type="Change Instructions"]{background:color-mix(in oklab, #a78bfa 15%, transparent);color:#a78bfa}
+    .edit-type-badge[data-type="Add Warning / Precaution"]{background:color-mix(in oklab, #f472b6 15%, transparent);color:#f472b6}
+    .edit-type-badge[data-type="Add Follow-Up Requirement"]{background:color-mix(in oklab, #38bdf8 15%, transparent);color:#38bdf8}
+    .edit-type-badge[data-type="Other"]{background:color-mix(in oklab, var(--muted) 15%, transparent);color:var(--muted)}
+    /* Patient types */
+    .edit-type-badge[data-type="Stopped Medication"]{background:color-mix(in oklab, var(--danger) 15%, transparent);color:var(--danger)}
+    .edit-type-badge[data-type="Started New Medication"]{background:color-mix(in oklab, var(--success) 15%, transparent);color:var(--success)}
+    .edit-type-badge[data-type="Missed Doses"]{background:color-mix(in oklab, #f59e0b 15%, transparent);color:#f59e0b}
+    .edit-type-badge[data-type="Taking a Break"]{background:color-mix(in oklab, var(--brand) 15%, transparent);color:var(--brand)}
+    .edit-type-badge[data-type="Picked Up / Refilled"]{background:color-mix(in oklab, var(--accent) 15%, transparent);color:var(--accent)}
+    .edit-type-badge[data-type="Side Effects"]{background:color-mix(in oklab, #f472b6 15%, transparent);color:#f472b6}
+
+    /* Patient bubble styling */
+    .edit-bubble.patient-bubble{
+      border-left:3px solid var(--accent);
+      background:color-mix(in oklab, var(--accent) 4%, var(--surface));
+    }
+    .edit-bubble-source{
+      display:inline-flex;
+      align-items:center;
+      gap:.3rem;
+      font-size:.68rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      padding:.15rem .55rem;
+      border-radius:6px;
+      margin-bottom:.45rem;
+    }
+    .edit-bubble-source.doctor-src{
+      background:color-mix(in oklab, var(--brand) 12%, transparent);
+      color:var(--brand);
+    }
+    .edit-bubble-source.patient-src{
+      background:color-mix(in oklab, var(--accent) 12%, transparent);
+      color:var(--accent);
+    }
+
+    .edit-bubble-time{
+      font-size:.75rem;
+      color:var(--muted);
+      font-weight:500;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .edit-bubble-body{
+      font-size:.95rem;
+      line-height:1.6;
+      color:var(--text);
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+
+    .edit-bubble-footer{
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+      margin-top:.7rem;
+      padding-top:.6rem;
+      border-top:1px solid var(--border);
+    }
+    .edit-bubble-avatar{
+      width:24px;height:24px;
+      border-radius:50%;
+      background:linear-gradient(135deg, var(--brand), var(--accent));
+      display:grid;
+      place-items:center;
+      font-size:.65rem;
+      font-weight:800;
+      color:#fff;
+      flex-shrink:0;
+    }
+    .edit-bubble-doctor{
+      font-size:.8rem;
+      font-weight:600;
+      color:var(--muted);
+    }
+    .edit-bubble-reply-btn{
+      margin-left:auto;
+      display:inline-flex;
+      align-items:center;
+      gap:.3rem;
+      background:none;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:.3rem .65rem;
+      font-size:.75rem;
+      font-weight:600;
+      color:var(--muted);
+      cursor:pointer;
+      transition:color .2s, border-color .2s, background .2s;
+    }
+    .edit-bubble-reply-btn:hover{
+      color:var(--brand);
+      border-color:var(--brand);
+      background:color-mix(in oklab, var(--brand) 8%, transparent);
+    }
+    .edit-bubble-reply-btn svg{width:14px;height:14px}
+
+    /* Replies */
+    .edit-replies{
+      margin-top:.6rem;
+      padding-top:.5rem;
+      border-top:1px solid var(--border);
+      display:flex;
+      flex-direction:column;
+      gap:.5rem;
+    }
+    .edit-reply{
+      display:flex;
+      gap:.5rem;
+      padding:.55rem .7rem;
+      background:color-mix(in oklab, var(--brand) 5%, transparent);
+      border-radius:10px;
+      border-left:3px solid var(--brand);
+    }
+    .edit-reply-body{
+      flex:1;
+      font-size:.88rem;
+      line-height:1.5;
+      color:var(--text);
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .edit-reply-meta{
+      display:flex;
+      align-items:center;
+      gap:.4rem;
+      margin-top:.3rem;
+    }
+    .edit-reply-doctor{font-size:.75rem;font-weight:600;color:var(--muted)}
+    .edit-reply-time{font-size:.7rem;color:var(--muted);opacity:.6;margin-left:auto}
+
+    /* Reply modal */
+    .reply-modal-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:300;
+      place-items:center;
+    }
+    .reply-modal-overlay.visible{display:grid}
+    .reply-modal{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+      width:90vw;
+      max-width:440px;
+      padding:1.5rem;
+      animation:modalIn .25s var(--ease);
+    }
+    @keyframes modalIn{
+      from{opacity:0;transform:scale(.95) translateY(10px)}
+      to{opacity:1;transform:scale(1) translateY(0)}
+    }
+    .reply-modal h3{
+      font-size:1.1rem;
+      font-weight:800;
+      margin:0 0 1rem;
+    }
+    .reply-modal textarea{
+      width:100%;
+      min-height:100px;
+      padding:.85rem;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      background:var(--bg);
+      color:var(--text);
+      font-size:.92rem;
+      line-height:1.5;
+      resize:vertical;
+      margin-bottom:.75rem;
+    }
+    .reply-modal textarea:focus{
+      outline:none;
+      border-color:var(--brand);
+      box-shadow:0 0 0 3px rgba(79,140,255,.2);
+    }
+    .reply-modal textarea::placeholder{color:color-mix(in oklab, var(--muted) 60%, transparent)}
+    .reply-modal input[type="text"]{
+      width:100%;
+      padding:.7rem .85rem;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      background:var(--bg);
+      color:var(--text);
+      font-size:.92rem;
+      margin-bottom:.75rem;
+    }
+    .reply-modal input[type="text"]:focus{
+      outline:none;
+      border-color:var(--brand);
+      box-shadow:0 0 0 3px rgba(79,140,255,.2);
+    }
+    .reply-modal input[type="text"]::placeholder{color:color-mix(in oklab, var(--muted) 60%, transparent)}
+    .reply-modal .field-label{
+      display:block;
+      font-size:.78rem;
+      font-weight:700;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.3px;
+      margin-bottom:.35rem;
+    }
+    .reply-modal-actions{
+      display:flex;
+      gap:.6rem;
+      justify-content:flex-end;
+    }
+    .reply-modal-actions .btn{padding:.7rem 1.2rem;font-size:.9rem}
+
+    /* Date separators */
+    .edit-date-sep{
+      text-align:center;
+      padding:.5rem 0;
+      color:var(--muted);
+      font-size:.78rem;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      opacity:.6;
+    }
+
+    /* Sticky bottom bar */
+    .sticky-bottom{
+      position:fixed;
+      bottom:0;
+      left:0;right:0;
+      z-index:100;
+      padding:1rem clamp(1rem, 3vw, 2rem);
+      background:linear-gradient(to top, var(--bg) 60%, transparent);
+      transition:right .35s var(--ease);
+    }
+    .sticky-bottom.panel-open{
+      right:var(--panel-width);
+    }
+    .sticky-inner{
+      max-width:700px;
+      margin-inline:auto;
+    }
+    .sticky-bottom .btn{
+      padding:0.85rem 1.5rem;
+      font-size:1rem;
+      font-weight:700;
+      gap:.6rem;
+      max-width:220px;
+      margin:0 auto;
+      display:flex;
+    }
+
+    /* Panel toggle arrow — sits on right edge */
+    .panel-toggle{
+      position:fixed;
+      top:50%;
+      right:0;
+      translate:0 -50%;
+      z-index:200;
+      width:36px;
+      height:72px;
+      border:1px solid var(--border);
+      border-right:none;
+      border-radius:12px 0 0 12px;
+      background:var(--surface);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      box-shadow:-4px 0 16px rgba(0,0,0,.15);
+      transition:right .35s var(--ease), background .2s;
+    }
+    .panel-toggle:hover{background:color-mix(in oklab, var(--surface) 85%, var(--brand))}
+    .panel-toggle.open{right:var(--panel-width)}
+    .panel-toggle svg{
+      width:20px;height:20px;
+      color:var(--muted);
+      transition:transform .35s var(--ease);
+    }
+    .panel-toggle.open svg{transform:rotate(180deg)}
+
+    /* Sliding medication panel */
+    .med-panel{
+      position:fixed;
+      top:0;bottom:0;
+      right:calc(-1 * var(--panel-width));
+      width:var(--panel-width);
+      z-index:150;
+      background:var(--surface);
+      border-left:1px solid var(--border);
+      box-shadow:-8px 0 30px rgba(0,0,0,.2);
+      display:flex;
+      flex-direction:column;
+      transition:right .35s var(--ease);
+      overflow-y:auto;
+    }
+    .med-panel.open{right:0}
+
+    .med-panel-header{
+      position:sticky;top:0;
+      padding:1.25rem 1.25rem 1rem;
+      border-bottom:1px solid var(--border);
+      background:var(--surface);
+      z-index:1;
+    }
+    .med-panel-header h2{
+      font-size:1.1rem;
+      font-weight:800;
+      margin:0;
+    }
+    .med-panel-header .med-count{
+      font-size:.8rem;
+      color:var(--muted);
+      font-weight:600;
+      margin-top:.15rem;
+    }
+
+    .med-list{
+      padding:1rem 1.25rem;
+      display:flex;
+      flex-direction:column;
+      gap:.75rem;
+    }
+
+    .med-card{
+      background:color-mix(in oklab, var(--surface) 92%, var(--brand));
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      padding:1rem;
+    }
+    .med-card .med-name{
+      font-size:1.05rem;
+      font-weight:800;
+      margin-bottom:.15rem;
+    }
+    .med-card .med-detail-row{
+      display:flex;
+      align-items:baseline;
+      gap:.4rem;
+      margin-top:.4rem;
+    }
+    .med-card .med-label{
+      font-size:.78rem;
+      font-weight:700;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.3px;
+      flex-shrink:0;
+    }
+    .med-card .med-value{
+      font-size:.9rem;
+      font-weight:600;
+    }
+    .med-card .med-schedule{
+      display:flex;
+      flex-wrap:wrap;
+      gap:.35rem;
+      margin-top:.35rem;
+    }
+    .med-card .med-time-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:.3rem;
+      background:color-mix(in oklab, var(--brand) 12%, transparent);
+      color:var(--brand);
+      font-size:.78rem;
+      font-weight:700;
+      padding:.3rem .65rem;
+      border-radius:999px;
+    }
+    .med-card .med-day-pill{
+      display:inline-flex;
+      background:color-mix(in oklab, var(--accent) 12%, transparent);
+      color:var(--accent);
+      font-size:.75rem;
+      font-weight:700;
+      padding:.25rem .6rem;
+      border-radius:999px;
+    }
+
+    .med-empty{
+      text-align:center;
+      padding:2rem 1rem;
+      color:var(--muted);
+      font-size:.95rem;
+    }
+    .med-loading{
+      text-align:center;
+      padding:2rem 1rem;
+      color:var(--muted);
+      font-size:.95rem;
+    }
+
+    /* Mobile overlay */
+    .panel-overlay{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      z-index:140;
+      opacity:0;
+      transition:opacity .3s var(--ease);
+    }
+    .panel-overlay.visible{display:block;opacity:1}
+
+    @media (max-width:600px){
+      :root{--panel-width:100vw}
+      h1{font-size:1.6rem;margin-bottom:.75rem}
+      .home-header{flex-direction:column;align-items:flex-start;gap:.75rem}
+      .nav-inner{flex-wrap:wrap;height:auto;padding-block:.75rem}
+      .nav-left{gap:1rem;flex-wrap:wrap}
+      .page-content.panel-open{margin-right:0}
+      .panel-toggle.open{right:calc(100vw - 36px)}
+      .sticky-bottom.panel-open{right:0}
+    }
+    @media (min-width:601px) and (max-width:900px){
+      :root{--panel-width:320px}
+    }
+  </style>
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="container nav-inner">
+      <div class="nav-left">
+        <div class="info-item">
+          <span class="info-label">Patient Name</span>
+          <span class="info-value" id="patient-name">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Patient ID</span>
+          <span class="info-value" id="patient-id">—</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Email</span>
+          <span class="info-value" id="patient-email">—</span>
+        </div>
+      </div>
+      <div class="nav-right">
+        <button class="btn btn-danger" id="logout-btn">Log Out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-content" id="page-content">
+    <div class="container">
+      <div class="home-header">
+        <h1>Update Your Patient</h1>
+      </div>
+
+      <!-- Chat-style edit feed -->
+      <div class="edit-feed" id="edit-feed">
+        <div class="edit-feed-loading" id="feed-loading">Loading updates...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Upload Edit button -->
+  <div class="sticky-bottom" id="sticky-bottom">
+    <div class="sticky-inner">
+      <a href="requestedit.html" class="btn btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Upload Edit
+      </a>
+    </div>
+  </div>
+
+  <!-- Panel toggle arrow -->
+  <button class="panel-toggle" id="panel-toggle" aria-label="Toggle medications panel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+
+  <!-- Mobile overlay -->
+  <div class="panel-overlay" id="panel-overlay"></div>
+
+  <!-- Medications panel -->
+  <aside class="med-panel" id="med-panel">
+    <div class="med-panel-header">
+      <h2>Medications</h2>
+      <div class="med-count" id="med-count"></div>
+    </div>
+    <div class="med-list" id="med-list">
+      <div class="med-loading">Loading medications...</div>
+    </div>
+  </aside>
+
+  <!-- Reply modal -->
+  <div class="reply-modal-overlay" id="reply-overlay">
+    <div class="reply-modal">
+      <h3>Reply</h3>
+      <span class="field-label">Your reply</span>
+      <textarea id="reply-text" placeholder="Type your reply..."></textarea>
+      <span class="field-label">Identify yourself</span>
+      <input type="text" id="reply-name" placeholder="e.g., Dr. Smith, Doctor B." />
+      <div class="reply-modal-actions">
+        <button class="btn btn-secondary" id="reply-cancel">Cancel</button>
+        <button class="btn btn-primary" id="reply-send" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Doctor session guard
+    const raw = sessionStorage.getItem('doctorSession');
+    if (!raw) {
+      window.location.href = '../logindoctor.html';
+    }
+
+    let session;
+    try {
+      session = JSON.parse(raw);
+      if (!session.uid) throw new Error();
+    } catch (e) {
+      sessionStorage.removeItem('doctorSession');
+      window.location.href = '../logindoctor.html';
+    }
+
+    // Populate navbar
+    document.getElementById('patient-name').textContent = session.name || '—';
+    document.getElementById('patient-id').textContent = session.patientId || '—';
+    document.getElementById('patient-email').textContent = session.email || '—';
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      sessionStorage.removeItem('doctorSession');
+      window.location.href = '../logindoctor.html';
+    });
+
+    // Panel toggle
+    const toggleBtn = document.getElementById('panel-toggle');
+    const panel = document.getElementById('med-panel');
+    const overlay = document.getElementById('panel-overlay');
+    const pageContent = document.getElementById('page-content');
+    const stickyBottom = document.getElementById('sticky-bottom');
+    let panelOpen = false;
+    let medsRendered = false;
+
+    function openPanel() {
+      panelOpen = true;
+      toggleBtn.classList.add('open');
+      panel.classList.add('open');
+      pageContent.classList.add('panel-open');
+      stickyBottom.classList.add('panel-open');
+      if (window.innerWidth <= 600) overlay.classList.add('visible');
+      if (!medsRendered) renderMedications();
+    }
+
+    function closePanel() {
+      panelOpen = false;
+      toggleBtn.classList.remove('open');
+      panel.classList.remove('open');
+      pageContent.classList.remove('panel-open');
+      stickyBottom.classList.remove('panel-open');
+      overlay.classList.remove('visible');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (panelOpen) closePanel(); else openPanel();
+    });
+
+    overlay.addEventListener('click', closePanel);
+
+    // ---- Edit feed ----
+    const feedEl = document.getElementById('edit-feed');
+    const feedLoading = document.getElementById('feed-loading');
+
+    // Type → emoji map
+    const typeEmoji = {
+      'Add Medication': '💊',
+      'Remove Medication': '🗑️',
+      'Change Dosage': '💉',
+      'Change Schedule': '🕐',
+      'Pause Medication': '⏸️',
+      'Change Instructions': '📝',
+      'Add Warning / Precaution': '⚠️',
+      'Add Follow-Up Requirement': '📋',
+      'Other': '✏️',
+      // Patient types
+      'Stopped Medication': '🛑',
+      'Started New Medication': '💊',
+      'Missed Doses': '⚠️',
+      'Taking a Break': '⏸️',
+      'Picked Up / Refilled': '✅',
+      'Side Effects': '🩹'
+    };
+
+    function formatDate(isoStr) {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dateDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const diff = today - dateDay;
+      if (diff === 0) return 'Today';
+      if (diff === 86400000) return 'Yesterday';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatTime(isoStr) {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
+    function getInitials(name) {
+      if (!name) return 'Dr';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    function renderFeed(edits) {
+      feedLoading.style.display = 'none';
+
+      if (!edits || edits.length === 0) {
+        feedEl.innerHTML = `
+          <div class="edit-feed-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <p>No updates yet</p>
+            <p class="empty-sub">Click "Upload Edit" to submit your first update.</p>
+          </div>
+        `;
+        return;
+      }
+
+      // edits are already sorted newest first from the API
+      // We want newest at top, oldest at bottom
+      let html = '';
+      let lastDateStr = '';
+
+      edits.forEach((edit, i) => {
+        const dateStr = formatDate(edit.createdAt);
+        if (dateStr && dateStr !== lastDateStr) {
+          html += `<div class="edit-date-sep">${dateStr}</div>`;
+          lastDateStr = dateStr;
+        }
+
+        const emoji = typeEmoji[edit.type] || '✏️';
+        const time = formatTime(edit.createdAt);
+        const isPatient = edit.source === 'patient' || !!edit.patientName;
+        const senderName = isPatient ? (edit.patientName || session.name || 'Patient') : (edit.doctorName || 'Doctor');
+        const initials = getInitials(senderName);
+
+        // Source tag
+        const sourceTag = isPatient
+          ? '<div class="edit-bubble-source patient-src">Patient</div>'
+          : '<div class="edit-bubble-source doctor-src">Doctor</div>';
+
+        // Render replies
+        const replies = edit.replies || [];
+        let repliesHtml = '';
+        if (replies.length > 0) {
+          repliesHtml = '<div class="edit-replies">' + replies.map(r => {
+            const rTime = formatTime(r.createdAt);
+            return `
+              <div class="edit-reply">
+                <div style="flex:1">
+                  <div class="edit-reply-body">${escapeHtml(r.message)}</div>
+                  <div class="edit-reply-meta">
+                    <span class="edit-reply-doctor">— ${escapeHtml(r.doctorName || 'Doctor')}</span>
+                    <span class="edit-reply-time">${rTime}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('') + '</div>';
+        }
+
+        // Reply button only for doctor messages (not patient messages)
+        const replyBtn = isPatient ? '' : `
+              <button class="edit-bubble-reply-btn" data-edit-id="${edit.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                Reply
+              </button>`;
+
+        html += `
+          <div class="edit-bubble${isPatient ? ' patient-bubble' : ''}" style="animation-delay:${i * 0.05}s">
+            ${sourceTag}
+            <div class="edit-bubble-top">
+              <span class="edit-type-badge" data-type="${edit.type}">${emoji} ${edit.type}</span>
+              <span class="edit-bubble-time">${time}</span>
+            </div>
+            <div class="edit-bubble-body">${escapeHtml(edit.details)}</div>
+            <div class="edit-bubble-footer">
+              <div class="edit-bubble-avatar"${isPatient ? ' style="background:linear-gradient(135deg, var(--accent), #38bdf8)"' : ''}>${initials}</div>
+              <span class="edit-bubble-doctor">${escapeHtml(senderName)}</span>
+              ${replyBtn}
+            </div>
+            ${repliesHtml}
+          </div>
+        `;
+      });
+
+      feedEl.innerHTML = html;
+
+      // Attach reply button listeners
+      feedEl.querySelectorAll('.edit-bubble-reply-btn').forEach(btn => {
+        btn.addEventListener('click', () => openReplyModal(btn.dataset.editId));
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ---- Reply modal ----
+    let replyEditId = '';
+    const replyOverlay = document.getElementById('reply-overlay');
+    const replyText = document.getElementById('reply-text');
+    const replyName = document.getElementById('reply-name');
+    const replySend = document.getElementById('reply-send');
+    const replyCancel = document.getElementById('reply-cancel');
+
+    function openReplyModal(editId) {
+      replyEditId = editId;
+      replyText.value = '';
+      replyName.value = '';
+      replySend.disabled = true;
+      replySend.textContent = 'Send';
+      replyOverlay.classList.add('visible');
+      replyText.focus();
+    }
+
+    function closeReplyModal() {
+      replyOverlay.classList.remove('visible');
+      replyEditId = '';
+    }
+
+    replyCancel.addEventListener('click', closeReplyModal);
+    replyOverlay.addEventListener('click', (e) => {
+      if (e.target === replyOverlay) closeReplyModal();
+    });
+
+    replyText.addEventListener('input', () => {
+      replySend.disabled = replyText.value.trim().length === 0;
+    });
+
+    replySend.addEventListener('click', async () => {
+      const message = replyText.value.trim();
+      if (!message || !replyEditId) return;
+
+      const doctorName = replyName.value.trim() || 'Doctor';
+
+      replySend.disabled = true;
+      replySend.textContent = 'Sending...';
+
+      try {
+        const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/replyToDoctorEdit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: session.uid,
+            editId: replyEditId,
+            message,
+            doctorName
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed to send');
+
+        closeReplyModal();
+        loadEdits(); // Refresh feed
+      } catch (err) {
+        replySend.disabled = false;
+        replySend.textContent = 'Send';
+        alert('Error: ' + (err.message || 'Something went wrong.'));
+      }
+    });
+
+    // Fetch edits from Firestore via Cloud Function
+    async function loadEdits() {
+      try {
+        const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/getDoctorEdits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: session.uid })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed to load');
+
+        renderFeed(data.edits || []);
+      } catch (err) {
+        feedLoading.textContent = 'Could not load updates.';
+        console.error('Feed load error:', err);
+      }
+    }
+
+    // Load feed on page load
+    loadEdits();
+
+    // ---- Medication panel rendering ----
+    // Format time from "HH:MM" to "9:00 AM"
+    function fmtTime(t) {
+      if (!t) return '';
+      const [h, m] = t.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hr = h % 12 || 12;
+      return hr + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+    }
+
+    // Capitalize first letter
+    function cap(s) {
+      return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+    }
+
+    // Render medications from session data (loaded at login)
+    function renderMedications() {
+      const listEl = document.getElementById('med-list');
+      const countEl = document.getElementById('med-count');
+      const meds = session.medications || [];
+
+      medsRendered = true;
+
+      if (meds.length === 0) {
+        countEl.textContent = 'No medications found';
+        listEl.innerHTML = '<div class="med-empty">This patient has no medications yet.</div>';
+        return;
+      }
+
+      countEl.textContent = meds.length + ' medication' + (meds.length === 1 ? '' : 's');
+
+      listEl.innerHTML = meds.map(med => {
+        // Dosage display
+        const dosageStr = med.dosage
+          ? `${med.dosage}${med.dosageUnit ? ' ' + med.dosageUnit : ''} per take`
+          : '';
+
+        // Times per day
+        const tpd = med.timesPerDay || med.times?.length || 0;
+        const tpdStr = tpd > 0 ? `${tpd} time${tpd !== 1 ? 's' : ''} per day` : '';
+
+        // Time pills
+        const timePills = (med.times || []).map(t =>
+          `<span class="med-time-pill">${fmtTime(t)}</span>`
+        ).join('');
+
+        // Days display
+        const dayOrder = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        const rawDays = (med.days || []);
+        // Sort days in correct weekday order
+        const sortedDays = rawDays.slice().sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+        const dayNames = sortedDays.map(d => cap(d));
+
+        let daysHtml = '';
+        if (dayNames.length === 7) {
+          daysHtml = '<span class="med-day-pill">Every day</span>';
+        } else if (dayNames.length > 0) {
+          daysHtml = dayNames.map(d => {
+            const short = d.length > 3 ? d.slice(0, 3) : d;
+            return `<span class="med-day-pill">${short}</span>`;
+          }).join('');
+        }
+
+        // Interval schedule (e.g. "Every 4 days")
+        const intervalStr = med.intervalDesc || '';
+
+        // Date range — handle Invalid Date and null endDate
+        let dateRange = '';
+        if (med.startDate || med.endDate) {
+          let sStr = '—';
+          if (med.startDate) {
+            const sd = new Date(med.startDate);
+            sStr = isNaN(sd.getTime()) ? '—' : sd.toLocaleDateString();
+          }
+          let eStr = 'Forever';
+          if (med.endDate) {
+            const ed = new Date(med.endDate);
+            eStr = isNaN(ed.getTime()) ? 'Forever' : ed.toLocaleDateString();
+          }
+          dateRange = `${sStr} → ${eStr}`;
+        }
+
+        return `
+          <div class="med-card">
+            <div class="med-name">${med.name}</div>
+            ${dosageStr ? `<div class="med-detail-row"><span class="med-label">Dosage:</span> <span class="med-value">${dosageStr}</span></div>` : ''}
+            ${tpdStr ? `<div class="med-detail-row"><span class="med-label">Frequency:</span> <span class="med-value">${tpdStr}</span></div>` : ''}
+            ${timePills ? `<div class="med-detail-row"><span class="med-label">Times:</span></div><div class="med-schedule">${timePills}</div>` : ''}
+            ${daysHtml ? `<div class="med-detail-row"><span class="med-label">Days:</span></div><div class="med-schedule">${daysHtml}</div>` : ''}
+            ${intervalStr ? `<div class="med-detail-row"><span class="med-label">Schedule:</span> <span class="med-value">${intervalStr}</span></div>` : ''}
+            ${dateRange ? `<div class="med-detail-row"><span class="med-label">Period:</span> <span class="med-value">${dateRange}</span></div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+  </script>
+</body>
+</html>

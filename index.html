@@ -3,1044 +3,680 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Everane — Your Medication, Simplified</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <title>Everane / Your medication, simplified</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --cream: #FFF9F0;
-      --warm-white: #FFFDFB;
-      --sage: #7BA68A;
-      --sage-deep: #5A8A6A;
-      --sage-light: #D4E8DA;
-      --terracotta: #D4845A;
-      --terracotta-light: #F0D4C0;
-      --charcoal: #2C2C2C;
-      --soft-gray: #8A8A8A;
-      --light-border: rgba(0,0,0,0.06);
-      --font-display: 'DM Serif Display', Georgia, serif;
-      --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      --radius: 16px;
-      --radius-sm: 10px;
-      --shadow-soft: 0 4px 24px rgba(0,0,0,0.06);
-      --shadow-hover: 0 8px 40px rgba(0,0,0,0.10);
+      --ink: #14140F;
+      --ink-soft: #3a3a34;
+      --paper: #F4F1EA;
+      --paper-2: #ECE7DC;
+      --card: #FBFAF6;
+      --amber: #FF5C2B;
+      --amber-deep: #E54A1C;
+      --clinic: #1E5C6B;
+      --clinic-light: #D6E5E5;
+      --line: #1A1A14;
+      --line-soft: rgba(20,20,15,0.14);
+      --muted: #6E6A60;
+      --good: #2F7D4F;
+      --warn: #B8590C;
+      --display: 'Space Grotesk', system-ui, sans-serif;
+      --body: 'Inter Tight', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
     }
-    html { scroll-behavior: smooth; font-size: 16px; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: var(--font-body);
-      background: var(--cream);
-      color: var(--charcoal);
-      line-height: 1.7;
+      font-family: var(--body);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.6;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
+    a { color: inherit; }
+    ::selection { background: var(--amber); color: #fff; }
+
+    /* ===== TICKER ===== */
+    .ticker {
+      background: var(--ink); color: var(--paper);
+      font-family: var(--mono); font-size: 0.72rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      padding: 9px 0; overflow: hidden; white-space: nowrap;
+      border-bottom: 2px solid var(--line);
+    }
+    .ticker-track {
+      display: inline-block; animation: scrollX 32s linear infinite;
+    }
+    .ticker-track span { margin: 0 28px; opacity: 0.82; }
+    .ticker-track span b { color: var(--amber); font-weight: 600; }
+    @keyframes scrollX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
     /* ===== NAV ===== */
     nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 18px 40px;
+      position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
-      background: rgba(255,249,240,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--light-border);
-      transition: all 0.3s ease;
+      padding: 14px 28px;
+      background: var(--paper);
+      border-bottom: 2px solid var(--line);
     }
     .nav-logo {
-      font-family: var(--font-display);
-      font-size: 1.6rem;
-      color: var(--sage-deep);
+      display: flex; align-items: center; gap: 11px;
       text-decoration: none;
-      display: flex; align-items: center; gap: 10px;
+      font-family: var(--display); font-weight: 700;
+      font-size: 1.35rem; letter-spacing: -0.02em; color: var(--ink);
     }
-    .nav-logo .logo-icon {
-      width: 36px; height: 36px;
-      background: var(--sage);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      color: white; font-size: 1.1rem;
-    }
-    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-logo img { width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--line); }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
     .nav-links a {
-      text-decoration: none; color: var(--soft-gray);
-      font-size: 0.92rem; font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--charcoal); }
-    .nav-cta {
-      background: var(--sage) !important; color: white !important;
-      padding: 10px 24px !important; border-radius: 50px !important;
-      font-weight: 600 !important;
-      transition: all 0.3s ease !important;
-    }
-    .nav-cta:hover { background: var(--sage-deep) !important; transform: translateY(-1px); }
-    .mobile-toggle { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
-    .mobile-toggle span { display: block; width: 22px; height: 2px; background: var(--charcoal); margin: 5px 0; transition: 0.3s; border-radius: 2px; }
-    /* ===== HERO ===== */
-    .hero {
-      min-height: 100vh;
-      display: flex; align-items: center;
-      padding: 120px 40px 80px;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute; top: -200px; right: -200px;
-      width: 700px; height: 700px;
-      background: radial-gradient(circle, var(--sage-light) 0%, transparent 70%);
-      opacity: 0.5;
-      z-index: 0;
-    }
-    .hero::after {
-      content: '';
-      position: absolute; bottom: -100px; left: -100px;
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, var(--terracotta-light) 0%, transparent 70%);
-      opacity: 0.4;
-      z-index: 0;
-    }
-    .hero-inner {
-      max-width: 1200px; margin: 0 auto; width: 100%;
-      display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
-      position: relative; z-index: 1;
-    }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--sage-light); color: var(--sage-deep);
-      padding: 8px 18px; border-radius: 50px;
+      text-decoration: none; color: var(--ink-soft);
       font-size: 0.82rem; font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-bottom: 24px;
-      animation: fadeInUp 0.8s ease both;
+      font-family: var(--mono); letter-spacing: 0.04em;
+      padding: 8px 14px; border-radius: 2px;
+      transition: background 0.15s, color 0.15s;
     }
-    .hero-badge .pulse {
-      width: 8px; height: 8px; background: var(--sage);
-      border-radius: 50%; position: relative;
+    .nav-links a:hover { background: var(--paper-2); color: var(--ink); }
+    .nav-cta {
+      background: var(--ink) !important; color: var(--paper) !important;
+      border: 2px solid var(--line);
     }
-    .hero-badge .pulse::after {
-      content: ''; position: absolute; inset: -3px;
-      border-radius: 50%; border: 2px solid var(--sage);
-      animation: pulseRing 2s ease infinite;
-    }
-    .hero h1 {
-      font-family: var(--font-display);
-      font-size: clamp(2.8rem, 5vw, 4.2rem);
-      line-height: 1.15;
-      color: var(--charcoal);
-      margin-bottom: 24px;
-      animation: fadeInUp 0.8s ease 0.1s both;
-    }
-    .hero h1 em {
-      font-style: italic; color: var(--sage-deep);
-    }
-    .hero-sub {
-      font-size: 1.15rem; color: var(--soft-gray);
-      line-height: 1.8; max-width: 480px;
-      margin-bottom: 40px;
-      animation: fadeInUp 0.8s ease 0.2s both;
-    }
-    .hero-actions {
-      display: flex; gap: 16px; flex-wrap: wrap;
-      animation: fadeInUp 0.8s ease 0.3s both;
-    }
-    .btn-primary {
-      background: var(--sage); color: white;
-      padding: 16px 36px; border-radius: 50px;
-      font-size: 1rem; font-weight: 600;
-      text-decoration: none; border: none; cursor: pointer;
-      transition: all 0.3s ease;
+    .nav-cta:hover { background: var(--amber) !important; color: #fff !important; }
+    .mobile-toggle { display: none; background: none; border: 2px solid var(--line); border-radius: 3px; cursor: pointer; padding: 8px 10px; }
+    .mobile-toggle span { display: block; width: 20px; height: 2px; background: var(--ink); margin: 4px 0; }
+
+    /* ===== LAYOUT WRAP ===== */
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+    .eyebrow {
+      font-family: var(--mono); font-size: 0.74rem;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--amber-deep); font-weight: 600;
       display: inline-flex; align-items: center; gap: 10px;
-      font-family: var(--font-body);
     }
-    .btn-primary:hover { background: var(--sage-deep); transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-    .btn-secondary {
-      background: transparent; color: var(--charcoal);
-      padding: 16px 36px; border-radius: 50px;
-      font-size: 1rem; font-weight: 500;
-      text-decoration: none; border: 2px solid var(--light-border);
-      transition: all 0.3s ease; cursor: pointer;
-      font-family: var(--font-body);
+    .eyebrow::before { content: ''; width: 26px; height: 2px; background: var(--amber); }
+    h2.display {
+      font-family: var(--display); font-weight: 700;
+      font-size: clamp(2rem, 4vw, 3rem); line-height: 1.05;
+      letter-spacing: -0.03em; margin: 18px 0 14px;
     }
-    .btn-secondary:hover { border-color: var(--sage); color: var(--sage-deep); }
-    /* Hero visual */
-    .hero-visual {
+    .lede { font-size: 1.05rem; color: var(--ink-soft); max-width: 560px; }
+
+    /* ===== HERO ===== */
+    .hero { padding: 72px 0 56px; position: relative; }
+    .hero-grid {
+      display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      border: 2px solid var(--line); border-radius: 40px;
+      padding: 6px 15px; background: var(--card);
+    }
+    .hero-tag .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 rgba(47,125,79,0.5); animation: ping 2.2s ease-out infinite; }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(47,125,79,0.45); } 100% { box-shadow: 0 0 0 11px rgba(47,125,79,0); } }
+    .hero h1 {
+      font-family: var(--display); font-weight: 700;
+      font-size: clamp(2.7rem, 6vw, 4.4rem); line-height: 0.98;
+      letter-spacing: -0.045em; margin: 22px 0 22px;
+    }
+    .hero h1 .mark {
+      position: relative; color: var(--amber-deep); white-space: nowrap;
+    }
+    .hero h1 .mark::after {
+      content: ''; position: absolute; left: -2px; right: -2px; bottom: 4px; height: 12px;
+      background: rgba(255,92,43,0.22); z-index: -1; transform: rotate(-1deg);
+    }
+    .hero-sub { font-size: 1.12rem; color: var(--ink-soft); max-width: 470px; margin-bottom: 30px; }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      font-family: var(--body); font-weight: 600; font-size: 0.98rem;
+      text-decoration: none; cursor: pointer; border-radius: 3px;
+      padding: 15px 28px; display: inline-flex; align-items: center; gap: 9px;
+      border: 2px solid var(--line); transition: transform 0.12s, background 0.15s, color 0.15s;
+    }
+    .btn-fill { background: var(--amber); color: #fff; box-shadow: 4px 4px 0 var(--line); }
+    .btn-fill:hover { background: var(--amber-deep); transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--line); }
+    .btn-line { background: var(--card); color: var(--ink); }
+    .btn-line:hover { background: var(--ink); color: var(--paper); }
+    .hero-meta {
+      margin-top: 34px; display: flex; gap: 30px; flex-wrap: wrap;
+      font-family: var(--mono); font-size: 0.78rem; color: var(--muted);
+    }
+    .hero-meta b { color: var(--ink); font-weight: 600; font-size: 1.3rem; display: block; font-family: var(--display); }
+
+    /* ===== PHONE FRAME ===== */
+    .device {
+      background: var(--card); border: 2px solid var(--line);
+      border-radius: 26px; padding: 16px; max-width: 330px; margin: 0 auto;
+      box-shadow: 10px 12px 0 var(--line);
       position: relative;
-      animation: fadeInUp 0.8s ease 0.4s both;
     }
-    .phone-mockup {
-      width: 320px; margin: 0 auto;
-      background: white;
-      border-radius: 32px;
-      padding: 20px;
-      box-shadow: 0 20px 80px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
-      transform: rotate(2deg);
-      position: relative;
+    .device-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: var(--mono); font-size: 0.66rem; color: var(--muted);
+      padding: 2px 6px 14px; letter-spacing: 0.08em;
     }
-    .phone-notch {
-      width: 100px; height: 6px;
-      background: #E8E8E8; border-radius: 10px;
-      margin: 0 auto 20px;
+    .device-bar .live { display: flex; align-items: center; gap: 6px; color: var(--good); }
+    .device-bar .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--good); }
+    .device-head { padding: 0 6px 14px; }
+    .device-head .hi { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+    .device-head .who { font-family: var(--display); font-weight: 700; font-size: 1.5rem; letter-spacing: -0.02em; }
+    .row {
+      display: flex; align-items: center; gap: 13px;
+      padding: 13px; border: 2px solid var(--line); border-radius: 10px;
+      background: var(--paper); margin-bottom: 9px;
     }
-    .phone-header {
-      text-align: center; margin-bottom: 20px;
+    .row .ic {
+      width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+      border: 2px solid var(--line);
     }
-    .phone-header .greeting {
-      font-size: 0.8rem; color: var(--soft-gray); margin-bottom: 4px;
+    .row:nth-child(odd) .ic { background: var(--clinic-light); }
+    .row:nth-child(even) .ic { background: #FCE4D6; }
+    .row .nm { font-weight: 600; font-size: 0.88rem; }
+    .row .tm { font-size: 0.74rem; color: var(--muted); font-family: var(--mono); }
+    .pill {
+      margin-left: auto; font-family: var(--mono); font-size: 0.64rem; font-weight: 600;
+      padding: 4px 9px; border-radius: 40px; border: 2px solid var(--line); white-space: nowrap;
     }
-    .phone-header .name {
-      font-family: var(--font-display); font-size: 1.3rem;
+    .pill.ok { background: #DBF0E2; color: var(--good); }
+    .pill.up { background: #FBE5CE; color: var(--warn); }
+    .pill.next { background: var(--clinic-light); color: var(--clinic); }
+    .float {
+      position: absolute; background: var(--ink); color: var(--paper);
+      border: 2px solid var(--line); border-radius: 10px; padding: 11px 14px;
+      font-size: 0.78rem; box-shadow: 5px 5px 0 rgba(20,20,15,0.25);
+      animation: bob 5s ease-in-out infinite;
     }
-    .med-card {
-      background: var(--cream);
-      border-radius: var(--radius-sm);
-      padding: 16px;
-      margin-bottom: 10px;
-      display: flex; align-items: center; gap: 14px;
-      transition: all 0.3s ease;
-    }
-    .med-icon {
-      width: 44px; height: 44px;
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; flex-shrink: 0;
-    }
-    .med-card:nth-child(1) .med-icon { background: #E8F5E9; }
-    .med-card:nth-child(2) .med-icon { background: #FFF3E0; }
-    .med-card:nth-child(3) .med-icon { background: #E3F2FD; }
-    .med-card:nth-child(4) .med-icon { background: #F3E5F5; }
-    .med-info .med-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 2px; }
-    .med-info .med-time { font-size: 0.78rem; color: var(--soft-gray); }
-    .med-status {
-      margin-left: auto; font-size: 0.72rem; font-weight: 600;
-      padding: 4px 10px; border-radius: 50px;
-    }
-    .status-taken { background: #E8F5E9; color: #2E7D32; }
-    .status-upcoming { background: #FFF3E0; color: #E65100; }
-    .status-done { background: #E3F2FD; color: #1565C0; }
-    /* Floating elements */
-    .float-card {
-      position: absolute;
-      background: white;
-      border-radius: var(--radius-sm);
-      padding: 14px 18px;
-      box-shadow: var(--shadow-soft);
-      font-size: 0.82rem;
-      animation: float 6s ease-in-out infinite;
-    }
-    .float-reminder {
-      top: 20px; right: -40px;
-      display: flex; align-items: center; gap: 10px;
-    }
-    .float-reminder .bell { font-size: 1.2rem; }
-    .float-reminder .fr-text { font-weight: 600; }
-    .float-reminder .fr-sub { font-size: 0.72rem; color: var(--soft-gray); }
-    .float-voice {
-      bottom: 60px; left: -50px;
-      display: flex; align-items: center; gap: 10px;
-      background: var(--sage); color: white;
-    }
-    .float-voice .mic { font-size: 1.2rem; }
-    /* ===== SECTION HELPERS ===== */
-    section { padding: 100px 40px; }
-    .section-inner { max-width: 1100px; margin: 0 auto; }
-    .section-label {
-      display: inline-flex; align-items: center; gap: 8px;
-      font-size: 0.78rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.12em;
-      color: var(--sage); margin-bottom: 16px;
-    }
-    .section-title {
-      font-family: var(--font-display);
-      font-size: clamp(2rem, 3.5vw, 2.8rem);
-      line-height: 1.2; margin-bottom: 16px;
-    }
-    .section-sub {
-      font-size: 1.05rem; color: var(--soft-gray);
-      max-width: 560px; line-height: 1.8;
-    }
-    /* ===== PROBLEM / SOLUTION ===== */
-    .problem-section { background: white; }
-    .problem-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
-      margin-top: 60px; align-items: start;
-    }
-    .problem-side h3, .solution-side h3 {
-      font-family: var(--font-display);
-      font-size: 1.5rem; margin-bottom: 24px;
-      display: flex; align-items: center; gap: 12px;
-    }
-    .problem-side h3 .icon { color: var(--terracotta); }
-    .solution-side h3 .icon { color: var(--sage); }
-    .pain-point, .sol-point {
-      display: flex; gap: 16px; padding: 18px 0;
-      border-bottom: 1px solid var(--light-border);
-    }
-    .pain-point:last-child, .sol-point:last-child { border: none; }
-    .pain-point .marker {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: #FDECEA; color: #C62828;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .sol-point .marker {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: var(--sage-light); color: var(--sage-deep);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.9rem; flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .point-text strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
-    .point-text span { font-size: 0.88rem; color: var(--soft-gray); }
+    .float.bell { top: -18px; right: -22px; display: flex; gap: 9px; align-items: center; }
+    .float.bell .b { font-size: 1.1rem; }
+    .float.bell small { display: block; color: rgba(244,241,234,0.6); font-family: var(--mono); font-size: 0.64rem; }
+    .float.cam { bottom: 38px; left: -30px; background: var(--amber); display: flex; gap: 8px; align-items: center; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+    /* ===== SECTION SHELL ===== */
+    section.block { padding: 78px 0; border-top: 2px solid var(--line); }
+    .block.dark { background: var(--ink); color: var(--paper); }
+    .block.dark .eyebrow { color: var(--amber); }
+    .block.dark .lede, .block.dark .muted-txt { color: rgba(244,241,234,0.66); }
+    .index-no { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.16em; }
+
+    /* ===== WHY: split compare ===== */
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 44px; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
+    .compare > div { padding: 30px; }
+    .compare .col-bad { border-right: 2px solid var(--line); }
+    .compare h3 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .badge-x, .badge-v { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.82rem; border: 2px solid var(--line); }
+    .badge-x { background: #FBDAD2; color: var(--amber-deep); }
+    .badge-v { background: #DBF0E2; color: var(--good); }
+    .pt { display: flex; gap: 13px; padding: 15px 0; border-top: 1px solid var(--line-soft); }
+    .pt:first-of-type { border-top: none; }
+    .pt .m { font-family: var(--mono); font-weight: 600; flex-shrink: 0; color: var(--muted); }
+    .pt strong { display: block; font-size: 0.94rem; margin-bottom: 3px; }
+    .pt span { font-size: 0.86rem; color: var(--muted); }
+
     /* ===== FEATURES ===== */
-    .features-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
-      margin-top: 60px;
+    .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 44px; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .feat {
+      padding: 30px 26px; background: var(--card);
+      border-right: 2px solid var(--line); border-bottom: 2px solid var(--line);
+      transition: background 0.15s;
     }
-    .feature-card {
-      background: white;
-      border-radius: var(--radius);
-      padding: 36px 30px;
-      border: 1px solid var(--light-border);
-      transition: all 0.4s ease;
-      position: relative; overflow: hidden;
+    .feat:hover { background: var(--paper-2); }
+    .feat:nth-child(3n) { border-right: none; }
+    .feat:nth-last-child(-n+3) { border-bottom: none; }
+    .feat .fno { font-family: var(--mono); font-size: 0.72rem; color: var(--amber-deep); letter-spacing: 0.1em; }
+    .feat .fic { font-size: 1.5rem; margin: 14px 0 12px; display: block; }
+    .feat h3 { font-family: var(--display); font-weight: 600; font-size: 1.12rem; margin-bottom: 8px; letter-spacing: -0.01em; }
+    .feat p { font-size: 0.88rem; color: var(--muted); }
+
+    /* ===== CAMERA / CAPTURE ===== */
+    .capture-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 52px; align-items: center; margin-top: 10px; }
+    .capture-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .snap {
+      border: 2px solid var(--line); border-radius: 12px; padding: 20px; background: var(--card);
+      box-shadow: 5px 5px 0 var(--line); position: relative; overflow: hidden;
     }
-    .feature-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0;
-      height: 3px; background: var(--sage);
-      transform: scaleX(0); transform-origin: left;
-      transition: transform 0.4s ease;
+    .snap .scan {
+      position: absolute; left: 0; right: 0; height: 2px; background: var(--amber);
+      box-shadow: 0 0 12px 2px rgba(255,92,43,0.6); top: 0; animation: scanY 2.6s ease-in-out infinite;
     }
-    .feature-card:hover::before { transform: scaleX(1); }
-    .feature-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
-    .feature-icon {
-      width: 52px; height: 52px;
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; margin-bottom: 20px;
+    @keyframes scanY { 0%,100% { top: 6%; } 50% { top: 92%; } }
+    .snap .frame {
+      height: 96px; border: 2px dashed var(--line-soft); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 12px;
+      background: var(--paper);
     }
-    .feature-card:nth-child(1) .feature-icon { background: #E8F5E9; }
-    .feature-card:nth-child(2) .feature-icon { background: #FFF3E0; }
-    .feature-card:nth-child(3) .feature-icon { background: #E3F2FD; }
-    .feature-card:nth-child(4) .feature-icon { background: #F3E5F5; }
-    .feature-card:nth-child(5) .feature-icon { background: #FFF9C4; }
-    .feature-card:nth-child(6) .feature-icon { background: #FFEBEE; }
-    .feature-card h3 {
-      font-family: var(--font-display);
-      font-size: 1.2rem; margin-bottom: 10px;
-    }
-    .feature-card p {
-      font-size: 0.9rem; color: var(--soft-gray); line-height: 1.7;
-    }
-    /* ===== HOW IT WORKS ===== */
-    .how-section { background: white; }
-    .steps-track {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
-      margin-top: 60px; position: relative;
-    }
-    .steps-track::before {
-      content: '';
-      position: absolute; top: 40px;
-      left: calc(16.66% + 20px); right: calc(16.66% + 20px);
-      height: 2px;
-      background: linear-gradient(to right, var(--sage-light), var(--sage), var(--sage-light));
-    }
-    .step {
-      text-align: center; position: relative;
-    }
-    .step-number {
-      width: 64px; height: 64px;
-      border-radius: 50%;
-      background: var(--sage); color: white;
-      display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-display); font-size: 1.5rem;
-      margin: 0 auto 24px; position: relative; z-index: 1;
-      box-shadow: 0 4px 20px rgba(123,166,138,0.3);
-    }
-    .step h3 {
-      font-family: var(--font-display);
-      font-size: 1.2rem; margin-bottom: 10px;
-    }
-    .step p {
-      font-size: 0.9rem; color: var(--soft-gray);
-      max-width: 280px; margin: 0 auto; line-height: 1.7;
-    }
-    .step-detail {
-      margin-top: 20px; padding: 16px;
-      background: var(--cream); border-radius: var(--radius-sm);
-      font-size: 0.82rem; color: var(--sage-deep);
-      font-weight: 500;
-    }
-    /* ===== VOICE SECTION ===== */
-    .voice-section {
-      background: linear-gradient(135deg, var(--sage-deep) 0%, #4A7A5E 100%);
-      color: white; border-radius: 0;
-    }
-    .voice-inner {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
-    }
-    .voice-section .section-label { color: var(--sage-light); }
-    .voice-section .section-title { color: white; }
-    .voice-section .section-sub { color: rgba(255,255,255,0.75); }
-    .voice-features { margin-top: 32px; }
-    .voice-feature {
-      display: flex; gap: 16px; margin-bottom: 20px;
-      padding: 16px; border-radius: var(--radius-sm);
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: blur(10px);
-    }
-    .voice-feature .vf-icon {
-      width: 40px; height: 40px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem; flex-shrink: 0;
-    }
-    .voice-feature strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
-    .voice-feature span { font-size: 0.85rem; opacity: 0.75; }
-    .voice-demo {
-      background: rgba(255,255,255,0.1);
-      border-radius: var(--radius);
-      padding: 40px;
-      text-align: center;
-      backdrop-filter: blur(10px);
-    }
-    .voice-waves {
-      display: flex; align-items: center; justify-content: center;
-      gap: 4px; height: 60px; margin-bottom: 20px;
-    }
-    .voice-waves .bar {
-      width: 4px; border-radius: 4px;
-      background: rgba(255,255,255,0.6);
-      animation: wave 1.2s ease-in-out infinite;
-    }
-    .voice-waves .bar:nth-child(1) { height: 20px; animation-delay: 0s; }
-    .voice-waves .bar:nth-child(2) { height: 35px; animation-delay: 0.1s; }
-    .voice-waves .bar:nth-child(3) { height: 50px; animation-delay: 0.2s; }
-    .voice-waves .bar:nth-child(4) { height: 40px; animation-delay: 0.3s; }
-    .voice-waves .bar:nth-child(5) { height: 55px; animation-delay: 0.15s; }
-    .voice-waves .bar:nth-child(6) { height: 30px; animation-delay: 0.25s; }
-    .voice-waves .bar:nth-child(7) { height: 45px; animation-delay: 0.35s; }
-    .voice-waves .bar:nth-child(8) { height: 25px; animation-delay: 0.05s; }
-    .voice-demo .transcript {
-      font-family: var(--font-display); font-size: 1.3rem;
-      font-style: italic; margin-bottom: 8px;
-    }
-    .voice-demo .transcript-sub {
-      font-size: 0.8rem; opacity: 0.6;
-    }
+    .snap .lab { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .snap .got { font-weight: 600; font-size: 0.9rem; margin-top: 2px; }
+    .capture-steps { list-style: none; margin-top: 24px; }
+    .capture-steps li { display: flex; gap: 14px; padding: 13px 0; border-top: 1px solid var(--line-soft); align-items: flex-start; }
+    .capture-steps li:first-child { border-top: none; }
+    .capture-steps .num { font-family: var(--mono); font-weight: 600; color: var(--amber-deep); flex-shrink: 0; }
+    .capture-steps strong { display: block; font-size: 0.95rem; }
+    .capture-steps span { font-size: 0.87rem; color: var(--muted); }
+
+    /* ===== HOW ===== */
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
+    .stp { border: 2px solid var(--line); border-radius: 12px; padding: 26px; background: var(--card); position: relative; }
+    .stp .big { font-family: var(--display); font-weight: 700; font-size: 3rem; line-height: 1; color: var(--line-soft); letter-spacing: -0.04em; }
+    .stp h3 { font-family: var(--display); font-weight: 600; font-size: 1.15rem; margin: 6px 0 8px; }
+    .stp p { font-size: 0.88rem; color: var(--muted); }
+    .stp .tag { display: inline-block; margin-top: 16px; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; background: var(--clinic-light); color: var(--clinic); border: 2px solid var(--line); border-radius: 40px; padding: 4px 11px; }
+
+    /* ===== VOICE (dark) ===== */
+    .voice-grid { display: grid; grid-template-columns: 1fr 0.85fr; gap: 52px; align-items: center; }
+    .vfeat { display: flex; gap: 15px; padding: 16px; border: 2px solid rgba(244,241,234,0.18); border-radius: 10px; margin-bottom: 12px; background: rgba(244,241,234,0.04); }
+    .vfeat .vi { width: 38px; height: 38px; flex-shrink: 0; border: 2px solid rgba(244,241,234,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; }
+    .vfeat strong { display: block; font-size: 0.94rem; }
+    .vfeat span { font-size: 0.85rem; color: rgba(244,241,234,0.6); }
+    .vdemo { border: 2px solid var(--amber); border-radius: 14px; padding: 34px; text-align: center; background: rgba(255,92,43,0.06); }
+    .waves { display: flex; gap: 4px; align-items: center; justify-content: center; height: 56px; margin-bottom: 18px; }
+    .waves i { width: 4px; border-radius: 3px; background: var(--amber); animation: wv 1.1s ease-in-out infinite; }
+    .waves i:nth-child(1){height:18px;animation-delay:0s}.waves i:nth-child(2){height:34px;animation-delay:.1s}.waves i:nth-child(3){height:50px;animation-delay:.2s}.waves i:nth-child(4){height:38px;animation-delay:.3s}.waves i:nth-child(5){height:52px;animation-delay:.15s}.waves i:nth-child(6){height:28px;animation-delay:.25s}.waves i:nth-child(7){height:44px;animation-delay:.35s}.waves i:nth-child(8){height:22px;animation-delay:.05s}
+    @keyframes wv { 0%,100%{ transform: scaleY(.45);} 50%{ transform: scaleY(1);} }
+    .vdemo .quote { font-family: var(--display); font-weight: 600; font-size: 1.2rem; letter-spacing: -0.01em; }
+    .vdemo .sub { font-family: var(--mono); font-size: 0.72rem; color: rgba(244,241,234,0.55); margin-top: 8px; }
+
     /* ===== CAREGIVER ===== */
-    .caregiver-section { }
-    .caregiver-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 60px;
-      margin-top: 60px; align-items: center;
-    }
-    .caregiver-visual {
-      background: white;
-      border-radius: var(--radius);
-      padding: 32px;
-      box-shadow: var(--shadow-soft);
-    }
-    .cg-header {
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 24px;
-    }
-    .cg-avatar {
-      width: 44px; height: 44px;
-      background: var(--terracotta-light);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-    }
-    .cg-name { font-weight: 600; font-size: 0.95rem; }
-    .cg-role { font-size: 0.78rem; color: var(--soft-gray); }
-    .cg-alert {
-      background: #FFF3E0;
-      border-radius: var(--radius-sm);
-      padding: 16px;
-      margin-bottom: 16px;
-      display: flex; gap: 12px; align-items: start;
-    }
-    .cg-alert .alert-icon { font-size: 1.2rem; flex-shrink: 0; }
-    .cg-alert strong { display: block; font-size: 0.88rem; margin-bottom: 2px; color: #E65100; }
-    .cg-alert span { font-size: 0.82rem; color: var(--soft-gray); }
-    .cg-stats {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-    }
-    .cg-stat {
-      background: var(--cream);
-      border-radius: var(--radius-sm);
-      padding: 16px; text-align: center;
-    }
-    .cg-stat .number {
-      font-family: var(--font-display);
-      font-size: 1.6rem; color: var(--sage-deep);
-    }
-    .cg-stat .label {
-      font-size: 0.72rem; color: var(--soft-gray);
-      text-transform: uppercase; letter-spacing: 0.05em;
-      margin-top: 4px;
-    }
-    .caregiver-benefits { list-style: none; margin-top: 28px; }
-    .caregiver-benefits li {
-      display: flex; gap: 14px; margin-bottom: 16px;
-      font-size: 0.95rem;
-    }
-    .caregiver-benefits .check {
-      width: 24px; height: 24px;
-      background: var(--sage-light); color: var(--sage-deep);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.75rem; flex-shrink: 0; margin-top: 2px;
-    }
+    .cg-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 52px; align-items: center; margin-top: 10px; }
+    .cg-panel { border: 2px solid var(--line); border-radius: 14px; padding: 26px; background: var(--card); box-shadow: 6px 6px 0 var(--line); }
+    .cg-top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .cg-av { width: 42px; height: 42px; border: 2px solid var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; background: var(--clinic-light); }
+    .cg-top .nm { font-weight: 700; font-size: 0.95rem; }
+    .cg-top .rl { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+    .cg-flag { border: 2px solid var(--line); border-radius: 10px; padding: 14px; display: flex; gap: 12px; background: #FBE5CE; margin-bottom: 16px; }
+    .cg-flag .ai { font-size: 1.15rem; }
+    .cg-flag strong { display: block; font-size: 0.86rem; color: var(--warn); }
+    .cg-flag span { font-size: 0.82rem; color: var(--ink-soft); }
+    .cg-nums { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .cg-num { border: 2px solid var(--line); border-radius: 10px; padding: 14px; text-align: center; background: var(--paper); }
+    .cg-num b { font-family: var(--display); font-weight: 700; font-size: 1.5rem; display: block; }
+    .cg-num small { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .cg-list { list-style: none; }
+    .cg-list li { display: flex; gap: 14px; padding: 14px 0; border-top: 1px solid var(--line-soft); }
+    .cg-list li:first-child { border-top: none; }
+    .cg-list .ck { width: 24px; height: 24px; flex-shrink: 0; border: 2px solid var(--line); border-radius: 6px; background: #DBF0E2; color: var(--good); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.78rem; }
+    .cg-list strong { font-size: 0.95rem; }
+    .cg-list span { font-size: 0.87rem; color: var(--muted); }
+
     /* ===== PRICING ===== */
-    .pricing-section { background: white; text-align: center; }
-    .price-card {
-      max-width: 480px; margin: 50px auto 0;
-      background: var(--cream);
-      border-radius: var(--radius);
-      padding: 48px 40px;
-      border: 2px solid var(--sage-light);
-      position: relative;
-    }
-    .price-badge {
-      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-      background: var(--sage); color: white;
-      padding: 6px 24px; border-radius: 50px;
-      font-size: 0.8rem; font-weight: 700;
-      letter-spacing: 0.05em;
-    }
-    .price-amount {
-      font-family: var(--font-display);
-      font-size: 3.5rem; margin: 20px 0 8px;
-    }
-    .price-desc {
-      font-size: 1rem; color: var(--soft-gray); margin-bottom: 32px;
-    }
-    .price-features {
-      list-style: none; text-align: left;
-      margin-bottom: 32px;
-    }
-    .price-features li {
-      display: flex; gap: 12px; align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--light-border);
-      font-size: 0.92rem;
-    }
-    .price-features li:last-child { border: none; }
-    .price-features li .pf-check { color: var(--sage); font-weight: 700; }
+    .price-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-top: 10px; }
+    .price-card { border: 2px solid var(--line); border-radius: 16px; padding: 38px; background: var(--card); box-shadow: 8px 8px 0 var(--line); position: relative; }
+    .price-card .free { position: absolute; top: -16px; left: 30px; background: var(--amber); color: #fff; border: 2px solid var(--line); border-radius: 40px; padding: 5px 18px; font-family: var(--mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; }
+    .price-card .amt { font-family: var(--display); font-weight: 700; font-size: 4rem; letter-spacing: -0.04em; line-height: 1; margin: 8px 0; }
+    .price-card .amt small { font-size: 1.1rem; color: var(--muted); font-family: var(--mono); font-weight: 500; }
+    .price-card .pdesc { color: var(--ink-soft); margin-bottom: 24px; }
+    .price-list { list-style: none; margin-bottom: 26px; }
+    .price-list li { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 0.92rem; align-items: center; }
+    .price-list li:first-child { border-top: none; }
+    .price-list .pc { color: var(--amber-deep); font-weight: 700; }
+
     /* ===== CTA ===== */
-    .cta-section {
-      text-align: center;
-      background: linear-gradient(180deg, var(--cream) 0%, var(--sage-light) 100%);
-      padding: 120px 40px;
-    }
-    .cta-section .section-title {
-      max-width: 600px; margin: 0 auto 16px;
-    }
-    .cta-section .section-sub {
-      max-width: 480px; margin: 0 auto 40px;
-    }
+    .cta { text-align: center; }
+    .cta h2 { font-family: var(--display); font-weight: 700; font-size: clamp(2.2rem,5vw,3.4rem); letter-spacing: -0.04em; line-height: 1; margin-bottom: 18px; }
+    .cta p { color: rgba(244,241,234,0.7); max-width: 460px; margin: 0 auto 32px; }
+
     /* ===== FOOTER ===== */
-    footer {
-      background: var(--charcoal); color: rgba(255,255,255,0.6);
-      padding: 60px 40px 30px;
-    }
-    .footer-inner {
-      max-width: 1100px; margin: 0 auto;
-      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 40px;
-    }
-    .footer-brand .f-logo {
-      font-family: var(--font-display);
-      font-size: 1.4rem; color: white;
-      margin-bottom: 12px;
-    }
-    .footer-brand p {
-      font-size: 0.85rem; line-height: 1.7;
-    }
-    .footer-col h4 {
-      color: white; font-size: 0.85rem;
-      text-transform: uppercase; letter-spacing: 0.1em;
-      margin-bottom: 16px;
-    }
-    .footer-col a {
-      display: block; color: rgba(255,255,255,0.5);
-      text-decoration: none; font-size: 0.88rem;
-      margin-bottom: 10px; transition: color 0.2s;
-    }
-    .footer-col a:hover { color: white; }
-    .footer-bottom {
-      max-width: 1100px; margin: 40px auto 0;
-      padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);
-      font-size: 0.8rem;
-      display: flex; justify-content: space-between;
-    }
-    /* ===== ANIMATIONS ===== */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    @keyframes wave {
-      0%, 100% { transform: scaleY(0.5); }
-      50% { transform: scaleY(1); }
-    }
-    @keyframes pulseRing {
-      0% { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: scale(2); }
-    }
-    /* Scroll reveal */
-    .reveal {
-      opacity: 0; transform: translateY(40px);
-      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .reveal.visible {
-      opacity: 1; transform: translateY(0);
-    }
+    footer { background: var(--ink); color: rgba(244,241,234,0.6); padding: 56px 0 28px; border-top: 2px solid var(--amber); }
+    .foot-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 36px; }
+    .foot-brand .fl { display: flex; align-items: center; gap: 9px; font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--paper); margin-bottom: 12px; }
+    .foot-brand .fl img { width: 28px; height: 28px; border-radius: 7px; border: 2px solid rgba(244,241,234,0.3); }
+    .foot-brand p { font-size: 0.86rem; max-width: 280px; }
+    .foot-col h4 { color: var(--paper); font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 14px; }
+    .foot-col a { display: block; text-decoration: none; font-size: 0.88rem; margin-bottom: 9px; color: rgba(244,241,234,0.55); transition: color 0.15s; }
+    .foot-col a:hover { color: var(--amber); }
+    .foot-bot { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(244,241,234,0.12); font-family: var(--mono); font-size: 0.72rem; }
+
+    /* ===== REVEAL ===== */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s cubic-bezier(.16,1,.3,1), transform 0.7s cubic-bezier(.16,1,.3,1); }
+    .reveal.in { opacity: 1; transform: none; }
+
     /* ===== RESPONSIVE ===== */
-    @media (max-width: 900px) {
-      nav { padding: 14px 24px; }
+    @media (max-width: 920px) {
       .nav-links { display: none; }
       .mobile-toggle { display: block; }
-      .nav-links.open {
-        display: flex; flex-direction: column;
-        position: absolute; top: 100%; left: 0; right: 0;
-        background: rgba(255,249,240,0.97);
-        backdrop-filter: blur(20px);
-        padding: 20px 24px; gap: 16px;
-        border-bottom: 1px solid var(--light-border);
-      }
-      section { padding: 60px 24px; }
-      .hero { padding: 100px 24px 60px; }
-      .hero-inner { grid-template-columns: 1fr; gap: 50px; }
+      .nav-links.open { display: flex; flex-direction: column; align-items: stretch; position: absolute; top: 100%; left: 0; right: 0; background: var(--paper); border-bottom: 2px solid var(--line); padding: 14px; gap: 4px; }
+      .hero-grid, .capture-grid, .voice-grid, .cg-grid, .price-wrap { grid-template-columns: 1fr; gap: 40px; }
       .hero-visual { order: -1; }
-      .phone-mockup { width: 280px; transform: rotate(0); }
-      .float-reminder { right: -10px; top: 10px; }
-      .float-voice { left: -10px; bottom: 40px; }
-      .problem-grid { grid-template-columns: 1fr; gap: 40px; }
-      .features-grid { grid-template-columns: 1fr; }
-      .steps-track { grid-template-columns: 1fr; gap: 30px; }
-      .steps-track::before { display: none; }
-      .voice-inner { grid-template-columns: 1fr; gap: 40px; }
-      .caregiver-grid { grid-template-columns: 1fr; }
-      .footer-inner { grid-template-columns: 1fr 1fr; gap: 30px; }
-      .footer-bottom { flex-direction: column; gap: 8px; }
+      .compare { grid-template-columns: 1fr; }
+      .compare .col-bad { border-right: none; border-bottom: 2px solid var(--line); }
+      .feat-grid { grid-template-columns: 1fr 1fr; }
+      .feat:nth-child(3n) { border-right: 2px solid var(--line); }
+      .feat:nth-child(2n) { border-right: none; }
+      .steps { grid-template-columns: 1fr; }
+      .foot-grid { grid-template-columns: 1fr 1fr; }
     }
-    @media (max-width: 600px) {
-      .features-grid { grid-template-columns: 1fr; }
-      .cg-stats { grid-template-columns: 1fr; }
-      .footer-inner { grid-template-columns: 1fr; }
+    @media (max-width: 560px) {
+      .feat-grid { grid-template-columns: 1fr; }
+      .feat { border-right: none !important; }
+      .capture-cards { grid-template-columns: 1fr; }
+      .cg-nums { grid-template-columns: 1fr; }
+      .foot-grid { grid-template-columns: 1fr; }
+      .foot-bot { flex-direction: column; gap: 8px; }
+      .float.cam { left: -10px; }
+      .float.bell { right: -6px; }
     }
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#14140F">
 </head>
 <body>
+
+  <!-- TICKER -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      <span>Reminders on time</span><span><b>/</b></span>
+      <span>Snap a photo, skip the typing</span><span><b>/</b></span>
+      <span>Refill alerts before the bottle runs out</span><span><b>/</b></span>
+      <span>Caregivers stay informed</span><span><b>/</b></span>
+      <span>Free to use</span><span><b>/</b></span>
+      <span>Reminders on time</span><span><b>/</b></span>
+      <span>Snap a photo, skip the typing</span><span><b>/</b></span>
+      <span>Refill alerts before the bottle runs out</span><span><b>/</b></span>
+      <span>Caregivers stay informed</span><span><b>/</b></span>
+      <span>Free to use</span><span><b>/</b></span>
+    </div>
+  </div>
+
   <!-- NAV -->
   <nav>
     <a href="index.html" class="nav-logo">
-      <div class="logo-icon">💊</div>
+      <img src="logo.svg" alt="Everane">
       Everane
     </a>
     <div class="nav-links" id="navLinks">
       <a href="#features">Features</a>
-      <a href="#how-it-works">How It Works</a>
+      <a href="#capture">Snap a Photo</a>
+      <a href="#how">How It Works</a>
       <a href="#caregivers">Caregivers</a>
-      <a href="login.html">Log In</a>
-      <a href="register.html" class="nav-cta">Get Started Free</a>
+      <a href="login.html">Log in</a>
+      <a href="register.html" class="nav-cta">Sign up</a>
     </div>
     <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Toggle menu">
       <span></span><span></span><span></span>
     </button>
   </nav>
+
   <!-- HERO -->
   <section class="hero">
-    <div class="hero-inner">
+    <div class="wrap hero-grid">
       <div class="hero-text">
-        <div class="hero-badge">
-          <span class="pulse"></span>
-          100% Free — No Catch
-        </div>
-        <h1>Never miss a pill.<br>Never run out <em>again.</em></h1>
-        <p class="hero-sub">
-          Everane tracks your medications and supplements, sends you reminders,
-          and keeps your caregivers in the loop — all with a simple voice command.
-        </p>
+        <div class="hero-tag"><span class="dot"></span> Free to use</div>
+        <h1>Every dose,<br>on a schedule<br>that <span class="mark">works.</span></h1>
+        <p class="hero-sub">Everane keeps track of every dose, sends reminders when it is time, and lets the family members you choose follow along.</p>
         <div class="hero-actions">
-          <a href="register.html" class="btn-primary">
-            Start Tracking Free →
-          </a>
-          <a href="#how-it-works" class="btn-secondary">
-            See How It Works
-          </a>
+          <a href="register.html" class="btn btn-fill">Get started</a>
+          <a href="#how" class="btn btn-line">How it works</a>
+        </div>
+        <div class="hero-meta">
+          <div><b>3</b> reminder channels</div>
+          <div><b>1</b> snapshot to add a med</div>
+          <div><b>$0</b> forever plan</div>
         </div>
       </div>
       <div class="hero-visual">
-        <div class="phone-mockup">
-          <div class="phone-notch"></div>
-          <div class="phone-header">
-            <div class="greeting">Good morning</div>
-            <div class="name">Margaret</div>
+        <div class="device">
+          <div class="device-bar">
+            <span>EVERANE / TODAY</span>
+            <span class="live"><i></i> LIVE</span>
           </div>
-          <div class="med-card">
-            <div class="med-icon">💚</div>
-            <div class="med-info">
-              <div class="med-name">Metformin 500mg</div>
-              <div class="med-time">8:00 AM · With breakfast</div>
-            </div>
-            <span class="med-status status-taken">Taken ✓</span>
+          <div class="device-head">
+            <div class="hi">Good morning</div>
+            <div class="who">Margaret</div>
           </div>
-          <div class="med-card">
-            <div class="med-icon">🧡</div>
-            <div class="med-info">
-              <div class="med-name">Vitamin D3</div>
-              <div class="med-time">8:00 AM · 1 capsule</div>
-            </div>
-            <span class="med-status status-taken">Taken ✓</span>
+          <div class="row">
+            <div class="ic">🟢</div>
+            <div><div class="nm">Metformin 500mg</div><div class="tm">8:00 AM / breakfast</div></div>
+            <span class="pill ok">TAKEN</span>
           </div>
-          <div class="med-card">
-            <div class="med-icon">💙</div>
-            <div class="med-info">
-              <div class="med-name">Lisinopril 10mg</div>
-              <div class="med-time">12:00 PM · With lunch</div>
-            </div>
-            <span class="med-status status-upcoming">12:00 PM</span>
+          <div class="row">
+            <div class="ic">🟠</div>
+            <div><div class="nm">Vitamin D3</div><div class="tm">8:00 AM / 1 capsule</div></div>
+            <span class="pill ok">TAKEN</span>
           </div>
-          <div class="med-card">
-            <div class="med-icon">💜</div>
-            <div class="med-info">
-              <div class="med-name">Magnesium</div>
-              <div class="med-time">9:00 PM · Before bed</div>
-            </div>
-            <span class="med-status status-done">9:00 PM</span>
+          <div class="row">
+            <div class="ic">🔵</div>
+            <div><div class="nm">Lisinopril 10mg</div><div class="tm">12:00 PM / lunch</div></div>
+            <span class="pill up">12:00 PM</span>
           </div>
-        </div>
-        <div class="float-card float-reminder">
-          <span class="bell">🔔</span>
-          <div>
-            <div class="fr-text">Lisinopril in 30 min</div>
-            <div class="fr-sub">Tap to mark as taken</div>
+          <div class="row">
+            <div class="ic">🟣</div>
+            <div><div class="nm">Magnesium</div><div class="tm">9:00 PM / bedtime</div></div>
+            <span class="pill next">9:00 PM</span>
           </div>
-        </div>
-        <div class="float-card float-voice">
-          <span class="mic">🎙️</span>
-          <div>"I took my vitamin"</div>
-        </div>
-      </div>
-    </div>
-  </section>
-  <!-- PROBLEM / SOLUTION -->
-  <section class="problem-section">
-    <div class="section-inner reveal">
-      <div class="section-label">⸻ Why Everane</div>
-      <h2 class="section-title">Managing meds shouldn't<br>feel this hard.</h2>
-      <div class="problem-grid">
-        <div class="problem-side">
-          <h3><span class="icon">✕</span> Without Everane</h3>
-          <div class="pain-point">
-            <div class="marker">✕</div>
-            <div class="point-text">
-              <strong>"Did I already take that?"</strong>
-              <span>You second-guess yourself every morning, sometimes double-dosing by accident.</span>
-            </div>
+          <div class="float bell">
+            <span class="b">🔔</span>
+            <div>Lisinopril in 30 min<small>Tap to mark as taken</small></div>
           </div>
-          <div class="pain-point">
-            <div class="marker">✕</div>
-            <div class="point-text">
-              <strong>The bottle is empty — again</strong>
-              <span>You only realize you're out when you reach for the pill and it's gone.</span>
-            </div>
-          </div>
-          <div class="pain-point">
-            <div class="marker">✕</div>
-            <div class="point-text">
-              <strong>Family is left guessing</strong>
-              <span>Your caregiver has no idea if you've been taking your meds or missing doses.</span>
-            </div>
-          </div>
-        </div>
-        <div class="solution-side">
-          <h3><span class="icon">✓</span> With Everane</h3>
-          <div class="sol-point">
-            <div class="marker">✓</div>
-            <div class="point-text">
-              <strong>One clear dashboard</strong>
-              <span>See exactly what you've taken, what's next, and what you missed — at a glance.</span>
-            </div>
-          </div>
-          <div class="sol-point">
-            <div class="marker">✓</div>
-            <div class="point-text">
-              <strong>Low-stock alerts</strong>
-              <span>Know days in advance when a refill is needed, so you're never caught off guard.</span>
-            </div>
-          </div>
-          <div class="sol-point">
-            <div class="marker">✓</div>
-            <div class="point-text">
-              <strong>Caregivers stay informed</strong>
-              <span>Automatic updates to family members — missed doses, refill needs, and adherence reports.</span>
-            </div>
+          <div class="float cam">
+            <span>📷</span><div>Snap the bottle</div>
           </div>
         </div>
       </div>
     </div>
   </section>
+
+  <!-- WHY -->
+  <section class="block">
+    <div class="wrap reveal">
+      <span class="eyebrow">Why Everane</span>
+      <h2 class="display">A clearer view of<br>what to take and when.</h2>
+      <div class="compare">
+        <div class="col-bad">
+          <h3><span class="badge-x">✕</span> Without Everane</h3>
+          <div class="pt"><span class="m">01</span><div><strong>"Did I already take that?"</strong><span>It is easy to lose track when several pills line up at the same time.</span></div></div>
+          <div class="pt"><span class="m">02</span><div><strong>Refills sneak up on you</strong><span>The bottle is empty before you remember to reorder.</span></div></div>
+          <div class="pt"><span class="m">03</span><div><strong>Family has to check in</strong><span>Caregivers end up asking the same question every day to know how things are going.</span></div></div>
+        </div>
+        <div class="col-good">
+          <h3><span class="badge-v">✓</span> With Everane</h3>
+          <div class="pt"><span class="m">01</span><div><strong>One dashboard</strong><span>Today's doses, what is next, and what was missed, all in one view.</span></div></div>
+          <div class="pt"><span class="m">02</span><div><strong>Refill alerts in advance</strong><span>You hear about a low bottle days before it runs out.</span></div></div>
+          <div class="pt"><span class="m">03</span><div><strong>Caregivers stay informed</strong><span>Weekly adherence summaries and missed dose alerts go directly to the people you invite.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FEATURES -->
-  <section id="features">
-    <div class="section-inner reveal">
-      <div class="section-label">⸻ Features</div>
-      <h2 class="section-title">Simple tools that actually help.</h2>
-      <p class="section-sub">No bloated features. Just the things that matter when you're managing medications and supplements every day.</p>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">📋</div>
-          <h3>Medication Dashboard</h3>
-          <p>All your meds and supplements in one clean view — doses, schedules, and stock levels at a glance.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">⏰</div>
-          <h3>Smart Reminders</h3>
-          <p>Timely notifications by email or SMS so you never miss a dose, no matter how busy the day gets.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📦</div>
-          <h3>Refill Tracking</h3>
-          <p>Monitors your pill counts and alerts you before you run low — days ahead, not the morning of.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">👨‍👩‍👧</div>
-          <h3>Caregiver Sharing</h3>
-          <p>Automatically share adherence reports, missed doses, and refill needs with family or caregivers.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🎤</div>
-          <h3>Voice-Enabled</h3>
-          <p>Create your medications with ease, powered by an AI chatbot.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>Private & Secure</h3>
-          <p>Your health data is encrypted and stored securely. We never sell or share your information with third parties.</p>
-        </div>
+  <section class="block" id="features">
+    <div class="wrap reveal">
+      <span class="eyebrow">Features</span>
+      <h2 class="display">Everything you need.<br>Nothing you do not.</h2>
+      <p class="lede">A focused set of tools for keeping medications on schedule, day after day.</p>
+      <div class="feat-grid">
+        <div class="feat"><span class="fno">F.01</span><span class="fic">📋</span><h3>Medication dashboard</h3><p>Every medication, dose, and schedule in one place. Mark doses taken with a tap.</p></div>
+        <div class="feat"><span class="fno">F.02</span><span class="fic">⏰</span><h3>Reminders</h3><p>Email reminders and instant push notifications at the times you set, before each dose, at the dose, or after a missed one.</p></div>
+        <div class="feat"><span class="fno">F.03</span><span class="fic">📦</span><h3>Refill tracking</h3><p>Log a new bottle once and Everane counts down as you take doses, with warnings before the bottle runs out.</p></div>
+        <div class="feat"><span class="fno">F.04</span><span class="fic">📷</span><h3>Snap a photo</h3><p>Photograph a note, an email, or the bottle itself. Everane reads the details and fills in the form for you.</p></div>
+        <div class="feat"><span class="fno">F.05</span><span class="fic">🎤</span><h3>Voice add</h3><p>Tap the mic and describe a medication out loud. The form fills itself in. Review and save.</p></div>
+        <div class="feat"><span class="fno">F.06</span><span class="fic">👨‍👩‍👧</span><h3>Caregivers</h3><p>Invite family members. They can see your adherence and receive forwarded reminders, read only, no editing.</p></div>
+        <div class="feat"><span class="fno">F.07</span><span class="fic">🔒</span><h3>Private by default</h3><p>Data is stored in Google Firebase, encrypted in transit and at rest. Not shared, not sold.</p></div>
+        <div class="feat"><span class="fno">F.08</span><span class="fic">🌍</span><h3>Travels with you</h3><p>Schedules respect your time zone and adjust when you travel, so reminders land at the right local time.</p></div>
+        <div class="feat"><span class="fno">F.09</span><span class="fic">📈</span><h3>Adherence stats</h3><p>See your streaks, missed doses, and trends across the week in a calendar and chart view.</p></div>
       </div>
     </div>
   </section>
-  <!-- HOW IT WORKS -->
-  <section class="how-section" id="how-it-works">
-    <div class="section-inner reveal">
-      <div class="section-label">⸻ How It Works</div>
-      <h2 class="section-title">Up and running in under 5 minutes.</h2>
-      <p class="section-sub">No confusing setup. No long forms. Just a few simple steps and you're organized.</p>
-      <div class="steps-track">
-        <div class="step">
-          <div class="step-number">1</div>
-          <h3>Create Your Account</h3>
-          <p>Sign up with your email. Verify in seconds. That's it — no credit card, no commitment.</p>
-          <div class="step-detail">✨ Simple onboarding designed for everyone</div>
-        </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <h3>Add Your Medications</h3>
-          <p>Type or speak your meds, doses, and schedule. Add supplements too — Everane tracks them all.</p>
-          <div class="step-detail">🎙️ Voice input makes this effortless</div>
-        </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <h3>Stay on Track</h3>
-          <p>Get reminders, track your doses, and share updates with caregivers automatically.</p>
-          <div class="step-detail">👨‍👩‍👧 Your family stays informed without nagging</div>
-        </div>
-      </div>
-    </div>
-  </section>
-  <!-- VOICE SECTION -->
-  <section class="voice-section" id="voice">
-    <div class="section-inner">
-      <div class="voice-inner reveal">
-        <div>
-          <div class="section-label">⸻ Voice-First Design</div>
-          <h2 class="section-title">Just talk to Everane.</h2>
-          <p class="section-sub">
-            No tiny buttons. No complicated menus. Just speak naturally and Everane handles the rest —
-            designed especially for older adults and anyone who prefers simplicity.
-          </p>
-          <div class="voice-features">
-            <div class="voice-feature">
-              <div class="vf-icon">🗣️</div>
-              <div>
-                <strong>Natural Language</strong>
-                <span>"I took my morning pills" — Everane understands plain speech.</span>
-              </div>
-            </div>
-            <div class="voice-feature">
-              <div class="vf-icon">➕</div>
-              <div>
-                <strong>Add Meds by Voice</strong>
-                <span>"Add Vitamin D, one capsule every morning" — done in seconds.</span>
-              </div>
-            </div>
-            <div class="voice-feature">
-              <div class="vf-icon">❓</div>
-              <div>
-                <strong>Ask Questions</strong>
-                <span>"Did I take my blood pressure pill today?" — instant answer.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="voice-demo">
-          <div class="voice-waves">
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
-          </div>
-          <div class="transcript">"I just took my Metformin"</div>
-          <div class="transcript-sub">✓ Metformin 500mg marked as taken at 8:04 AM</div>
-        </div>
-      </div>
-    </div>
-  </section>
-  <!-- CAREGIVER SECTION -->
-  <section class="caregiver-section" id="caregivers">
-    <div class="section-inner reveal">
-      <div class="section-label">⸻ For Caregivers</div>
-      <h2 class="section-title">Peace of mind for the<br>whole family.</h2>
-      <p class="section-sub">Caregivers get automatic updates — no need to call and ask "Did you take your pills today?"</p>
-      <div class="caregiver-grid">
-        <div class="caregiver-visual">
-          <div class="cg-header">
-            <div class="cg-avatar">👩</div>
-            <div>
-              <div class="cg-name">Sarah's Dashboard</div>
-              <div class="cg-role">Caring for Mom (Margaret)</div>
-            </div>
-          </div>
-          <div class="cg-alert">
-            <span class="alert-icon">⚠️</span>
-            <div>
-              <strong>Missed Dose Alert</strong>
-              <span>Margaret missed her 12:00 PM Lisinopril yesterday. She has taken all other medications this week.</span>
-            </div>
-          </div>
-          <div class="cg-stats">
-            <div class="cg-stat">
-              <div class="number">94%</div>
-              <div class="label">Adherence</div>
-            </div>
-            <div class="cg-stat">
-              <div class="number">1</div>
-              <div class="label">Missed (7d)</div>
-            </div>
-            <div class="cg-stat">
-              <div class="number">8</div>
-              <div class="label">Days of stock</div>
-            </div>
+
+  <!-- CAPTURE / SNAP A PHOTO -->
+  <section class="block" id="capture">
+    <div class="wrap reveal">
+      <span class="eyebrow">Snap a Photo</span>
+      <h2 class="display">Point your camera.<br>Let the form fill itself.</h2>
+      <p class="lede">No long forms. Take a picture of a handwritten note, a pharmacy email, or the medication bottle itself, and Everane reads the name, dose, and schedule, then drops them straight into the form for you to review.</p>
+      <div class="capture-grid">
+        <div class="capture-cards">
+          <div class="snap"><div class="scan"></div><div class="frame">📝</div><div class="lab">Source A</div><div class="got">Handwritten note</div></div>
+          <div class="snap"><div class="scan"></div><div class="frame">📧</div><div class="lab">Source B</div><div class="got">Pharmacy email</div></div>
+          <div class="snap"><div class="scan"></div><div class="frame">💊</div><div class="lab">Source C</div><div class="got">The bottle label</div></div>
+          <div class="snap" style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;box-shadow:5px 5px 0 var(--amber)">
+            <div class="lab" style="color:var(--amber-deep)">Result</div>
+            <div class="got" style="font-size:1rem;margin-top:6px">Form pre-filled</div>
+            <div style="font-size:0.8rem;color:var(--muted);margin-top:6px">Name, dose, schedule, ready to confirm.</div>
           </div>
         </div>
         <div>
-          <ul class="caregiver-benefits">
-            <li>
-              <span class="check">✓</span>
-              <div><strong>Automatic Reports</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Get periodic summaries of adherence, missed doses, and refill needs without asking.</span></div>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <div><strong>Missed Dose Alerts</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Get notified when a dose is missed so you can gently follow up when it matters.</span></div>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <div><strong>Refill Visibility</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Know when medications are running low so you can help coordinate refills in time.</span></div>
-            </li>
-            <li>
-              <span class="check">✓</span>
-              <div><strong>No More Nagging</strong><br><span style="color:var(--soft-gray); font-size:0.9rem">Everane handles the reminding so you can focus on being family, not the pill police.</span></div>
-            </li>
+          <ol class="capture-steps">
+            <li><span class="num">01</span><div><strong>Take the picture</strong><span>Open Everane, tap the camera, and capture a note, an email on screen, or the bottle in your hand.</span></div></li>
+            <li><span class="num">02</span><div><strong>Everane reads it</strong><span>It pulls out the medication name, the dose, and any schedule it can find on the label or message.</span></div></li>
+            <li><span class="num">03</span><div><strong>You confirm and save</strong><span>The form opens already filled. Adjust anything that looks off, then tap save.</span></div></li>
+          </ol>
+          <a href="register.html" class="btn btn-fill" style="margin-top:26px">Try it free</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW -->
+  <section class="block" id="how">
+    <div class="wrap reveal">
+      <span class="eyebrow">How It Works</span>
+      <h2 class="display">Set up in a few minutes.</h2>
+      <p class="lede">A short sign up and a few medications. You are done.</p>
+      <div class="steps">
+        <div class="stp"><div class="big">1</div><h3>Create an account</h3><p>Sign up with an email and password. No card required.</p><span class="tag">Under a minute</span></div>
+        <div class="stp"><div class="big">2</div><h3>Add your medications</h3><p>Type them in, snap a photo of the bottle, or talk through it with the mic.</p><span class="tag">Photo or voice optional</span></div>
+        <div class="stp"><div class="big">3</div><h3>Get reminded</h3><p>Choose email, push, or both. Mark doses taken from the home screen or straight from a notification.</p><span class="tag">Works while app is closed</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VOICE (dark) -->
+  <section class="block dark" id="voice">
+    <div class="wrap reveal">
+      <span class="eyebrow">Voice Add</span>
+      <h2 class="display">Add a medication<br>by talking through it.</h2>
+      <p class="lede">When typing on a small keyboard is tedious, tap the mic. The assistant asks for the name, dose, and schedule, and fills the form for you to review.</p>
+      <div class="voice-grid" style="margin-top:40px">
+        <div>
+          <div class="vfeat"><div class="vi">🗣️</div><div><strong>Talk through it</strong><span>"Metformin, 500 milligrams, twice a day with meals" and the assistant follows along.</span></div></div>
+          <div class="vfeat"><div class="vi">➕</div><div><strong>Six questions, in order</strong><span>Name, dose, schedule, start date, end date, reminder channels. One at a time.</span></div></div>
+          <div class="vfeat"><div class="vi">✓</div><div><strong>You review before saving</strong><span>The form opens pre-filled. Change anything that is off and tap save.</span></div></div>
+        </div>
+        <div class="vdemo">
+          <div class="waves"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="quote">"Add Metformin, 500 milligrams, twice a day"</div>
+          <div class="sub">FORM OPENED WITH THESE VALUES FOR YOU TO REVIEW</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CAREGIVERS -->
+  <section class="block" id="caregivers">
+    <div class="wrap reveal">
+      <span class="eyebrow">For Caregivers</span>
+      <h2 class="display">Family members<br>can follow along.</h2>
+      <p class="lede">Invite a caregiver and they will see your adherence and get a copy of your reminders. They cannot change anything. Only the patient can.</p>
+      <div class="cg-grid">
+        <div class="cg-panel">
+          <div class="cg-top">
+            <div class="cg-av">👩</div>
+            <div><div class="nm">Sarah's dashboard</div><div class="rl">WATCHING: MARGARET</div></div>
+          </div>
+          <div class="cg-flag">
+            <span class="ai">⚠️</span>
+            <div><strong>Missed dose</strong><span>Margaret's 12:00 PM Lisinopril yesterday. Otherwise on track this week.</span></div>
+          </div>
+          <div class="cg-nums">
+            <div class="cg-num"><b>94%</b><small>Adherence</small></div>
+            <div class="cg-num"><b>1</b><small>Missed 7d</small></div>
+            <div class="cg-num"><b>8</b><small>Days stock</small></div>
+          </div>
+        </div>
+        <div>
+          <ul class="cg-list">
+            <li><span class="ck">✓</span><div><strong>Weekly summaries</strong><br><span>A short email recap of adherence, missed doses, and bottles running low.</span></div></li>
+            <li><span class="ck">✓</span><div><strong>Missed dose alerts</strong><br><span>When a dose is not logged within 45 minutes, both you and the patient get an email.</span></div></li>
+            <li><span class="ck">✓</span><div><strong>Refill visibility</strong><br><span>See when a bottle is running low or expiring, so refills do not get forgotten.</span></div></li>
+            <li><span class="ck">✓</span><div><strong>Read only access</strong><br><span>The patient stays in control of their list. Caregivers can see but never edit.</span></div></li>
           </ul>
         </div>
       </div>
     </div>
   </section>
+
   <!-- PRICING -->
-  <section class="pricing-section" id="pricing">
-    <div class="section-inner reveal">
-      <div class="section-label">⸻ Pricing</div>
-      <h2 class="section-title">Completely free. Seriously.</h2>
-      <p class="section-sub" style="margin: 0 auto">Everane is a free service — no premium tier, no hidden fees, no "upgrade to unlock" games.</p>
-      <div class="price-card">
-        <div class="price-badge">FOREVER FREE</div>
-        <div class="price-amount">$0</div>
-        <div class="price-desc">Everything included. No limits.</div>
-        <ul class="price-features">
-          <li><span class="pf-check">✓</span> Unlimited medications & supplements</li>
-          <li><span class="pf-check">✓</span> Email & SMS reminders</li>
-          <li><span class="pf-check">✓</span> Refill & stock tracking</li>
-          <li><span class="pf-check">✓</span> Voice-enabled input</li>
-          <li><span class="pf-check">✓</span> Caregiver sharing & reports</li>
-          <li><span class="pf-check">✓</span> Secure encrypted storage</li>
-        </ul>
-        <a href="register.html" class="btn-primary" style="width:100%; justify-content:center">
-          Get Started Free →
-        </a>
+  <section class="block" id="pricing">
+    <div class="wrap reveal">
+      <span class="eyebrow">Pricing</span>
+      <h2 class="display">Free to use.</h2>
+      <p class="lede">No paid plan, no upgrade prompts. We may add an optional paid tier later for advanced features. Everything you see today stays free.</p>
+      <div class="price-wrap">
+        <div class="price-card">
+          <span class="free">FREE</span>
+          <div class="amt">$0<small> / forever</small></div>
+          <div class="pdesc">All features included.</div>
+          <ul class="price-list">
+            <li><span class="pc">✓</span> Unlimited medications</li>
+            <li><span class="pc">✓</span> Email and push reminders</li>
+            <li><span class="pc">✓</span> Photo capture and voice add</li>
+            <li><span class="pc">✓</span> Refill and stock tracking</li>
+            <li><span class="pc">✓</span> Caregiver and doctor sharing</li>
+            <li><span class="pc">✓</span> Encrypted storage on Firebase</li>
+          </ul>
+          <a href="register.html" class="btn btn-fill" style="width:100%;justify-content:center">Get started</a>
+        </div>
+        <div>
+          <h2 class="display" style="font-size:1.8rem">Why free?</h2>
+          <p class="lede" style="font-size:0.98rem">Staying on top of medication should not sit behind a paywall. Everane is built to be useful first. If we ever introduce a paid tier, it will be for extras, and the core you rely on stays exactly where it is.</p>
+        </div>
       </div>
     </div>
   </section>
+
   <!-- CTA -->
-  <section class="cta-section">
-    <div class="section-inner reveal">
-      <div class="section-label">⸻ Get Started</div>
-      <h2 class="section-title">Your medications deserve<br>a better system.</h2>
-      <p class="section-sub">
-        Set up in under 5 minutes. Free forever. Stop worrying about missed pills and empty bottles.
-      </p>
-      <a href="register.html" class="btn-primary" style="font-size: 1.1rem; padding: 18px 44px;">
-        Start Tracking Free →
-      </a>
+  <section class="block dark cta">
+    <div class="wrap reveal">
+      <span class="eyebrow" style="justify-content:center">Get Started</span>
+      <h2>Ready when you are.</h2>
+      <p>Create an account, add your medications, and the next reminder will be on time.</p>
+      <a href="register.html" class="btn btn-fill" style="font-size:1.05rem;padding:17px 38px">Create an account</a>
     </div>
   </section>
+
   <!-- FOOTER -->
   <footer>
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <div class="f-logo">💊 Everane</div>
-        <p>Your medications, supplements, and refills — tracked, reminded, and shared with the people who care about you.</p>
+    <div class="wrap foot-grid">
+      <div class="foot-brand">
+        <div class="fl"><img src="logo.svg" alt=""> Everane</div>
+        <p>A simple medication tracker. Reminders, refills, photo capture, and shared access for the people who help you stay on schedule.</p>
       </div>
-      <div class="footer-col">
+      <div class="foot-col">
         <h4>Product</h4>
         <a href="#features">Features</a>
-        <a href="#how-it-works">How It Works</a>
+        <a href="#capture">Snap a Photo</a>
+        <a href="#how">How It Works</a>
         <a href="#caregivers">Caregivers</a>
         <a href="#pricing">Pricing</a>
       </div>
-      <div class="footer-col">
+      <div class="foot-col">
         <h4>Account</h4>
-        <a href="login.html">Log In</a>
+        <a href="login.html">Log in</a>
         <a href="register.html">Register</a>
       </div>
-      <div class="footer-col">
+      <div class="foot-col">
         <h4>Legal</h4>
         <a href="privacypolicy.html">Privacy Policy</a>
         <a href="termsofservice.html">Terms of Service</a>
       </div>
     </div>
-    <div class="footer-bottom">
-      <span>© 2026 Everane. All rights reserved.</span>
-      <span>Built with care for the people who need it most.</span>
+    <div class="wrap foot-bot">
+      <span>© 2026 EVERANE. ALL RIGHTS RESERVED.</span>
+      <span>EVERANE.LIVE</span>
     </div>
   </footer>
-  <!-- SCROLL REVEAL -->
+
   <script>
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.15 });
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   </script>
 </body>
 </html>

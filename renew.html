@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Renew Medication</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="med-image.js"></script>
 </head>
 
 <body>
@@ -17,12 +19,19 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
   <div class="content">
     <h1>Renew Medication</h1>
-    <label for="renew-name">Medication Name</label>
-    <input id="renew-name" type="text">
+    <div class="medimg-inline-row">
+      <div>
+        <label for="renew-name">Medication Name</label>
+        <input id="renew-name" type="text">
+        <div id="renew-summary-mount" aria-live="polite"></div>
+      </div>
+      <div id="renew-image-mount" aria-live="polite"></div>
+    </div>
 
     <label for="renew-dosage">Dosage (how many pills)</label>
     <input id="renew-dosage" type="text">
@@ -48,12 +57,12 @@
       </div>
     </div>
 
-    <label for="renew-reminder">Reminder Method</label>
-    <select id="renew-reminder">
-      <option>None</option>
-      <option>Email</option>
-      <option>SMS</option>
-    </select>
+    <label>Reminder Method <small>(pick any combination)</small></label>
+    <div id="renew-reminder-channels" style="display:flex;flex-direction:column;gap:.4rem;">
+      <label style="display:flex;gap:.5rem;align-items:center;"><input type="checkbox" class="renew-reminder-channel" value="email"> Email</label>
+      <label style="display:flex;gap:.5rem;align-items:center;"><input type="checkbox" class="renew-reminder-channel" value="sms"> SMS</label>
+      <label style="display:flex;gap:.5rem;align-items:center;"><input type="checkbox" class="renew-reminder-channel" value="push"> Push notification</label>
+    </div>
 
     <button class="btn btn-primary">Save</button>
   </div>
@@ -65,6 +74,32 @@
     .forEach(link => link.addEventListener('click', () => {
       if (window.innerWidth <= 768) sidebar.classList.remove('open');
     }));
+
+  // Mount the saved medication image inline (top-right on desktop, above on
+  // mobile). Pulls from the tempRenewMed payload that the home page sets when
+  // the user taps Renew on a deleted med card.
+  try {
+    const arr = JSON.parse(localStorage.getItem('tempRenewMed') || '[]');
+    const params = new URLSearchParams(location.search);
+    const idx = parseInt(params.get('renewIdx') || '0', 10);
+    const src = Number.isFinite(idx) ? arr[idx] : null;
+    if (src && src.imageUrl && window.MedImage) {
+      const mount = document.getElementById('renew-image-mount');
+      if (mount) mount.appendChild(window.MedImage.renderInlineCard({
+        imageUrl: src.imageUrl,
+        canonical: src.imageCanonical || src.name || null,
+        genericName: src.imageGenericName || null,
+      }));
+      if (src.imageSummary && window.MedImage.renderSummary) {
+        const sMount = document.getElementById('renew-summary-mount');
+        const box = window.MedImage.renderSummary({
+          summary: src.imageSummary,
+          canonical: src.imageCanonical || src.name || null,
+        });
+        if (sMount && box) sMount.appendChild(box);
+      }
+    }
+  } catch (_) {}
 </script>
 </body>
 </html>

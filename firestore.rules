@@ -17,8 +17,21 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(userId)).data.caregivers.hasAny([request.auth.uid]);
     }
 
+    // Patient can read a caregiver's basic profile if their own doc lists that caregiver.
+    function patientCanReadCaregiver(userId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.caregivers is list)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.caregivers.hasAny([userId]);
+    }
+
+    // Allow any signed-in user to run collection-level queries against /users
+    // (needed for patientId uniqueness check at registration, and for
+    // caregiver/patient lookup by patientId). Document-level reads are still
+    // gated by the per-doc rule below.
     match /users/{userId} {
-      allow read: if isSelf(userId) || caregiverCanReadPatient(userId);
+      allow list: if signedIn();
+      allow read: if isSelf(userId) || caregiverCanReadPatient(userId) || patientCanReadCaregiver(userId);
       allow create, update, delete: if isSelf(userId);
 
       match /data/{document=**} {
@@ -26,6 +39,20 @@ service cloud.firestore {
       }
 
       match /medications/{medId} {
+        allow read: if isSelf(userId) || caregiverCanReadPatient(userId);
+        allow write: if isSelf(userId);
+      }
+
+      match /timezoneRequests/{requestId} {
+        allow read, write: if isSelf(userId);
+      }
+
+      match /doctorEdits/{editId} {
+        allow read: if isSelf(userId);
+        allow write: if false; // Only Cloud Functions (admin) write doctor edits
+      }
+
+      match /groups/{groupId} {
         allow read: if isSelf(userId) || caregiverCanReadPatient(userId);
         allow write: if isSelf(userId);
       }
@@ -40,6 +67,15 @@ service cloud.firestore {
     // Email verifications - allow authenticated users to read/write their own
     match /emailVerifications/{verificationId} {
       allow read, write: if signedIn();
+    }
+
+    // Medication image cache (populated by lookupMedicationImage Cloud Function).
+    // Clients should call the function — not write directly — but we allow
+    // signed-in reads in case we ever want to render cached results without
+    // the round-trip. Writes are admin-only via the Cloud Function.
+    match /medicationImageCache/{key} {
+      allow read: if signedIn();
+      allow write: if false; // Only Cloud Functions (admin) populate this cache
     }
   }
 }

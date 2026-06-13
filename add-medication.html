@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Add/Edit Medication</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -203,6 +204,84 @@
         transform: translateY(-1px) !important;
       }
     }
+
+/* === Step 4: Classification styles === */
+.color-picker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+#color-canvas {
+  width: 100%;
+  max-width: 400px;
+  height: 36px;
+  border-radius: 10px;
+  cursor: crosshair;
+  border: 1px solid var(--border);
+}
+.color-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.color-preview-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+#color-preview-text {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+}
+.shape-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--surface) 96%, transparent);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s, box-shadow .2s;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.shape-option svg {
+  width: 36px;
+  height: 36px;
+}
+.shape-option:hover {
+  border-color: color-mix(in oklab, var(--brand) 35%, var(--border));
+  color: var(--text);
+}
+.shape-option.active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--brand), var(--brand-600));
+  box-shadow: 0 6px 16px rgba(79,140,255,.25);
+}
+@media (max-width: 640px) {
+  .shape-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .shape-option {
+    padding: 0.5rem 0.3rem;
+    font-size: 0.75rem;
+  }
+  .shape-option svg {
+    width: 30px;
+    height: 30px;
+  }
+}
 
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
     h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
@@ -524,8 +603,204 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   }
 }
 
+/* ========= Custom reminder-channel picker ========= */
+.channel-group {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+@media (min-width: 620px) {
+  .channel-group { grid-template-columns: repeat(3, 1fr); }
+}
+
+.channel-card {
+  --accent: #3f6ff5;
+  --accent-2: #7a5cff;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem;
+  border: 1.5px solid color-mix(in oklab, var(--border) 85%, transparent);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--surface) 96%, transparent);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  overflow: hidden;
+  user-select: none;
+  outline: none;
+}
+.channel-card[data-channel="sms"]  { --accent: #16a34a; --accent-2: #0ea5e9; }
+.channel-card[data-channel="push"] { --accent: #f59e0b; --accent-2: #ef4444; }
+
+.channel-card input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.channel-card__glow {
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle at 30% 30%, color-mix(in oklab, var(--accent) 38%, transparent), transparent 55%);
+  opacity: 0;
+  transition: opacity .25s ease;
+  pointer-events: none;
+  filter: blur(8px);
+}
+
+.channel-card__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--accent);
+  transition: transform .2s ease, background .2s ease, color .2s ease;
+  flex-shrink: 0;
+}
+
+.channel-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.channel-card__title {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: var(--text);
+  line-height: 1.2;
+}
+.channel-card__sub {
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.channel-card__check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in oklab, var(--border) 80%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  background: transparent;
+  transition: all .2s ease;
+  flex-shrink: 0;
+}
+
+.channel-card:hover {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  transform: translateY(-1px);
+}
+.channel-card:hover .channel-card__icon { transform: scale(1.05); }
+.channel-card:hover .channel-card__glow { opacity: .55; }
+
+.channel-card:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+
+/* Checked state */
+.channel-card:has(input:checked) {
+  border-color: var(--accent);
+  background: linear-gradient(135deg,
+    color-mix(in oklab, var(--accent) 10%, var(--surface)),
+    color-mix(in oklab, var(--accent-2) 8%, var(--surface)));
+  box-shadow:
+    0 8px 22px -12px color-mix(in oklab, var(--accent) 60%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.channel-card:has(input:checked) .channel-card__glow { opacity: .9; }
+.channel-card:has(input:checked) .channel-card__icon {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px -6px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.channel-card:has(input:checked) .channel-card__check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.channel-card:has(input:checked) .channel-card__title {
+  color: var(--text);
+}
+
+/* Disabled (e.g. push not supported on this browser) */
+.channel-card:has(input:disabled) {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.channel-card:has(input:disabled):hover {
+  transform: none;
+  border-color: var(--border);
+}
+
+/* Subtle pulse when first checked */
+@keyframes channelCheckPop {
+  0%   { transform: scale(.6); }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.channel-card:has(input:checked) .channel-card__check svg {
+  animation: channelCheckPop .35s ease both;
+}
+
+/* Yellow highlight for low-confidence fields populated by Picture Add. */
+.scan-uncertain {
+  background: color-mix(in oklab, #facc15 22%, transparent) !important;
+  border-color: #facc15 !important;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.25) !important;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.scan-uncertain-wrap {
+  position: relative;
+}
+.scan-uncertain-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #facc15;
+  color: #0f172a;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+/* Blue source-attribution badge on fields populated by Picture Add. */
+.scan-source-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, #3f6ff5 16%, transparent);
+  color: #3f6ff5;
+  border: 1px solid color-mix(in oklab, #3f6ff5 40%, transparent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 </style>
 <script src="schedule-utils.js"></script>
+<script src="push-subscribe.js"></script>
+<script src="tutorial.js"></script>
+<script src="med-image.js"></script>
+<script src="auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -543,6 +818,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
@@ -556,8 +832,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         <div id="step-1" class="form-step active">
           <div class="form-group">
             <label>Name of Medication <span style="color: #ff0000; font-weight: bold;">*</span></label>
-            <input id="med-name" type="text">
-            <div id="name-error" class="error-message"></div>
+            <div class="medimg-inline-row">
+              <div>
+                <input id="med-name" type="text">
+                <div id="name-error" class="error-message"></div>
+                <div id="med-name-summary-mount" aria-live="polite"></div>
+              </div>
+              <div id="med-name-image-mount" aria-live="polite"></div>
+            </div>
           </div>
           <div class="form-group">
             <label>Dosage (pills per dose) <span style="color: red;">*</span></label>
@@ -565,14 +847,63 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             <div id="dosage-error" class="error-message"></div>
           </div>
           <div class="form-group">
-            <label>Reminder Method <span style="color: red;">*</span></label>
-            <select id="reminder">
-              <option value="" disabled selected>Select a method</option>
-              <option>None</option>
-              <option>Email</option>
-              <option>SMS</option>
-              <option>Email + SMS</option>
-            </select>
+            <label>How should we remind you? <small style="font-weight:400;color:var(--muted,#888);">pick any combination</small></label>
+            <div id="reminder-channels" class="channel-group" role="group" aria-label="Reminder channels">
+
+              <label class="channel-card" data-channel="email">
+                <input type="checkbox" class="reminder-channel" value="email">
+                <span class="channel-card__glow" aria-hidden="true"></span>
+                <span class="channel-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                    <path d="M3 7l9 6 9-6"></path>
+                  </svg>
+                </span>
+                <span class="channel-card__text">
+                  <span class="channel-card__title">Email</span>
+                  <span class="channel-card__sub">Reminder in your inbox</span>
+                </span>
+                <span class="channel-card__check" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>
+                </span>
+              </label>
+
+              <label class="channel-card" data-channel="sms">
+                <input type="checkbox" class="reminder-channel" value="sms">
+                <span class="channel-card__glow" aria-hidden="true"></span>
+                <span class="channel-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                  </svg>
+                </span>
+                <span class="channel-card__text">
+                  <span class="channel-card__title">SMS</span>
+                  <span class="channel-card__sub">Text message to your phone</span>
+                </span>
+                <span class="channel-card__check" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>
+                </span>
+              </label>
+
+              <label class="channel-card" data-channel="push">
+                <input type="checkbox" class="reminder-channel" value="push" id="reminder-channel-push">
+                <span class="channel-card__glow" aria-hidden="true"></span>
+                <span class="channel-card__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                </span>
+                <span class="channel-card__text">
+                  <span class="channel-card__title">Push notification</span>
+                  <span class="channel-card__sub" id="push-status">Native alert on this device</span>
+                </span>
+                <span class="channel-card__check" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>
+                </span>
+              </label>
+
+            </div>
             <div id="reminder-error" class="error-message"></div>
           </div>
           <div class="wizard-nav">
@@ -678,6 +1009,110 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           <button type="button" id="add-bottle" class="btn-secondary btn-sm">+ Add Bottle</button>
           <div class="wizard-nav">
             <button type="button" id="back-to-step-2" class="btn-secondary">Back</button>
+            <button type="button" id="to-step-4" class="btn-primary">Continue to Classifications</button>
+          </div>
+        </div>
+
+        <!-- STEP 4: Classifications (all optional) -->
+        <div id="step-4" class="form-step">
+          <h2>Classifications</h2>
+          <p class="muted">Optionally describe your medication's appearance. All fields are optional.</p>
+
+          <!-- Color -->
+          <div class="form-group">
+            <label>Color</label>
+            <div class="color-picker-wrap">
+              <canvas id="color-canvas" width="280" height="36"></canvas>
+              <div class="color-preview" id="color-preview">
+                <span id="color-preview-text">No color selected</span>
+                <button type="button" class="btn-sm btn-secondary" id="clear-color" style="display:none;">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Shape -->
+          <div class="form-group">
+            <label>Shape</label>
+            <div class="shape-grid" id="shape-grid">
+              <button type="button" class="shape-option" data-shape="Round">
+                <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Round</span>
+              </button>
+              <button type="button" class="shape-option" data-shape="Oval">
+                <svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="18" ry="12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Oval</span>
+              </button>
+              <button type="button" class="shape-option" data-shape="Oblong">
+                <svg viewBox="0 0 40 40"><rect x="2" y="12" width="36" height="16" rx="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Oblong</span>
+              </button>
+              <button type="button" class="shape-option" data-shape="Capsule-shaped">
+                <svg viewBox="0 0 40 40"><rect x="4" y="10" width="32" height="20" rx="10" fill="none" stroke="currentColor" stroke-width="2"/><line x1="20" y1="10" x2="20" y2="30" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2,2"/></svg>
+                <span>Capsule-shaped</span>
+              </button>
+              <button type="button" class="shape-option" data-shape="Rectangle">
+                <svg viewBox="0 0 40 40"><rect x="4" y="10" width="32" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Rectangle</span>
+              </button>
+              <button type="button" class="shape-option" data-shape="Square">
+                <svg viewBox="0 0 40 40"><rect x="8" y="8" width="24" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Square</span>
+              </button>
+              <button type="button" class="shape-option" data-shape="Triangle">
+                <svg viewBox="0 0 40 40"><polygon points="20,6 36,34 4,34" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                <span>Triangle</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Size -->
+          <div class="form-group">
+            <label>Size</label>
+            <select id="med-size">
+              <option value="">Select size...</option>
+              <option value="Mini">Mini</option>
+              <option value="Small">Small</option>
+              <option value="Medium">Medium</option>
+              <option value="Large">Large</option>
+              <option value="Extra Large">Extra Large</option>
+            </select>
+          </div>
+
+          <!-- Texture -->
+          <div class="form-group">
+            <label>Texture</label>
+            <select id="med-texture">
+              <option value="">Select texture...</option>
+              <option value="Smooth">Smooth</option>
+              <option value="Glossy / Shiny">Glossy / Shiny</option>
+              <option value="Matte">Matte</option>
+              <option value="Chalky / Powdery">Chalky / Powdery</option>
+              <option value="Soft / Gel-like">Soft / Gel-like</option>
+              <option value="Hard">Hard</option>
+              <option value="Scored">Scored</option>
+              <option value="Engraved / Imprinted">Engraved / Imprinted</option>
+              <option value="Layered">Layered</option>
+              <option value="Chewable">Chewable</option>
+            </select>
+          </div>
+
+          <!-- Form -->
+          <div class="form-group">
+            <label>Form</label>
+            <select id="med-form-type">
+              <option value="">Select form...</option>
+              <option value="Tablet">Tablet</option>
+              <option value="Capsule">Capsule</option>
+              <option value="Liquid">Liquid</option>
+              <option value="Injection">Injection</option>
+              <option value="Patch">Patch</option>
+              <option value="Inhaler">Inhaler</option>
+              <option value="Topical">Topical</option>
+            </select>
+          </div>
+
+          <div class="wizard-nav">
+            <button type="button" id="back-to-step-3" class="btn-secondary">Back</button>
             <button type="submit" class="btn-primary">Save Medication</button>
           </div>
         </div>
@@ -686,10 +1121,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     </div>
   </div>
 
-  <!-- Bottle Popup -->
+  <!-- Bottle Popup (used for both Add and Edit) -->
   <div id="bottle-popup">
     <div class="popup-content">
-      <h3>Add Bottle</h3>
+      <h3 id="bottle-popup-title">Add Bottle</h3>
       <label>Expiration Date <span style="color: red;">*</span></label>
       <input id="bottle-exp" type="date">
       <div id="bottle-exp-error" class="error-message"></div>
@@ -730,6 +1165,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     window.getDocs = getDocs;
     window.deleteDoc = deleteDoc;
     window.addDoc = addDoc;
+    window.deleteField = deleteField;
 
     // Set up auth ready promise
     window.authReady = new Promise((resolve) => {
@@ -745,12 +1181,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     const params    = new URLSearchParams(window.location.search);
     const editIdx   = params.has('edit') ? params.get('edit') : null; // Keep as string for Firebase ID
     const renewIdx  = params.has('renew') ? +params.get('renew') : null;
-    const isVoice   = params.has('voice') ? true : false; // Check if coming from voice page
+    const isVoice   = params.has('voice') || params.get('source') === 'voice'; // v2: check both param names
     const storageKey= 'medications';
 
-    console.log('[Add-Medication] Page loaded. URL params:', {
-      editIdx: editIdx, renewIdx: renewIdx, isVoice: isVoice
-    });
+    console.log('[Add-Medication] Page loaded. URL:', window.location.href);
+    console.log('[Add-Medication] search:', window.location.search);
+    console.log('[Add-Medication] isVoice:', isVoice);
+    console.log('[Add-Medication] localStorage has voiceMedicationData:', !!localStorage.getItem('voiceMedicationData'));
 
     // Check for voice data from localStorage
     let voiceData = null;
@@ -762,6 +1199,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         try {
           voiceData = JSON.parse(voiceDataStr);
           console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
+          // Expose to the med-image bootstrap script so it can mount the saved image.
+          try { window.__voiceMedicationDataForImage = voiceData; } catch (_) {}
           // Clear it after reading
           localStorage.removeItem('voiceMedicationData');
           console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
@@ -773,8 +1212,29 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
     }
 
+    // Check for SCAN data (Picture Add flow) from sessionStorage.
+    // The scan page (scan-medication.html) writes { source:'scan', data:{...} }.
+    // Notification preferences are intentionally NEVER pre-filled from a scan.
+    const isScan = params.get('source') === 'scan';
+    let scanData = null;
+    if (isScan) {
+      try {
+        const raw = sessionStorage.getItem('scanMedicationDraft');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.data) {
+            scanData = parsed.data;
+            console.log('[Add-Medication] Loaded scan data:', scanData);
+          }
+          sessionStorage.removeItem('scanMedicationDraft');
+        }
+      } catch (e) {
+        console.warn('[Add-Medication] Could not load scan data:', e);
+      }
+    }
+
     // Steps
-    const steps = ['step-1','step-2','step-3'].map(id=>document.getElementById(id));
+    const steps = ['step-1','step-2','step-3','step-4'].map(id=>document.getElementById(id));
     function showStep(n){ steps.forEach((el,i)=>el.classList.toggle('active', i+1===n)); }
 
     // Title for edit or renew
@@ -931,6 +1391,140 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     function clearErr(id){ const el = document.getElementById(id); if (el) el.textContent=''; }
     function showErr(id,msg){ const el = document.getElementById(id); if (el) el.textContent=msg; }
 
+    // --- Reminder channel helpers ---------------------------------------
+    // New model: array of strings ["email","sms","push"], any combination (or []).
+    // Legacy: reminderMethod single string "E"|"S"|"ES"|"N".
+    function getSelectedChannels(){
+      return Array.from(document.querySelectorAll('.reminder-channel'))
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+    }
+    function setSelectedChannels(channels){
+      const set = new Set(Array.isArray(channels) ? channels : []);
+      document.querySelectorAll('.reminder-channel').forEach(cb => {
+        cb.checked = set.has(cb.value);
+      });
+    }
+    function channelsToLegacyMethod(channels){
+      const set = new Set(channels || []);
+      const hasE = set.has('email');
+      const hasS = set.has('sms');
+      if (hasE && hasS) return 'ES';
+      if (hasE) return 'E';
+      if (hasS) return 'S';
+      return 'N';
+    }
+    function legacyMethodToChannels(method){
+      switch (method) {
+        case 'E': case 'Email': return ['email'];
+        case 'S': case 'SMS':   return ['sms'];
+        case 'ES':              return ['email','sms'];
+        default:                return [];
+      }
+    }
+
+    // Handle push checkbox: ask for permission + subscribe the first time it's checked
+    (function wirePushCheckbox(){
+      const cb = document.getElementById('reminder-channel-push');
+      const status = document.getElementById('push-status');
+      if (!cb) return;
+      const P = window.Everane && window.Everane.Push;
+
+      // `status` is the `.channel-card__sub` subtitle inside the card.
+      // We display a clean phrase there, not a prefixed fragment.
+      const DEFAULT_SUB = 'Native alert on this device';
+      function setStatus(msg){ if (status) status.textContent = msg || DEFAULT_SUB; }
+
+      function reasonMessage(result) {
+        if (!result) return 'Could not enable push';
+        switch (result.reason) {
+          case 'denied':           return 'Permission denied — enable in browser settings';
+          case 'not-signed-in':    return 'Sign in first';
+          case 'ios-install-required': return 'Add to Home Screen first (iOS)';
+          case 'unsupported':      return 'Not supported on this browser';
+          case 'sw-register-failed': return 'Service worker failed to register';
+          case 'firestore-failed': return 'Could not save subscription';
+          case 'subscribe-failed':
+          default:
+            return result.error ? ('Error: ' + String(result.error).slice(0, 140)) : 'Could not enable push';
+        }
+      }
+
+      if (!P || !P.isSupported()) {
+        cb.disabled = true;
+        setStatus('Not supported on this browser');
+        return;
+      }
+
+      // If this device is already subscribed to push, just update the subtitle —
+      // do NOT auto-check the box. Each new medication should start with all
+      // channels unchecked; the checkbox is the user's per-medication choice.
+      // (When editing an existing medication, setSelectedChannels() will set the
+      // checkbox state based on that med's reminderChannels.)
+      P.getCurrentSubscription().then(sub => {
+        if (sub) setStatus('Enabled on this device');
+      });
+
+      cb.addEventListener('change', async () => {
+        if (!cb.checked) {
+          // Unchecking the box should ONLY remove push from this medication's
+          // channels — it must NOT unsubscribe this device, because other
+          // medications may still want to receive push on this device.
+          // Just update the status label and let the form save the new channels.
+          const sub = await P.getCurrentSubscription();
+          setStatus(sub ? 'Enabled on this device' : DEFAULT_SUB);
+          return;
+        }
+        if (P.isIosSafariNotInstalled()) {
+          cb.checked = false;
+          setStatus('Add Everane to Home Screen first');
+          showIosInstallModal();
+          return;
+        }
+        // If this device is already subscribed, no permission prompt needed —
+        // just confirm the status. Otherwise trigger the browser permission flow.
+        const existing = await P.getCurrentSubscription();
+        if (existing) {
+          setStatus('Enabled on this device');
+          return;
+        }
+        setStatus('Requesting permission…');
+        const result = await P.subscribe(window.auth, window.db);
+        if (result.ok) {
+          setStatus('Enabled on this device');
+        } else {
+          cb.checked = false;
+          setStatus(reasonMessage(result));
+          // Full detail for debugging
+          console.warn('[Push] subscribe failed:', result);
+        }
+      });
+    })();
+
+    function showIosInstallModal(){
+      let modal = document.getElementById('ios-install-modal');
+      if (modal) { modal.style.display = 'flex'; return; }
+      modal = document.createElement('div');
+      modal.id = 'ios-install-modal';
+      // Use CSS vars so the modal adapts to the page's current theme (light/dark).
+      // Fallbacks keep it readable even if the host page omits the variables.
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;';
+      modal.innerHTML =
+        '<div style="background:var(--surface,#fff);color:var(--text,#1f2933);border:1px solid var(--border,transparent);border-radius:20px;max-width:420px;width:100%;padding:24px;font-family:inherit;box-shadow:0 24px 60px -8px rgba(8,12,24,0.55);">' +
+        '<h3 style="margin:0 0 12px;">Add Everane to your Home Screen first</h3>' +
+        '<p style="margin:0 0 12px;line-height:1.5;color:var(--muted,#44506b);">To get push notifications on iPhone/iPad, you need to install Everane as a web app:</p>' +
+        '<ol style="padding-left:20px;line-height:1.6;margin:0 0 16px;color:var(--text,#1f2933);">' +
+        '<li>Tap the <b>Share</b> button in Safari (square with up arrow)</li>' +
+        '<li>Scroll down and tap <b>Add to Home Screen</b></li>' +
+        '<li>Open Everane from your Home Screen icon</li>' +
+        '<li>Come back here and enable Push again</li>' +
+        '</ol>' +
+        '<button type="button" id="ios-install-close" style="width:100%;padding:12px;border:none;border-radius:12px;background:#3f6ff5;color:#fff;font-weight:600;cursor:pointer;">Got it</button>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#ios-install-close').onclick = () => { modal.style.display='none'; };
+    }
+
     // Validate Step 1 (name, dosage, reminder)
     function valid1(){
       clearErr('name-error');
@@ -939,7 +1533,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       let ok = true;
       const nameEl = document.getElementById('med-name');
       const doseEl = document.getElementById('dosage');
-      const reminderEl = document.getElementById('reminder');
 
       if (!nameEl.value.trim()) {
         showErr('name-error','Enter medication name');
@@ -949,10 +1542,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         showErr('dosage-error','Dosage must be \u22651');
         ok = false;
       }
-      if (!reminderEl.value) {
-        showErr('reminder-error','Select a reminder method');
-        ok = false;
-      }
+      // Reminder channels are optional — a user can pick "None" by leaving all unchecked.
       return ok;
     }
 
@@ -971,32 +1561,122 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     document.getElementById('back-to-step-1').onclick= ()=> showStep(1);
     document.getElementById('to-step-3').onclick    = ()=> valid2() && showStep(3);
     document.getElementById('back-to-step-2').onclick= ()=> showStep(2);
+    document.getElementById('to-step-4').onclick    = ()=> { initColorCanvas(); showStep(4); };
+    document.getElementById('back-to-step-3').onclick= ()=> showStep(3);
 
-    // Bottle popup
-    let popupResolve, bottles=[];
-    document.getElementById('add-bottle').onclick = async ()=>{
-      document.getElementById('bottle-exp').value='';
-      document.getElementById('bottle-qty').value='';
+    // Bottle popup (Add OR Edit) + central renderer.
+    // popupMode is either { kind: 'add' } or { kind: 'edit', index: N }.
+    let popupResolve, popupMode = null, bottles = [];
+
+    // Normalize an expiration value coming from any source into the
+    // <input type="date"> format ("YYYY-MM-DD"). Accepts: ISO YYYY-MM-DD,
+    // MM/DD/YYYY (from scan + saved meds), or empty.
+    function normalizeBottleExpForInput(v) {
+      if (!v) return '';
+      const s = String(v).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        const mm = String(parseInt(m[1], 10)).padStart(2, '0');
+        const dd = String(parseInt(m[2], 10)).padStart(2, '0');
+        return `${m[3]}-${mm}-${dd}`;
+      }
+      return '';
+    }
+    // For display in the bottle card.
+    function displayBottleExp(v) {
+      if (!v) return '(no expiration set)';
+      const s = String(v).trim();
+      const iso = normalizeBottleExpForInput(s);
+      if (!iso) return s;
+      // Show as MM/DD/YYYY for readability.
+      const [y, m, d] = iso.split('-');
+      return `${parseInt(m,10)}/${parseInt(d,10)}/${y}`;
+    }
+
+    function openBottlePopup(mode) {
+      popupMode = mode || { kind: 'add' };
+      const title = document.getElementById('bottle-popup-title');
+      const saveBtn = document.getElementById('bottle-save');
+      if (popupMode.kind === 'edit') {
+        title.textContent = 'Edit Bottle';
+        saveBtn.textContent = 'Save Changes';
+        const b = bottles[popupMode.index] || {};
+        document.getElementById('bottle-exp').value = normalizeBottleExpForInput(b.expiration);
+        document.getElementById('bottle-qty').value = (b.quantity != null && b.quantity !== '') ? b.quantity : '';
+      } else {
+        title.textContent = 'Add Bottle';
+        saveBtn.textContent = 'Add Bottle';
+        document.getElementById('bottle-exp').value = '';
+        document.getElementById('bottle-qty').value = '';
+      }
       clearErr('bottle-exp-error');
-      document.getElementById('bottle-popup').style.display='flex';
-      await new Promise(r=>popupResolve=r);
+      document.getElementById('bottle-popup').style.display = 'flex';
+    }
+
+    function renderBottlesList() {
+      const li = document.getElementById('bottles-list');
+      if (!li) return;
+      li.innerHTML = '';
+      bottles.forEach((b, idx) => {
+        const c = document.createElement('div');
+        c.className = 'card';
+        c.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap;';
+        const info = document.createElement('div');
+        info.style.cssText = 'flex:1; min-width:0;';
+        const qtyText = (b.quantity != null && b.quantity !== '' && b.quantity !== undefined)
+          ? `<br><strong>Qty:</strong> ${b.quantity}` : '';
+        info.innerHTML = `<p style="margin:0;"><strong>Expires:</strong> ${displayBottleExp(b.expiration)}${qtyText}</p>`;
+        c.appendChild(info);
+
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex; gap:0.4rem; flex-shrink:0;';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn-secondary btn-sm';
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', () => openBottlePopup({ kind: 'edit', index: idx }));
+        actions.appendChild(editBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn-secondary btn-sm';
+        delBtn.style.cssText = 'color:#dc2626;';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', () => {
+          bottles.splice(idx, 1);
+          renderBottlesList();
+        });
+        actions.appendChild(delBtn);
+
+        c.appendChild(actions);
+        li.appendChild(c);
+      });
+    }
+
+    document.getElementById('add-bottle').onclick = () => openBottlePopup({ kind: 'add' });
+
+    document.getElementById('bottle-cancel').onclick = () => {
+      document.getElementById('bottle-popup').style.display = 'none';
+      popupMode = null;
+      if (typeof popupResolve === 'function') { popupResolve(); popupResolve = null; }
     };
-    document.getElementById('bottle-cancel').onclick = ()=>{
-      document.getElementById('bottle-popup').style.display='none';
-      popupResolve();
-    };
-    document.getElementById('bottle-save').onclick = ()=>{
+
+    document.getElementById('bottle-save').onclick = () => {
       const exp = document.getElementById('bottle-exp').value;
       if (!exp) { showErr('bottle-exp-error','Required'); return; }
-      const qty = document.getElementById('bottle-qty').value||null;
-      bottles.push({expiration:exp,quantity:qty});
-      const li = document.getElementById('bottles-list');
-      const c  = document.createElement('div');
-      c.className='card';
-      c.innerHTML=`<p><strong>Expires:</strong> ${exp}${qty?`<br><strong>Qty:</strong> ${qty}`:''}</p>`;
-      li.appendChild(c);
-      document.getElementById('bottle-popup').style.display='none';
-      popupResolve();
+      const qtyRaw = document.getElementById('bottle-qty').value;
+      const qty = (qtyRaw === '' || qtyRaw == null) ? null : qtyRaw;
+      if (popupMode && popupMode.kind === 'edit' && bottles[popupMode.index]) {
+        bottles[popupMode.index] = { expiration: exp, quantity: qty };
+      } else {
+        bottles.push({ expiration: exp, quantity: qty });
+      }
+      renderBottlesList();
+      document.getElementById('bottle-popup').style.display = 'none';
+      popupMode = null;
+      if (typeof popupResolve === 'function') { popupResolve(); popupResolve = null; }
     };
 
     // Close mobile menu when clicking on nav links
@@ -1061,9 +1741,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             name: medData.name,
             dosage: medData.dosage,
             schedules: medSchedules,
-            reminder: medData.reminderMethod === 'E' ? 'Email' :
-                     medData.reminderMethod === 'S' ? 'SMS' :
-                     medData.reminderMethod === 'ES' ? 'Email + SMS' : 'None',
+            reminderChannels: Array.isArray(medData.reminderChannels) && medData.reminderChannels.length > 0
+              ? medData.reminderChannels.slice()
+              : legacyMethodToChannels(medData.reminderMethod),
             bottles: medData.bottles ? medData.bottles.map(bottleStr => {
               const parts = bottleStr.split('/');
               if (parts.length >= 4) {
@@ -1073,8 +1753,18 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
                 };
               }
               return null;
-            }).filter(Boolean) : []
+            }).filter(Boolean) : [],
+            classifications: medData.classifications || {},
+            groups: medData.groups || [],
+            imageUrl: medData.imageUrl || null,
+            imageCanonical: medData.imageCanonical || null,
+            imageGenericName: medData.imageGenericName || null,
+            imageSummary: medData.imageSummary || null,
+            imageSource: medData.imageSource || null,
+            imageFetchedAt: medData.imageFetchedAt || null
           };
+          // Expose the loaded med to the med-image bootstrap script (edit path).
+          try { window.__editLoadedMedForImage = med; } catch (_) {}
 
           console.log('[Add-Medication] Converted medication for form:', med);
         } catch (error) {
@@ -1128,11 +1818,28 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           console.log('[Add-Medication] Voice schedules (legacy converted):', voiceSchedules);
         }
 
+        // Extract numeric dosage from voice string like "2 pills", "1 tablet", "500 mg"
+        let voiceDosage = '';
+        if (voiceData.dosage) {
+          const dm = String(voiceData.dosage).match(/[\d.]+/);
+          voiceDosage = dm ? dm[0] : voiceData.dosage;
+        }
+
+        // Voice data may supply reminderChannels (new, array) or reminder (old, string).
+        let voiceChannels = [];
+        if (Array.isArray(voiceData.reminderChannels)) {
+          voiceChannels = voiceData.reminderChannels.slice();
+        } else if (typeof voiceData.reminder === 'string') {
+          const r = voiceData.reminder.toLowerCase();
+          if (r.includes('email')) voiceChannels.push('email');
+          if (r.includes('sms') || r.includes('text')) voiceChannels.push('sms');
+          if (r.includes('push') || r.includes('notification')) voiceChannels.push('push');
+        }
         med = {
           name: voiceData.name || '',
-          dosage: voiceData.dosage || '',
+          dosage: voiceDosage,
           schedules: voiceSchedules,
-          reminder: voiceData.reminder || 'None'
+          reminderChannels: voiceChannels
         };
         console.log('[Add-Medication] Converted voice data to medication object:', med);
 
@@ -1144,6 +1851,106 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (container) {
           container.insertBefore(voiceNotice, container.firstChild);
         }
+      } else if (scanData) {
+        // ── PICTURE ADD: pre-fill from extractMedicationFromImages response ──
+        // Schema from the function:
+        //   { name, genericName, dosage, dosageQuantity, schedules:[{type,days,times,every,unit}],
+        //     startDate, endDate, bottles:[{expiration,quantity}], notes,
+        //     confidence:{field:0..1}, ambiguities:[strings] }
+        console.log('[Add-Medication] Scan data received:', scanData);
+
+        // Build per-(day,time) entries in the form's expected shape:
+        //   {scheduleId, type:'WEEKLY', weekday:0-6, time:'HH:MM', everyWeeks:1, startDate, endDate}
+        // or for intervals:
+        //   {scheduleId, type:'INTERVAL', time:'HH:MM', interval:{unit:'HOUR'|'DAY'|'WEEK', value:N},
+        //    anchorDateTime, startDate, endDate}
+        const DAY_TO_NUM = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
+        const UNIT_MAP   = { hours:'HOUR', days:'DAY', weeks:'WEEK' };
+        const sd = scanData.startDate || new Date().toISOString().split('T')[0];
+        const ed = scanData.endDate || null;
+        const scanSchedules = [];
+        if (Array.isArray(scanData.schedules)) {
+          for (const s of scanData.schedules) {
+            const times = Array.isArray(s.times) ? s.times : [];
+            if ((s.type || '').toLowerCase() === 'weekly') {
+              const days = Array.isArray(s.days) ? s.days : [];
+              for (const d of days) {
+                const weekday = DAY_TO_NUM[String(d || '').toLowerCase()];
+                if (weekday === undefined) continue;
+                for (const t of times) {
+                  scanSchedules.push({
+                    scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2,6),
+                    type: 'WEEKLY',
+                    weekday: weekday,
+                    time: t,
+                    everyWeeks: 1,
+                    startDate: sd,
+                    endDate: ed
+                  });
+                }
+              }
+            } else if ((s.type || '').toLowerCase() === 'interval') {
+              const unit = UNIT_MAP[String(s.unit || '').toLowerCase()] || 'DAY';
+              const t0 = times[0] || '09:00';
+              scanSchedules.push({
+                scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2,6),
+                type: 'INTERVAL',
+                time: t0,
+                interval: { unit: unit, value: Number(s.every) || 1 },
+                anchorDateTime: sd + 'T' + t0 + ':00',
+                startDate: sd,
+                endDate: ed
+              });
+            }
+          }
+        }
+
+        // Dosage: prefer the explicit numeric pills-per-dose; else extract digits.
+        let scanDosage = '';
+        if (typeof scanData.dosageQuantity === 'number' && Number.isFinite(scanData.dosageQuantity)) {
+          scanDosage = String(scanData.dosageQuantity);
+        } else if (scanData.dosage) {
+          const dm = String(scanData.dosage).match(/[\d.]+/);
+          scanDosage = dm ? dm[0] : '';
+        }
+
+        // Bottles: pass through if any.
+        const scanBottles = Array.isArray(scanData.bottles)
+          ? scanData.bottles.map(b => ({
+              expiration: b.expiration || '',
+              quantity: (typeof b.quantity === 'number' && Number.isFinite(b.quantity)) ? b.quantity : null
+            }))
+          : [];
+
+        med = {
+          name: scanData.name || '',
+          dosage: scanDosage,
+          schedules: scanSchedules,
+          reminderChannels: [],  // NEVER pre-fill from a scan
+          bottles: scanBottles
+        };
+        // Persistence for the med-image cache miss (the bottle photo is best
+        // obtained from Serper rather than the user's own photo). On save, the
+        // bootstrap will re-lookup if the name matches a real medication.
+
+        // Stash for the yellow-highlight pass + ambiguities banner.
+        window.__scanResolved = scanData;
+
+        console.log('[Add-Medication] Converted scan data to medication object:', med);
+
+        // Banner: success + a hint that uncertain fields are highlighted.
+        const ambig = Array.isArray(scanData.ambiguities) ? scanData.ambiguities.filter(Boolean) : [];
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background: linear-gradient(135deg,#3f6ff5,#7a5cff); color: white; padding: 0.95rem 1.1rem; border-radius: 14px; margin-bottom: 1rem; box-shadow: 0 10px 24px rgba(63,111,245,0.25);';
+        const lines = [];
+        lines.push('<div style="font-weight:700; margin-bottom:0.2rem;">\uD83D\uDCF7 Form pre-filled from your photo(s).</div>');
+        lines.push('<div style="font-size:0.9rem; opacity:0.95;">Fields highlighted in <strong style="background:rgba(250,204,21,0.95); color:#0f172a; padding:0 0.35rem; border-radius:4px;">yellow</strong> were uncertain &mdash; please double-check before saving. Reminder channels are not filled in from photos.</div>');
+        if (ambig.length) {
+          lines.push('<ul style="margin:0.5rem 0 0; padding-left:1.2rem; font-size:0.88rem; opacity:0.95;">' + ambig.slice(0,3).map(a => '<li>' + a.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</li>').join('') + '</ul>');
+        }
+        banner.innerHTML = lines.join('');
+        const container = document.querySelector('.container');
+        if (container) container.insertBefore(banner, container.firstChild);
       } else {
         return;
       }
@@ -1155,20 +1962,21 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
       console.log('[Add-Medication] Populating form with medication data:', med);
 
-      // If this is a renew flow, reset the reminder select to the placeholder
+      // If this is a renew flow, clear channel selections
       if (renewIdx !== null) {
-        const sel = document.getElementById('reminder');
-        if (sel) { sel.selectedIndex = 0; sel.value = ''; }
+        setSelectedChannels([]);
       }
 
       // Populate form fields
       document.getElementById('med-name').value = med.name || '';
       document.getElementById('dosage').value = med.dosage || '';
 
-      // Set reminder
-      const reminderSelect = document.getElementById('reminder');
-      if (reminderSelect && med.reminder) {
-        reminderSelect.value = med.reminder;
+      // Set reminder channels (new array format; fall back to translating legacy `reminder`)
+      if (Array.isArray(med.reminderChannels)) {
+        setSelectedChannels(med.reminderChannels);
+      } else if (typeof med.reminder === 'string') {
+        const map = { 'Email': ['email'], 'SMS': ['sms'], 'Email + SMS': ['email','sms'], 'None': [] };
+        setSelectedChannels(map[med.reminder] || []);
       }
 
       // Load schedules into the schedule builder
@@ -1184,19 +1992,275 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       // Set bottles
       if (med.bottles && med.bottles.length > 0) {
         console.log('[Add-Medication] Setting bottles:', med.bottles);
-      med.bottles.forEach(b=>{
-        bottles.push(b);
-        const li = document.getElementById('bottles-list');
-        const c  = document.createElement('div');
-        c.className='card';
-        c.innerHTML=`<p><strong>Expires:</strong> ${b.expiration}${b.quantity?`<br><strong>Qty:</strong> ${b.quantity}`:''}</p>`;
-        li.appendChild(c);
-      });
+        med.bottles.forEach(b => {
+          // Normalize to {expiration, quantity}. Accept already-formatted
+          // entries plus the raw shapes coming from edit (Firestore strings)
+          // and scan (Vision JSON).
+          const exp = b && (b.expiration || b.exp || null);
+          const qty = b && (b.quantity != null ? b.quantity : (b.qty != null ? b.qty : null));
+          bottles.push({ expiration: exp, quantity: qty });
+        });
+        renderBottlesList();
       } else {
         console.log('[Add-Medication] No bottles to set');
+        renderBottlesList();
+      }
+
+      // Pre-fill classification fields if editing
+      if (med.classifications) {
+        const cls = med.classifications;
+        if (cls.color) {
+          selectedColor = cls.color;
+          // Defer color preview update until canvas is available
+          setTimeout(() => { updateColorPreview(cls.color); }, 50);
+        }
+        if (cls.shape) {
+          selectedShape = cls.shape;
+          document.querySelectorAll('.shape-option').forEach(btn => {
+            if (btn.dataset.shape === cls.shape) btn.classList.add('active');
+          });
+        }
+        if (cls.size) document.getElementById('med-size').value = cls.size;
+        if (cls.texture) document.getElementById('med-texture').value = cls.texture;
+        if (cls.form) document.getElementById('med-form-type').value = cls.form;
       }
 
       console.log('[Add-Medication] Form population complete');
+
+      // ── PICTURE ADD: trigger the med-image (Serper) lookup with the extracted
+      // name so the bottle photo + summary card populates on the right side.
+      // We DIRECTLY invoke MedImage.lookup + render to bypass any short-circuit
+      // guards in the bootstrap script's blur handler.
+      try {
+        const scanName = (window.__scanResolved && window.__scanResolved.name) || null;
+        if (scanName && window.MedImage && window.MedImage.lookup) {
+          setTimeout(async () => {
+            try {
+              const imgMount = document.getElementById('med-name-image-mount');
+              const sumMount = document.getElementById('med-name-summary-mount');
+              if (!imgMount) return;
+              const result = await window.MedImage.lookup(scanName);
+              if (!result || !result.isMed || !result.imageUrl) return;
+              // Stash so the eventual save persists imageUrl + canonical + summary.
+              window.__resolvedMedImage = {
+                imageUrl: result.imageUrl,
+                canonical: result.canonical || scanName,
+                genericName: result.genericName || null,
+                summary: result.summary || null,
+                form: result.form || null,
+                source: result.source || 'serper',
+              };
+              // Clear any placeholder mounts first.
+              while (imgMount.firstChild) imgMount.removeChild(imgMount.firstChild);
+              const card = window.MedImage.renderInlineCard({
+                imageUrl: result.imageUrl,
+                canonical: result.canonical || scanName,
+                genericName: result.genericName || null,
+              });
+              imgMount.appendChild(card);
+              if (sumMount && result.summary && window.MedImage.renderSummary) {
+                while (sumMount.firstChild) sumMount.removeChild(sumMount.firstChild);
+                const sBox = window.MedImage.renderSummary({
+                  summary: result.summary,
+                  canonical: result.canonical || scanName,
+                });
+                if (sBox) sumMount.appendChild(sBox);
+              }
+            } catch (e) {
+              console.warn('[Scan] post-fill Serper lookup failed:', e);
+            }
+          }, 50);
+        }
+      } catch (_) {}
+
+      // ── PICTURE ADD: show source-attribution badges (from your note / bottle / etc.) ──
+      try {
+        const scanFrom = window.__scanResolved && window.__scanResolved.extractedFrom;
+        if (scanFrom && typeof scanFrom === 'object') {
+          const SOURCE_LABEL = {
+            note:     'from your note',
+            bottle:   'from bottle',
+            printout: 'from printout',
+            mixed:    'from multiple sources',
+          };
+          const tagSource = (fieldKey, el) => {
+            if (!el) return;
+            const source = scanFrom[fieldKey];
+            const label = SOURCE_LABEL[source];
+            if (!label) return;
+            const labelEl = el.closest('.form-group')?.querySelector('label');
+            if (!labelEl) return;
+            if (labelEl.querySelector('.scan-source-badge')) return; // don't double-add
+            const badge = document.createElement('span');
+            badge.className = 'scan-source-badge';
+            badge.textContent = label;
+            labelEl.appendChild(badge);
+          };
+          tagSource('name',           document.getElementById('med-name'));
+          tagSource('dosage',         document.getElementById('dosage'));
+          tagSource('dosageQuantity', document.getElementById('dosage'));
+          // Schedule source: tag a wrapper of the schedule list area.
+          const schedSrc = scanFrom.schedules;
+          if (schedSrc && SOURCE_LABEL[schedSrc]) {
+            const schedListEl = document.getElementById('schedules-list') || document.querySelector('[data-tutorial="schedule-builder"]');
+            const groupLabel = schedListEl?.closest('.form-group')?.querySelector('label');
+            if (groupLabel && !groupLabel.querySelector('.scan-source-badge')) {
+              const badge = document.createElement('span');
+              badge.className = 'scan-source-badge';
+              badge.textContent = SOURCE_LABEL[schedSrc];
+              groupLabel.appendChild(badge);
+            }
+          }
+        }
+      } catch (e) { console.warn('[Add-Medication] Source-label pass failed:', e); }
+
+      // ── PICTURE ADD: apply yellow highlights for low-confidence fields. ──
+      // Threshold: confidence < 0.7 → flag as uncertain.
+      try {
+        const scan = window.__scanResolved;
+        if (scan && scan.confidence) {
+          const UNCERTAIN_THRESHOLD = 0.7;
+          const flag = (key, el) => {
+            if (!el) return;
+            const conf = scan.confidence[key];
+            if (typeof conf !== 'number') return;
+            if (conf < UNCERTAIN_THRESHOLD && el.value && String(el.value).trim() !== '') {
+              el.classList.add('scan-uncertain');
+              const label = el.closest('.form-group')?.querySelector('label');
+              if (label && !label.querySelector('.scan-uncertain-badge')) {
+                const badge = document.createElement('span');
+                badge.className = 'scan-uncertain-badge';
+                badge.textContent = 'Please verify';
+                label.appendChild(badge);
+              }
+              // Clear the highlight on first edit by the user.
+              const onEdit = () => {
+                el.classList.remove('scan-uncertain');
+                const b = el.closest('.form-group')?.querySelector('.scan-uncertain-badge');
+                if (b) b.remove();
+                el.removeEventListener('input', onEdit);
+                el.removeEventListener('change', onEdit);
+              };
+              el.addEventListener('input', onEdit);
+              el.addEventListener('change', onEdit);
+            }
+          };
+          flag('name',    document.getElementById('med-name'));
+          flag('dosage',  document.getElementById('dosage'));
+          flag('dosageQuantity', document.getElementById('dosage'));
+
+          // Schedule confidence: highlight the schedule builder container if
+          // either the schedules field is low-confidence OR any schedule has a
+          // null time (means the AI flagged the dose times as unknown).
+          const scheduleConf = scan.confidence.schedules;
+          const scheduleListEl = document.getElementById('schedules-list') || document.querySelector('[data-tutorial="schedule-builder"]');
+          if (scheduleListEl && typeof scheduleConf === 'number' && scheduleConf < UNCERTAIN_THRESHOLD) {
+            scheduleListEl.classList.add('scan-uncertain');
+            const onSchedEdit = () => {
+              scheduleListEl.classList.remove('scan-uncertain');
+              scheduleListEl.removeEventListener('click', onSchedEdit);
+            };
+            scheduleListEl.addEventListener('click', onSchedEdit);
+          }
+        }
+      } catch (e) { console.warn('[Add-Medication] Highlight pass failed:', e); }
+    });
+
+    // === Step 4: Classification logic ===
+    let selectedColor = '';  // hex string
+    let selectedShape = '';  // shape name
+
+    // Color canvas: draw a hue spectrum
+    let colorCanvasInitialized = false;
+    function initColorCanvas() {
+      if (colorCanvasInitialized) return;
+      const canvas = document.getElementById('color-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h = canvas.height;
+      const gradient = ctx.createLinearGradient(0, 0, w, 0);
+      gradient.addColorStop(0,    '#ff0000');
+      gradient.addColorStop(0.08, '#ff8800');
+      gradient.addColorStop(0.17, '#ffff00');
+      gradient.addColorStop(0.25, '#88ff00');
+      gradient.addColorStop(0.33, '#00ff00');
+      gradient.addColorStop(0.42, '#00ff88');
+      gradient.addColorStop(0.50, '#00ffff');
+      gradient.addColorStop(0.58, '#0088ff');
+      gradient.addColorStop(0.67, '#0000ff');
+      gradient.addColorStop(0.75, '#8800ff');
+      gradient.addColorStop(0.83, '#ff00ff');
+      gradient.addColorStop(0.92, '#ff0088');
+      gradient.addColorStop(1,    '#ff0000');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+      // Add white-to-transparent top layer for lighter shades
+      const whiteGrad = ctx.createLinearGradient(0, 0, 0, h);
+      whiteGrad.addColorStop(0, 'rgba(255,255,255,0.6)');
+      whiteGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
+      whiteGrad.addColorStop(1, 'rgba(0,0,0,0.3)');
+      ctx.fillStyle = whiteGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Handle clicks and touches
+      const pick = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const cX = (e.touches ? e.touches[0].clientX : e.clientX);
+        const cY = (e.touches ? e.touches[0].clientY : e.clientY);
+        const x = Math.round((cX - rect.left) * (w / rect.width));
+        const y = Math.round((cY - rect.top) * (h / rect.height));
+        const px = ctx.getImageData(Math.max(0,Math.min(x,w-1)), Math.max(0,Math.min(y,h-1)), 1, 1).data;
+        const hex = '#' + [px[0],px[1],px[2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+        selectedColor = hex;
+        updateColorPreview(hex);
+      };
+      canvas.addEventListener('click', pick);
+      canvas.addEventListener('touchstart', (e) => { e.preventDefault(); pick(e); }, { passive: false });
+
+      colorCanvasInitialized = true;
+    }
+
+    function updateColorPreview(hex) {
+      const preview = document.getElementById('color-preview');
+      const previewText = document.getElementById('color-preview-text');
+      const clearBtn = document.getElementById('clear-color');
+      // Add swatch if not exists
+      let swatch = preview.querySelector('.color-preview-swatch');
+      if (!swatch) {
+        swatch = document.createElement('div');
+        swatch.className = 'color-preview-swatch';
+        preview.insertBefore(swatch, previewText);
+      }
+      swatch.style.background = hex;
+      swatch.style.display = 'block';
+      previewText.textContent = hex;
+      previewText.style.color = 'var(--text)';
+      clearBtn.style.display = 'inline-flex';
+    }
+
+    // Clear color button
+    document.getElementById('clear-color').addEventListener('click', () => {
+      selectedColor = '';
+      const preview = document.getElementById('color-preview');
+      const swatch = preview.querySelector('.color-preview-swatch');
+      if (swatch) swatch.style.display = 'none';
+      document.getElementById('color-preview-text').textContent = 'No color selected';
+      document.getElementById('color-preview-text').style.color = 'var(--muted)';
+      document.getElementById('clear-color').style.display = 'none';
+    });
+
+    // Shape selection
+    document.querySelectorAll('.shape-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const wasActive = btn.classList.contains('active');
+        document.querySelectorAll('.shape-option').forEach(b => b.classList.remove('active'));
+        if (!wasActive) {
+          btn.classList.add('active');
+          selectedShape = btn.dataset.shape;
+        } else {
+          selectedShape = '';
+        }
+      });
     });
 
     // Final save
@@ -1206,7 +2270,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       // Gather form data
       const name = document.getElementById('med-name').value.trim();
       const dosage = +document.getElementById('dosage').value;
-      const reminder = document.getElementById('reminder').value;
+      const reminderChannels = getSelectedChannels();
 
       // Validate schedules
       if (schedules.length === 0) {
@@ -1215,16 +2279,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
 
       const user = window.auth.currentUser;
+      console.log('[Add-Medication] Current user:', user ? user.email : 'null');
       if (!user) {
         alert('Please log in to save medications');
         return;
       }
 
-      // Format reminder method
-      let reminderMethod = 'N';
-      if (reminder === 'Email') reminderMethod = 'E';
-      else if (reminder === 'SMS') reminderMethod = 'S';
-      else if (reminder === 'Email + SMS') reminderMethod = 'ES';
+      // Dual-write: new array field + legacy single-char field for back-compat
+      const reminderMethod = channelsToLegacyMethod(reminderChannels);
 
       // Format bottles
       const formatDate = (dateStr) => {
@@ -1276,6 +2338,17 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       const medId = editIdx || (renewMedId) || `med_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       schedules.forEach(s => { s.medId = medId; });
 
+      // Gather classification data (all optional)
+      const classifications = {};
+      if (selectedColor) classifications.color = selectedColor;
+      if (selectedShape) classifications.shape = selectedShape;
+      const sizeVal = document.getElementById('med-size').value;
+      if (sizeVal) classifications.size = sizeVal;
+      const textureVal = document.getElementById('med-texture').value;
+      if (textureVal) classifications.texture = textureVal;
+      const formTypeVal = document.getElementById('med-form-type').value;
+      if (formTypeVal) classifications.form = formTypeVal;
+
       if (editIdx !== null) {
         // Edit existing medication - update directly in Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
@@ -1296,8 +2369,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           dosage: dosage,
           schedules: schedules,
           reminderMethod: reminderMethod,
+          reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
+          classifications: classifications,
+          groups: existingData.groups || [],
           updatedAt: new Date().toISOString(),
           notes: existingData.notes || {},
           doses: existingData.doses || {}
@@ -1312,6 +2388,27 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (existingData.deletedStatus !== undefined) {
           medData.deletedStatus = existingData.deletedStatus;
         }
+
+        // Persist medication image (if Serper lookup resolved one on this page).
+        // Otherwise keep whatever was previously saved on the doc.
+        try {
+          const resolved = (typeof window !== 'undefined' && window.__resolvedMedImage) || null;
+          if (resolved && resolved.imageUrl) {
+            medData.imageUrl = resolved.imageUrl;
+            medData.imageCanonical = resolved.canonical || null;
+            medData.imageGenericName = resolved.genericName || null;
+            medData.imageSummary = resolved.summary || null;
+            medData.imageSource = resolved.source || 'serper';
+            medData.imageFetchedAt = new Date().toISOString();
+          } else if (existingData.imageUrl) {
+            medData.imageUrl = existingData.imageUrl;
+            medData.imageCanonical = existingData.imageCanonical || null;
+            medData.imageGenericName = existingData.imageGenericName || null;
+            medData.imageSummary = existingData.imageSummary || null;
+            medData.imageSource = existingData.imageSource || null;
+            medData.imageFetchedAt = existingData.imageFetchedAt || null;
+          }
+        } catch (_) {}
 
         // Remove old fields if they exist
         const updateData = { ...medData };
@@ -1332,7 +2429,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           updateData.times = deleteField();
         }
 
-        await setDoc(medDocRef, updateData);
+        await setDoc(medDocRef, updateData, { merge: true });
         console.log(`[Add-Medication] Updated medication: ${name} (ID: ${editIdx})`);
       } else if (renewIdx !== null) {
         // Renew medication - update in Firebase and set deletedStatus: false
@@ -1362,8 +2459,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           dosage: dosage,
           schedules: schedules,
           reminderMethod: reminderMethod,
+          reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
+          classifications: classifications,
+          groups: existingData.groups || [],
           deletedStatus: false, // Mark as active (not deleted)
           updatedAt: new Date().toISOString(),
           notes: existingData.notes || {},
@@ -1374,6 +2474,27 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (existingData.createdAt) {
           medData.createdAt = existingData.createdAt;
         }
+
+        // Persist medication image (if Serper lookup resolved one on this page).
+        // Otherwise keep whatever was previously saved on the doc.
+        try {
+          const resolved = (typeof window !== 'undefined' && window.__resolvedMedImage) || null;
+          if (resolved && resolved.imageUrl) {
+            medData.imageUrl = resolved.imageUrl;
+            medData.imageCanonical = resolved.canonical || null;
+            medData.imageGenericName = resolved.genericName || null;
+            medData.imageSummary = resolved.summary || null;
+            medData.imageSource = resolved.source || 'serper';
+            medData.imageFetchedAt = new Date().toISOString();
+          } else if (existingData.imageUrl) {
+            medData.imageUrl = existingData.imageUrl;
+            medData.imageCanonical = existingData.imageCanonical || null;
+            medData.imageGenericName = existingData.imageGenericName || null;
+            medData.imageSummary = existingData.imageSummary || null;
+            medData.imageSource = existingData.imageSource || null;
+            medData.imageFetchedAt = existingData.imageFetchedAt || null;
+          }
+        } catch (_) {}
 
         // Remove old fields if they exist
         const updateData = { ...medData };
@@ -1394,7 +2515,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           updateData.times = deleteField();
         }
 
-        await setDoc(medDocRef, updateData);
+        await setDoc(medDocRef, updateData, { merge: true });
         console.log(`[Add-Medication] Renewed medication: ${name} (ID: ${renewMedId}), set deletedStatus to false`);
 
         // Clean up temporary data
@@ -1409,13 +2530,29 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           dosage: dosage,
           schedules: schedules,
           reminderMethod: reminderMethod,
+          reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
+          classifications: classifications,
+          groups: [],
           deletedStatus: false, // New medications are active
           notes: {}, // Empty notes map
           doses: {}, // Object map of dose entries
           createdAt: new Date().toISOString()
         };
+
+        // Persist medication image (if Serper lookup resolved one on this page).
+        try {
+          const resolved = (typeof window !== 'undefined' && window.__resolvedMedImage) || null;
+          if (resolved && resolved.imageUrl) {
+            medData.imageUrl = resolved.imageUrl;
+            medData.imageCanonical = resolved.canonical || null;
+            medData.imageGenericName = resolved.genericName || null;
+            medData.imageSummary = resolved.summary || null;
+            medData.imageSource = resolved.source || 'serper';
+            medData.imageFetchedAt = new Date().toISOString();
+          }
+        } catch (_) {}
 
         // Create a new document in Firebase with auto-generated ID
         const medicationsCollectionRef = window.collection(window.db, "users", user.uid, "medications");
@@ -1478,25 +2615,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
 
-        // Collect notes as a Map: {date: {dose: message}}
-        const notes = {};
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('note_')) {
-            const noteValue = localStorage.getItem(key);
-            if (noteValue && noteValue.trim()) {
-              const dateStr = key.replace('note_', '');
-              const noteDate = new Date(dateStr).toLocaleDateString();
-              const lines = noteValue.split('\n').filter(line => line.trim());
-              lines.forEach((line, index) => {
-                const dose = index + 1;
-                if (!notes[noteDate]) {
-                  notes[noteDate] = {};
-                }
-                notes[noteDate][dose] = line.trim();
-              });
-            }
-          }
-        });
+        // Preserve existing notes from Firestore (notes are saved directly to Firestore
+        // by medication-action.html and notes.html, not via localStorage)
 
         // Format dates as MM/DD/YYYY
         const formatDate = (dateStr) => {
@@ -1525,11 +2645,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           return `${month}/${day}/${year}`;
         };
 
-        // Format reminder method
-        let reminderMethod = 'N';
-        if (med.reminder === 'Email') reminderMethod = 'E';
-        else if (med.reminder === 'SMS') reminderMethod = 'S';
-        else if (med.reminder === 'Email + SMS') reminderMethod = 'ES';
+        // Format reminder method (supports both new reminderChannels array and legacy string)
+        let reminderChannels = Array.isArray(med.reminderChannels) ? med.reminderChannels.slice() : [];
+        if (reminderChannels.length === 0 && typeof med.reminder === 'string') {
+          if (med.reminder === 'Email') reminderChannels = ['email'];
+          else if (med.reminder === 'SMS') reminderChannels = ['sms'];
+          else if (med.reminder === 'Email + SMS') reminderChannels = ['email','sms'];
+        }
+        const reminderMethod = channelsToLegacyMethod(reminderChannels);
 
         // Format bottles as array
         const stock = med.bottles ? med.bottles.length : 0;
@@ -1563,10 +2686,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           startDate: formatDate(med.startDate),
           endDate: formatDate(med.endDate),
           reminderMethod: reminderMethod,
+          reminderChannels: reminderChannels,
           stock: stock,
           bottles: bottles,
           deletedStatus: med.deletedStatus || false,
-          notes: notes,
+          notes: existingData.notes || {}, // Preserve existing notes from Firestore
           doses: existingData.doses || med.doses || {}, // Preserve existing doses field
           id: medId,
           updatedAt: new Date().toISOString()
@@ -1597,7 +2721,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         console.log('notes:', updateData.notes);
         console.log('doses:', updateData.doses);
 
-        await setDoc(medDocRef, updateData);
+        await setDoc(medDocRef, updateData, { merge: true });
         console.log(`[Add-Medication] Saved medication: ${med.name} (ID: ${medId})`);
       }
 
@@ -1627,6 +2751,162 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       console.error('[Add-Medication] Error saving history:', error);
     }
   }
+  </script>
+
+  <!-- Medication image lookup: on blur of #med-name, validate via OpenAI and
+       fetch an image via Serper. Mounts in #med-name-image-mount. Also prefills
+       on renew/edit when the doc already has imageUrl saved. -->
+  <script>
+    (function () {
+      if (!window.MedImage) {
+        console.warn('[MedImage] helper not loaded');
+        return;
+      }
+      const input = document.getElementById('med-name');
+      const mount = document.getElementById('med-name-image-mount');
+      const summaryMount = document.getElementById('med-name-summary-mount');
+      if (!input || !mount) return;
+
+      let currentKey = '';
+
+      function clearMount() {
+        while (mount.firstChild) mount.removeChild(mount.firstChild);
+        if (summaryMount) { while (summaryMount.firstChild) summaryMount.removeChild(summaryMount.firstChild); }
+        window.__resolvedMedImage = null;
+      }
+
+      function mountSummaryIfAny(summary, canonical) {
+        if (!summaryMount || !summary || !window.MedImage.renderSummary) return;
+        const box = window.MedImage.renderSummary({ summary: summary, canonical: canonical });
+        if (box) summaryMount.appendChild(box);
+      }
+
+      function mountResult(result) {
+        clearMount();
+        if (!result || !result.isMed || !result.imageUrl) return;
+        window.__resolvedMedImage = {
+          imageUrl: result.imageUrl,
+          canonical: result.canonical,
+          genericName: result.genericName,
+          summary: result.summary || null,
+          form: result.form,
+          source: result.source,
+        };
+        const card = window.MedImage.renderInlineCard({
+          imageUrl: result.imageUrl,
+          canonical: result.canonical,
+          genericName: result.genericName,
+        });
+        mount.appendChild(card);
+        mountSummaryIfAny(result.summary, result.canonical);
+      }
+
+      async function doLookup() {
+        const raw = (input.value || '').trim();
+        if (raw.length < 2) { clearMount(); currentKey = ''; return; }
+        const key = raw.toLowerCase();
+        if (key === currentKey) return; // unchanged since last lookup
+        currentKey = key;
+        try {
+          const result = await window.MedImage.lookup(raw);
+          // Guard against race: if input changed during fetch, drop.
+          if ((input.value || '').trim().toLowerCase() !== key) return;
+          mountResult(result);
+        } catch (e) {
+          console.warn('[MedImage] lookup error', e);
+        }
+      }
+
+      input.addEventListener('blur', doLookup);
+      // If the user clears the field, clear the card too.
+      input.addEventListener('input', function () {
+        const raw = (input.value || '').trim();
+        if (raw.length < 2) { clearMount(); currentKey = ''; }
+      });
+
+      // Edit prefill (poll a few times since the Firestore fetch is async).
+      let editProbeTries = 0;
+      const editProbe = setInterval(() => {
+        editProbeTries++;
+        const m = (window.__editLoadedMedForImage) || null;
+        if (m && m.imageUrl) {
+          clearInterval(editProbe);
+          window.__resolvedMedImage = {
+            imageUrl: m.imageUrl,
+            canonical: m.imageCanonical || m.name || null,
+            genericName: m.imageGenericName || null,
+            summary: m.imageSummary || null,
+            form: null,
+            source: m.imageSource || 'preserved',
+          };
+          const card = window.MedImage.renderInlineCard({
+            imageUrl: m.imageUrl,
+            canonical: m.imageCanonical || m.name || null,
+            genericName: m.imageGenericName || null,
+          });
+          clearMount();
+          mount.appendChild(card);
+          mountSummaryIfAny(m.imageSummary, m.imageCanonical || m.name);
+          currentKey = (m.name || '').trim().toLowerCase();
+        } else if (editProbeTries > 30) {
+          clearInterval(editProbe);
+        }
+      }, 200);
+
+      // Voice handoff prefill: if AI Voice resolved an image, mount it.
+      try {
+        const v = (window.__voiceMedicationDataForImage) || null;
+        if (v && v.imageUrl) {
+          window.__resolvedMedImage = {
+            imageUrl: v.imageUrl,
+            canonical: v.imageCanonical || v.name || null,
+            genericName: v.imageGenericName || null,
+            summary: v.imageSummary || null,
+            form: null,
+            source: v.imageSource || 'voice',
+          };
+          const card = window.MedImage.renderInlineCard({
+            imageUrl: v.imageUrl,
+            canonical: v.imageCanonical || v.name || null,
+            genericName: v.imageGenericName || null,
+          });
+          mount.appendChild(card);
+          mountSummaryIfAny(v.imageSummary, v.imageCanonical || v.name);
+          currentKey = (v.name || '').trim().toLowerCase();
+        }
+      } catch (_) {}
+
+      // Renew/edit prefill: if Firestore med doc already has an imageUrl, show it.
+      // The renew loader stores the source med in `tempRenewMed` localStorage entry
+      // with the same fields as Firestore. We just probe that on load.
+      try {
+        const params = new URLSearchParams(location.search);
+        const renewParam = params.get('renew') ?? params.get('renewIdx');
+        if (renewParam !== null) {
+          const arr = JSON.parse(localStorage.getItem('tempRenewMed') || '[]');
+          const idx = parseInt(renewParam, 10);
+          const src = (Number.isFinite(idx) && arr[idx]) || null;
+          if (src && src.imageUrl) {
+            window.__resolvedMedImage = {
+              imageUrl: src.imageUrl,
+              canonical: src.imageCanonical || src.name || null,
+              genericName: src.imageGenericName || null,
+              summary: src.imageSummary || null,
+              form: null,
+              source: src.imageSource || 'preserved',
+            };
+            const card = window.MedImage.renderInlineCard({
+              imageUrl: src.imageUrl,
+              canonical: src.imageCanonical || src.name || null,
+              genericName: src.imageGenericName || null,
+            });
+            mount.appendChild(card);
+            mountSummaryIfAny(src.imageSummary, src.imageCanonical || src.name);
+            currentKey = (src.name || '').trim().toLowerCase();
+          }
+        }
+      } catch (_) {}
+    })();
   </script>
 </body>
 </html>

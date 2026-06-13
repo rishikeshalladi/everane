@@ -4,6 +4,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Profile</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -34,7 +38,7 @@
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      line-height: 1.6;
+      line-height: 1.4;
       color: var(--text);
       background:
         radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
@@ -46,7 +50,7 @@
 
     /* layout */
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
-    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); position: relative; }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(0.75rem, 2vw, 1.5rem); position: relative; }
     .sidebar {
       position: fixed; inset: 0 auto 0 0; width: 240px;
       padding: 1rem;
@@ -215,91 +219,61 @@
     }
 
     /* headings */
-    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
-    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+    h1 { font-size: clamp(1.2rem, 3vw, 1.6rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 0.5rem; }
+    h2 { font-size: clamp(1rem, 2.5vw, 1.3rem); margin: 0 0 .3rem; }
 
     /* cards */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.1rem;
+      padding: 0.75rem;
       box-shadow: var(--shadow);
     }
     .card p { color: var(--muted); margin: 0; }
     .card strong { color: var(--text); }
 
-    .profile-container { max-width: 95%; margin: 0 auto; padding: 0.5rem; }
+    .profile-container { max-width: 95%; margin: 0 auto; padding: 0.25rem; }
 
     .profile-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--surface); border-radius: 12px;
+      margin-bottom: 0.5rem; padding: 0.5rem 0.75rem; background: var(--surface); border-radius: 12px;
       box-shadow: var(--shadow); border: 1px solid var(--border);
     }
 
-    .profile-title { font-size: 1.5rem; font-weight: bold; color: var(--text); margin: 0; }
+    .profile-title { font-size: 1.55rem; font-weight: 800; color: var(--text); margin: 0; letter-spacing: -0.01em; }
 
-    .profile-header-btns { display: flex; gap: 0.5rem; align-items: center; }
-    .profile-header-btns .btn { font-size: 0.85rem; padding: 0.5rem 1rem; }
+    .profile-header { margin-bottom: 0.75rem; }
+    .profile-header-btns { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .profile-header-btns .btn { font-size: 0.92rem; padding: 0.55rem 1rem; }
 
-    .help-question-btn {
-      position: fixed;
-      top: 2rem;
-      right: 2rem;
-      width: 48px;
-      height: 48px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      color: var(--text);
-      box-shadow: 0 4px 12px rgba(0,0,0,.15);
-      z-index: 1000;
-    }
+    .profile-content { margin-top: 0.25rem; }
 
-    .help-question-btn:hover {
-      background: linear-gradient(135deg, var(--brand), var(--brand-600));
-      border-color: var(--brand);
-      color: white;
-      transform: scale(1.1) rotate(5deg);
-      box-shadow: 0 6px 20px rgba(79,140,255,.4);
-    }
+    .profile-card { background: var(--surface); padding: 1rem 1.1rem; margin-bottom: 0; border-radius: var(--radius); box-shadow: var(--shadow); position: relative; border: 1px solid var(--border); }
 
-    .help-question-btn:active {
-      transform: scale(1.05) rotate(0deg);
-    }
+    .profile-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 0.85rem 1rem; }
 
-    .profile-content { margin-top: 0.5rem; }
+    .form-group { margin-bottom: 0.35rem; }
 
-    .profile-card { background: var(--surface); padding: 1rem 1.25rem; margin-bottom: 0; border-radius: var(--radius); box-shadow: var(--shadow); position: relative; border: 1px solid var(--border); }
-
-    .profile-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 1rem; }
-
-    .form-group { margin-bottom: 0.5rem; }
-
-    .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; color: var(--text); }
+    .form-group label { display: block; margin-bottom: 0.35rem; font-weight: 600; color: var(--text); font-size: 0.98rem; }
 
     .form-group input,
     .form-group select,
     .form-group textarea {
-      width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 14px; font-size: 1rem;
+      width: 100%; padding: 0.6rem 0.85rem; border: 1px solid var(--border); border-radius: 12px; font-size: 1rem;
       outline: none; background: var(--surface); color: var(--text); transition: border-color var(--transition), box-shadow var(--transition); font-family: inherit;
     }
 
     .form-group input:focus,
     .form-group select:focus,
-    .form-group textarea:focus { 
-      border-color: color-mix(in oklab, var(--brand) 40%, transparent); 
-      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent); 
+    .form-group textarea:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
     }
 
-    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-group textarea { resize: vertical; min-height: 72px; }
 
-    .form-group small { font-size: 0.8em; color: var(--muted); }
+    .form-group small { font-size: 0.85em; color: var(--muted); }
 
     .input-wrap { position: relative; }
     .input-wrap input { padding-right: 3rem; }
@@ -344,7 +318,7 @@
       justify-content: center;
     }
 
-    .actions { margin-top: 1rem; display: flex; justify-content: flex-end; }
+    .actions { margin-top: 0.5rem; display: flex; justify-content: flex-end; }
 
     /* buttons */
     .btn {
@@ -382,7 +356,8 @@
     }
     .btn-success:hover { filter: brightness(1.02); }
 
-    .msg { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; font-size: 0.9rem; }
+    .msg { margin-top: 0.35rem; padding: 0.5rem; border-radius: 6px; font-size: 0.82rem; }
+    .msg:empty { display: none; }
     .msg.ok { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.2); }
     .msg.err { background: rgba(255, 107, 107, 0.1); color: var(--danger); border: 1px solid rgba(255, 107, 107, 0.2); }
 
@@ -390,11 +365,11 @@
     .notification-reminders { position: relative; }
     .notification-dropdown { position: relative; display: inline-block; width: 100%; }
     .notification-dropdown-toggle {
-      width: 100%; padding: 0.7rem 1rem; border-radius: 14px;
+      width: 100%; padding: 0.5rem 0.75rem; border-radius: 12px;
       background: var(--surface); border: 1px solid var(--border);
-      color: var(--text); font-size: 1rem; text-align: left;
+      color: var(--text); font-size: 0.92rem; text-align: left;
       display: flex; align-items: center; justify-content: space-between;
-      gap: 0.75rem; cursor: pointer;
+      gap: 0.5rem; cursor: pointer;
       transition: border-color var(--transition), box-shadow var(--transition);
     }
     .notification-dropdown-toggle:hover,
@@ -476,27 +451,94 @@
       line-height: 1.05;
     }
     .notification-selected-summary {
-      margin-top: 0.45rem; color: var(--muted); font-size: 0.9rem;
+      margin-top: 0.2rem; color: var(--muted); font-size: 0.8rem;
     }
     .notification-selected-summary strong { color: var(--text); font-weight: 600; }
 
-    /* Desktop: fit to screen, no scrolling */
+    /* Desktop: fit the viewport, but allow internal scroll if the form is
+       taller than the screen. Body never scrolls (so the sidebar stays put);
+       only the content column scrolls when needed. */
     @media (min-width: 901px) {
       html, body { overflow: hidden; height: 100vh; }
-      .content { height: 100vh; overflow: hidden; padding-block: 1rem; }
-      .profile-container { max-width: 95%; }
-      .profile-form { grid-template-columns: repeat(3, 1fr); }
+      .content {
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-block: 1rem;
+        scrollbar-gutter: stable;
+      }
+      .profile-container { max-width: min(1100px, 95%); }
+      .profile-form { grid-template-columns: repeat(2, 1fr); gap: 0.85rem 1.25rem; }
+      .form-group { margin-bottom: 0.25rem; }
     }
+    /* Pretty scrollbar so it doesn't look industrial */
+    .content::-webkit-scrollbar { width: 10px; }
+    .content::-webkit-scrollbar-track { background: transparent; }
+    .content::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--text) 18%, transparent);
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    .content::-webkit-scrollbar-thumb:hover { background: color-mix(in oklab, var(--text) 32%, transparent); background-clip: padding-box; }
 
     /* Error message styling - just text, no box */
-    .error-message { 
-      color: var(--danger); 
-      font-size: 0.9rem; 
-      margin-top: 0.25rem; 
-      min-height: 1.2em;
+    .error-message {
+      color: var(--danger);
+      font-size: 0.88rem;
+      margin-top: 0.2rem;
+      min-height: 0;
     }
+    .error-message:empty { display: none; }
 
     .full-width { grid-column: 1 / -1; }
+
+    /* Caregiver list items */
+    .caregiver-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.6rem;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .caregiver-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+    .caregiver-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-width: 0;
+    }
+    .caregiver-name {
+      font-weight: 700;
+      color: var(--text);
+      font-size: 0.98rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+    .caregiver-email {
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
 
     /* modals */
     .modal {
@@ -580,72 +622,99 @@
     @media (max-width: 640px) {
       select {
         font-size: 16px !important;
-        padding: 0.7rem 0.85rem !important;
+        padding: 0.45rem 0.65rem !important;
       }
-      
+
       select option {
         background-color: var(--surface);
         color: var(--text);
         font-size: 16px;
       }
-      .container { padding-inline: 1rem; }
-      .content { padding-block: 1.5rem; padding-top: 4.5rem !important; }
-      .profile-container { padding: 0.5rem; max-width: 100%; }
-      
-      h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
-      h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
-      
+      .container { padding-inline: 0.75rem; }
+      .content { padding-block: 0.75rem; padding-top: 3.5rem !important; }
+      .profile-container { padding: 0.25rem; max-width: 100%; }
+
+      h1 { font-size: 1.2rem; margin-bottom: 0.35rem; }
+      h2 { font-size: 1rem; margin-bottom: 0.2rem; }
+
       .profile-header {
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        margin-bottom: 0.75rem;
-        align-items: flex-start;
+        flex-direction: row;
+        gap: 0.4rem;
+        padding: 0.45rem 0.65rem;
+        margin-bottom: 0.4rem;
+        align-items: center;
       }
 
-      .profile-title { font-size: 1.25rem; }
+      .profile-title { font-size: 1.1rem; }
 
-      .profile-header-btns { width: 100%; }
-      .profile-header-btns .btn { flex: 1; font-size: 0.8rem; padding: 0.45rem 0.75rem; }
-      
+      .profile-header-btns { width: auto; }
+      .profile-header-btns .btn { flex: none; font-size: 0.75rem; padding: 0.35rem 0.65rem; }
+
       .btn-group {
         width: 100%;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.35rem;
       }
-      
+
       .card {
-        padding: 0.9rem;
-        border-radius: 16px;
-        margin-bottom: 1rem;
+        padding: 0.6rem;
+        border-radius: 14px;
+        margin-bottom: 0.5rem;
       }
-      
-      .form-grid {
-        grid-template-columns: 1fr !important;
-        gap: 0.75rem !important;
-      }
-      
+
+      .profile-card { padding: 0.5rem 0.65rem !important; }
+
+      .profile-form { gap: 0.3rem 0.5rem !important; grid-template-columns: 1fr 1fr !important; }
+
+      .form-group { margin-bottom: 0.1rem; }
+
       .form-group label {
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.1rem;
       }
-      
+
       .form-group input[type="text"],
       .form-group input[type="email"],
       .form-group input[type="tel"],
       .form-group input[type="password"],
       .form-group input[type="date"],
       .form-group textarea {
-        padding: 0.7rem 0.85rem;
+        padding: 0.45rem 0.65rem;
         font-size: 16px;
-        border-radius: 12px;
+        border-radius: 10px;
       }
       .notification-dropdown-toggle {
-        padding: 0.65rem 0.85rem;
+        padding: 0.45rem 0.65rem;
         font-size: 16px;
       }
       .notification-dropdown-menu {
-        max-height: 220px;
-        border-radius: 12px;
+        max-height: 200px;
+        border-radius: 10px;
+      }
+
+      .notification-selected-summary {
+        margin-top: 0.15rem;
+        font-size: 0.75rem;
+      }
+
+      .notification-reminders {
+        grid-column: 1 / -1;
+      }
+
+      .doctor-account-card {
+        margin-top: 0.4rem !important;
+        padding: 0.5rem 0.65rem !important;
+      }
+      .doctor-card-header .doctor-icon {
+        width: 28px !important; height: 28px !important;
+        font-size: 14px !important;
+      }
+      .doctor-card-header h3 { font-size: 0.85rem !important; }
+      .doctor-card-header p { font-size: 0.7rem !important; }
+      .doctor-account-btn {
+        margin-top: 0.3rem !important;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.8rem !important;
       }
       
       input[type="text"],
@@ -672,21 +741,22 @@
       }
       
       .btn {
-        padding: 0.65rem 0.85rem;
-        font-size: 0.9rem;
+        padding: 0.45rem 0.65rem;
+        font-size: 0.82rem;
         border-radius: 10px;
       }
-      
+
       .btn-sm {
-        padding: 0.45rem 0.65rem;
-        font-size: 0.85rem;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.78rem;
       }
-      
+
       .actions {
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 0.35rem;
+        margin-top: 0.5rem;
       }
-      
+
       .actions .btn {
         width: 100%;
       }
@@ -716,7 +786,403 @@
       }
     }
 
+    /* Doctor Account Card */
+    .doctor-account-card {
+      margin-top: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      box-shadow: var(--shadow);
+    }
+    .doctor-account-card .doctor-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.25rem;
+    }
+    .doctor-card-header .doctor-icon {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--brand), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .doctor-card-header h3 {
+      margin: 0;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .doctor-card-header p {
+      margin: 0;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .doctor-account-btn {
+      margin-top: 0.4rem;
+      width: 100%;
+      padding: 0.6rem 1rem;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: all 0.2s ease;
+      box-shadow: 0 6px 20px rgba(79,140,255,0.3);
+    }
+    .doctor-account-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(79,140,255,0.4);
+    }
+    .doctor-account-btn:active { transform: translateY(0); }
+    .doctor-account-btn.already-set {
+      background: linear-gradient(135deg, var(--success), #16a34a);
+      box-shadow: 0 6px 20px rgba(34,197,94,0.3);
+      cursor: default;
+    }
+    .doctor-account-btn.already-set:hover {
+      transform: none;
+      box-shadow: 0 6px 20px rgba(34,197,94,0.3);
+    }
+
+    /* Doctor account modal */
+    .doctor-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+    }
+    .doctor-modal-overlay.open { display: flex; }
+    .doctor-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      width: min(440px, 92vw);
+      padding: 2rem;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+      animation: doctorModalIn 0.25s ease;
+    }
+    @keyframes doctorModalIn {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .doctor-modal h3 {
+      margin: 0 0 0.25rem;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .doctor-modal .modal-sub {
+      margin: 0 0 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .doctor-modal .field-group {
+      margin-bottom: 1.25rem;
+    }
+    .doctor-modal .field-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .doctor-modal .field-group input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1.1rem;
+      font-weight: 600;
+      font-family: monospace;
+      letter-spacing: 2px;
+    }
+    .doctor-modal .field-group input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(79,140,255,0.15);
+    }
+    .doctor-modal .field-group input[readonly] {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .doctor-modal .pw-wrap {
+      position: relative;
+    }
+    .doctor-modal .pw-wrap input {
+      padding-right: 3rem;
+      font-family: inherit;
+      letter-spacing: 1px;
+    }
+    .doctor-modal .pw-toggle {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .doctor-modal .pw-toggle:hover { color: var(--text); }
+    .doctor-modal .modal-btns {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    .doctor-modal .modal-btns button {
+      flex: 1;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+    .doctor-modal .btn-cancel {
+      background: color-mix(in oklab, var(--border) 80%, transparent);
+      color: var(--text);
+    }
+    .doctor-modal .btn-cancel:hover { opacity: 0.8; }
+    .doctor-modal .btn-create {
+      background: linear-gradient(135deg, var(--brand), var(--brand-600));
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(79,140,255,0.3);
+    }
+    .doctor-modal .btn-create:hover {
+      box-shadow: 0 8px 22px rgba(79,140,255,0.4);
+      transform: translateY(-1px);
+    }
+    .doctor-modal .btn-create:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .doctor-modal .doc-msg {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      min-height: 1.2em;
+    }
+    .doctor-modal .doc-msg.success { color: var(--success); }
+    .doctor-modal .doc-msg.error { color: var(--danger); }
+
+    /* ── Push device cards: keep Test/Disable/Remove buttons inside the card
+          and visually compact. The JS that builds the rows uses .btn .btn-secondary
+          and .btn .btn-danger, which inherit the big page-wide button styling.
+          Constrain only buttons that live inside #push-devices-list. ────────── */
+    #push-devices-list > div {
+      max-width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    #push-devices-list button.btn,
+    #push-devices-list .btn {
+      flex: 0 0 auto !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      padding: 0.4rem 0.7rem !important;
+      font-size: 0.82rem !important;
+      border-radius: 8px !important;
+      font-weight: 600 !important;
+      box-shadow: none !important;
+      white-space: nowrap;
+    }
+    #push-devices-list button.btn-danger,
+    #push-devices-list .btn-danger {
+      background: transparent !important;
+      color: var(--danger) !important;
+      border: 1px solid color-mix(in oklab, var(--danger) 35%, var(--border)) !important;
+    }
+    #push-devices-list button.btn-danger:hover,
+    #push-devices-list .btn-danger:hover {
+      background: color-mix(in oklab, var(--danger) 12%, transparent) !important;
+    }
+    @media (max-width: 480px) {
+      /* Narrow phones: actions wrap underneath the device info on their own row. */
+      #push-devices-list > div > div:last-child {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+
+    /* ════════════════════════════════════════════════════════════════════════
+       MOBILE MINIMAL — additive only. Do NOT override the form layout or any
+       section card styling. The original styles above already handle desktop
+       AND mobile compactly. This block ONLY:
+         1. Hides the ⋯ button on desktop (we don't use it)
+         2. On mobile: shows the ⋯ button, hides Help/Replay/Sign Out/header-Save
+         3. On mobile: shows a working fixed-position popover for the ⋯ menu
+         4. On mobile: shows a sticky Save Changes bar at the bottom
+         5. Mobile-safe modal sizing (Add Phone, SMS Consent, FAQ, etc.)
+       Everything else is left to the existing styles.
+       ════════════════════════════════════════════════════════════════════════ */
+
+    /* ── ⋯ button + sheet: hidden on desktop ─────────────────────────── */
+    #profile-more-btn,
+    .profile-more-btn,
+    #profile-more-sheet,
+    .profile-more-sheet,
+    .profile-save-bar {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      /* ⋯ button visible on mobile */
+      #profile-more-btn,
+      .profile-more-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        font-size: 1.25rem !important;
+        line-height: 1 !important;
+        border-radius: 10px !important;
+        font-weight: 800 !important;
+        flex-shrink: 0;
+      }
+      /* Hide secondary header buttons + the header Save Changes (sticky bar covers it) */
+      .profile-header-btns .profile-secondary-btn { display: none !important; }
+      .profile-header-btns #header-save-btn { display: none !important; }
+
+      /* Popover sheet — fixed-position so it's never clipped by ancestors */
+      #profile-more-sheet,
+      .profile-more-sheet {
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top, 0px) + 72px);
+        right: 1rem;
+        z-index: 200;
+        min-width: 200px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.35rem;
+        box-shadow: 0 18px 40px rgba(15,23,42,0.25);
+        flex-direction: column;
+      }
+      #profile-more-sheet.is-open,
+      .profile-more-sheet.is-open {
+        display: flex !important;
+      }
+      .profile-more-sheet-item {
+        background: transparent;
+        border: 0;
+        text-align: left;
+        padding: 0.7rem 0.9rem;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer;
+      }
+      .profile-more-sheet-item:hover,
+      .profile-more-sheet-item:active {
+        background: color-mix(in oklab, var(--brand) 12%, transparent);
+      }
+      .profile-more-sheet-item--danger { color: var(--danger); }
+      .profile-more-sheet-item--danger:hover,
+      .profile-more-sheet-item--danger:active {
+        background: color-mix(in oklab, var(--danger) 12%, transparent);
+      }
+      @media (prefers-color-scheme: dark) {
+        #profile-more-sheet,
+        .profile-more-sheet { box-shadow: 0 18px 40px rgba(0,0,0,0.55); }
+      }
+
+      /* Sticky Save bar */
+      .profile-save-bar {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        z-index: 40;
+      }
+      .profile-save-bar.is-shown { display: block !important; }
+      .profile-save-bar .btn {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        font-size: 0.98rem;
+        border-radius: 12px;
+        background: var(--brand);
+        color: #fff;
+        border: 1px solid var(--brand);
+      }
+      /* Reserve scroll space at the bottom so content clears the sticky bar */
+      .profile-container,
+      .content {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
+      /* iOS no-focus-zoom on inputs */
+      .form-group input[type="text"],
+      .form-group input[type="email"],
+      .form-group input[type="tel"],
+      .form-group input[type="number"],
+      .form-group input[type="password"],
+      .form-group input[type="date"],
+      .form-group select,
+      .form-group textarea {
+        font-size: 16px !important;
+      }
+
+      /* Modal sizing */
+      .modal { padding: 0.6rem !important; }
+      .modal .modal-content,
+      .modal-content {
+        max-width: min(560px, 94vw) !important;
+        width: 100% !important;
+        max-height: calc(100dvh - 1.2rem) !important;
+        overflow-y: auto;
+        padding: 1rem 1rem !important;
+        border-radius: 16px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .modal h3, .modal h2 { font-size: 1.02rem !important; line-height: 1.3; }
+      .modal .modal-description { font-size: 0.88rem !important; line-height: 1.5; }
+      .modal label { font-size: 0.86rem !important; }
+      .modal input, .modal select, .modal textarea {
+        font-size: 16px !important;
+        padding: 0.7rem 0.85rem !important;
+        border-radius: 10px !important;
+      }
+      #sms-consent-modal .modal-content ul { padding-left: 1rem; margin-bottom: 0.4rem; }
+      #sms-consent-modal .modal-content ul li { margin-bottom: 0.15rem; font-size: 0.85rem; }
+      #sms-consent-modal label[for="sms-consent-checkbox"] { font-size: 0.85rem !important; }
+
+      /* "Add a phone number" button — full width on mobile */
+      #add-phone-btn { width: 100%; }
+    }
+
+
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#3f6ff5">
+  <script src="push-subscribe.js"></script>
+  <script src="tutorial.js"></script>
+  <script src="auth-guard.js" type="module"></script>
 </head>
 
 <body>
@@ -735,26 +1201,34 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html" class="active" style="display: flex; align-items: center; justify-content: space-between;">
       <span>Profile</span>
     </a>
   </nav>
 
   <div class="content">
-    <button class="help-question-btn" id="open-help-modal-profile" title="Help & Guide">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-      </svg>
-    </button>
+    <!-- Help question-mark button removed by request. The Help modal markup
+         below is kept in case we re-add it later, but is no longer reachable. -->
     <div class="profile-container">
       <div class="profile-header">
         <h1 class="profile-title">Your Profile</h1>
         <div class="profile-header-btns">
+          <button type="button" id="open-help-btn" class="btn btn-secondary profile-secondary-btn" title="Help &amp; FAQ">Help</button>
+          <button type="button" id="replay-tutorial-btn" class="btn btn-secondary profile-secondary-btn" title="Replay the welcome tutorial">Replay tutorial</button>
           <button type="button" id="header-save-btn" class="btn btn-primary">Save Changes</button>
-          <button type="button" id="header-sign-out-btn" class="btn btn-danger">Sign Out</button>
+          <button type="button" id="header-sign-out-btn" class="btn btn-danger profile-secondary-btn">Sign Out</button>
+          <!-- Mobile-only "More⋯" toggle. Hidden on desktop via CSS. -->
+          <button type="button" id="profile-more-btn" class="btn btn-secondary profile-more-btn" aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
         </div>
+      </div>
+      <!-- Mobile-only popover. Hidden on desktop and when not toggled. The
+           actual Help / Replay / Sign Out clicks are forwarded to the
+           original buttons so existing JS handlers keep working. -->
+      <div id="profile-more-sheet" class="profile-more-sheet" role="menu" aria-hidden="true">
+        <button type="button" class="profile-more-sheet-item" data-forwards-to="open-help-btn">Help &amp; FAQ</button>
+        <button type="button" class="profile-more-sheet-item" data-forwards-to="replay-tutorial-btn">Replay tutorial</button>
+        <button type="button" class="profile-more-sheet-item profile-more-sheet-item--danger" data-forwards-to="header-sign-out-btn">Sign out</button>
       </div>
 
       <div class="profile-content">
@@ -778,9 +1252,10 @@
                   <input id="phone" name="phone" type="tel" placeholder="+1 (123) 456-7890" readonly style="display: none;" />
                   <button type="button" id="add-phone-btn" class="btn btn-secondary" style="display: none; margin-top: 0.5rem;">Add a phone number</button>
                 </div>
+                <div id="sms-consent-note" style="display:none; margin-top:0.45rem; font-size:0.82rem; color:var(--muted,#64748b); line-height:1.5;"></div>
                 <div id="phone-error" class="error-message"></div>
               </div>
-              <div class="form-group notification-reminders">
+              <div class="form-group notification-reminders" data-tutorial="profile-notifications">
               <label for="notification-dropdown-toggle">Notification reminders <small>(choose as many as you like)</small></label>
               <div class="notification-dropdown">
                 <button type="button" class="notification-dropdown-toggle" id="notification-dropdown-toggle" aria-haspopup="listbox" aria-expanded="false">
@@ -842,6 +1317,58 @@
               </div>
               <div class="notification-selected-summary" id="notification-selected-summary">No reminders selected.</div>
               </div>
+
+              <!-- Install-as-app panel: appears when the PWA can be installed,
+                   or shows iPhone Safari add-to-home-screen instructions. -->
+              <div id="install-app-panel" class="form-group" style="display:none; border:1px solid color-mix(in oklab, #3f6ff5 50%, var(--border, #e5e7eb)); border-radius:14px; padding:1rem 1.1rem; background: color-mix(in oklab, #3f6ff5 8%, var(--surface, #fff)); color: var(--text);">
+                <div style="display:flex; align-items:center; gap:.65rem; margin-bottom:.5rem;">
+                  <span style="font-size:1.5rem; line-height:1;">📲</span>
+                  <div style="font-weight:700; font-size:1rem;">Install Everane as an app</div>
+                </div>
+                <div id="install-app-body" style="font-size:0.9rem; line-height:1.5; color:var(--muted, #6b7280); margin-bottom:0.75rem;">
+                  Install Everane on your device to enable push notifications and get an app icon on your home screen.
+                </div>
+                <div id="install-app-actions">
+                  <button type="button" id="install-app-btn" class="btn btn-primary" style="display:none;">Install app to enable push notifications</button>
+                </div>
+                <!-- iOS Safari instructions (shown when on iOS Safari w/o PWA installed) -->
+                <div id="install-app-ios-instructions" style="display:none; margin-top:0.5rem; padding:0.75rem; background:color-mix(in oklab, var(--surface, #fff) 92%, transparent); border-radius:10px; font-size:0.88rem; line-height:1.55;">
+                  <div style="font-weight:700; margin-bottom:0.35rem;">To install on iPhone / iPad:</div>
+                  <ol style="margin:0; padding-left:1.25rem;">
+                    <li>Tap the <strong>Share</strong> button <span style="display:inline-block; padding:0 4px; border:1px solid var(--border, #ccc); border-radius:5px; font-size:0.75em;">⬆︎</span> at the bottom of Safari</li>
+                    <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+                    <li>Tap <strong>Add</strong> in the top-right</li>
+                    <li>Open Everane from your Home Screen icon</li>
+                    <li>Come back to this page and enable Push reminders</li>
+                  </ol>
+                </div>
+                <div id="install-app-success" style="display:none; margin-top:0.5rem; font-size:0.92rem; font-weight:600; color:#10b981;">
+                  ✓ Everane is installed on this device.
+                </div>
+              </div>
+
+              <!-- Push notification devices: list all subscribed devices, allow per-device manage. -->
+              <div id="push-devices-panel" class="form-group" style="border:1px solid var(--border, #e5e7eb); border-radius:14px; padding:1rem 1.1rem; background: var(--surface, #fff); color: var(--text);">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+                  <div>
+                    <div style="font-weight:700; font-size:1rem;">Push notification devices</div>
+                    <div style="font-size:0.88rem; line-height:1.45; color:var(--muted, #6b7280);">
+                      Each browser / phone where you enabled push has its own subscription. Manage them here.
+                    </div>
+                  </div>
+                  <button type="button" id="enable-here-btn" class="btn btn-primary" style="display:none;">Enable push on this device</button>
+                </div>
+                <div id="push-devices-list" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.65rem; font-size:0.92rem;">
+                  <div style="color:var(--muted, #6b7280); font-style:italic;">Loading devices&hellip;</div>
+                </div>
+                <div id="push-devices-msg" style="margin-top:0.5rem; font-size:0.88rem; color:var(--muted, #6b7280);"></div>
+              </div>
+
+              <!-- Test reminder delivery section removed by request. The diagnostic
+                   callables (testFireReminder, dumpMyReminderDiagnostics,
+                   resetTodayDedup, cleanStaleDedup) are still deployed on the
+                   backend if needed via direct call; just no longer exposed in the UI. -->
+
               <div class="form-group">
                 <label for="age">Age <small>(optional)</small></label>
                 <select id="age" name="age">
@@ -860,12 +1387,66 @@
                 <label for="tz">Time zone <small>(auto)</small></label>
                 <input id="tz" name="timezone" type="text" readonly />
               </div>
+              <!-- Caregivers section (hidden by default, shown only when patient has caregivers) -->
+              <div class="form-group full-width" id="caregivers-section" style="display: none;">
+                <label>Your Caregivers</label>
+                <div id="caregivers-list" style="display: grid; gap: 0.5rem;"></div>
+              </div>
             </div>
 
             <p id="message" class="msg" role="status" aria-live="polite"></p>
           </form>
         </div>
+
+        <!-- Sticky bottom Save Changes bar (mobile only, shown via CSS).
+             Forwards click to the existing header save button so we reuse the
+             same handler with zero duplication. -->
+        <div id="profile-save-bar" class="profile-save-bar">
+          <button type="button" class="btn btn-primary" id="profile-save-bar-btn">Save Changes</button>
+        </div>
+
+        <!-- Doctor Account Section -->
+        <div class="doctor-account-card" id="doctor-account-card">
+          <div class="doctor-card-header">
+            <div class="doctor-icon">🩺</div>
+            <div>
+              <h3>Doctor Access Account</h3>
+              <p>Generate a patient ID &amp; password for your doctor to view your data</p>
+            </div>
+          </div>
+          <button type="button" class="doctor-account-btn" id="doctor-account-btn" onclick="openDoctorAccountModal()">
+            Generate Patient Account for Doctors
+          </button>
+        </div>
+
       </div>
+    </div>
+  </div>
+
+  <!-- Doctor Account Modal (create + manage) -->
+  <div class="doctor-modal-overlay" id="doctor-modal-overlay" onclick="if(event.target===this)closeDoctorAccountModal()">
+    <div class="doctor-modal">
+      <h3 id="doc-modal-title">Create Doctor Access</h3>
+      <p class="modal-sub" id="doc-modal-sub">Set a password so your doctor can securely access your medication data using your Patient ID.</p>
+      <div class="field-group">
+        <label>Patient ID</label>
+        <input type="text" id="doc-patient-id" readonly>
+      </div>
+      <div class="field-group">
+        <label id="doc-password-label">Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="doc-password" placeholder="Set a password" autocomplete="new-password">
+          <button type="button" class="pw-toggle" onclick="toggleDocPw()" aria-label="Toggle password visibility">
+            <svg id="doc-pw-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg id="doc-pw-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-btns">
+        <button type="button" class="btn-cancel" onclick="closeDoctorAccountModal()">Cancel</button>
+        <button type="button" class="btn-create" id="doc-create-btn" onclick="createDoctorAccount()">Create Account</button>
+      </div>
+      <div class="doc-msg" id="doc-msg"></div>
     </div>
   </div>
 
@@ -909,6 +1490,55 @@
       </div>
 
   <!-- Add Phone Number Modal -->
+  <!-- SMS Consent Modal — shown BEFORE add-phone-modal. Required for Twilio
+       Toll-Free Verification: the user must explicitly opt in to SMS at the
+       moment of providing their number. -->
+  <div id="sms-consent-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sms-consent-title">
+    <div class="modal-content" style="max-width: 560px;">
+      <button class="modal-close" id="sms-consent-close" aria-label="Close">&times;</button>
+      <h3 id="sms-consent-title" style="margin-bottom: 0.4rem;">📱 SMS Reminders — Your Consent</h3>
+      <p class="modal-description" style="margin-bottom: 0.85rem;">
+        Before you add your phone number, please review what you'll receive and agree to receive SMS text messages.
+      </p>
+
+      <div style="background: color-mix(in oklab, #3f6ff5 8%, var(--surface, #fff)); border: 1px solid color-mix(in oklab, #3f6ff5 25%, var(--border, #e5e7eb)); border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.85rem; font-size: 0.92rem; line-height: 1.55;">
+        <div style="font-weight: 700; margin-bottom: 0.4rem;">What you'll receive:</div>
+        <ul style="margin: 0 0 0.6rem 1.1rem; padding: 0;">
+          <li>Medication dose reminders at the times you schedule</li>
+          <li>Missed-dose alerts if you don't mark a dose taken</li>
+          <li>Your daily medication agenda each morning</li>
+          <li>One-time verification codes when you add or change your phone number</li>
+        </ul>
+        <div style="font-weight: 700; margin-bottom: 0.4rem;">What we will NOT do:</div>
+        <ul style="margin: 0 0 0.6rem 1.1rem; padding: 0;">
+          <li>No marketing or promotional messages — ever</li>
+          <li>No third-party sharing of your phone number</li>
+          <li>No selling your information</li>
+        </ul>
+        <div style="font-size: 0.85rem; color: var(--muted, #64748b);">
+          Message frequency depends on your medication schedule. Message and data rates may apply. Reply <strong>STOP</strong> at any time to unsubscribe. Reply <strong>HELP</strong> for help. You can also remove your phone number from this profile at any time.
+        </div>
+      </div>
+
+      <label for="sms-consent-checkbox" style="display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; padding: 0.5rem 0; font-size: 0.95rem; line-height: 1.5;">
+        <input type="checkbox" id="sms-consent-checkbox" style="margin-top: 0.25rem; flex-shrink: 0; width: 1.05rem; height: 1.05rem; cursor: pointer;">
+        <span>
+          I agree to receive recurring SMS text messages from Everane at the phone number I provide for medication reminders, missed-dose alerts, agendas, and verification codes. I have read the
+          <a href="privacypolicy.html" target="_blank" rel="noopener" style="color: var(--brand, #3f6ff5); text-decoration: underline;">Privacy Policy</a>
+          and
+          <a href="termsofservice.html" target="_blank" rel="noopener" style="color: var(--brand, #3f6ff5); text-decoration: underline;">Terms of Service</a>.
+          I understand I can reply STOP to unsubscribe at any time.
+        </span>
+      </label>
+
+      <div style="display: flex; gap: 0.6rem; margin-top: 1rem;">
+        <button type="button" id="sms-consent-cancel" class="btn-secondary" style="flex: 1;">Cancel</button>
+        <button type="button" id="sms-consent-agree" class="btn-primary" style="flex: 1;" disabled>I Agree — Continue</button>
+      </div>
+      <p id="sms-consent-message" class="msg" role="status" aria-live="polite" style="margin-top: 0.6rem; font-size: 0.85rem;"></p>
+    </div>
+  </div>
+
   <div id="add-phone-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="add-phone-title">
     <div class="modal-content">
       <button class="modal-close" onclick="closeAddPhoneModal()" aria-label="Close">&times;</button>
@@ -1127,9 +1757,10 @@
       updateNotificationSummary();
     };
 
-    // Timezone auto-fill
+    // Timezone — detect browser timezone as fallback only (Firestore value takes priority)
     const tz = document.getElementById('tz');
-    try { tz.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tz.value = ''; }
+    const detectedTimezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
+    tz.value = detectedTimezone; // Temporary — will be overridden by Firestore value in loadProfileData
 
     // Load profile data from localStorage
     // Helper function to update phone display
@@ -1153,6 +1784,8 @@
       
       // Update phone display
       updatePhoneDisplay(profileData.phone);
+      // Render the SMS consent footnote (Twilio TFV: surface explicit consent date).
+      if (window.renderSmsConsentNote) window.renderSmsConsentNote(profileData.smsConsent || null);
       // Age (preferred) — for older accounts that still have dob, best-effort derive age for display.
       const ageEl = document.getElementById('age');
       if (ageEl) {
@@ -1171,6 +1804,11 @@
       }
       if (profileData.gender) {
         document.getElementById('gender').value = profileData.gender;
+      }
+      // Timezone: use stored value from Firestore if available, otherwise keep browser-detected
+      const tzEl = document.getElementById('tz');
+      if (tzEl && profileData.timezone && profileData.timezone.trim()) {
+        tzEl.value = profileData.timezone;
       }
       if (window.setNotificationReminders) {
         window.setNotificationReminders(profileData.notification_reminders || []);
@@ -1347,6 +1985,149 @@
 
     // ============ ADD PHONE NUMBER MODAL ============
     
+    // ═════════════════════════════════════════════════════════════════════
+    // SMS Consent Gate (Twilio Toll-Free Verification requirement)
+    // Before the user can add a phone number, they must explicitly opt in to
+    // SMS messages. Consent (and version + timestamp + user agent) is stored
+    // on /users/{uid}.smsConsent for audit / re-review.
+    // ═════════════════════════════════════════════════════════════════════
+    const SMS_CONSENT_VERSION = 'v1';
+
+    async function userHasValidSmsConsent() {
+      try {
+        const u = auth.currentUser;
+        if (!u) return false;
+        const snap = await getDoc(doc(db, 'users', u.uid));
+        if (!snap.exists()) return false;
+        const c = snap.data()?.smsConsent;
+        return !!(c && c.agreedAt && c.version === SMS_CONSENT_VERSION);
+      } catch (e) {
+        console.warn('[SMS Consent] read failed:', e);
+        return false;
+      }
+    }
+
+    async function recordSmsConsent() {
+      const u = auth.currentUser;
+      if (!u) {
+        const e = new Error('You are not signed in. Please refresh the page and try again.');
+        e.code = 'no-current-user';
+        throw e;
+      }
+      // Force a fresh ID token so a stale session doesn't get rejected by rules.
+      try { await u.getIdToken(true); } catch (e) {
+        console.warn('[SMS Consent] token refresh failed:', e);
+      }
+      const consent = {
+        agreedAt: new Date().toISOString(),
+        version: SMS_CONSENT_VERSION,
+        userAgent: (navigator.userAgent || '').slice(0, 300),
+        method: 'opt-in checkbox on profile page',
+      };
+      try {
+        await setDoc(doc(db, 'users', u.uid), { smsConsent: consent }, { merge: true });
+      } catch (e) {
+        console.error('[SMS Consent] Firestore write failed:', e && e.code, e && e.message, e);
+        // Re-throw with a clearer message we can surface to the user.
+        const friendly = new Error(
+          (e && e.code === 'permission-denied')
+            ? 'Permission denied saving consent. Please sign out and back in, then try again.'
+            : ((e && e.message) || 'Could not save your consent. Please try again.')
+        );
+        friendly.cause = e;
+        throw friendly;
+      }
+      if (window.renderSmsConsentNote) window.renderSmsConsentNote(consent);
+      return consent;
+    }
+
+    // Render a small "You agreed to SMS reminders on <date>" footnote under the
+    // phone field. This is what Twilio reviewers look for during TFV re-review
+    // — proof that consent was captured per user.
+    window.renderSmsConsentNote = function(consent) {
+      const el = document.getElementById('sms-consent-note');
+      if (!el) return;
+      if (!consent || !consent.agreedAt) { el.style.display = 'none'; el.textContent = ''; return; }
+      let dateStr = '';
+      try {
+        const d = new Date(consent.agreedAt);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+      } catch (_) {}
+      el.style.display = '';
+      el.innerHTML = '\u2713 You agreed to receive SMS reminders' + (dateStr ? (' on <strong>' + dateStr + '</strong>') : '') + '. Reply STOP to any text to unsubscribe.';
+    };
+
+    function closeSmsConsentModal() {
+      const modal = document.getElementById('sms-consent-modal');
+      if (modal) modal.classList.remove('show');
+      const cb = document.getElementById('sms-consent-checkbox');
+      const agreeBtn = document.getElementById('sms-consent-agree');
+      const msg = document.getElementById('sms-consent-message');
+      if (cb) cb.checked = false;
+      if (agreeBtn) agreeBtn.disabled = true;
+      if (msg) { msg.textContent = ''; msg.className = 'msg'; }
+    }
+
+    function openSmsConsentModal() {
+      const modal = document.getElementById('sms-consent-modal');
+      if (!modal) { console.error('sms-consent-modal not found'); return; }
+      // Reset state
+      const cb = document.getElementById('sms-consent-checkbox');
+      const agreeBtn = document.getElementById('sms-consent-agree');
+      const msg = document.getElementById('sms-consent-message');
+      if (cb) cb.checked = false;
+      if (agreeBtn) agreeBtn.disabled = true;
+      if (msg) { msg.textContent = ''; msg.className = 'msg'; }
+      modal.classList.add('show');
+    }
+
+    // Wire consent modal interactions once.
+    (function wireConsentModal() {
+      const cb = document.getElementById('sms-consent-checkbox');
+      const agreeBtn = document.getElementById('sms-consent-agree');
+      const cancelBtn = document.getElementById('sms-consent-cancel');
+      const closeBtn = document.getElementById('sms-consent-close');
+      const msg = document.getElementById('sms-consent-message');
+      if (cb && agreeBtn) {
+        cb.addEventListener('change', () => { agreeBtn.disabled = !cb.checked; });
+      }
+      if (cancelBtn) cancelBtn.addEventListener('click', closeSmsConsentModal);
+      if (closeBtn) closeBtn.addEventListener('click', closeSmsConsentModal);
+      if (agreeBtn) {
+        agreeBtn.addEventListener('click', async () => {
+          if (!cb || !cb.checked) return;
+          agreeBtn.disabled = true;
+          const original = agreeBtn.textContent;
+          agreeBtn.textContent = 'Saving consent…';
+          if (msg) { msg.className = 'msg'; msg.textContent = ''; }
+          try {
+            await recordSmsConsent();
+            closeSmsConsentModal();
+            // Now open the actual add-phone modal.
+            if (window.openAddPhoneModal) window.openAddPhoneModal();
+          } catch (e) {
+            console.error('[SMS Consent] record failed:', e);
+            agreeBtn.disabled = false;
+            agreeBtn.textContent = original;
+            if (msg) { msg.className = 'msg err'; msg.textContent = (e && e.message) || 'Could not save your consent. Please try again.'; }
+          }
+        });
+      }
+    })();
+
+    // Public entry point used by the Add Phone button.
+    window.openSmsConsentThenAddPhone = async function () {
+      // If consent already recorded, skip straight to the phone modal.
+      const ok = await userHasValidSmsConsent();
+      if (ok) {
+        if (window.openAddPhoneModal) window.openAddPhoneModal();
+      } else {
+        openSmsConsentModal();
+      }
+    };
+
     // Open "Add Phone" modal
     window.openAddPhoneModal = function() {
       const modal = document.getElementById('add-phone-modal');
@@ -1395,14 +2176,18 @@
       // Don't load profile data immediately - wait for Firebase
       setupRealTimeValidation();
       
-      // Add event listener for "Add a phone number" button
+      // Add event listener for "Add a phone number" button.
+      // The button now goes through the SMS consent gate first; once consent
+      // is recorded (or already on file), the existing add-phone modal opens.
       const addPhoneBtn = document.getElementById('add-phone-btn');
       if (addPhoneBtn) {
         addPhoneBtn.addEventListener('click', () => {
-          if (window.openAddPhoneModal) {
+          if (window.openSmsConsentThenAddPhone) {
+            window.openSmsConsentThenAddPhone();
+          } else if (window.openAddPhoneModal) {
             window.openAddPhoneModal();
           } else {
-            console.error('openAddPhoneModal function not found');
+            console.error('No phone-add flow registered');
           }
         });
       }
@@ -1411,7 +2196,7 @@
 
   <script type="module">
     // Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
@@ -1427,9 +2212,61 @@
     };
 
     // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
+
+    // Load and display caregivers list
+    async function loadCaregiversList(caregiverIds) {
+      console.log('[Profile] Loading caregivers list, ids:', caregiverIds);
+      const section = document.getElementById('caregivers-section');
+      const listEl = document.getElementById('caregivers-list');
+      if (!section || !listEl || !caregiverIds.length) return;
+
+      try {
+        const results = await Promise.allSettled(
+          caregiverIds.map(async (cid) => {
+            try {
+              const snap = await getDoc(doc(db, 'users', cid));
+              if (snap.exists()) {
+                const d = snap.data();
+                return { id: cid, name: d.name || '', email: d.email || '' };
+              }
+              return { id: cid, name: '', email: '' };
+            } catch (readErr) {
+              console.warn('[Profile] Could not read caregiver doc', cid, readErr.message);
+              // Still return a placeholder so the caregiver shows up
+              return { id: cid, name: '', email: '' };
+            }
+          })
+        );
+
+        const caregivers = results
+          .filter(r => r.status === 'fulfilled')
+          .map(r => r.value);
+
+        console.log('[Profile] Resolved caregivers:', caregivers);
+
+        if (caregivers.length === 0) return;
+
+        listEl.innerHTML = caregivers.map(c => {
+          const displayName = c.name || c.email || 'Caregiver';
+          const initial = (c.name || c.email || 'C').charAt(0).toUpperCase();
+          const emailLine = c.email ? `<div class="caregiver-email">${c.email}</div>` : '';
+          return `<div class="caregiver-item">
+            <div class="caregiver-avatar">${initial}</div>
+            <div class="caregiver-info">
+              <div class="caregiver-name">${displayName}</div>
+              ${emailLine}
+            </div>
+          </div>`;
+        }).join('');
+
+        section.style.display = '';
+      } catch (err) {
+        console.warn('[Profile] Error loading caregivers:', err);
+      }
+    }
 
     // Setup header buttons
     document.addEventListener('DOMContentLoaded', () => {
@@ -1484,23 +2321,33 @@
           
           if (userDoc.exists()) {
             const profileData = userDoc.data();
-            
+
             // Update localStorage with Firebase data
             localStorage.setItem('userProfile', JSON.stringify(profileData));
             localStorage.setItem('userId', user.uid);
             localStorage.setItem('userEmail', profileData.email);
-            
+
             // Mark that Firebase data has been loaded
             window.firebaseDataLoaded = true;
-            
+
             // Load the form with Firebase data
             if (window.loadProfileData) {
               window.loadProfileData();
             }
-            
+
             // Update phone display based on Firebase data
             if (window.updatePhoneDisplay) {
               window.updatePhoneDisplay(profileData.phone);
+            }
+
+            // Load caregivers list if patient has any
+            console.log('[Profile] profileData.caregivers:', profileData.caregivers);
+            const caregiverIds = Array.isArray(profileData.caregivers) ? profileData.caregivers.filter(Boolean) : [];
+            console.log('[Profile] caregiverIds after filter:', caregiverIds);
+            if (caregiverIds.length > 0) {
+              loadCaregiversList(caregiverIds);
+            } else {
+              console.log('[Profile] No caregiver IDs found on profile');
             }
           } else {
             // No profile in Firestore - this shouldn't happen if registration worked
@@ -2241,9 +3088,859 @@
         }
       });
     }
+
+    // ============ REPLAY TUTORIAL ============
+    (function wireReplayTutorial() {
+      const replayBtn = document.getElementById('replay-tutorial-btn');
+      if (!replayBtn) return;
+      replayBtn.addEventListener('click', () => {
+        if (window.Everane && window.Everane.Tutorial && typeof window.Everane.Tutorial.replay === 'function') {
+          window.Everane.Tutorial.replay();
+        } else {
+          // tutorial.js not loaded for some reason — fall back to nav to home with a session flag
+          try { sessionStorage.setItem('everaneTutorialState', JSON.stringify({ active: true, stepIndex: 0 })); } catch (_) {}
+          window.location.href = 'home.html';
+        }
+      });
+    })();
+
+    // ============ INSTALL AS APP (PWA) ============
+    // Three states the panel can be in:
+    //   1. Browser fires `beforeinstallprompt` → show the Install button (Android/desktop Chrome/Edge)
+    //   2. iOS Safari (no PWA installed yet)   → show step-by-step Add-to-Home-Screen instructions
+    //   3. App is already installed / running as a PWA → show "Already installed" success message
+    (function wireInstallApp() {
+      const panel    = document.getElementById('install-app-panel');
+      const body     = document.getElementById('install-app-body');
+      const btn      = document.getElementById('install-app-btn');
+      const iosBox   = document.getElementById('install-app-ios-instructions');
+      const successBox = document.getElementById('install-app-success');
+      if (!panel) return;
+
+      // Detect "already running as PWA / installed"
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                       || window.matchMedia('(display-mode: fullscreen)').matches
+                       || window.navigator.standalone === true;
+
+      // Detect iOS Safari
+      const ua = navigator.userAgent || '';
+      const isIpad = /iPad|Macintosh/.test(ua) && 'ontouchend' in document;
+      const isIos = /iPhone|iPod/.test(ua) || isIpad;
+
+      function showAlreadyInstalled() {
+        panel.style.display = 'block';
+        body.style.display = 'none';
+        btn.style.display = 'none';
+        iosBox.style.display = 'none';
+        successBox.style.display = 'block';
+      }
+      function showIosInstructions() {
+        panel.style.display = 'block';
+        body.textContent = 'Install Everane on your iPhone or iPad to enable push notifications.';
+        btn.style.display = 'none';
+        iosBox.style.display = 'block';
+        successBox.style.display = 'none';
+      }
+      function showInstallButton() {
+        panel.style.display = 'block';
+        body.textContent = 'Install Everane to get an app icon on your home screen and enable push notifications.';
+        btn.style.display = 'inline-flex';
+        btn.disabled = false;
+        btn.textContent = 'Install app to enable push notifications';
+        iosBox.style.display = 'none';
+        successBox.style.display = 'none';
+      }
+
+      if (isStandalone) {
+        showAlreadyInstalled();
+        return;
+      }
+      if (isIos) {
+        // Safari never fires beforeinstallprompt — show instructions immediately
+        showIosInstructions();
+        return;
+      }
+
+      // Capture the beforeinstallprompt event so we can fire it from our own button
+      let deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();           // suppress Chrome's auto banner
+        deferredPrompt = e;
+        showInstallButton();
+      });
+
+      btn.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+          // Defensive: if we somehow lost the prompt event, just hide.
+          btn.disabled = true;
+          btn.textContent = 'Install not available on this browser';
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Opening install dialog…';
+        try {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          if (outcome === 'accepted') {
+            showAlreadyInstalled();
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'Install app to enable push notifications';
+          }
+        } catch (e) {
+          btn.disabled = false;
+          btn.textContent = 'Install app to enable push notifications';
+        } finally {
+          deferredPrompt = null;  // event is single-use
+        }
+      });
+
+      // If the user installs via the browser menu (not via our button),
+      // switch the panel to the success state.
+      window.addEventListener('appinstalled', () => {
+        showAlreadyInstalled();
+      });
+    })();
+
+    // ============ PUSH NOTIFICATION DEVICES ============
+    // Lists every subscribed device for this account; lets the user enable
+    // push on the CURRENT device, remove other devices, and send a test push
+    // to any specific device.
+    (async () => {
+      const listEl   = document.getElementById('push-devices-list');
+      const enableBtn= document.getElementById('enable-here-btn');
+      const msgEl    = document.getElementById('push-devices-msg');
+      if (!listEl) return;
+
+      const { getFunctions, httpsCallable } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-functions.js');
+      const fns = getFunctions(app);
+      const callList   = httpsCallable(fns, 'listMyPushSubscriptions');
+      const callRemove = httpsCallable(fns, 'removePushSubscription');
+      const callTest   = httpsCallable(fns, 'testPushToDevice');
+
+      function formatDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      function setMsg(text, ok) {
+        if (!msgEl) return;
+        msgEl.textContent = text || '';
+        msgEl.style.color = ok === false ? '#ef4444' : ok === true ? '#10b981' : 'var(--muted, #6b7280)';
+      }
+
+      async function getCurrentEndpoint() {
+        try {
+          if (!('serviceWorker' in navigator)) return null;
+          const reg = await navigator.serviceWorker.getRegistration('/');
+          if (!reg) return null;
+          const sub = await reg.pushManager.getSubscription();
+          return (sub && sub.endpoint) || null;
+        } catch (_) { return null; }
+      }
+
+      async function refresh() {
+        listEl.innerHTML = '<div style="color:var(--muted,#6b7280); font-style:italic;">Loading devices&hellip;</div>';
+        const hereEndpoint = await getCurrentEndpoint();
+
+        let res;
+        try {
+          res = await callList({ hereEndpoint });
+        } catch (e) {
+          listEl.innerHTML = '<div style="color:#ef4444;">Could not load devices: ' + (e && e.message || e) + '</div>';
+          return;
+        }
+        const devices = (res && res.data && res.data.devices) || [];
+
+        // Show / hide the "Enable on this device" button based on whether the
+        // current device is in the list.
+        const hereInList = !!devices.find(d => d.here);
+        const P = window.Everane && window.Everane.Push;
+        const supported = P && P.isSupported && P.isSupported();
+        if (enableBtn) {
+          if (!supported) {
+            enableBtn.style.display = 'inline-flex';
+            enableBtn.textContent = 'Not supported on this browser';
+            enableBtn.disabled = true;
+          } else if (P.isIosSafariNotInstalled && P.isIosSafariNotInstalled()) {
+            enableBtn.style.display = 'inline-flex';
+            enableBtn.textContent = 'Add to Home Screen first (iOS)';
+            enableBtn.disabled = true;
+          } else if (hereInList) {
+            enableBtn.style.display = 'none';
+          } else {
+            enableBtn.style.display = 'inline-flex';
+            enableBtn.textContent = 'Enable push on this device';
+            enableBtn.disabled = false;
+          }
+        }
+
+        if (devices.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--muted,#6b7280); font-style:italic;">No devices subscribed yet. Tap "Enable push on this device" above to add this one.</div>';
+          return;
+        }
+
+        listEl.innerHTML = '';
+        devices.forEach(d => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; padding:0.65rem 0.85rem; border:1px solid var(--border, #e5e7eb); border-radius:12px; background: var(--surface, #fff);';
+          if (d.here) {
+            row.style.borderColor = '#3f6ff5';
+            row.style.background = 'color-mix(in oklab, #3f6ff5 7%, var(--surface, #fff))';
+          }
+          const info = document.createElement('div');
+          info.style.cssText = 'flex:1; min-width:0;';
+          info.innerHTML =
+            '<div style="font-weight:700;">' +
+              (d.label || 'Device') +
+              (d.here ? ' <span style="color:#3f6ff5; font-size:0.82rem; font-weight:600; margin-left:0.4rem;">This device</span>' : '') +
+            '</div>' +
+            (d.createdAt
+              ? '<div style="font-size:0.82rem; color:var(--muted,#6b7280);">Enabled ' + formatDate(d.createdAt) + '</div>'
+              : '');
+          const actions = document.createElement('div');
+          actions.style.cssText = 'display:flex; gap:0.4rem; flex-shrink:0;';
+
+          const testBtn = document.createElement('button');
+          testBtn.type = 'button';
+          testBtn.className = 'btn btn-secondary';
+          testBtn.style.cssText = 'font-size:0.85rem; padding:0.45rem 0.85rem;';
+          testBtn.textContent = 'Test';
+          testBtn.addEventListener('click', async () => {
+            testBtn.disabled = true;
+            testBtn.textContent = 'Sending…';
+            try {
+              const r = await callTest({ endpoint: d.endpoint });
+              if (r && r.data && r.data.ok) {
+                setMsg(`Test push sent to ${d.label}.`, true);
+                testBtn.textContent = 'Sent ✓';
+              } else {
+                setMsg(`Test failed for ${d.label}. The device may be offline or the subscription expired.`, false);
+                testBtn.textContent = 'Failed';
+              }
+            } catch (e) {
+              setMsg('Test failed: ' + (e && e.message || e), false);
+              testBtn.textContent = 'Failed';
+            }
+            setTimeout(() => { testBtn.disabled = false; testBtn.textContent = 'Test'; }, 2500);
+          });
+
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'btn btn-danger';
+          removeBtn.style.cssText = 'font-size:0.85rem; padding:0.45rem 0.85rem;';
+          removeBtn.textContent = d.here ? 'Disable here' : 'Remove';
+          removeBtn.title = d.here
+            ? 'Disables push on this device and clears the local subscription.'
+            : 'Removes this device\u2019s subscription. The device will stop receiving pushes.';
+          removeBtn.addEventListener('click', async () => {
+            const confirmMsg = d.here
+              ? 'Disable push notifications on this device?'
+              : `Remove "${d.label}" from your account? That device will stop receiving push notifications.`;
+            if (!confirm(confirmMsg)) return;
+            removeBtn.disabled = true;
+            removeBtn.textContent = 'Removing…';
+            try {
+              // If we're removing the CURRENT device, also tear down the local subscription
+              if (d.here && P && P.unsubscribe) {
+                try { await P.unsubscribe(window.auth, window.db); } catch (_) {}
+              } else {
+                await callRemove({ endpoint: d.endpoint });
+              }
+              setMsg(d.here ? 'Push disabled on this device.' : `${d.label} removed.`, true);
+              await refresh();
+            } catch (e) {
+              setMsg('Remove failed: ' + (e && e.message || e), false);
+              removeBtn.disabled = false;
+              removeBtn.textContent = d.here ? 'Disable here' : 'Remove';
+            }
+          });
+
+          actions.appendChild(testBtn);
+          actions.appendChild(removeBtn);
+          row.appendChild(info);
+          row.appendChild(actions);
+          listEl.appendChild(row);
+        });
+      }
+
+      if (enableBtn) {
+        enableBtn.addEventListener('click', async () => {
+          if (!P || !P.subscribe) return;
+          enableBtn.disabled = true;
+          enableBtn.textContent = 'Requesting permission…';
+          setMsg('');
+          const result = await P.subscribe(window.auth, window.db);
+          if (result && result.ok) {
+            setMsg('Push enabled on this device.', true);
+            await refresh();
+          } else {
+            const reasonText = (() => {
+              if (!result) return 'Could not enable push.';
+              switch (result.reason) {
+                case 'denied': return 'Permission denied. Enable notifications in browser settings, then try again.';
+                case 'ios-install-required': return 'On iPhone, install Everane to your Home Screen first.';
+                case 'unsupported': return 'Push is not supported on this browser.';
+                case 'sw-register-failed': return 'Could not register the background service.';
+                case 'firestore-failed': return 'Could not save the subscription.';
+                default: return result.error ? ('Error: ' + result.error) : 'Could not enable push.';
+              }
+            })();
+            setMsg(reasonText, false);
+            enableBtn.disabled = false;
+            enableBtn.textContent = 'Enable push on this device';
+          }
+        });
+      }
+
+      // Initial load + refresh on focus (covers the case where the user
+      // enabled push elsewhere and came back to this tab).
+      refresh();
+      window.addEventListener('focus', refresh);
+    })();
+
   </script>
 
-  <!-- Help Modal with Canva Embed -->
+  <!-- =============== FAQ HELP MODAL =============== -->
+  <div id="faq-modal" class="faq-modal" aria-hidden="true" role="dialog" aria-labelledby="faq-title">
+    <div class="faq-modal__backdrop" data-faq-close></div>
+    <div class="faq-modal__panel" role="document">
+      <div class="faq-modal__header">
+        <div>
+          <div id="faq-title" class="faq-modal__title">Help &amp; FAQ</div>
+          <div class="faq-modal__subtitle">Search or browse common questions.</div>
+        </div>
+        <button type="button" class="faq-modal__close" data-faq-close aria-label="Close help">&times;</button>
+      </div>
+      <div class="faq-modal__search-wrap">
+        <input type="search" id="faq-search" placeholder="Search for a question or keyword…" autocomplete="off" />
+      </div>
+      <div class="faq-modal__body" id="faq-body">
+        <!-- Categories + Q&As are rendered by JS from the FAQ_DATA object below -->
+        <div class="faq-modal__empty" id="faq-empty" style="display:none;">
+          No questions match your search. Try a different keyword.
+        </div>
+      </div>
+      <div class="faq-modal__footer">
+        Still stuck? Email <a href="mailto:support@everane.app">support@everane.app</a>.
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* ---------- FAQ Help Modal ---------- */
+    .faq-modal { position: fixed; inset: 0; z-index: 10000; display: none; }
+    .faq-modal.open { display: block; }
+    .faq-modal__backdrop {
+      position: absolute; inset: 0;
+      background: rgba(8, 12, 24, 0.55);
+      backdrop-filter: blur(2px);
+      animation: faqfade .2s ease;
+    }
+    @keyframes faqfade { from { opacity: 0; } to { opacity: 1; } }
+    .faq-modal__panel {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(720px, calc(100vw - 32px));
+      max-height: calc(100vh - 64px);
+      background: var(--surface, #ffffff);
+      color: var(--text, #1f2933);
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 22px;
+      box-shadow: 0 32px 70px -12px rgba(8,12,24,0.55);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      animation: faqpopin .25s cubic-bezier(.2,.8,.2,1);
+    }
+    @keyframes faqpopin {
+      from { opacity: 0; transform: translate(-50%, -48%) scale(.97); }
+      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    .faq-modal__header {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: 1.1rem 1.3rem 0.85rem;
+      border-bottom: 1px solid var(--border, #e5e7eb);
+      flex-shrink: 0;
+    }
+    .faq-modal__title { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; }
+    .faq-modal__subtitle { font-size: 0.88rem; color: var(--muted, #6b7280); margin-top: 0.1rem; }
+    .faq-modal__close {
+      background: transparent; border: none; cursor: pointer;
+      font-size: 1.8rem; line-height: 1; color: var(--muted, #6b7280);
+      padding: 0.25rem 0.55rem; border-radius: 8px;
+      transition: background .15s, color .15s;
+    }
+    .faq-modal__close:hover { background: color-mix(in oklab, var(--text, #000) 8%, transparent); color: var(--text); }
+    .faq-modal__search-wrap {
+      padding: 0.85rem 1.3rem 0.65rem; flex-shrink: 0;
+    }
+    .faq-modal__search-wrap input {
+      width: 100%; padding: 0.65rem 0.95rem;
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px;
+      background: var(--bg, #f9fafc);
+      color: var(--text);
+      font-size: 0.95rem; font-family: inherit;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .faq-modal__search-wrap input:focus {
+      border-color: color-mix(in oklab, #3f6ff5 60%, var(--border));
+      box-shadow: 0 0 0 3px color-mix(in oklab, #3f6ff5 22%, transparent);
+    }
+    .faq-modal__body {
+      overflow-y: auto;
+      padding: 0.25rem 1.3rem 1rem;
+      flex: 1;
+    }
+    .faq-modal__body::-webkit-scrollbar { width: 10px; }
+    .faq-modal__body::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--text, #000) 18%, transparent);
+      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    .faq-category {
+      margin-top: 1.1rem;
+    }
+    .faq-category__title {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: #3f6ff5;
+      margin: 0 0 0.5rem 0.2rem;
+    }
+    .faq-item {
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 12px;
+      background: color-mix(in oklab, var(--surface, #fff) 96%, transparent);
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .faq-item[open] {
+      border-color: color-mix(in oklab, #3f6ff5 50%, var(--border));
+      box-shadow: 0 6px 18px -8px color-mix(in oklab, #3f6ff5 45%, transparent);
+    }
+    .faq-item summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0.85rem 1rem;
+      font-weight: 600;
+      font-size: 0.98rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      color: var(--text);
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+';
+      font-size: 1.4rem; font-weight: 400; line-height: 1;
+      color: var(--muted, #6b7280);
+      transition: transform .2s, color .2s;
+      flex-shrink: 0;
+    }
+    .faq-item[open] summary::after { content: '\2212'; color: #3f6ff5; }
+    .faq-item summary:hover { background: color-mix(in oklab, var(--text, #000) 4%, transparent); }
+    .faq-item__answer {
+      padding: 0 1rem 1rem;
+      font-size: 0.93rem; line-height: 1.6;
+      color: var(--muted, #44506b);
+    }
+    .faq-item__answer p { margin: 0 0 0.6rem; }
+    .faq-item__answer p:last-child { margin-bottom: 0; }
+    .faq-item__answer ul, .faq-item__answer ol { margin: 0.3rem 0 0.6rem; padding-left: 1.4rem; }
+    .faq-item__answer li { margin-bottom: 0.25rem; }
+    .faq-item__answer strong { color: var(--text); }
+    .faq-item__answer code {
+      background: color-mix(in oklab, var(--text, #000) 8%, transparent);
+      padding: 1px 6px; border-radius: 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85em;
+    }
+    .faq-modal__footer {
+      padding: 0.85rem 1.3rem;
+      border-top: 1px solid var(--border, #e5e7eb);
+      font-size: 0.85rem; color: var(--muted, #6b7280);
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .faq-modal__footer a { color: #3f6ff5; text-decoration: none; font-weight: 600; }
+    .faq-modal__footer a:hover { text-decoration: underline; }
+    .faq-modal__empty { padding: 2rem 1rem; text-align: center; color: var(--muted, #6b7280); font-style: italic; }
+
+    /* mobile tweaks */
+    @media (max-width: 640px) {
+      .faq-modal__panel { width: calc(100vw - 16px); max-height: calc(100vh - 24px); border-radius: 18px; }
+      .faq-modal__header { padding: 0.85rem 1rem 0.65rem; }
+      .faq-modal__search-wrap { padding: 0.65rem 1rem 0.5rem; }
+      .faq-modal__body { padding: 0.25rem 1rem 0.85rem; }
+      .faq-modal__title { font-size: 1.15rem; }
+    }
+  </style>
+
+  <script>
+    // FAQ data: ~40 real, accurate questions/answers. Categories are rendered in order.
+    const FAQ_DATA = [
+      {
+        category: 'Getting Started',
+        items: [
+          {
+            q: 'What is Everane?',
+            a: '<p>Everane is a medication tracker that helps you log every dose, get reminders before each one, and see your adherence over time. It runs entirely in your browser — no app store install needed.</p>'
+          },
+          {
+            q: 'How do I add my first medication?',
+            a: '<p>On the home page, tap the <strong>Voice Add</strong> button to talk through it (the AI fills the form for you) or <strong>Manual Add</strong> to fill the form yourself.</p><p>You\'ll set a name, dosage, schedule (days + times), start/end date, and which channels you want reminders on (email, SMS, push).</p>'
+          },
+          {
+            q: 'Do I have to pay for Everane?',
+            a: '<p>No. Everane is free to use.</p>'
+          },
+          {
+            q: 'Is there a tutorial?',
+            a: '<p>A 10-step interactive tour runs automatically the first time you sign in. It walks you through Home, Add Medication, History, Calendar, Stats, Notes, and Profile.</p>'
+          }
+        ]
+      },
+      {
+        category: 'AI Voice',
+        items: [
+          {
+            q: 'How does the AI Voice feature work?',
+            a: '<p>Tap <strong>Voice Add</strong> on the home page. Your browser asks for microphone permission. The AI then asks you six questions one at a time: medication name, dosage, schedule, start date, end date, and reminder channels.</p><p>You speak the answers naturally — "twice a day at 8 in the morning and 8 at night" — and the AI converts your speech into the right format. When all six are collected, you\'re taken to the form pre-filled. Review and tap Save.</p>'
+          },
+          {
+            q: 'Does the AI listen to me all the time?',
+            a: '<p>No. The microphone is only active while you\'re on the AI Voice screen and the conversation is running. Audio is sent to OpenAI\'s real-time speech API for transcription and not stored on our servers.</p>'
+          },
+          {
+            q: 'What if the AI mishears me?',
+            a: '<p>Every answer is reviewable before saving. After the conversation ends, you land on the regular Add Medication form with all fields pre-filled. You can change anything before tapping Save.</p>'
+          },
+          {
+            q: 'Can I cancel the AI conversation mid-way?',
+            a: '<p>Yes. Tap back / leave the page at any time and nothing is saved. You can start over.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Reminders & Notifications',
+        items: [
+          {
+            q: 'How do I enable push notifications?',
+            a: '<p>Go to Profile → scroll to <strong>Push notification devices</strong> → tap <strong>Enable push on this device</strong>. Your browser will ask for permission. Tap Allow.</p><p>On iPhone, you must first install Everane to your Home Screen (tap Share in Safari, then "Add to Home Screen"), then open it from the Home Screen icon before enabling push.</p>'
+          },
+          {
+            q: 'Why don\'t I get notifications on my iPhone?',
+            a: '<p>Apple requires the app to be installed via "Add to Home Screen" before web push works. A regular Safari tab cannot receive push notifications — this is an iOS rule, not an Everane choice.</p><p>Fix: open Everane in Safari → tap the Share icon → "Add to Home Screen" → open Everane from the new icon → enable push from Profile.</p>'
+          },
+          {
+            q: 'How do I enable push on multiple devices?',
+            a: '<p>Each device subscribes independently. On every device you want push on, open Profile → Push notification devices → tap "Enable push on this device" and grant permission. The list will show all your subscribed devices.</p>'
+          },
+          {
+            q: 'What\'s the difference between email, SMS, and push reminders?',
+            a: '<ul><li><strong>Email</strong> — sent to your inbox. Reliable, includes a click-to-mark-taken link.</li><li><strong>SMS</strong> — text message to your phone. You\'ll need to add and verify your phone number in your profile. Standard carrier rates apply.</li><li><strong>Push</strong> — instant notification on your phone/laptop. Fires at the exact dose time. Works even when the app isn\'t open.</li></ul>'
+          },
+          {
+            q: 'When are reminders sent?',
+            a: '<p>Three different times depending on what you set up:</p><ol><li><strong>Before the dose:</strong> 1 day, 5/3/2/1 hours, or 30/15/10/5 minutes before — based on your Notification Reminders setting in Profile. Email only.</li><li><strong>At the dose time:</strong> all channels you selected for that medication fire.</li><li><strong>If you miss a dose:</strong> 45 minutes after the scheduled time, if you haven\'t marked it taken, you get a missed-dose alert (email and SMS, not push).</li></ol>'
+          },
+          {
+            q: 'Why are some reminders going to my spam folder?',
+            a: '<p>Gmail can flag recurring emails from the same sender as bulk. To fix: open one of the missed reminders in Gmail spam → click "Not spam" → then create a filter for <code>from:medtracker.reminders@gmail.com</code> with "Never send to spam." Future reminders will go straight to your inbox.</p>'
+          },
+          {
+            q: 'Why isn\'t SMS working?',
+            a: '<p>Make sure you\'ve added and verified your phone number in your profile, and that SMS is selected as a channel on the medication you\'re expecting reminders for. If you still don\'t see anything, check that messages from Everane aren\'t being filtered as spam by your carrier, and reply <strong>START</strong> to our number if you\'d previously replied STOP.</p>'
+          },
+          {
+            q: 'Can I change when reminders are sent?',
+            a: '<p>Yes. Go to Profile → Notification Reminders → tap the dropdown and choose any combination: "1 day before", "30 minutes before", "At the time", etc. These apply to all your medications.</p>'
+          },
+          {
+            q: 'Can I send a test reminder to verify it works?',
+            a: '<p>In Profile, scroll to <strong>Push notification devices</strong> and tap the <strong>Test</strong> button next to any device. A test push fires immediately to that specific device. You should see it within ~1 second.</p>'
+          },
+          {
+            q: 'Does the app need to be open for reminders to fire?',
+            a: '<p>No. After you\'ve enabled push on a device, reminders fire even with the app closed, the browser closed, and your phone locked. The OS wakes a tiny background process when a push arrives.</p>'
+          },
+          {
+            q: 'Why did I get a missed-dose email but not the original reminder?',
+            a: '<p>The original reminder may have been spam-filtered by your email provider. The missed-dose email uses a different subject line and unique sender headers, which usually slip through the filter even when the original didn\'t.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Taking Doses',
+        items: [
+          {
+            q: 'How do I mark a dose as taken?',
+            a: '<p>Three ways:</p><ol><li><strong>On the home page</strong>, tap <strong>Taken</strong> on the medication\'s card.</li><li><strong>From a push notification</strong>, tap the <strong>Taken</strong> action button directly on the notification — no need to open the app.</li><li><strong>From an email reminder</strong>, click the link in the email to open a quick-action page.</li></ol>'
+          },
+          {
+            q: 'What if I miss a dose?',
+            a: '<p>If 45 minutes go by past the scheduled time without you marking it, Everane auto-marks the dose as "Not Taken" and sends you a missed-dose alert (email/SMS depending on what you selected).</p><p>You can still correct it later by tapping the dose in History or on the home card.</p>'
+          },
+          {
+            q: 'How do I undo a Taken / Not Taken?',
+            a: '<p>On the home page, tap the opposite button. The system flips the status. You can also fix older doses from the History page.</p>'
+          },
+          {
+            q: 'What does "auto-marked" mean?',
+            a: '<p>If you don\'t mark a dose within 45 minutes of its scheduled time, the system automatically records it as "Not Taken" (with an autoMarked flag). This keeps your adherence stats accurate. You can override the auto-mark anytime.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Medications & Schedules',
+        items: [
+          {
+            q: 'Can I set medications that repeat every X hours?',
+            a: '<p>Yes. When adding a medication, choose schedule type <strong>Interval</strong> and set the gap (every X hours / days / weeks). Or choose <strong>Weekly</strong> for specific days at specific times.</p>'
+          },
+          {
+            q: 'Can I have multiple doses per day?',
+            a: '<p>Yes. Add multiple schedule entries on the medication. For example: one entry for 8:00 AM Monday-Friday, another for 8:00 PM every day. Each one becomes its own dose.</p>'
+          },
+          {
+            q: 'How do I delete or pause a medication?',
+            a: '<p>On the medication card, tap <strong>Delete</strong> to remove it. The medication is marked deletedStatus=true so it stops generating new reminders, but past history is preserved.</p>'
+          },
+          {
+            q: 'How do I edit a medication?',
+            a: '<p>On the home card, tap <strong>Edit</strong>. This opens the add-medication form pre-filled with the current values. Make changes and tap Save.</p>'
+          },
+          {
+            q: 'What\'s the "Stock" button on each card?',
+            a: '<p>Stock tracks how many pills are in your current bottle and when it expires. As you mark doses taken, stock decreases. Everane alerts you when you\'re running low or when a bottle is about to expire.</p>'
+          },
+          {
+            q: 'How does Everane know I\'m low on stock?',
+            a: '<p>If you logged bottle quantities, the system subtracts your dosage each time you mark a dose taken. When fewer than 10 doses remain (or a bottle expires within 30 days), you\'ll see warnings in the daily agenda email.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Caregivers',
+        items: [
+          {
+            q: 'What\'s a caregiver?',
+            a: '<p>Someone you trust (a family member, partner) who can see your medication adherence and receive forwarded reminders. They sign up separately and you invite them by email.</p>'
+          },
+          {
+            q: 'How do I invite a caregiver?',
+            a: '<p>Go to Profile → Caregivers section → enter their email and tap Invite. They\'ll receive an invitation email with a link to accept. Once accepted, they can choose to receive your reminders.</p>'
+          },
+          {
+            q: 'What can a caregiver see?',
+            a: '<p>A caregiver can see your medication list, your adherence percentage, and your dose history. They can opt in to receive a copy of your reminders by email.</p>'
+          },
+          {
+            q: 'Can a caregiver change my medications?',
+            a: '<p>No. Caregivers have read-only access. Only you can edit your medications.</p>'
+          },
+          {
+            q: 'How do I remove a caregiver?',
+            a: '<p>Profile → Caregivers section → tap the remove button next to their entry. They\'ll lose access immediately.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Doctor Access (Communication)',
+        items: [
+          {
+            q: 'How does the Doctor feature work?',
+            a: '<p>The Communication tab lets you share a read-only view of your medications with your doctor. Your doctor uses their own login at the doctor portal to see your meds and suggest edits.</p><p>You stay in control — any suggested edit from your doctor appears in your Communication tab and you approve or decline it.</p>'
+          },
+          {
+            q: 'How do I set up doctor access?',
+            a: '<p>Tap <strong>Communication</strong> in the sidebar. The first time, you\'ll create a Doctor Access Account by setting a 7-digit patient ID and a password. Give those credentials to your doctor.</p>'
+          },
+          {
+            q: 'Can my doctor change my medications directly?',
+            a: '<p>No. Doctors can suggest edits but you have to approve each one before it takes effect. You always have the final say.</p>'
+          },
+          {
+            q: 'How do I reply to a doctor\'s suggestion?',
+            a: '<p>Open the Communication tab. Each suggestion shows up as a card with Approve / Reject buttons. You can also add a written reply.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Account & Profile',
+        items: [
+          {
+            q: 'How do I change my password?',
+            a: '<p>Sign out, then on the login page tap <strong>Forgot password?</strong> and enter your email. You\'ll receive a password reset link from Firebase. Tap it and choose a new password.</p>'
+          },
+          {
+            q: 'How do I change my email address?',
+            a: '<p>Email changes are tied to your account login. Contact <a href="mailto:support@everane.app">support@everane.app</a> and we\'ll help you migrate to a new email.</p>'
+          },
+          {
+            q: 'How do I update my phone number?',
+            a: '<p>In Profile, find the Phone field and tap Edit. Enter the new number in E.164 format (e.g. +14155551234) and verify it via the SMS code sent.</p>'
+          },
+          {
+            q: 'How do I change my time zone?',
+            a: '<p>Time zone is detected automatically from your browser. If it\'s wrong, contact support — there\'s a verification flow because changing time zones can affect your scheduled reminders.</p>'
+          },
+          {
+            q: 'How do I delete my account?',
+            a: '<p>Contact <a href="mailto:support@everane.app">support@everane.app</a> and we\'ll permanently delete your account and all associated data. This cannot be undone.</p>'
+          },
+          {
+            q: 'How do I sign out?',
+            a: '<p>Profile → tap the <strong>Sign Out</strong> button in the top right of the page.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Privacy & Data',
+        items: [
+          {
+            q: 'Where is my data stored?',
+            a: '<p>All your data is stored in Google Firebase (Firestore), encrypted at rest and in transit. We don\'t share it with advertisers or third parties.</p>'
+          },
+          {
+            q: 'Who can see my medications?',
+            a: '<p>Only you, anyone you explicitly invite as a caregiver, and any doctor you grant access via the Communication tab. Nobody else, including us, browses your medication list.</p>'
+          },
+          {
+            q: 'Does Everane sell my data?',
+            a: '<p>No. We do not sell, rent, or share your data with advertisers or third parties.</p>'
+          }
+        ]
+      },
+      {
+        category: 'Troubleshooting',
+        items: [
+          {
+            q: 'I\'m not getting reminders. What do I do?',
+            a: '<p>Check these in order:</p><ol><li>Open Profile → confirm the medication has <strong>email</strong> or <strong>push</strong> selected as a reminder channel.</li><li>For push: check that this device is listed under <strong>Push notification devices</strong>.</li><li>For email: check your spam folder. If found, mark as "Not spam" and create a filter.</li><li>Confirm Notification Reminders are set in Profile (at least "At the time" should be checked).</li><li>If still nothing, send a test push from Profile → Test button.</li></ol>'
+          },
+          {
+            q: 'The app feels slow / not loading.',
+            a: '<p>Try a hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows). If still slow, check your internet connection — Everane needs to talk to Firebase to load your data.</p>'
+          },
+          {
+            q: 'I marked a dose by accident. How do I undo?',
+            a: '<p>Just tap the opposite button on the same medication card. The system flips Taken ↔ Not Taken instantly.</p>'
+          },
+          {
+            q: 'I installed the PWA but the home screen icon is generic.',
+            a: '<p>Some browsers cache the old icon. Try uninstalling and reinstalling, or wait a few minutes — most platforms refresh the icon from the latest manifest automatically.</p>'
+          },
+          {
+            q: 'Push works on my phone but not my laptop (or vice versa).',
+            a: '<p>Each device subscribes independently. Open Profile on the device that\'s missing notifications, scroll to Push notification devices, and tap "Enable push on this device". You should be added to the list immediately.</p>'
+          },
+          {
+            q: 'I get a push notification but it doesn\'t show on macOS.',
+            a: '<p>macOS routes notifications through System Settings → Notifications → Google Chrome. Make sure Chrome is allowed to send notifications, banners are enabled, and no Focus mode is on. Also check Notification Center — pushes may have arrived silently.</p>'
+          },
+          {
+            q: 'How do I report a bug?',
+            a: '<p>Email <a href="mailto:support@everane.app">support@everane.app</a> with: what you did, what you expected, and what happened. A screenshot helps.</p>'
+          }
+        ]
+      }
+    ];
+
+    (function wireFaqModal() {
+      const openBtn  = document.getElementById('open-help-btn');
+      const modal    = document.getElementById('faq-modal');
+      const body     = document.getElementById('faq-body');
+      const empty    = document.getElementById('faq-empty');
+      const search   = document.getElementById('faq-search');
+      if (!openBtn || !modal || !body) return;
+
+      // Render all categories + items
+      function renderAll() {
+        // Clear existing rendered categories (keep the "empty" element)
+        Array.from(body.querySelectorAll('.faq-category')).forEach(el => el.remove());
+        FAQ_DATA.forEach((cat, ci) => {
+          const wrap = document.createElement('section');
+          wrap.className = 'faq-category';
+          wrap.dataset.category = cat.category;
+          const title = document.createElement('div');
+          title.className = 'faq-category__title';
+          title.textContent = cat.category;
+          wrap.appendChild(title);
+          cat.items.forEach((it, ii) => {
+            const det = document.createElement('details');
+            det.className = 'faq-item';
+            det.dataset.q = it.q.toLowerCase();
+            det.dataset.a = it.a.toLowerCase().replace(/<[^>]*>/g, ' ');
+            const sum = document.createElement('summary');
+            sum.textContent = it.q;
+            const ans = document.createElement('div');
+            ans.className = 'faq-item__answer';
+            ans.innerHTML = it.a;
+            det.appendChild(sum);
+            det.appendChild(ans);
+            wrap.appendChild(det);
+          });
+          body.appendChild(wrap);
+        });
+      }
+      renderAll();
+
+      // Open / close
+      function open() {
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        // Focus search after a tick so the modal animation has started
+        setTimeout(() => { try { search.focus(); } catch (_) {} }, 100);
+      }
+      function close() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        // Reset state
+        search.value = '';
+        filter('');
+      }
+      openBtn.addEventListener('click', open);
+      modal.querySelectorAll('[data-faq-close]').forEach(el => {
+        el.addEventListener('click', close);
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('open')) close();
+      });
+
+      // Search filter
+      function filter(query) {
+        const q = query.trim().toLowerCase();
+        let anyVisible = false;
+        body.querySelectorAll('.faq-category').forEach(cat => {
+          let catHasMatch = false;
+          cat.querySelectorAll('.faq-item').forEach(item => {
+            if (!q) {
+              item.style.display = '';
+              item.open = false;
+              catHasMatch = true;
+            } else {
+              const hit = item.dataset.q.includes(q) || item.dataset.a.includes(q);
+              item.style.display = hit ? '' : 'none';
+              if (hit) {
+                catHasMatch = true;
+                item.open = true; // auto-expand matching answers
+                anyVisible = true;
+              }
+            }
+          });
+          cat.style.display = catHasMatch ? '' : 'none';
+        });
+        if (!q) anyVisible = true;
+        empty.style.display = anyVisible ? 'none' : 'block';
+      }
+      search.addEventListener('input', (e) => filter(e.target.value));
+    })();
+  </script>
+
+  <!-- (Old Canva-embed help modal kept below for legacy reasons; not opened from anywhere.) -->
   <div id="help-modal" class="help-modal">
     <div class="help-modal-content">
       <button class="help-modal-close" id="close-help-modal">×</button>
@@ -2557,14 +4254,6 @@
         object-fit: contain;
       }
 
-      .help-question-btn {
-        width: 44px;
-        height: 44px;
-        top: auto;
-        bottom: 1rem;
-        right: 1rem;
-      }
-
       .nav-arrow {
         width: 56px;
         height: 56px;
@@ -2712,6 +4401,238 @@
         }
       });
     });
+  </script>
+
+  <!-- Doctor Account Logic -->
+  <script type="module">
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+
+    const app = getApps()[0];
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentPatientId = '';
+    let currentUserId = '';
+    let currentDoctorPassword = '';
+    let hasDoctorPassword = false;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      currentUserId = user.uid;
+
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        currentPatientId = data.patientId || '';
+        hasDoctorPassword = !!data.doctorPassword;
+
+        // Sync localStorage flag for auth-guard nav visibility
+        if (hasDoctorPassword) {
+          localStorage.setItem('hasDoctorAccount_' + user.uid, 'true');
+        } else {
+          localStorage.removeItem('hasDoctorAccount_' + user.uid);
+        }
+
+        // Update button state
+        currentDoctorPassword = data.doctorPassword || '';
+        const btn = document.getElementById('doctor-account-btn');
+        if (hasDoctorPassword) {
+          btn.textContent = 'Manage Doctor Access Account';
+          btn.classList.add('already-set');
+        }
+      } catch (e) {
+        console.warn('Doctor account check failed:', e);
+      }
+    });
+
+    window.openDoctorAccountModal = function() {
+      const overlay = document.getElementById('doctor-modal-overlay');
+      const titleEl = document.getElementById('doc-modal-title');
+      const subEl = document.getElementById('doc-modal-sub');
+      const pwInput = document.getElementById('doc-password');
+      const createBtn = document.getElementById('doc-create-btn');
+
+      document.getElementById('doc-patient-id').value = currentPatientId;
+      document.getElementById('doc-msg').textContent = '';
+      document.getElementById('doc-msg').className = 'doc-msg';
+      createBtn.disabled = false;
+
+      // Reset password visibility
+      pwInput.type = 'password';
+      document.getElementById('doc-pw-eye').style.display = 'block';
+      document.getElementById('doc-pw-eye-off').style.display = 'none';
+
+      if (hasDoctorPassword) {
+        // Manage mode — show existing password, let them edit
+        titleEl.textContent = 'Doctor Access Account';
+        subEl.textContent = 'Your patient ID and password for doctor access. You can update your password below.';
+        pwInput.value = currentDoctorPassword;
+        pwInput.placeholder = 'Enter new password';
+        createBtn.textContent = 'Save Password';
+      } else {
+        // Create mode
+        titleEl.textContent = 'Create Doctor Access';
+        subEl.textContent = 'Set a password so your doctor can securely access your medication data using your Patient ID.';
+        pwInput.value = '';
+        pwInput.placeholder = 'Set a password';
+        createBtn.textContent = 'Create Account';
+      }
+
+      overlay.classList.add('open');
+    };
+
+    window.closeDoctorAccountModal = function() {
+      document.getElementById('doctor-modal-overlay').classList.remove('open');
+    };
+
+    window.toggleDocPw = function() {
+      const input = document.getElementById('doc-password');
+      const eyeOn = document.getElementById('doc-pw-eye');
+      const eyeOff = document.getElementById('doc-pw-eye-off');
+      if (input.type === 'password') {
+        input.type = 'text';
+        eyeOn.style.display = 'none';
+        eyeOff.style.display = 'block';
+      } else {
+        input.type = 'password';
+        eyeOn.style.display = 'block';
+        eyeOff.style.display = 'none';
+      }
+    };
+
+    window.createDoctorAccount = async function() {
+      const pw = document.getElementById('doc-password').value.trim();
+      const msgEl = document.getElementById('doc-msg');
+      const createBtn = document.getElementById('doc-create-btn');
+      const isUpdate = hasDoctorPassword;
+
+      if (!pw) {
+        msgEl.textContent = 'Please enter a password.';
+        msgEl.className = 'doc-msg error';
+        return;
+      }
+      if (pw.length < 4) {
+        msgEl.textContent = 'Password must be at least 4 characters.';
+        msgEl.className = 'doc-msg error';
+        return;
+      }
+
+      // If updating and password hasn't changed, just close
+      if (isUpdate && pw === currentDoctorPassword) {
+        window.closeDoctorAccountModal();
+        return;
+      }
+
+      createBtn.disabled = true;
+      createBtn.textContent = isUpdate ? 'Saving...' : 'Creating...';
+      msgEl.textContent = '';
+
+      try {
+        await setDoc(doc(db, 'users', currentUserId), { doctorPassword: pw }, { merge: true });
+        hasDoctorPassword = true;
+        currentDoctorPassword = pw;
+
+        // Update localStorage flag so Communication link appears everywhere
+        localStorage.setItem('hasDoctorAccount_' + currentUserId, 'true');
+        // Show the link immediately on this page
+        const hideStyle = document.getElementById('hide-medicom-style');
+        if (hideStyle) hideStyle.remove();
+
+        msgEl.textContent = isUpdate ? 'Password updated!' : 'Doctor access account created!';
+        msgEl.className = 'doc-msg success';
+
+        // Update the main button
+        const btn = document.getElementById('doctor-account-btn');
+        btn.textContent = 'Manage Doctor Access Account';
+        btn.classList.add('already-set');
+
+        setTimeout(() => window.closeDoctorAccountModal(), 1200);
+      } catch (e) {
+        console.error('Error saving doctor account:', e);
+        msgEl.textContent = 'Something went wrong. Try again.';
+        msgEl.className = 'doc-msg error';
+        createBtn.disabled = false;
+        createBtn.textContent = isUpdate ? 'Save Password' : 'Create Account';
+      }
+    };
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') window.closeDoctorAccountModal();
+    });
+  </script>
+
+  <!-- Mobile UI helpers: More⋯ menu + sticky save bar.
+       CSS controls visibility; JS just wires interactions. Zero impact on
+       desktop because the buttons are display:none above 720px. -->
+  <script>
+    (function () {
+      // ── More⋯ menu ────────────────────────────────────────────
+      const moreBtn = document.getElementById('profile-more-btn');
+      const sheet   = document.getElementById('profile-more-sheet');
+
+      function closeSheet() {
+        if (!sheet) return;
+        sheet.classList.remove('is-open');
+        sheet.setAttribute('aria-hidden', 'true');
+        if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+      }
+      function openSheet() {
+        if (!sheet) return;
+        sheet.classList.add('is-open');
+        sheet.setAttribute('aria-hidden', 'false');
+        if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
+      }
+
+      if (moreBtn && sheet) {
+        moreBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (sheet.classList.contains('is-open')) closeSheet(); else openSheet();
+        });
+        // Close on outside click.
+        document.addEventListener('click', (e) => {
+          if (!sheet.classList.contains('is-open')) return;
+          if (sheet.contains(e.target) || (moreBtn && moreBtn.contains(e.target))) return;
+          closeSheet();
+        });
+        // Forward sheet item clicks to the corresponding original buttons.
+        sheet.querySelectorAll('.profile-more-sheet-item').forEach((item) => {
+          item.addEventListener('click', () => {
+            const targetId = item.getAttribute('data-forwards-to');
+            const target = document.getElementById(targetId);
+            closeSheet();
+            if (target) target.click();
+          });
+        });
+        // Close on Escape.
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && sheet.classList.contains('is-open')) closeSheet();
+        });
+      }
+
+      // ── Sticky Save Bar (mobile only) ─────────────────────────
+      const saveBar     = document.getElementById('profile-save-bar');
+      const saveBarBtn  = document.getElementById('profile-save-bar-btn');
+      const headerSave  = document.getElementById('header-save-btn');
+
+      function syncSaveBarVisibility() {
+        if (!saveBar) return;
+        if (window.matchMedia('(max-width: 720px)').matches) {
+          saveBar.classList.add('is-shown');
+        } else {
+          saveBar.classList.remove('is-shown');
+        }
+      }
+      syncSaveBarVisibility();
+      window.addEventListener('resize', syncSaveBarVisibility);
+
+      if (saveBarBtn && headerSave) {
+        saveBarBtn.addEventListener('click', () => headerSave.click());
+      }
+    })();
   </script>
 </body>
 </html>

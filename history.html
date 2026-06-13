@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – History</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
@@ -268,6 +269,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   }
 }
 </style>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3f6ff5">
+<script src="push-subscribe.js"></script>
+<script src="tutorial.js"></script>
+<script src="auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -285,11 +291,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
   <div class="content">
-    <div class="container">
+    <div class="container" data-tutorial="history-content">
       <h1>History</h1>
       <div id="history-list"></div>
     </div>
@@ -372,8 +379,18 @@ input[type="time"]::-webkit-calendar-picker-indicator {
               schedules: schedules,
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
-              reminder: medData.reminderMethod === 'E' ? 'Email' : 
-                       medData.reminderMethod === 'S' ? 'SMS' : 'None',
+              reminder: (function(){
+                const chans = Array.isArray(medData.reminderChannels) && medData.reminderChannels.length > 0
+                  ? medData.reminderChannels
+                  : (medData.reminderMethod === 'E' ? ['email']
+                    : medData.reminderMethod === 'S' ? ['sms']
+                    : medData.reminderMethod === 'ES' ? ['email','sms']
+                    : []);
+                if (chans.length === 0) return 'None';
+                const label = { email: 'Email', sms: 'SMS', push: 'Push' };
+                return chans.map(c => label[c] || c).join(' + ');
+              })(),
+              reminderChannels: Array.isArray(medData.reminderChannels) ? medData.reminderChannels.slice() : [],
               bottles: medData.bottles ? medData.bottles.map(bottleStr => {
                 const parts = bottleStr.split('/');
                 if (parts.length >= 4) {

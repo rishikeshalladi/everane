@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <title>Everane – Communication</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
+        --accent: #0d9488;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); padding-bottom: 6rem; }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a {
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+      }
+    }
+
+    /* Page styles */
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 .25rem; }
+
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header p { color: var(--muted); font-size: .95rem; margin: 0; }
+
+    /* Message feed */
+    .msg-feed {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+      max-width: 720px;
+    }
+
+    .msg-loading {
+      text-align: center;
+      padding: 3rem 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .msg-empty {
+      text-align: center;
+      padding: 4rem 0;
+      color: var(--muted);
+    }
+    .msg-empty-icon {
+      width: 56px; height: 56px;
+      margin: 0 auto .85rem;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--brand) 10%, transparent);
+      display: grid;
+      place-items: center;
+    }
+    .msg-empty-icon svg { width: 28px; height: 28px; color: var(--brand); opacity: .5; }
+    .msg-empty p { font-size: .95rem; }
+    .msg-empty .msg-empty-sub { font-size: .82rem; margin-top: .25rem; opacity: .65; }
+
+    /* Date separator */
+    .msg-date-sep {
+      text-align: center;
+      padding: .4rem 0;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      opacity: .55;
+    }
+
+    /* Message card — doctor */
+    .msg-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem 1.15rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      animation: msgIn .3s var(--ease) both;
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Patient message card */
+    .msg-card.patient-msg {
+      border-left: 3px solid var(--accent);
+      background: color-mix(in oklab, var(--accent) 4%, var(--surface));
+    }
+
+    .msg-source-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: .15rem .55rem;
+      border-radius: 6px;
+      margin-bottom: .45rem;
+    }
+    .msg-source-tag.doctor-tag {
+      background: color-mix(in oklab, var(--brand) 12%, transparent);
+      color: var(--brand);
+    }
+    .msg-source-tag.patient-tag {
+      background: color-mix(in oklab, var(--accent) 12%, transparent);
+      color: var(--accent);
+    }
+
+    .msg-top {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .55rem;
+    }
+
+    .msg-type-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    /* Doctor types */
+    .msg-type-dot[data-type="Add Medication"] { background: var(--success); }
+    .msg-type-dot[data-type="Remove Medication"] { background: var(--danger); }
+    .msg-type-dot[data-type="Change Dosage"] { background: var(--brand); }
+    .msg-type-dot[data-type="Change Schedule"] { background: var(--accent); }
+    .msg-type-dot[data-type="Pause Medication"] { background: #f59e0b; }
+    .msg-type-dot[data-type="Change Instructions"] { background: #a78bfa; }
+    .msg-type-dot[data-type="Add Warning / Precaution"] { background: #f472b6; }
+    .msg-type-dot[data-type="Add Follow-Up Requirement"] { background: #38bdf8; }
+    .msg-type-dot[data-type="Other"] { background: var(--muted); }
+    /* Patient types */
+    .msg-type-dot[data-type="Stopped Medication"] { background: var(--danger); }
+    .msg-type-dot[data-type="Started New Medication"] { background: var(--success); }
+    .msg-type-dot[data-type="Missed Doses"] { background: #f59e0b; }
+    .msg-type-dot[data-type="Taking a Break"] { background: var(--brand); }
+    .msg-type-dot[data-type="Picked Up / Refilled"] { background: var(--accent); }
+    .msg-type-dot[data-type="Side Effects"] { background: #f472b6; }
+
+    .msg-type-label {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .msg-time {
+      margin-left: auto;
+      font-size: .72rem;
+      font-weight: 500;
+      color: var(--muted);
+      opacity: .7;
+      white-space: nowrap;
+    }
+
+    .msg-body {
+      font-size: .95rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .msg-from {
+      margin-top: .6rem;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      opacity: .6;
+    }
+
+    /* Replies */
+    .msg-replies {
+      margin-top: .6rem;
+      padding-top: .5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+    .msg-reply {
+      padding: .5rem .7rem;
+      background: color-mix(in oklab, var(--brand) 5%, transparent);
+      border-radius: 10px;
+      border-left: 3px solid var(--brand);
+    }
+    .msg-reply-body {
+      font-size: .88rem;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .msg-reply-meta {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-top: .25rem;
+    }
+    .msg-reply-doctor {
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--muted);
+      opacity: .7;
+    }
+    .msg-reply-time {
+      font-size: .68rem;
+      color: var(--muted);
+      opacity: .5;
+      margin-left: auto;
+    }
+
+    /* Sticky bottom button */
+    .sticky-bottom {
+      position: fixed;
+      bottom: 0;
+      left: 240px;
+      right: 0;
+      padding: 1rem clamp(1rem, 3vw, 2rem) 1.5rem;
+      background: linear-gradient(to top, var(--bg) 60%, transparent);
+      z-index: 50;
+    }
+    .sticky-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+    }
+    .sticky-bottom .btn {
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      gap: .6rem;
+      max-width: 220px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+      transition: transform .04s ease, background-color .2s ease;
+    }
+    .sticky-bottom .btn:hover { background: linear-gradient(180deg, var(--brand-600), var(--brand-700)); }
+    .sticky-bottom .btn:active { transform: translateY(1px); }
+    .sticky-bottom .btn svg { width: 20px; height: 20px; }
+
+    @media (max-width: 900px) {
+      .sticky-bottom { left: 0 !important; }
+    }
+  </style>
+  <script src="tutorial.js"></script>
+  <script src="auth-guard.js" type="module"></script>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="stats.html">Stats</a>
+    <a href="medicom.html" class="active">Communication</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Communication</h1>
+        <p>Messages between you and your doctors</p>
+      </div>
+
+      <div class="msg-feed" id="msg-feed">
+        <div class="msg-loading" id="msg-loading">Loading messages...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Upload Request button -->
+  <div class="sticky-bottom">
+    <div class="sticky-inner">
+      <a href="patientrequest.html" class="btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+        Send Update
+      </a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const feedEl = document.getElementById('msg-feed');
+    const loadingEl = document.getElementById('msg-loading');
+
+    function formatDate(isoStr) {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dateDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const diff = today - dateDay;
+      if (diff === 0) return 'Today';
+      if (diff === 86400000) return 'Yesterday';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function formatTime(isoStr) {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function renderMessages(edits) {
+      loadingEl.style.display = 'none';
+
+      if (!edits || edits.length === 0) {
+        feedEl.innerHTML = `
+          <div class="msg-empty">
+            <div class="msg-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <p>No messages yet</p>
+            <p class="msg-empty-sub">Send an update to your doctor, or wait for them to reach out.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      let lastDateStr = '';
+
+      edits.forEach((edit, i) => {
+        const dateStr = formatDate(edit.createdAt);
+        if (dateStr && dateStr !== lastDateStr) {
+          html += `<div class="msg-date-sep">${dateStr}</div>`;
+          lastDateStr = dateStr;
+        }
+
+        const time = formatTime(edit.createdAt);
+        const isPatient = edit.source === 'patient' || !!edit.patientName;
+
+        // Source tag
+        const sourceTag = isPatient
+          ? '<div class="msg-source-tag patient-tag">You</div>'
+          : '<div class="msg-source-tag doctor-tag">Doctor</div>';
+
+        // From line — show doctor name for doctor messages, nothing for patient messages (already tagged "You")
+        const fromLine = isPatient
+          ? ''
+          : `<div class="msg-from">— ${escapeHtml(edit.doctorName || 'Doctor')}</div>`;
+
+        // Render replies
+        const replies = edit.replies || [];
+        let repliesHtml = '';
+        if (replies.length > 0) {
+          repliesHtml = '<div class="msg-replies">' + replies.map(r => {
+            const rTime = formatTime(r.createdAt);
+            return `
+              <div class="msg-reply">
+                <div class="msg-reply-body">${escapeHtml(r.message)}</div>
+                <div class="msg-reply-meta">
+                  <span class="msg-reply-doctor">— ${escapeHtml(r.doctorName || 'Doctor')}</span>
+                  <span class="msg-reply-time">${rTime}</span>
+                </div>
+              </div>
+            `;
+          }).join('') + '</div>';
+        }
+
+        html += `
+          <div class="msg-card${isPatient ? ' patient-msg' : ''}" style="animation-delay:${i * 0.04}s">
+            ${sourceTag}
+            <div class="msg-top">
+              <span class="msg-type-dot" data-type="${escapeHtml(edit.type)}"></span>
+              <span class="msg-type-label">${escapeHtml(edit.type)}</span>
+              <span class="msg-time">${time}</span>
+            </div>
+            <div class="msg-body">${escapeHtml(edit.details)}</div>
+            ${fromLine}
+            ${repliesHtml}
+          </div>
+        `;
+      });
+
+      feedEl.innerHTML = html;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+
+      try {
+        const snap = await getDocs(collection(db, 'users', user.uid, 'doctorEdits'));
+        const edits = [];
+        snap.forEach(d => edits.push({ id: d.id, ...d.data() }));
+        // Sort newest first
+        edits.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        renderMessages(edits);
+      } catch (err) {
+        console.error('Communication load error:', err);
+        loadingEl.textContent = 'Could not load messages.';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -325,9 +325,10 @@
   /**
    * Compute the next upcoming dose from now.
    * Looks ahead up to 14 days.
+   * If takenDoses is provided, skips doses already marked as taken.
    * Returns { time, weekday, doseNumber, dateTime, totalDoses, date } or null.
    */
-  function computeNextDose(schedules, now) {
+  function computeNextDose(schedules, now, takenDoses) {
     if (!Array.isArray(schedules) || schedules.length === 0) return null;
 
     const nowDate = now instanceof Date ? now : new Date(now);
@@ -339,6 +340,15 @@
       for (const dose of doses) {
         const dt = dose.time ? dateWithTime(candidateDate, dose.time) : candidateDate;
         if (dt && dt >= nowDate) {
+          // Skip doses already marked as taken
+          if (takenDoses) {
+            const dateStr = toISODate(candidateDate);
+            const doseKey = `${dateStr}_${dose.doseNumber}`;
+            const entry = takenDoses[doseKey];
+            if (entry && entry.taken === true) {
+              continue; // Skip this dose, it's already taken
+            }
+          }
           return {
             time: dose.time,
             weekday: WEEKDAY_NAMES[candidateDate.getDay()],
@@ -358,9 +368,10 @@
   /**
    * Determine the "current" dose using the 45-min/90-min rules.
    * Includes yesterday through next 7 days.
+   * If takenDoses is provided, skips doses already marked as taken.
    * Returns { time, weekday, doseNumber, totalDoses, dateTime, date, scheduleId } or null.
    */
-  function determineCurrentDose(schedules, now) {
+  function determineCurrentDose(schedules, now, takenDoses) {
     if (!Array.isArray(schedules) || schedules.length === 0) return null;
 
     const nowDate = now instanceof Date ? now : new Date(now);
@@ -372,6 +383,16 @@
       const doses = getScheduledDosesForDate(schedules, candidateDate);
 
       for (const dose of doses) {
+        // Skip doses already marked as taken
+        if (takenDoses) {
+          const dateStr = toISODate(candidateDate);
+          const doseKey = `${dateStr}_${dose.doseNumber}`;
+          const entry = takenDoses[doseKey];
+          if (entry && entry.taken === true) {
+            continue; // Skip taken doses
+          }
+        }
+
         const dt = dose.time ? dateWithTime(candidateDate, dose.time) : startOfDay(candidateDate);
         if (dt) {
           candidates.push({

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Add Medication (AI Voice)</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
@@ -189,6 +190,7 @@
     .link{color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:2px}
     audio{width:100%; margin-top:.75rem}
   </style>
+  <script src="med-image.js"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -205,6 +207,7 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
@@ -248,9 +251,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Firebase Function URL (prod)
     const CREATE_SESSION_URL = "https://us-central1-medtracker-8c467.cloudfunctions.net/createRealtimeSession";
-    // OpenAI Realtime WebRTC SDP exchange endpoint (GA).
     const REALTIME_CALL_URL = "https://api.openai.com/v1/realtime/calls";
 
     const els = {
@@ -262,25 +263,15 @@
     };
 
     const state = {
-      pc: null,
-      dc: null,
-      localStream: null,
-      muted: false,
-      lastAssistantText: "",
-      currentAiEl: null,
-      currentAiText: "",
-      clientSecret: null,
-      finalizing: false,
-      finalized: false,
-      finalRedirected: false,
-      responseCount: 0,
-      forceAttempts: 0,
+      pc: null, dc: null, localStream: null, muted: false,
+      lastAssistantText: "", currentAiEl: null, currentAiText: "",
+      finalizing: false, finalized: false, finalRedirected: false,
+      forceAttempts: 0, openerSent: false,
+      // Med-image lookup state (set after first user transcript is parsed as a med name)
+      medImageLookupDone: false, medImageData: null, medImageEl: null,
     };
 
-    function setStatus(text) {
-      els.status.textContent = text;
-      console.log("[Realtime]", text);
-    }
+    function setStatus(text) { els.status.textContent = text; console.log("[Voice]", text); }
 
     function addLog(text, who = "ai") {
       const div = document.createElement('div');
@@ -290,984 +281,400 @@
       els.log.scrollTop = els.log.scrollHeight;
     }
 
-    function validateMedicationDraft(obj) {
-      const issues = [];
-      if (!obj || typeof obj !== "object") return ["draft"];
-      const normalized = normalizeDraft(obj);
-      if (!String(normalized.name || "").trim()) issues.push("name");
-      if (!String(normalized.dosage || "").trim()) issues.push("dosage");
-      if (!Array.isArray(normalized.schedule) || normalized.schedule.length === 0) issues.push("schedule");
-      else {
-        for (const s of normalized.schedule) {
-          const t = (s.type || "").toLowerCase();
-          if (t !== "weekly" && t !== "interval") { issues.push("schedule"); break; }
-          if (!Array.isArray(s.times) || s.times.length === 0) { issues.push("schedule"); break; }
-          if (t === "weekly" && (!Array.isArray(s.days) || s.days.length === 0)) { issues.push("schedule"); break; }
-          if (t === "interval" && (!s.every || !s.unit)) { issues.push("schedule"); break; }
-        }
-      }
-      if (!String(normalized.startDate || "").trim()) issues.push("startDate");
-      if (!(normalized.endDate === null || normalized.endDate === undefined || (typeof normalized.endDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(normalized.endDate)))) issues.push("endDate");
-      const allowedReminder = new Set(["None", "Email", "SMS", "Email + SMS"]);
-      if (typeof normalized.reminder !== "string" || !allowedReminder.has(normalized.reminder)) issues.push("reminder");
-      return issues;
-    }
+    function safeJsonParse(s) { try { return JSON.parse(s); } catch { return null; } }
 
-    const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    // ══════════════════════════════════════════════
+    // Validation / normalization (unchanged)
+    // ══════════════════════════════════════════════
+
+    const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
     const DAY_MAP = new Map([
-      ["mon", "Monday"], ["monday", "Monday"],
-      ["tue", "Tuesday"], ["tues", "Tuesday"], ["tuesday", "Tuesday"],
-      ["wed", "Wednesday"], ["weds", "Wednesday"], ["wednesday", "Wednesday"],
-      ["thu", "Thursday"], ["thur", "Thursday"], ["thurs", "Thursday"], ["thursday", "Thursday"],
-      ["fri", "Friday"], ["friday", "Friday"],
-      ["sat", "Saturday"], ["saturday", "Saturday"],
-      ["sun", "Sunday"], ["sunday", "Sunday"],
+      ["mon","Monday"],["monday","Monday"],["tue","Tuesday"],["tues","Tuesday"],["tuesday","Tuesday"],
+      ["wed","Wednesday"],["weds","Wednesday"],["wednesday","Wednesday"],
+      ["thu","Thursday"],["thur","Thursday"],["thurs","Thursday"],["thursday","Thursday"],
+      ["fri","Friday"],["friday","Friday"],["sat","Saturday"],["saturday","Saturday"],
+      ["sun","Sunday"],["sunday","Sunday"],
     ]);
-
-    function normalizeDayToken(token) {
-      if (!token || typeof token !== "string") return null;
-      const clean = token.toLowerCase().replace(/[^a-z]/g, "");
-      return DAY_MAP.get(clean) || null;
-    }
-
-    function expandDaysFromString(text) {
-      const lower = String(text || "").toLowerCase();
-      if (!lower) return [];
-      if (lower.includes("everyday") || lower.includes("every day") || lower.includes("daily")) {
-        return [...DAY_NAMES];
-      }
-      if (lower.includes("weekdays")) {
-        return ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-      }
-      if (lower.includes("weekends")) {
-        return ["Saturday", "Sunday"];
-      }
-      const found = [];
-      DAY_MAP.forEach((value, key) => {
-        const re = new RegExp(`\\b${key}\\b`, "i");
-        if (re.test(lower)) found.push(value);
-      });
-      return Array.from(new Set(found));
-    }
+    function normalizeDayToken(t) { return t ? DAY_MAP.get(t.toLowerCase().replace(/[^a-z]/g,"")) || null : null; }
 
     function normalizeDateString(input) {
-      if (!input) return null;
-      if (typeof input !== "string") return null;
-      const trimmed = input.trim();
-      if (!trimmed) return null;
-      const direct = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (direct) return trimmed;
-      const alt = trimmed.match(/^(\d{4})[\/.](\d{2})[\/.](\d{2})$/);
-      if (alt) return `${alt[1]}-${alt[2]}-${alt[3]}`;
-      const parsed = new Date(trimmed);
-      if (!Number.isNaN(parsed.getTime())) {
-        const yyyy = parsed.getFullYear();
-        const mm = String(parsed.getMonth() + 1).padStart(2, "0");
-        const dd = String(parsed.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
-      }
-      return null;
+      if (!input || typeof input !== "string") return null;
+      const s = input.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const a = s.match(/^(\d{4})[\/.](\d{2})[\/.](\d{2})$/);
+      if (a) return `${a[1]}-${a[2]}-${a[3]}`;
+      const p = new Date(s);
+      return Number.isNaN(p.getTime()) ? null : `${p.getFullYear()}-${String(p.getMonth()+1).padStart(2,"0")}-${String(p.getDate()).padStart(2,"0")}`;
     }
 
     function normalizeTimeString(input) {
       if (!input || typeof input !== "string") return null;
-      const trimmed = input.trim();
-      if (!trimmed) return null;
-      if (/^\d{2}:\d{2}$/.test(trimmed)) return trimmed;
-      const m = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+      const s = input.trim();
+      if (/^\d{2}:\d{2}$/.test(s)) return s;
+      const m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
       if (!m) return null;
-      let h = parseInt(m[1], 10);
-      const min = parseInt(m[2] || "0", 10);
-      const ampm = m[3].toLowerCase();
-      if (ampm === "pm" && h < 12) h += 12;
-      if (ampm === "am" && h === 12) h = 0;
-      if (!Number.isFinite(h) || h < 0 || h > 23 || min < 0 || min > 59) return null;
-      return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+      let h = parseInt(m[1],10); const min = parseInt(m[2]||"0",10); const ap = m[3].toLowerCase();
+      if (ap==="pm"&&h<12) h+=12; if (ap==="am"&&h===12) h=0;
+      return (h>=0&&h<=23&&min>=0&&min<=59) ? `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}` : null;
     }
 
     function normalizeDraft(raw) {
       if (!raw || typeof raw !== "object") return null;
-      const normalized = { ...raw };
-
-      if (typeof normalized.name === "string") normalized.name = normalized.name.trim();
-      if (typeof normalized.dosage === "string") normalized.dosage = normalized.dosage.trim();
-
-      // Normalize reminder
-      if (typeof normalized.reminder === "string") {
-        const rem = normalized.reminder.trim().toLowerCase();
-        const map = new Map([
-          ["none", "None"], ["email", "Email"], ["sms", "SMS"], ["text", "SMS"],
-          ["text message", "SMS"], ["email + sms", "Email + SMS"], ["email+sms", "Email + SMS"],
-          ["email and sms", "Email + SMS"], ["email & sms", "Email + SMS"],
-          ["text and email", "Email + SMS"], ["sms and email", "Email + SMS"], ["both", "Email + SMS"],
-        ]);
-        normalized.reminder = map.get(rem) || normalized.reminder.trim();
+      const n = { ...raw };
+      if (typeof n.name === "string") n.name = n.name.trim();
+      if (typeof n.dosage === "string") n.dosage = n.dosage.trim();
+      // Normalize reminderChannels — accept email, sms, push (any combination).
+      const VALID_CH = new Set(["email","sms","push"]);
+      let chans = [];
+      if (Array.isArray(n.reminderChannels)) {
+        for (const c of n.reminderChannels) {
+          const v = String(c||"").toLowerCase().trim();
+          if (v === "notification" || v === "web push") { if (!chans.includes("push")) chans.push("push"); }
+          else if (v === "text" || v === "text message" || v === "texts") { if (!chans.includes("sms")) chans.push("sms"); }
+          else if (VALID_CH.has(v) && !chans.includes(v)) chans.push(v);
+        }
+      } else if (typeof n.reminder === "string") {
+        const r = n.reminder.toLowerCase();
+        if (r.includes("email")) chans.push("email");
+        if (r.includes("sms") || r.includes("text")) chans.push("sms");
+        if (r.includes("push") || r.includes("notification")) chans.push("push");
+        if (r.includes("both") && chans.length === 0) {
+          chans = ["email","push"]; // default pair when "both" is unqualified
+        }
       }
-      const allowedReminder = new Set(["None", "Email", "SMS", "Email + SMS"]);
-      if (!allowedReminder.has(normalized.reminder)) {
-        const rem = String(normalized.reminder || "").toLowerCase();
-        if (rem.includes("email") && (rem.includes("sms") || rem.includes("text"))) normalized.reminder = "Email + SMS";
-        else if (rem.includes("email")) normalized.reminder = "Email";
-        else if (rem.includes("sms") || rem.includes("text")) normalized.reminder = "SMS";
-        else if (!rem) normalized.reminder = "None";
-      }
-
-      // Normalize startDate
-      if (typeof normalized.startDate === "string") {
-        const sd = normalizeDateString(normalized.startDate);
-        if (sd) normalized.startDate = sd;
-      }
-
-      // Normalize endDate
-      if (typeof normalized.endDate === "string") {
-        const end = normalized.endDate.trim().toLowerCase();
-        if (!end || end === "none" || end === "null") normalized.endDate = null;
-      }
-      if (normalized.endDate !== null && normalized.endDate !== undefined) {
-        const endNorm = normalizeDateString(normalized.endDate);
-        if (endNorm) normalized.endDate = endNorm;
-      }
-
-      // Normalize schedule array (new format: { type, days[], times[], every, unit })
-      if (Array.isArray(normalized.schedule)) {
-        normalized.schedule = normalized.schedule.map(s => {
-          const entry = { ...s };
-          // Normalize type casing
-          if (entry.type) entry.type = entry.type.toLowerCase();
-          // Normalize times array
-          if (Array.isArray(entry.times)) {
-            entry.times = entry.times.map(t => normalizeTimeString(t)).filter(Boolean);
-          }
-          // Normalize days for weekly
-          if (entry.type === "weekly" && Array.isArray(entry.days)) {
-            entry.days = entry.days.map(d => normalizeDayToken(d) || d);
-          }
-          return entry;
+      n.reminderChannels = chans;
+      // Keep a human string too, for legacy display paths
+      if (chans.length === 0) n.reminder = "None";
+      else n.reminder = chans.map(c => c === "email" ? "Email" : c === "sms" ? "SMS" : "Push").join(" + ");
+      if (typeof n.startDate==="string") { const sd=normalizeDateString(n.startDate); if(sd) n.startDate=sd; }
+      if (typeof n.endDate==="string") { const e=n.endDate.trim().toLowerCase(); if(!e||e==="none"||e==="null") n.endDate=null; }
+      if (n.endDate!=null) { const en=normalizeDateString(n.endDate); if(en) n.endDate=en; }
+      if (Array.isArray(n.schedule)) {
+        n.schedule = n.schedule.map(s => {
+          const e = {...s};
+          if(e.type) e.type=e.type.toLowerCase();
+          if(Array.isArray(e.times)) e.times=e.times.map(t=>normalizeTimeString(t)).filter(Boolean);
+          if(e.type==="weekly"&&Array.isArray(e.days)) e.days=e.days.map(d=>normalizeDayToken(d)||d);
+          return e;
         });
       }
-
-      // Legacy fallback: if AI returned old schedules[] format (with weekday/time), convert to new schedule[]
-      if ((!Array.isArray(normalized.schedule) || normalized.schedule.length === 0) && Array.isArray(normalized.schedules)) {
-        const newSchedule = [];
-        const weeklyGroup = {};
-        for (const s of normalized.schedules) {
-          if (s.type === "WEEKLY" || s.type === "weekly") {
-            const dayNum = s.weekday;
-            const numToName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = numToName[dayNum] || 'Monday';
-            const time = normalizeTimeString(s.time) || s.time;
-            const key = time; // group by time
-            if (!weeklyGroup[key]) weeklyGroup[key] = { type: "weekly", days: [], times: [time] };
-            if (!weeklyGroup[key].days.includes(dayName)) weeklyGroup[key].days.push(dayName);
-          } else if (s.type === "INTERVAL" || s.type === "interval") {
-            const time = normalizeTimeString(s.time) || s.time;
-            newSchedule.push({
-              type: "interval",
-              every: s.interval?.value || 1,
-              unit: (s.interval?.unit || "days").toLowerCase() + "s",
-              times: time ? [time] : [],
-            });
-          }
+      if ((!Array.isArray(n.schedule)||n.schedule.length===0)&&Array.isArray(n.schedules)) {
+        const ns=[]; const wg={};
+        for (const s of n.schedules) {
+          if(s.type==="WEEKLY"||s.type==="weekly") { const dn=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][s.weekday]||'Monday'; const t=normalizeTimeString(s.time)||s.time; if(!wg[t]) wg[t]={type:"weekly",days:[],times:[t]}; if(!wg[t].days.includes(dn)) wg[t].days.push(dn); }
+          else if(s.type==="INTERVAL"||s.type==="interval") { const t=normalizeTimeString(s.time)||s.time; ns.push({type:"interval",every:s.interval?.value||1,unit:(s.interval?.unit||"days").toLowerCase()+"s",times:t?[t]:[]}); }
         }
-        for (const entry of Object.values(weeklyGroup)) {
-          newSchedule.push(entry);
-        }
-        if (newSchedule.length > 0) normalized.schedule = newSchedule;
-        delete normalized.schedules;
+        for (const e of Object.values(wg)) ns.push(e);
+        if(ns.length>0) n.schedule=ns; delete n.schedules;
       }
-
-      return normalized;
+      return n;
     }
 
-    function printFinalDraftToConsole(draft) {
-      const rows = [
-        { field: "name", value: draft?.name ?? "" },
-        { field: "dosage", value: draft?.dosage ?? "" },
-        { field: "schedule", value: Array.isArray(draft?.schedule) ? draft.schedule.length + " entry(ies)" : "none" },
-        { field: "startDate", value: draft?.startDate ?? "none" },
-        { field: "endDate", value: draft?.endDate ?? "none" },
-        { field: "reminder", value: draft?.reminder ?? "" },
-      ];
-      console.log("[AI Voice] Final medication draft:");
-      console.table(rows);
-      if (Array.isArray(draft?.schedule)) {
-        console.log("[AI Voice] Schedule detail:");
-        console.table(draft.schedule);
+    function validateMedicationDraft(obj) {
+      const issues = [];
+      if (!obj||typeof obj!=="object") return ["draft"];
+      const n = normalizeDraft(obj);
+      if (!String(n.name||"").trim()) issues.push("name");
+      if (!String(n.dosage||"").trim()) issues.push("dosage");
+      if (!Array.isArray(n.schedule)||n.schedule.length===0) issues.push("schedule");
+      else { for (const s of n.schedule) { const t=(s.type||"").toLowerCase(); if(t!=="weekly"&&t!=="interval"){issues.push("schedule");break;} if(!Array.isArray(s.times)||s.times.length===0){issues.push("schedule");break;} if(t==="weekly"&&(!Array.isArray(s.days)||s.days.length===0)){issues.push("schedule");break;} if(t==="interval"&&(!s.every||!s.unit)){issues.push("schedule");break;} } }
+      if (!String(n.startDate||"").trim()) issues.push("startDate");
+      if (!(n.endDate===null||n.endDate===undefined||(typeof n.endDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(n.endDate)))) issues.push("endDate");
+      // Reminder is valid as long as reminderChannels is an array of allowed values (may be empty = None)
+      if (!Array.isArray(n.reminderChannels)) issues.push("reminder");
+      else {
+        const allowed = new Set(["email","sms","push"]);
+        for (const c of n.reminderChannels) { if (!allowed.has(c)) { issues.push("reminder"); break; } }
       }
-      console.log("[AI Voice] Final JSON object:", draft);
+      return issues;
+    }
+
+    function printFinalDraftToConsole(d) {
+      console.log("[AI Voice] Final draft:"); console.table([{field:"name",value:d?.name??""},{field:"dosage",value:d?.dosage??""},{field:"schedule",value:Array.isArray(d?.schedule)?d.schedule.length+" entry(ies)":"none"},{field:"startDate",value:d?.startDate??"none"},{field:"endDate",value:d?.endDate??"none"},{field:"reminder",value:d?.reminder??""}]);
+      if(Array.isArray(d?.schedule)) console.table(d.schedule); console.log("[AI Voice] JSON:",d);
     }
 
     async function saveDraftToFirebase(draft) {
-      try {
-        // Always save to localStorage so add-medication.html can still prefill if you navigate manually
-        localStorage.setItem("voiceMedicationData", JSON.stringify(draft));
-      } catch (e) {
-        console.warn("[AI Voice] Failed to write voiceMedicationData to localStorage:", e);
-      }
-
-      try {
-        sessionStorage.setItem("voiceMedicationDraft", JSON.stringify(draft));
-        sessionStorage.setItem("voiceMedicationDraftAt", new Date().toISOString());
-      } catch (e) {
-        console.warn("[AI Voice] Failed to write voiceMedicationDraft to sessionStorage:", e);
-      }
-
-      // Best-effort Firestore save (backup + cross-device)
-      try {
-        const user = auth.currentUser;
-        if (!user) return;
-        const draftRef = doc(db, "users", user.uid, "drafts", "voiceMedicationDraft");
-        await setDoc(draftRef, {
-          source: "ai-voice",
-          draft,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
-        console.log("[AI Voice] Saved voice medication draft to Firestore.");
-      } catch (e) {
-        console.warn("[AI Voice] Failed to save draft to Firestore (continuing):", e);
-      }
+      try{localStorage.setItem("voiceMedicationData",JSON.stringify(draft))}catch{}
+      try{sessionStorage.setItem("voiceMedicationDraft",JSON.stringify(draft));sessionStorage.setItem("voiceMedicationDraftAt",new Date().toISOString())}catch{}
+      try{const u=auth.currentUser;if(!u)return;await setDoc(doc(db,"users",u.uid,"drafts","voiceMedicationDraft"),{source:"ai-voice",draft,updatedAt:serverTimestamp()},{merge:true})}catch(e){console.warn("[AI Voice] Firestore save failed:",e)}
     }
 
     function redirectToForm() {
-      if (state.finalRedirected) return;
-      state.finalRedirected = true;
-      console.log("[AI Voice] Redirecting to add-medication.html?source=voice");
-      setTimeout(() => {
-        window.location.assign("add-medication.html?source=voice");
-        setTimeout(() => {
-          if (window.location.pathname.indexOf("add-medication.html") === -1) {
-            window.location.href = "add-medication.html?source=voice";
-          }
-        }, 400);
-      }, 150);
+      if(state.finalRedirected)return; state.finalRedirected=true;
+      setTimeout(()=>{window.location.assign("add-medication.html?source=voice");setTimeout(()=>{if(!location.pathname.includes("add-medication.html"))location.href="add-medication.html?source=voice"},400)},150);
     }
 
-    /**
-     * Convert the new AI voice format (schedule[] with days[], times[]) into the
-     * internal format that add-medication.html expects (schedules[] with individual
-     * weekday/time entries for WEEKLY, or interval{} for INTERVAL).
-     */
-    function convertToInternalFormat(normalized) {
-      const internal = {
-        name: normalized.name,
-        dosage: normalized.dosage,
-        endDate: normalized.endDate,
-        reminder: normalized.reminder,
-        schedules: [],
-      };
-
-      const dayNameToNum = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
-      const startDate = normalized.startDate || new Date().toISOString().split('T')[0];
-
-      if (!Array.isArray(normalized.schedule)) return internal;
-
-      for (const entry of normalized.schedule) {
-        const type = (entry.type || "").toLowerCase();
-        const times = Array.isArray(entry.times) ? entry.times : [];
-
-        if (type === "weekly") {
-          const days = Array.isArray(entry.days) ? entry.days : [];
-          for (const day of days) {
-            const weekday = dayNameToNum[day];
-            if (weekday === undefined) continue;
-            for (const time of times) {
-              internal.schedules.push({
-                scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-                type: "WEEKLY",
-                weekday: weekday,
-                time: time,
-                everyWeeks: 1,
-                startDate: startDate,
-                endDate: normalized.endDate || null,
-              });
-            }
-          }
-        } else if (type === "interval") {
-          const unitMap = { hours: "HOUR", hour: "HOUR", days: "DAY", day: "DAY", weeks: "WEEK", week: "WEEK" };
-          const unit = unitMap[(entry.unit || "").toLowerCase()] || "DAY";
-          const value = entry.every || 1;
-          const time = times[0] || "09:00";
-          const anchorDateTime = startDate + "T" + time + ":00";
-
-          internal.schedules.push({
-            scheduleId: 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-            type: "INTERVAL",
-            time: time,
-            interval: { unit, value },
-            anchorDateTime: anchorDateTime,
-            startDate: startDate,
-            endDate: normalized.endDate || null,
-          });
+    function convertToInternalFormat(n) {
+      const int={name:n.name,dosage:n.dosage,endDate:n.endDate,reminder:n.reminder,reminderChannels:Array.isArray(n.reminderChannels)?n.reminderChannels.slice():[],schedules:[]};
+      // Carry through the resolved med image (if any) so add-medication.html can
+      // mount it without re-fetching.
+      try{
+        const mi = state.medImageData || (typeof window!=="undefined"?window.__voiceResolvedMedImage:null);
+        if(mi && mi.imageUrl){
+          int.imageUrl = mi.imageUrl;
+          int.imageCanonical = mi.canonical || null;
+          int.imageGenericName = mi.genericName || null;
+          int.imageSummary = mi.summary || null;
+          int.imageSource = mi.source || "serper";
+          int.imageFetchedAt = new Date().toISOString();
         }
+      }catch(_){}
+      const d2n={'Sunday':0,'Monday':1,'Tuesday':2,'Wednesday':3,'Thursday':4,'Friday':5,'Saturday':6};
+      const sd=n.startDate||new Date().toISOString().split('T')[0];
+      if(!Array.isArray(n.schedule))return int;
+      for(const e of n.schedule){const tp=(e.type||"").toLowerCase();const ts=Array.isArray(e.times)?e.times:[];
+        if(tp==="weekly"){for(const d of(e.days||[])){const w=d2n[d];if(w===undefined)continue;for(const t of ts)int.schedules.push({scheduleId:'sch_'+Date.now()+'_'+Math.random().toString(36).substr(2,6),type:"WEEKLY",weekday:w,time:t,everyWeeks:1,startDate:sd,endDate:n.endDate||null})}}
+        else if(tp==="interval"){const um={hours:"HOUR",hour:"HOUR",days:"DAY",day:"DAY",weeks:"WEEK",week:"WEEK"};const u=um[(e.unit||"").toLowerCase()]||"DAY";const t=ts[0]||"09:00";int.schedules.push({scheduleId:'sch_'+Date.now()+'_'+Math.random().toString(36).substr(2,6),type:"INTERVAL",time:t,interval:{unit:u,value:e.every||1},anchorDateTime:sd+"T"+t+":00",startDate:sd,endDate:n.endDate||null})}
       }
-
-      return internal;
+      return int;
     }
 
     async function handleMedicationComplete(draft) {
-      if (state.finalized) return true;
-      const normalized = normalizeDraft(draft);
-      const issues = validateMedicationDraft(normalized);
-
-      // If we have at least a name, accept and redirect (form handles the rest)
-      const hasName = !!String(normalized?.name || "").trim();
-      if (issues.length && !hasName) {
-        requestFixFromModel(issues);
-        return false;
-      }
-      // If we have a name but other things are missing, only retry a few times
-      if (issues.length && hasName && (state.fixAttempts || 0) < 3) {
-        requestFixFromModel(issues);
-        return false;
-      }
-
-      state.finalized = true;
-      state.finalizing = false;
-      lockInteractionForFinalization();
-
-      setStatus("Done. Saving and opening the form…");
-      printFinalDraftToConsole(normalized);
-
-      // Convert to internal format for add-medication.html
-      const internalDraft = convertToInternalFormat(normalized);
-      console.log("[AI Voice] Internal format for form:", internalDraft);
-      await saveDraftToFirebase(internalDraft);
-      redirectToForm();
-      return true;
+      if(state.finalized)return true;
+      console.log("[Voice] handleMedicationComplete input:",JSON.stringify(draft));
+      const n=normalizeDraft(draft);
+      console.log("[Voice] Normalized:",JSON.stringify(n));
+      const issues=validateMedicationDraft(n);
+      console.log("[Voice] Validation issues:",issues);
+      if(issues.length){ requestFixFromModel(issues); return false; }
+      state.finalized=true; state.finalizing=false; lockInteractionForFinalization();
+      setStatus("Done. Saving and opening the form...");
+      printFinalDraftToConsole(n);
+      const int=convertToInternalFormat(n);
+      console.log("[Voice] Internal format for localStorage:",JSON.stringify(int));
+      await saveDraftToFirebase(int);
+      // Verify localStorage was written
+      const saved=localStorage.getItem("voiceMedicationData");
+      console.log("[Voice] localStorage voiceMedicationData:",saved);
+      setStatus("Saved! Redirecting...");
+      await new Promise(r=>setTimeout(r,500));
+      redirectToForm(); return true;
     }
 
     function lockInteractionForFinalization() {
-      state.finalizing = true;
-      // Stop user audio input
-      try { state.localStream?.getAudioTracks()?.forEach(t => t.enabled = false); } catch {}
-      // Disable buttons that would change interaction
-      try { els.start.disabled = true; } catch {}
-      try { els.mute.disabled = true; } catch {}
-      // Keep Stop enabled so the user can exit
-      setStatus("Finalizing… (locked)");
+      state.finalizing=true;
+      try{state.localStream?.getAudioTracks()?.forEach(t=>t.enabled=false)}catch{}
+      els.start.disabled=true; els.mute.disabled=true; setStatus("Finalizing...");
     }
+
+    // ══════════════════════════════════════════════
+    // WebRTC Realtime API
+    // ══════════════════════════════════════════════
 
     function requestFixFromModel(issues) {
-      // Limit fix requests to prevent infinite loops
-      state.fixAttempts = (state.fixAttempts || 0) + 1;
-      if (state.fixAttempts > 3) {
-        console.warn("[AI Voice] Too many fix attempts, accepting draft as-is");
-        return;
-      }
-      if (!state.dc || state.dc.readyState !== "open") return;
-      const missingList = Array.from(new Set(issues)).join(", ");
-      setStatus(`Missing or invalid: ${missingList}`);
-      try {
-        state.dc.send(JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{
-              type: "input_text",
-              text: `The tool call is missing or invalid: ${missingList}. Ask ONLY for the next missing field, one question at a time. Do not call submit_medication_draft until everything is complete.`
-            }]
-          }
-        }));
-        state.dc.send(JSON.stringify({ type: "response.create" }));
-      } catch (e) {
-        console.warn("[AI Voice] Failed to request missing fields:", e);
-      }
+      if(!state.dc||state.dc.readyState!=="open")return;
+      const list=[...new Set(issues)].join(", ");
+      const qs={name:"What is the medication name?",dosage:"What is the dosage? For example 2 pills or 1 tablet.",schedule:"What is the schedule? Include exact days and times.",startDate:"What is the start date?",endDate:"What is the end date? Say none if no end date.",reminder:"How would you like to be reminded? You can pick email, push notifications, or both \u2014 or say none."};
+      const next=["name","dosage","schedule","startDate","endDate","reminder"].find(f=>issues.includes(f))||"name";
+      setStatus("Missing: "+list);
+      try{
+        state.dc.send(JSON.stringify({type:"conversation.item.create",item:{type:"message",role:"user",content:[{type:"input_text",text:`Validation failed for: ${list}. Ask ONLY this question: "${qs[next]}". One question only. No commentary.`}]}}));
+        state.dc.send(JSON.stringify({type:"response.create"}));
+      }catch(e){console.warn("[Voice] requestFix failed:",e)}
     }
 
-    /**
-     * Extracts a { name, rawArgs } tool call from any known OpenAI Realtime event shape.
-     * Returns null if this event doesn't contain a completed submit_medication_draft call.
-     */
     function extractToolCall(data) {
-      const type = String(data?.type || "");
-
-      // Log any function-call related events for debugging
-      if (type.includes("function_call")) {
-        console.log("[AI Voice] Function call event:", type, JSON.stringify(data).slice(0, 500));
-      }
-
-      // Shape 1: response.function_call_arguments.done
-      if (type === "response.function_call_arguments.done" || type === "function_call_arguments.done") {
-        const name = data?.name;
-        const rawArgs = data?.arguments;
-        if (name && rawArgs != null) return { name, rawArgs };
-      }
-
-      // Shape 2: response.done — tool call inside response.output[].type === "function_call"
-      if (type === "response.done") {
-        const outputs = data?.response?.output;
-        if (Array.isArray(outputs)) {
-          for (const item of outputs) {
-            if (item?.type === "function_call" && item?.name) {
-              return { name: item.name, rawArgs: item.arguments };
-            }
-          }
-        }
-        // Also check response.output[].type === "tool_call" (alternate naming)
-        if (Array.isArray(outputs)) {
-          for (const item of outputs) {
-            if (item?.type === "tool_call" && (item?.name || item?.function?.name)) {
-              return { name: item.name || item.function.name, rawArgs: item.arguments || item.function?.arguments };
-            }
-          }
-        }
-      }
-
-      // Shape 3: response.output_item.done with function_call item
-      if (type === "response.output_item.done" || type === "output_item.done") {
-        const item = data?.item;
-        if (item?.type === "function_call" && item?.name) {
-          return { name: item.name, rawArgs: item.arguments };
-        }
-        if (item?.type === "tool_call" && (item?.name || item?.function?.name)) {
-          return { name: item.name || item.function.name, rawArgs: item.arguments || item.function?.arguments };
-        }
-      }
-
+      const t=String(data?.type||"");
+      if(t==="response.function_call_arguments.done"||t==="function_call_arguments.done"){if(data?.name&&data?.arguments!=null)return{name:data.name,rawArgs:data.arguments}}
+      if(t==="response.done"){const o=data?.response?.output;if(Array.isArray(o))for(const i of o){if(i?.type==="function_call"&&i?.name)return{name:i.name,rawArgs:i.arguments}}}
+      if(t==="response.output_item.done"||t==="output_item.done"){const i=data?.item;if(i?.type==="function_call"&&i?.name)return{name:i.name,rawArgs:i.arguments}}
       return null;
     }
 
-    function handleToolCallEvent(data) {
-      const toolCall = extractToolCall(data);
-      if (!toolCall) return false;
-
-      const { name, rawArgs } = toolCall;
-      console.log("[AI Voice] Tool call detected — name:", name, "| event type:", data?.type);
-      console.log("[AI Voice] Tool args (raw):", rawArgs);
-
-      if (name !== "submit_medication_draft") {
-        console.warn("[AI Voice] Unexpected tool call name:", name, "— ignoring.");
-        return true;
-      }
-
-      const parsed = typeof rawArgs === "string" ? safeJsonParse(rawArgs) : rawArgs;
-      if (!parsed) {
-        console.warn("[AI Voice] Tool call arguments missing or failed to parse. raw:", rawArgs);
-        requestFixFromModel(["draft"]);
-        return true;
-      }
-
-      console.log("[AI Voice] Tool args (parsed):", parsed);
-      handleMedicationComplete(parsed);
-      return true;
+    // Trigger med-image lookup in the background after the user speaks the
+    // medication name. We DO NOT render anything on this page anymore — the
+    // resolved {imageUrl, canonical, genericName, summary} is stashed on state
+    // and gets carried through the voice→form handoff (see convertToInternalFormat
+    // below). The image first appears for the user when add-medication.html
+    // mounts it post-redirect. Simpler UX, no floating card cluttering the call.
+    async function triggerVoiceMedImageLookup(rawTranscript){
+      try{
+        if(!window.MedImage) return;
+        const text = String(rawTranscript||"").trim();
+        if(text.length < 2) return;
+        // Strip filler words to improve hit rate on the LLM validator
+        const cleaned = text.replace(/^(uh|um|so|the medication is|i take|i'm taking|it's|it is)\s+/i,"")
+                            .replace(/\.$/,"")
+                            .trim();
+        const result = await window.MedImage.lookup(cleaned || text);
+        if(!result || !result.isMed) return;
+        state.medImageData = result;
+        try{ window.__voiceResolvedMedImage = result; }catch(_){}
+      }catch(e){ console.warn("[Voice] med-image lookup failed:", e); }
     }
 
-    function extractTextChunks(data, type) {
-      const chunks = [];
-      if (typeof data?.delta === "string") chunks.push(data.delta);
-      if (typeof data?.text === "string" && !type.includes("delta")) chunks.push(data.text);
-      if (typeof data?.transcript === "string") chunks.push(data.transcript);
-      if (typeof data?.response?.output_text?.delta === "string") chunks.push(data.response.output_text.delta);
-      if (typeof data?.response?.output_text === "string") chunks.push(data.response.output_text);
-      if (typeof data?.response?.text === "string") chunks.push(data.response.text);
-      const outputText = data?.response?.output?.[0]?.content?.[0]?.text;
-      if (typeof outputText === "string") chunks.push(outputText);
-      const outputTranscript = data?.response?.output?.[0]?.content?.[0]?.transcript;
-      if (typeof outputTranscript === "string") chunks.push(outputTranscript);
-      if (Array.isArray(data?.response?.output)) {
-        data.response.output.forEach(item => {
-          if (!item?.content) return;
-          item.content.forEach(content => {
-            if (typeof content?.text === "string") chunks.push(content.text);
-            if (typeof content?.transcript === "string") chunks.push(content.transcript);
-          });
-        });
-      }
-      if (Array.isArray(data?.item?.content)) {
-        data.item.content.forEach(content => {
-          if (typeof content?.text === "string") chunks.push(content.text);
-          if (typeof content?.transcript === "string") chunks.push(content.transcript);
-        });
-      }
-      return chunks.filter(Boolean);
+    function handleToolCallEvent(data) {
+      const tc=extractToolCall(data); if(!tc)return false;
+      console.log("[Voice] Tool call:",tc.name,"rawArgs:",tc.rawArgs);
+      if(tc.name!=="submit_medication_draft")return true;
+      const parsed=typeof tc.rawArgs==="string"?safeJsonParse(tc.rawArgs):tc.rawArgs;
+      console.log("[Voice] Parsed tool args:",JSON.stringify(parsed));
+      if(!parsed){requestFixFromModel(["draft"]);return true;}
+      handleMedicationComplete(parsed); return true;
+    }
+
+    // Recap detection — force tool call if AI wraps up without calling the tool
+    const RECAP_TRIGGERS = ["here's what we have","to summarize","to recap","here's a summary","finalized","add your bottles","i have all the information","all set","we're all set","you're all set","let me finalize","let me submit","saving your medication","adding your medication","medication has been added","medication saved"];
+
+    function checkForRecapAndForceToolCall() {
+      if(state.finalized||state.finalizing)return;
+      if(state.forceAttempts>=2)return;
+      const text=(state.lastAssistantText||"").toLowerCase();
+      if(!RECAP_TRIGGERS.some(p=>text.includes(p)))return;
+      console.warn("[Voice] Recap detected, forcing tool call");
+      if(!state.dc||state.dc.readyState!=="open")return;
+      state.forceAttempts++;
+      try{state.dc.send(JSON.stringify({type:"response.cancel"}))}catch{}
+      try{
+        state.dc.send(JSON.stringify({type:"conversation.item.create",item:{type:"message",role:"user",content:[{type:"input_text",text:"Call submit_medication_draft now with all collected fields. Do not speak."}]}}));
+        state.dc.send(JSON.stringify({type:"response.create",response:{tool_choice:"required"}}));
+      }catch(e){console.warn("[Voice] Force tool call failed:",e)}
     }
 
     function startNewAiMessageIfNeeded() {
-      if (state.currentAiEl) return;
-      const div = document.createElement('div');
-      div.className = 'msg ai';
-      div.textContent = '';
-      els.log.appendChild(div);
-      els.log.scrollTop = els.log.scrollHeight;
-      state.currentAiEl = div;
-      state.currentAiText = '';
+      if(state.currentAiEl)return;
+      const div=document.createElement('div'); div.className='msg ai'; div.textContent='';
+      els.log.appendChild(div); els.log.scrollTop=els.log.scrollHeight;
+      state.currentAiEl=div; state.currentAiText='';
     }
 
-    // Phrases that indicate the AI is recapping/finishing instead of calling the tool.
-    // Be aggressive — it's better to force the tool call too early (validation will catch it)
-    // than to never call it at all.
-    const RECAP_TRIGGERS = [
-      "here's what we have",
-      "here is what we have",
-      "to summarize",
-      "just to recap",
-      "to recap",
-      "here's a summary",
-      "here is a summary",
-      "perfect, here's",
-      "great, here's",
-      "alright, here's",
-      "okay, here's",
-      "so here's",
-      // The system prompt tells the AI to say this exact phrase before calling the tool.
-      // If we see it as TEXT instead of a tool call, the tool call didn't fire.
-      "finalized",
-      "add your bottles",
-      "finalizing",
-      "now you will be redirected",
-      "you will be redirected",
-      "redirecting you",
-      "redirect you",
-      // More generic wrap-up phrases
-      "i have all the information",
-      "i've got all the information",
-      "i have everything i need",
-      "i've got everything",
-      "that's everything",
-      "that covers everything",
-      "all the details",
-      "all the fields",
-      "all set",
-      "we're all set",
-      "you're all set",
-      "let me finalize",
-      "let me submit",
-      "i'll finalize",
-      "i'll submit",
-      "submitting",
-      "saving your medication",
-      "adding your medication",
-      "i'll go ahead and save",
-      "i'll go ahead and add",
-      "medication has been added",
-      "medication is added",
-      "medication saved",
-      "got it, so",
-      "perfect, so your medication",
-      "great, so your medication",
-    ];
-
-    /**
-     * Try to extract a medication draft JSON object from the AI's text output.
-     * The AI sometimes prints JSON as text instead of calling the tool.
-     * Handles alternate field names the AI might use.
-     */
-    function tryExtractDraftFromText(text) {
-      if (!text || typeof text !== "string") return null;
-      // Look for any JSON object in the text
-      const jsonMatch = text.match(/\{[\s\S]*?\}/);
-      if (!jsonMatch) return null;
-      const parsed = safeJsonParse(jsonMatch[0]);
-      if (!parsed || typeof parsed !== "object") return null;
-      // Normalize alternate field names the AI might use
-      const draft = {};
-      draft.name = parsed.name || parsed.medication_name || parsed.medication || parsed.med_name || "";
-      draft.dosage = parsed.dosage || parsed.dose || parsed.quantity || parsed.amount || "";
-      draft.reminder = parsed.reminder || parsed.reminders || parsed.notification || "None";
-      draft.startDate = parsed.startDate || parsed.start_date || parsed.start || new Date().toISOString().split('T')[0];
-      // Handle endDate / duration
-      const rawEnd = parsed.endDate || parsed.end_date || parsed.end || parsed.duration || null;
-      if (!rawEnd || rawEnd === "indefinite" || rawEnd === "none" || rawEnd === "null" || rawEnd === "no end date") {
-        draft.endDate = null;
-      } else {
-        draft.endDate = rawEnd;
-      }
-      // Try to extract schedule from various formats
-      if (Array.isArray(parsed.schedule)) {
-        draft.schedule = parsed.schedule;
-      } else if (Array.isArray(parsed.schedules)) {
-        draft.schedule = parsed.schedules;
-      }
-      // If no structured schedule but there's a frequency string, store name/dosage and skip schedule
-      // (form will handle it)
-      // Must have at least name
-      if (!draft.name) return null;
-      return draft;
-    }
-
-    function checkForRecapAndForceToolCall() {
-      if (state.finalized || state.finalizing) return;
-      // Limit force attempts to prevent infinite loops
-      if (state.forceAttempts >= 2) return;
-
-      const text = (state.lastAssistantText || "").toLowerCase();
-
-      // First: check if the AI printed a full JSON draft as text
-      const extractedDraft = tryExtractDraftFromText(state.lastAssistantText || "");
-      if (extractedDraft) {
-        console.warn("[AI Voice] Extracted medication draft from AI text output — auto-submitting.");
-        handleMedicationComplete(extractedDraft);
-        return;
-      }
-
-      const triggered = RECAP_TRIGGERS.some(phrase => text.includes(phrase));
-      if (!triggered) return;
-
-      console.warn("[AI Voice] Detected recap/wrap-up — forcing tool call (attempt", state.forceAttempts + 1, ")");
-      if (!state.dc || state.dc.readyState !== "open") return;
-
-      state.forceAttempts++;
-
-      try {
-        state.dc.send(JSON.stringify({ type: "response.cancel" }));
-      } catch {}
-
-      try {
-        state.dc.send(JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{
-              type: "input_text",
-              text: "Call submit_medication_draft now with all fields. Do not speak."
-            }]
-          }
-        }));
-        state.dc.send(JSON.stringify({
-          type: "response.create",
-          response: { tool_choice: "required" }
-        }));
-      } catch (e) {
-        console.warn("[AI Voice] Failed to force tool call:", e);
-      }
-    }
-
-    // Banned phrases — if the AI says any of these, immediately cancel and correct it
-    const BANNED_PHRASES = [
-      "milligram", "milligrams", " mg ", " mg?", " mg.", "strength of",
-      "dosage or strength", "dosage amount", "what strength",
-      "morning, evening", "morning, afternoon", "morning or evening",
-      "morning or night", "evening or night", "time of day",
-      "do you take it in the morning", "is that morning", "is that evening",
-    ];
-
-    function checkForBannedPhrases() {
-      if (!state.dc || state.dc.readyState !== "open") return;
-      const text = (state.lastAssistantText || "").toLowerCase();
-      const hasBanned = BANNED_PHRASES.some(p => text.includes(p));
-      if (!hasBanned) return;
-
-      console.warn("[AI Voice] BANNED phrase detected — cancelling and correcting. Text:", text.slice(0, 200));
-
-      // Cancel the current AI response immediately
-      try { state.dc.send(JSON.stringify({ type: "response.cancel" })); } catch {}
-
-      // Tell it to move on
-      try {
-        state.dc.send(JSON.stringify({
-          type: "conversation.item.create",
-          item: {
-            type: "message",
-            role: "user",
-            content: [{
-              type: "input_text",
-              text: "That's fine, move to the next question. Do not ask about milligrams, strength, or time of day. Just ask the next question in the flow."
-            }]
-          }
-        }));
-        state.dc.send(JSON.stringify({ type: "response.create" }));
-      } catch {}
+    function appendAiDelta(d) {
+      const s=String(d||""); if(!s.trim())return;
+      startNewAiMessageIfNeeded();
+      if(state.currentAiText.endsWith(s))return;
+      state.currentAiText+=s; state.currentAiEl.textContent=state.currentAiText;
+      els.log.scrollTop=els.log.scrollHeight;
     }
 
     function finalizeAiMessage() {
-      state.currentAiEl = null;
-      state.currentAiText = '';
-      // Check for banned phrases first
-      checkForBannedPhrases();
-      // Check if the AI just recapped instead of calling the tool
+      state.currentAiEl=null; state.currentAiText='';
       checkForRecapAndForceToolCall();
-      // Reset per-response accumulator AFTER the checks
-      state.lastAssistantText = "";
+      state.lastAssistantText="";
     }
 
-    function appendAiDelta(delta) {
-      const d = String(delta || "");
-      if (!d.trim()) return;
-      startNewAiMessageIfNeeded();
-      // Avoid common duplicate fragments showing twice
-      if (state.currentAiText.endsWith(d)) return;
-      state.currentAiText += d;
-      state.currentAiEl.textContent = state.currentAiText;
-      els.log.scrollTop = els.log.scrollHeight;
+    function extractTextChunks(data,type) {
+      const c=[];
+      // Only use streaming deltas for live display — avoids duplicates from transcript+delta
+      if(typeof data?.delta==="string"&&(type.includes("audio_transcript")||type.includes("output_text"))) {
+        c.push(data.delta);
+      }
+      return c.filter(Boolean);
     }
 
-    function safeJsonParse(maybeJson) {
-      try { return JSON.parse(maybeJson); } catch { return null; }
-    }
-
-    async function getIdTokenOrThrow() {
-      const user = auth.currentUser;
-      if (!user) throw new Error("Not logged in. Please log in first.");
-      return await user.getIdToken(true);
+    async function getIdToken() {
+      const u=auth.currentUser; if(!u)throw new Error("Not logged in.");
+      return u.getIdToken(true);
     }
 
     async function mintClientSecret() {
-      const idToken = await getIdTokenOrThrow();
-      const resp = await fetch(CREATE_SESSION_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ idToken }),
-      });
-      const json = await resp.json().catch(() => null);
-      if (!resp.ok) {
-        throw new Error(json?.error || `Failed to create Realtime session (${resp.status})`);
-      }
-      if (!json?.client_secret) throw new Error("Server did not return client_secret.");
+      const idToken=await getIdToken();
+      const resp=await fetch(CREATE_SESSION_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${idToken}`},body:JSON.stringify({idToken})});
+      const json=await resp.json().catch(()=>null);
+      if(!resp.ok)throw new Error(json?.error||`Session failed (${resp.status})`);
+      if(!json?.client_secret)throw new Error("No client_secret returned.");
       return json.client_secret;
     }
 
     async function connectWebRTC(clientSecret) {
-      setStatus("Requesting microphone…");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setStatus("Requesting microphone...");
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
 
-      setStatus("Creating WebRTC connection…");
-      const pc = new RTCPeerConnection();
-      const dc = pc.createDataChannel("oai-events");
+      setStatus("Connecting...");
+      const pc=new RTCPeerConnection();
+      const dc=pc.createDataChannel("oai-events");
 
-      pc.ontrack = (evt) => {
-        const [remoteStream] = evt.streams;
-        if (remoteStream) {
-          els.audio.srcObject = remoteStream;
-          // Slightly faster playback so the assistant feels more responsive.
-          try { els.audio.playbackRate = 1.2; } catch {}
-        }
+      pc.ontrack=(evt)=>{const[rs]=evt.streams;if(rs){els.audio.srcObject=rs;try{els.audio.playbackRate=1.15}catch{}}};
+      stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+
+      dc.onopen=()=>{
+        setStatus("Connected. Waiting for session...");
+        els.mute.disabled=false;
+        // Instructions + tools are already baked into the session from the backend.
+        // We just wait for the session.created event, then trigger the opener.
       };
 
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      dc.onmessage=(evt)=>{
+        const data=safeJsonParse(evt.data); if(!data)return;
+        const type=String(data?.type||"");
 
-      dc.onopen = () => {
-        setStatus("Connected. You can speak normally.");
-        els.mute.disabled = false;
-
-        // Configure the session after connect (system prompt / behavior).
-        try {
-          dc.send(JSON.stringify({
-            type: "session.update",
-            session: {
-              modalities: ["text", "audio"],
-              tools: [{
-                type: "function",
-                name: "submit_medication_draft",
-                description: "Submit the completed medication draft with schedule array.",
-                parameters: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    name: { type: "string", description: "Medication name" },
-                    dosage: { type: "string", description: "Number of pills/tablets, e.g. '1 pill', '2 tablets'. Never ask for mg or strength." },
-                    schedule: {
-                      type: "array",
-                      description: "Array of schedule entries. Each is either weekly or interval type.",
-                      items: {
-                        type: "object",
-                        properties: {
-                          type: { type: "string", enum: ["weekly", "interval"], description: "Schedule type" },
-                          days: {
-                            type: "array",
-                            items: { type: "string" },
-                            description: "Day names for weekly, e.g. ['Monday', 'Wednesday', 'Friday']"
-                          },
-                          times: {
-                            type: "array",
-                            items: { type: "string" },
-                            description: "Times in HH:MM 24-hour format, e.g. ['08:00', '20:00']"
-                          },
-                          every: { type: "number", description: "Interval value, e.g. 2 for 'every 2 days'" },
-                          unit: { type: "string", enum: ["hours", "days", "weeks"], description: "Interval unit" }
-                        },
-                        required: ["type", "times"]
-                      }
-                    },
-                    startDate: { type: "string", description: "YYYY-MM-DD start date" },
-                    endDate: {
-                      anyOf: [
-                        { type: "string", description: "YYYY-MM-DD" },
-                        { type: "null" }
-                      ]
-                    },
-                    reminder: { type: "string", enum: ["None", "Email", "SMS", "Email + SMS"] }
-                  },
-                  required: ["name", "dosage", "schedule", "startDate", "endDate", "reminder"]
-                }
-              }],
-              tool_choice: "auto",
-              instructions: `You are Everane, a medication assistant. Be brief and direct. Ask one question, get the answer, move on. No small talk. No elaboration.
-
-RULES:
-- NEVER ask for milligrams, strength, or mg. EVER.
-- NEVER ask "morning, evening, or night?" or suggest time-of-day options.
-- NEVER output JSON as text. ALWAYS use the submit_medication_draft tool.
-- NEVER recap or summarize what was collected.
-
-Ask these 6 questions IN ORDER. One at a time. Move on as soon as you get an answer.
-
-1. "What medication would you like to add?"
-2. "How many pills do you take per dose?" — Accept their answer ("1 pill", "2 tablets", etc.) and move on. Do NOT ask about mg or strength.
-3. "What's your schedule for taking it?" — Listen carefully:
-   - If they mention specific days (e.g. "every Monday", "Monday and Friday", "every day", "weekdays") → this is a WEEKLY schedule. Use type "weekly" with days array and times array.
-   - If they mention an interval (e.g. "every 4 days", "every 8 hours", "every 2 weeks") → this is an INTERVAL schedule. Use type "interval" with every, unit, and times.
-   - The user's answer MUST include a specific clock time (e.g. "5pm", "8:00 AM"). If they don't give one, ask: "What time?"
-   - Then ask: "Any other schedules for this medication, or is that it?"
-4. "When do you want to start?" — If they say "today" or "now", use today's date: ${new Date().toISOString().split('T')[0]}.
-5. "Is there an end date, or should it continue indefinitely?" — "no end date" or "indefinitely" → endDate = null.
-6. "How do you want to be reminded — email, text, both, or none?" — THIS IS MANDATORY. NEVER SKIP THIS.
-
-After they answer #6, say EXACTLY: "Finalized! Add your bottles in manually!" then IMMEDIATELY call submit_medication_draft with all collected data. Do not say anything else. Do not recap.
-
-Date rules: Convert all dates to YYYY-MM-DD. Today is ${new Date().toISOString().split('T')[0]}.
-
-Schedule examples:
-- "Every Monday at 5pm" → { type: "weekly", days: ["Monday"], times: ["17:00"] }
-- "Every day at 9am" → { type: "weekly", days: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"], times: ["09:00"] }
-- "Monday and Friday at 6pm" → { type: "weekly", days: ["Monday","Friday"], times: ["18:00"] }
-- "Every 4 days at 9pm" → { type: "interval", every: 4, unit: "days", times: ["21:00"] }
-- "Every 8 hours" → { type: "interval", every: 8, unit: "hours", times: ["08:00"] } (ask for first dose time if not given)
-
-START by saying: "What medication would you like to add?"`
-            }
-          }));
-        } catch (e) {
-          console.warn("[Realtime] session.update send failed:", e);
-        }
-
-        // Start automatically: have the AI ask the first question immediately.
-        try {
-          dc.send(JSON.stringify({
-            type: "conversation.item.create",
-            item: {
-              type: "message",
-              role: "user",
-              content: [{ type: "input_text", text: "Start." }]
-            }
-          }));
-          dc.send(JSON.stringify({ type: "response.create" }));
-        } catch (e) {
-          console.warn("[Realtime] auto-start send failed:", e);
-        }
-      };
-
-      dc.onmessage = (evt) => {
-        // Realtime sends JSON events on the datachannel.
-        const data = safeJsonParse(evt.data);
-        if (!data) return;
-
-        const type = String(data?.type || "");
-        console.log("[AI Voice] Realtime event:", type);
-
-        if (handleToolCallEvent(data)) return;
-
-        // End-of-message boundaries (varies by API version)
-        if (/(^|\.)(done|completed)$/.test(type) || type.includes("response.done") || type.includes("output_text.done") || type.includes("audio_transcript.done")) {
-          // Track how many full AI responses we've seen
-          if (type.includes("response.done")) {
-            state.responseCount++;
-            console.log("[AI Voice] Response count:", state.responseCount);
+        // Wait for session confirmation, then trigger first response
+        if(type==="session.created"||type==="session.updated"){
+          console.log("[Voice] Session ready:",type);
+          setStatus("Connected. Speak naturally.");
+          if(!state.openerSent){
+            state.openerSent=true;
+            // Set temperature via session.update (not supported at creation time)
+            // Also enable input audio transcription so we can hear the user's first answer
+            // (the medication name) and look up a product image in the background.
+            try{dc.send(JSON.stringify({type:"session.update",session:{temperature:0.6,input_audio_transcription:{model:"whisper-1"}}}));}catch(e){console.warn("[Voice] session update failed:",e)}
+            // Trigger first response — session instructions tell it to start with question 1
+            try{dc.send(JSON.stringify({type:"response.create"}));}catch(e){console.warn("[Voice] opener failed:",e)}
           }
-          finalizeAiMessage();
           return;
         }
+        if(type==="error")console.error("[Voice] Error:",JSON.stringify(data?.error||data).slice(0,300));
 
-        // Prefer streaming delta fragments when present — including audio transcript deltas.
-        const chunks = extractTextChunks(data, type);
-        // Also explicitly catch audio transcript deltas
-        if (type.includes("audio_transcript") && typeof data?.delta === "string") {
-          if (!chunks.includes(data.delta)) chunks.push(data.delta);
+        if(handleToolCallEvent(data))return;
+
+        // First user transcript = medication name. Fire image lookup in background.
+        if(type==="conversation.item.input_audio_transcription.completed" && !state.medImageLookupDone){
+          const transcript = (data && (data.transcript || data.text)) || "";
+          if(transcript && typeof transcript === "string"){
+            state.medImageLookupDone = true;
+            triggerVoiceMedImageLookup(transcript);
+          }
         }
-        if (chunks.length) {
-          chunks.forEach((chunk) => {
-            state.lastAssistantText += chunk;
-            appendAiDelta(chunk);
-          });
+
+        if(type.includes("response.done")||type.includes("output_text.done")||type.includes("audio_transcript.done")){
+          finalizeAiMessage(); return;
         }
+
+        const chunks=extractTextChunks(data,type);
+        if(chunks.length){chunks.forEach(c=>{state.lastAssistantText+=c;appendAiDelta(c)});}
       };
 
-      dc.onerror = (e) => console.error("[Realtime] datachannel error", e);
-      pc.oniceconnectionstatechange = () => console.log("[Realtime] ice:", pc.iceConnectionState);
+      dc.onerror=(e)=>console.error("[Voice] DC error",e);
 
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+      const offer=await pc.createOffer(); await pc.setLocalDescription(offer);
+      setStatus("Connecting to OpenAI...");
+      const sdpResp=await fetch(REALTIME_CALL_URL,{method:"POST",headers:{"Authorization":`Bearer ${clientSecret}`,"Content-Type":"application/sdp"},body:offer.sdp});
+      if(!sdpResp.ok){const err=await sdpResp.text().catch(()=>"");throw new Error(`SDP failed (${sdpResp.status}): ${err.slice(0,200)}`);}
+      await pc.setRemoteDescription({type:"answer",sdp:await sdpResp.text()});
 
-      setStatus("Handshaking with OpenAI Realtime…");
-      // WebRTC SDP exchange (GA endpoint)
-      const sdpResp = await fetch(REALTIME_CALL_URL, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${clientSecret}`,
-          "Content-Type": "application/sdp",
-        },
-        body: offer.sdp,
-      });
-      if (!sdpResp.ok) {
-        const errBody = await sdpResp.text().catch(() => "");
-        throw new Error(`Realtime SDP exchange failed (${sdpResp.status}): ${errBody.slice(0, 300)}`);
-      }
-      const answerSdp = await sdpResp.text();
-      console.log("[Realtime] SDP exchange OK via:", REALTIME_CALL_URL);
-      await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-
-      state.pc = pc;
-      state.dc = dc;
-      state.localStream = stream;
+      state.pc=pc; state.dc=dc; state.localStream=stream;
     }
 
     function stopAll() {
-      try { state.dc?.close(); } catch {}
-      try { state.pc?.close(); } catch {}
-      try { state.localStream?.getTracks()?.forEach(t => t.stop()); } catch {}
-      state.pc = null;
-      state.dc = null;
-      state.localStream = null;
-      state.muted = false;
-      state.currentAiEl = null;
-      state.currentAiText = "";
-      state.finalizing = false;
-      state.finalized = false;
-      state.finalRedirected = false;
-      state.responseCount = 0;
-      state.forceAttempts = 0;
-      state.fixAttempts = 0;
-      els.audio.srcObject = null;
-      els.mute.textContent = "Mute";
-      els.mute.disabled = true;
+      try{state.dc?.close()}catch{} try{state.pc?.close()}catch{}
+      try{state.localStream?.getTracks()?.forEach(t=>t.stop())}catch{}
+      state.pc=null;state.dc=null;state.localStream=null;state.muted=false;
+      state.currentAiEl=null;state.currentAiText="";state.lastAssistantText="";
+      state.finalizing=false;state.finalized=false;state.finalRedirected=false;state.forceAttempts=0;state.openerSent=false;
+      els.audio.srcObject=null;els.mute.textContent="Mute";els.mute.disabled=true;
       setStatus("Stopped.");
     }
 
-    els.start.addEventListener("click", async () => {
-      try {
-        els.start.disabled = true;
-        setStatus("Minting client secret…");
-        const clientSecret = await mintClientSecret();
-        state.clientSecret = clientSecret;
-        await connectWebRTC(clientSecret);
-      } catch (e) {
-        console.error(e);
-        setStatus(`Error: ${e.message}`);
-        els.start.disabled = false;
+    els.start.addEventListener("click",async()=>{
+      try{
+        els.start.disabled=true;
+        setStatus("Getting session...");
+        const cs=await mintClientSecret();
+        await connectWebRTC(cs);
+      }catch(e){
+        console.error(e); setStatus(`Error: ${e.message}`); els.start.disabled=false;
       }
     });
 
-    els.mute.addEventListener("click", async () => {
-      if (!state.pc) return;
-      if (state.finalizing || state.finalized) return;
-      state.muted = !state.muted;
-      els.mute.textContent = state.muted ? "Unmute" : "Mute";
-      setStatus(state.muted ? "Muted" : "Connected. You can speak normally.");
-      try {
-        state.localStream?.getAudioTracks()?.forEach(t => t.enabled = !state.muted);
-      } catch {}
+    els.mute.addEventListener("click",()=>{
+      if(!state.pc||state.finalizing||state.finalized)return;
+      state.muted=!state.muted;
+      els.mute.textContent=state.muted?"Unmute":"Mute";
+      setStatus(state.muted?"Muted":"Connected. Speak naturally.");
+      try{state.localStream?.getAudioTracks()?.forEach(t=>t.enabled=!state.muted)}catch{}
     });
 
-    // Inform user if not logged in
-    onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        setStatus("Not logged in. Please log in first, then return here.");
-      }
-    });
+    onAuthStateChanged(auth,(user)=>{if(!user)setStatus("Not logged in. Please log in first, then return here.")});
   </script>
 </body>
 </html>

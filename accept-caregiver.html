@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Accept Caregiver Invitation – Everane</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -110,6 +111,7 @@
       margin: 2rem 0;
     }
   </style>
+  <script src="auth-guard.js" type="module"></script>
 </head>
 <body>
   <div class="container">
@@ -119,7 +121,7 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, updateDoc, collection, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
@@ -132,7 +134,7 @@
       appId: "1:847799899373:web:170bf9c693a78ec42168e4"
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
 

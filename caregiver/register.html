@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
   <title>Everane — Caregiver Register</title>
   <style>
     /* --- Reset & tokens --- */
@@ -241,7 +242,7 @@
   <header class="navbar">
     <div class="container nav-inner">
       <a class="brand" href="../index.html" aria-label="Everane Home">
-        <span class="brand-mark" aria-hidden="true">&#x1F48A;</span>
+        <img src="../logo.svg" alt="" class="brand-mark" style="width:28px;height:28px;border-radius:7px">
         <span>Everane</span>
       </a>
 
@@ -463,9 +464,10 @@
     import {
       getAuth,
       createUserWithEmailAndPassword,
-      sendEmailVerification
+      sendEmailVerification,
+      deleteUser
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, collection, query, where, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
@@ -544,17 +546,45 @@
         const userId = userCredential.user.uid;
         createdUser = userCredential.user;
 
+        // Send verification email. If it fails (e.g. unauthorized domain),
+        // delete the just-created account so the user is not left in a broken
+        // half-registered state.
         const actionCodeSettings = {
-          url: 'https://medtracker-8c467.web.app/home.html',
+          url: 'https://everane.live/home.html',
           handleCodeInApp: false
         };
-        await sendEmailVerification(userCredential.user, actionCodeSettings);
+        try {
+          await sendEmailVerification(userCredential.user, actionCodeSettings);
+        } catch (verifyError) {
+          console.error('Verification email failed:', verifyError);
+          try { await deleteUser(userCredential.user); } catch (cleanupError) { console.error('Cleanup failed:', cleanupError); }
+          createdUser = null;
+          createBtn.disabled = false;
+          createBtn.textContent = 'Create Account';
+          msgInfo.className = 'msg err';
+          msgInfo.textContent = 'We could not send your verification email. Please try again in a moment.';
+          return;
+        }
+
+        // Generate unique 7-digit patient ID
+        async function generateUniquePatientId() {
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const id = String(Math.floor(1000000 + Math.random() * 9000000));
+            const q = query(collection(db, 'users'), where('patientId', '==', id), limit(1));
+            const snap = await getDocs(q);
+            if (snap.empty) return id;
+          }
+          return String(Date.now()).slice(-7);
+        }
+
+        const patientId = await generateUniquePatientId();
 
         const firestoreData = {
           email: email,
           name: name,
           type: 'C',
-          timezone: timezone
+          timezone: timezone,
+          patientId: patientId
         };
 
         await setDoc(doc(db, "users", userId), firestoreData);
@@ -600,7 +630,7 @@
 
       try {
         const actionCodeSettings = {
-          url: 'https://medtracker-8c467.web.app/home.html',
+          url: 'https://everane.live/home.html',
           handleCodeInApp: false
         };
         await sendEmailVerification(createdUser, actionCodeSettings);

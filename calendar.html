@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Calendar</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -648,6 +649,8 @@
 
 
 </style>
+<script src="tutorial.js"></script>
+<script src="auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -665,11 +668,12 @@
     <a href="calendar.html" class="active">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
   <div class="content">
-    <div class="calendar-container">
+    <div class="calendar-container" data-tutorial="calendar-content">
       <div class="calendar-header">
         <h1 class="calendar-title" id="calendar-title">July 2025</h1>
                  <div class="calendar-nav">

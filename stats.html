@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Stats</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -169,8 +170,8 @@
       flex: 1;
     }
 
-    #trend-chart {
-      height: 360px !important;
+    #med-breakdown-chart {
+      width: 100% !important;
     }
 
     #adherence-chart {
@@ -237,13 +238,10 @@
         height: 160px;
       }
 
-      /* Increase trend chart container height on mobile to prevent top circle cutoff */
-      .stats-card:has(#trend-chart) .chart-container {
-        height: 200px !important;
-      }
-
-      #trend-chart {
-        height: 180px !important;
+      /* Med breakdown chart mobile sizing */
+      #med-breakdown-card .chart-container {
+        height: auto !important;
+        min-height: 160px;
       }
 
       #adherence-chart {
@@ -260,13 +258,9 @@
         margin-bottom: 0.25rem;
       }
 
-      /* Remove extra space between title and chart for trend chart on mobile */
-      .stats-card:has(#trend-chart) h2 {
+      /* Compact spacing for med breakdown on mobile */
+      #med-breakdown-card h2 {
         margin-bottom: 0.25rem;
-      }
-
-      .stats-card:has(#trend-chart) .chart-container {
-        margin-top: 0;
       }
 
       .content {
@@ -416,7 +410,7 @@
         justify-content: center !important;
       }
 
-      #trend-chart,
+      #med-breakdown-chart,
       #adherence-chart {
         max-width: 100% !important;
       }
@@ -427,6 +421,8 @@
       }
     }
   </style>
+  <script src="tutorial.js"></script>
+  <script src="auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -444,11 +440,12 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html" class="active">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
   <div class="content">
-    <div class="container">
+    <div class="container" data-tutorial="stats-content">
       <h1>Stats</h1>
       
       <!-- Time Range Controls -->
@@ -483,11 +480,11 @@
           </div>
         </div>
 
-        <!-- Chart B: Daily Adherence Over Time -->
-        <div class="stats-card">
-          <h2>Daily Adherence Trend</h2>
-          <div class="chart-container">
-            <canvas id="trend-chart"></canvas>
+        <!-- Chart B: Per-Medication Breakdown -->
+        <div class="stats-card" id="med-breakdown-card">
+          <h2>Medication Breakdown</h2>
+          <div class="chart-container" id="med-breakdown-container">
+            <canvas id="med-breakdown-chart"></canvas>
           </div>
         </div>
       </div>
@@ -527,7 +524,7 @@
 
     // Chart instances
     let adherenceChart = null;
-    let trendChart = null;
+    let medBreakdownChart = null;
     let currentTimeRange = 'week';
 
     // Time range button handlers
@@ -721,38 +718,6 @@
       });
     }
 
-    // Calculate daily adherence
-    function calculateDailyAdherence(doseLogs) {
-      const dailyData = {};
-      
-      doseLogs.forEach(log => {
-        const date = new Date(log.scheduledAt);
-        date.setHours(0, 0, 0, 0);
-        const dateKey = date.toISOString().split('T')[0];
-        
-        if (!dailyData[dateKey]) {
-          dailyData[dateKey] = { taken: 0, total: 0 };
-        }
-        
-        dailyData[dateKey].total++;
-        if (log.status === 'taken') {
-          dailyData[dateKey].taken++;
-        }
-      });
-      
-      // Convert to array and sort by date
-      return Object.keys(dailyData)
-        .sort()
-        .map(date => ({
-          date: date,
-          taken: dailyData[date].taken,
-          total: dailyData[date].total,
-          adherence: dailyData[date].total > 0 
-            ? (dailyData[date].taken / dailyData[date].total) * 100 
-            : 0
-        }));
-    }
-
     // Update charts with fade transition
     async function updateCharts() {
       // Fade out
@@ -839,9 +804,8 @@
         // Update adherence chart (donut)
         updateAdherenceChart(taken, notTaken);
         
-        // Update trend chart
-        const dailyData = calculateDailyAdherence(filteredLogs);
-        updateTrendChart(dailyData);
+        // Update medication breakdown chart
+        updateMedBreakdownChart(filteredLogs);
         
         // Fade in
         setTimeout(() => {
@@ -855,8 +819,8 @@
         if (adherenceChart) {
           adherenceChart.update('active');
         }
-        if (trendChart) {
-          trendChart.update('active');
+        if (medBreakdownChart) {
+          medBreakdownChart.update('active');
         }
       }, 150);
     }
@@ -939,129 +903,169 @@
       });
     }
 
-    // Update trend line chart
-    function updateTrendChart(dailyData) {
-      const ctx = document.getElementById('trend-chart').getContext('2d');
-      
-      if (trendChart) {
-        trendChart.destroy();
-      }
-      
-      const labels = dailyData.map(d => {
-        const date = new Date(d.date);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    // Calculate per-medication adherence
+    function calculatePerMedAdherence(filteredLogs) {
+      const medData = {};
+
+      filteredLogs.forEach(log => {
+        const name = log.medicationName;
+        if (!medData[name]) {
+          medData[name] = { taken: 0, notTaken: 0, total: 0 };
+        }
+        medData[name].total++;
+        if (log.status === 'taken') {
+          medData[name].taken++;
+        } else {
+          medData[name].notTaken++;
+        }
       });
-      const adherenceData = dailyData.map(d => d.adherence);
-      
-      trendChart = new Chart(ctx, {
-        type: 'line',
+
+      // Convert to sorted array (worst adherence first so user sees what needs attention)
+      return Object.keys(medData)
+        .map(name => ({
+          name,
+          taken: medData[name].taken,
+          notTaken: medData[name].notTaken,
+          total: medData[name].total,
+          adherence: medData[name].total > 0
+            ? (medData[name].taken / medData[name].total) * 100
+            : 0
+        }))
+        .sort((a, b) => a.adherence - b.adherence);
+    }
+
+    // Detect light mode
+    function isLightMode() {
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    }
+
+    // Update per-medication breakdown chart (horizontal bar)
+    function updateMedBreakdownChart(filteredLogs) {
+      const ctx = document.getElementById('med-breakdown-chart').getContext('2d');
+
+      if (medBreakdownChart) {
+        medBreakdownChart.destroy();
+      }
+
+      const perMed = calculatePerMedAdherence(filteredLogs);
+
+      if (perMed.length === 0) return;
+
+      // Dynamic height based on number of medications
+      const barHeight = 48;
+      const minHeight = 160;
+      const calculatedHeight = Math.max(minHeight, perMed.length * barHeight + 60);
+      const container = document.getElementById('med-breakdown-container');
+      container.style.height = calculatedHeight + 'px';
+
+      const labels = perMed.map(m => m.name);
+      const takenData = perMed.map(m => m.taken);
+      const notTakenData = perMed.map(m => m.notTaken);
+
+      const light = isLightMode();
+      const tickColor = light ? '#1a1a1a' : '#b1bad4';
+      const gridColor = light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+
+      medBreakdownChart = new Chart(ctx, {
+        type: 'bar',
         data: {
           labels: labels,
-          datasets: [{
-            label: 'Adherence %',
-            data: adherenceData,
-            borderColor: 'rgba(34, 197, 94, 1)',
-            backgroundColor: 'rgba(34, 197, 94, 0.15)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 5,
-            pointHoverRadius: 8,
-            pointBackgroundColor: 'rgba(34, 197, 94, 1)',
-            pointBorderColor: 'rgba(255, 255, 255, 1)',
-            pointBorderWidth: 2,
-            pointHoverBackgroundColor: 'rgba(34, 197, 94, 1)',
-            pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
-            pointHoverBorderWidth: 3
-          }]
+          datasets: [
+            {
+              label: 'Taken',
+              data: takenData,
+              backgroundColor: 'rgba(34, 197, 94, 0.8)',
+              borderColor: 'rgba(34, 197, 94, 1)',
+              borderWidth: 1,
+              borderRadius: 4,
+              borderSkipped: false
+            },
+            {
+              label: 'Not Taken',
+              data: notTakenData,
+              backgroundColor: 'rgba(255, 107, 107, 0.8)',
+              borderColor: 'rgba(255, 107, 107, 1)',
+              borderWidth: 1,
+              borderRadius: 4,
+              borderSkipped: false
+            }
+          ]
         },
         options: {
+          indexAxis: 'y',
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           layout: {
             padding: {
-              top: 30,
-              bottom: 10
+              right: 16,
+              left: 4,
+              top: 8,
+              bottom: 4
             }
           },
-          interaction: {
-            intersect: false,
-            mode: 'index'
-          },
           scales: {
-            y: {
+            x: {
+              stacked: true,
               beginAtZero: true,
-              max: 110,
               ticks: {
-                stepSize: 20, // Ensure we get ticks at 0, 20, 40, 60, 80, 100
-                callback: function(value) {
-                  // Show 100% and below, hide anything above 100%
-                  if (value > 100) return '';
-                  return value + '%';
-                },
-                color: '#ffffff',
-                font: {
-                  size: 12
-                },
-                padding: 12
+                stepSize: 1,
+                color: tickColor,
+                font: { size: 12 },
+                precision: 0
               },
               grid: {
-                color: 'var(--border)',
+                color: gridColor,
                 drawBorder: false
               },
-              border: {
-                display: false
+              border: { display: false },
+              title: {
+                display: true,
+                text: 'Doses',
+                color: tickColor,
+                font: { size: 12, weight: '500' }
               }
             },
-            x: {
+            y: {
+              stacked: true,
               ticks: {
-                color: '#ffffff',
-                font: {
-                  size: 11
-                },
-                maxRotation: 45,
-                minRotation: 0,
-                padding: 10
+                color: tickColor,
+                font: { size: 13, weight: '600' },
+                padding: 8
               },
-              grid: {
-                display: false
-              },
-              border: {
-                display: false
-              }
+              grid: { display: false },
+              border: { display: false }
             }
           },
           plugins: {
             legend: {
-              display: false
+              display: true,
+              position: 'top',
+              align: 'end',
+              labels: {
+                color: tickColor,
+                usePointStyle: true,
+                pointStyle: 'rectRounded',
+                font: { size: 12, weight: '500' },
+                padding: 16,
+                boxWidth: 12,
+                boxHeight: 12
+              }
             },
             tooltip: {
               backgroundColor: 'rgba(0, 0, 0, 0.85)',
               padding: 14,
               titleColor: '#ffffff',
               bodyColor: '#ffffff',
-              titleFont: {
-                size: 14,
-                weight: '600'
-              },
-              bodyFont: {
-                size: 13
-              },
+              titleFont: { size: 14, weight: '600' },
+              bodyFont: { size: 13 },
               borderColor: 'rgba(255, 255, 255, 0.1)',
               borderWidth: 1,
               cornerRadius: 8,
-              displayColors: false,
               callbacks: {
-                title: function(context) {
-                  return context[0].label;
-                },
-                label: function(context) {
-                  const index = context.dataIndex;
-                  const day = dailyData[index];
-                  return [
-                    `Adherence: ${day.adherence.toFixed(1)}%`,
-                    `${day.taken} of ${day.total} doses taken`
-                  ];
+                afterBody: function(context) {
+                  const idx = context[0].dataIndex;
+                  const med = perMed[idx];
+                  return `Adherence: ${med.adherence.toFixed(1)}%`;
                 }
               }
             }
@@ -1102,6 +1106,13 @@
         }
       }
     });
+
+    // Re-render charts when color scheme changes (light/dark toggle)
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+        updateCharts();
+      });
+    }
 
     // Hamburger menu toggle functionality
     document.addEventListener('DOMContentLoaded', function() {

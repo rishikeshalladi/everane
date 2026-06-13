@@ -1,0 +1,455 @@
+<!-- File: scan-medication.html
+     Picture Add flow: user uploads 1–5 photos of pill bottles / Rx labels /
+     doctor notes; we call extractMedicationFromImages (OpenAI gpt-4o-mini Vision)
+     and redirect to add-medication.html with the extracted data + per-field
+     confidence so the form can prefill + highlight uncertain fields. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <title>Everane – Scan Medication</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#3f6ff5">
+  <style>
+    *,*::before,*::after { box-sizing: border-box; }
+    * { margin: 0; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      min-height: 100dvh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: #e7ebf3;
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(79,140,255,0.18), transparent 60%),
+        radial-gradient(700px 400px at -10% 20%, rgba(125,226,209,0.18), transparent 60%),
+        #0b1020;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    @media (prefers-color-scheme: light) {
+      body { color: #0f172a; background:
+        radial-gradient(900px 500px at 80% -10%, rgba(79,140,255,0.10), transparent 60%),
+        radial-gradient(700px 400px at -10% 20%, rgba(13,148,136,0.08), transparent 60%),
+        #f8fafc; }
+    }
+
+    .container { max-width: 720px; margin: 0 auto; padding: clamp(1rem, 4vw, 2rem); }
+
+    .topnav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 1.25rem;
+    }
+    .brand { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.05rem; color: inherit; text-decoration: none; }
+    .brand img { width: 28px; height: 28px; }
+    .topnav .back { color: inherit; text-decoration: none; font-weight: 600; padding: .5rem .85rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); font-size: .95rem; }
+    @media (prefers-color-scheme: light) {
+      .topnav .back { background: #ffffff; border-color: rgba(15,23,42,0.12); }
+    }
+
+    h1 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; margin-bottom: 0.35rem; }
+    .lead { color: #b1bad4; margin-bottom: 1.25rem; font-size: 0.98rem; }
+    @media (prefers-color-scheme: light) { .lead { color: #475569; } }
+
+    .card {
+      background: rgba(15, 22, 41, 0.6);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      padding: clamp(1rem, 3vw, 1.5rem);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      margin-bottom: 1rem;
+    }
+    @media (prefers-color-scheme: light) {
+      .card { background: #ffffff; border-color: rgba(15,23,42,0.08); box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+    }
+
+    .drop {
+      border: 2px dashed rgba(79,140,255,0.55);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      background: color-mix(in oklab, #3f6ff5 8%, transparent);
+      transition: background .2s ease, border-color .2s ease;
+    }
+    .drop.is-hover {
+      background: color-mix(in oklab, #3f6ff5 18%, transparent);
+      border-color: #3f6ff5;
+    }
+    .drop__icon { font-size: 2.2rem; margin-bottom: 0.4rem; }
+    .drop__title { font-weight: 700; font-size: 1.05rem; margin-bottom: 0.35rem; }
+    .drop__sub { color: #b1bad4; font-size: 0.9rem; margin-bottom: 0.9rem; }
+    @media (prefers-color-scheme: light) { .drop__sub { color: #475569; } }
+
+    .pick-row { display: flex; flex-wrap: wrap; gap: 0.55rem; justify-content: center; }
+    .pick-btn, .extract-btn, .ghost-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+      padding: .7rem 1.05rem; border-radius: 12px; border: 1px solid transparent;
+      font: inherit; font-weight: 600; font-size: 0.95rem; cursor: pointer;
+      transition: transform .12s ease, background .2s ease, border-color .2s ease;
+    }
+    .pick-btn { background: linear-gradient(180deg, #4f8cff, #3c74f7); color: #fff; box-shadow: 0 6px 14px rgba(63,111,245,0.25); }
+    .pick-btn:hover { background: linear-gradient(180deg, #3c74f7, #2b63e6); }
+    .ghost-btn { background: rgba(255,255,255,0.06); color: inherit; border-color: rgba(255,255,255,0.16); }
+    .ghost-btn:hover { background: rgba(255,255,255,0.12); }
+    @media (prefers-color-scheme: light) {
+      .ghost-btn { background: #ffffff; border-color: rgba(15,23,42,0.18); }
+      .ghost-btn:hover { background: #f1f5f9; }
+    }
+    .extract-btn {
+      width: 100%;
+      background: linear-gradient(180deg, #16a34a, #15803d);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(22,163,74,0.28);
+      font-size: 1.05rem;
+      padding: .95rem 1rem;
+      margin-top: .85rem;
+    }
+    .extract-btn:hover { background: linear-gradient(180deg, #15803d, #166534); }
+    .extract-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .pick-btn input[type="file"], .ghost-btn input[type="file"] { display: none; }
+
+    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.65rem; margin-top: 1rem; }
+    .thumb { position: relative; aspect-ratio: 4/5; border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb .rm {
+      position: absolute; top: 6px; right: 6px;
+      width: 28px; height: 28px; border-radius: 999px;
+      border: 0; background: rgba(0,0,0,0.7); color: #fff;
+      font-size: 1rem; line-height: 1; cursor: pointer;
+      display: grid; place-items: center;
+    }
+    .thumb .rm:hover { background: rgba(0,0,0,0.85); }
+
+    .msg { font-size: 0.92rem; padding: 0.75rem 0.95rem; border-radius: 12px; margin-top: 0.85rem; }
+    .msg.err { background: rgba(255,107,107,0.12); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.35); }
+    .msg.info { background: rgba(79,140,255,0.10); color: #4f8cff; border: 1px solid rgba(79,140,255,0.30); }
+    @media (prefers-color-scheme: light) {
+      .msg.err { color: #b91c1c; }
+      .msg.info { color: #2850c6; }
+    }
+
+    .spinner {
+      display: inline-block; width: 1rem; height: 1rem; border-radius: 999px;
+      border: 2px solid currentColor; border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      vertical-align: -2px; margin-right: 0.45rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .privacy {
+      font-size: 0.82rem; color: #b1bad4; margin-top: 0.95rem; text-align: center;
+    }
+    @media (prefers-color-scheme: light) { .privacy { color: #64748b; } }
+
+    /* First-use disclaimer modal */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100; padding: 1rem;
+    }
+    .modal-backdrop.is-shown { display: flex; }
+    .modal {
+      background: #0f1629; color: #e7ebf3;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px; max-width: 480px; width: 100%;
+      padding: 1.4rem; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    }
+    @media (prefers-color-scheme: light) {
+      .modal { background: #ffffff; color: #0f172a; border-color: rgba(15,23,42,0.10); }
+    }
+    .modal h3 { font-size: 1.15rem; margin-bottom: 0.55rem; }
+    .modal p { font-size: 0.95rem; color: inherit; opacity: 0.88; margin-bottom: 0.65rem; }
+    .modal .modal-actions { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1rem; }
+    .modal .modal-actions .pick-btn { flex: 0 0 auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topnav">
+      <a class="brand" href="home.html">
+        <img src="logo.svg" alt="">
+        <span>Everane</span>
+      </a>
+      <a class="back" href="home.html">← Back</a>
+    </div>
+
+    <h1>Scan a Medication</h1>
+    <p class="lead">Take a photo of your prescription bottle, Rx label, or doctor's note. The AI will fill in what it can — you'll review and finish on the next screen.</p>
+
+    <div class="card">
+      <div class="drop" id="drop">
+        <div class="drop__icon">📷</div>
+        <div class="drop__title">Add photos</div>
+        <div class="drop__sub">Up to 5 images. Bottles, labels, notes — all work.</div>
+        <div class="pick-row">
+          <label class="pick-btn">
+            <span>📸 Take Photo</span>
+            <input id="file-cam" type="file" accept="image/*" capture="environment" multiple>
+          </label>
+          <label class="ghost-btn">
+            <span>🖼 Choose from Files</span>
+            <input id="file-pick" type="file" accept="image/*" multiple>
+          </label>
+        </div>
+        <div id="thumbs" class="thumbs" aria-live="polite"></div>
+      </div>
+
+      <button class="extract-btn" id="extract-btn" disabled>Extract Information</button>
+
+      <p id="msg" class="msg" role="status" aria-live="polite" style="display:none;"></p>
+
+      <p class="privacy">Photos are sent to OpenAI for analysis and discarded after processing. Avoid uploading anything that contains info you wouldn't want to share.</p>
+    </div>
+  </div>
+
+  <!-- First-use privacy disclaimer modal -->
+  <div class="modal-backdrop" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+    <div class="modal">
+      <h3 id="privacy-title">Before you scan</h3>
+      <p>Your photos will be sent to OpenAI to extract medication info. They are not stored on our servers after the form is filled in.</p>
+      <p>OpenAI states they do not train their models on API data, but please don't upload anything containing sensitive personal info you wouldn't want to share.</p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="privacy-cancel">Cancel</button>
+        <button class="pick-btn" id="privacy-ok">I understand</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4",
+      measurementId: "G-GGHXPT2Q5L"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    window.auth = auth;
+
+    // Require sign-in
+    onAuthStateChanged(auth, (u) => {
+      if (!u) {
+        const next = encodeURIComponent(location.pathname);
+        location.href = `login.html?next=${next}`;
+      }
+    });
+  </script>
+
+  <script>
+    const MAX_IMAGES = 5;
+    const MAX_LONG_EDGE = 1024;     // resize before upload (keeps OpenAI cost down)
+    const JPEG_QUALITY = 0.85;
+    const EXTRACT_URL  = "https://us-central1-medtracker-8c467.cloudfunctions.net/extractMedicationFromImages";
+    const PRIVACY_KEY  = "everanePictureAddPrivacyAck";
+
+    const dropEl     = document.getElementById('drop');
+    const fileCam    = document.getElementById('file-cam');
+    const filePick   = document.getElementById('file-pick');
+    const thumbs     = document.getElementById('thumbs');
+    const extractBtn = document.getElementById('extract-btn');
+    const msgEl      = document.getElementById('msg');
+    const privacyModal  = document.getElementById('privacy-modal');
+    const privacyOk     = document.getElementById('privacy-ok');
+    const privacyCancel = document.getElementById('privacy-cancel');
+
+    // State: array of {dataUri, name}
+    const images = [];
+
+    function setMsg(text, type) {
+      if (!text) { msgEl.style.display = 'none'; msgEl.textContent = ''; msgEl.className = 'msg'; return; }
+      msgEl.style.display = '';
+      msgEl.className = 'msg ' + (type || 'info');
+      msgEl.textContent = text;
+    }
+
+    function refreshExtractBtn() {
+      extractBtn.disabled = images.length === 0;
+    }
+
+    function renderThumbs() {
+      thumbs.innerHTML = '';
+      images.forEach((img, idx) => {
+        const t = document.createElement('div');
+        t.className = 'thumb';
+        const el = document.createElement('img');
+        el.src = img.dataUri;
+        el.alt = img.name || `Image ${idx+1}`;
+        t.appendChild(el);
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'rm';
+        rm.setAttribute('aria-label', 'Remove image');
+        rm.textContent = '×';
+        rm.addEventListener('click', () => {
+          images.splice(idx, 1);
+          renderThumbs();
+          refreshExtractBtn();
+        });
+        t.appendChild(rm);
+        thumbs.appendChild(t);
+      });
+      refreshExtractBtn();
+    }
+
+    function readFileAsImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Could not load image'));
+          img.src = reader.result;
+        };
+        reader.onerror = () => reject(reader.error || new Error('Could not read file'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function imgToResizedDataUri(imgEl) {
+      const w = imgEl.naturalWidth, h = imgEl.naturalHeight;
+      const long = Math.max(w, h);
+      const scale = long > MAX_LONG_EDGE ? (MAX_LONG_EDGE / long) : 1;
+      const cw = Math.round(w * scale), ch = Math.round(h * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = cw; canvas.height = ch;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(imgEl, 0, 0, cw, ch);
+      return canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+    }
+
+    async function ingestFiles(fileList) {
+      const files = Array.from(fileList || []).filter(f => f && f.type && f.type.startsWith('image/'));
+      if (files.length === 0) return;
+      const remaining = MAX_IMAGES - images.length;
+      const toAdd = files.slice(0, remaining);
+      if (files.length > remaining) {
+        setMsg(`Only the first ${remaining} image(s) were added (5 max).`, 'info');
+      } else {
+        setMsg('', null);
+      }
+      for (const f of toAdd) {
+        try {
+          const imgEl = await readFileAsImage(f);
+          const dataUri = imgToResizedDataUri(imgEl);
+          images.push({ dataUri, name: f.name || 'image' });
+          renderThumbs();
+        } catch (e) {
+          console.warn('[Scan] file ingest failed:', e);
+          setMsg('Could not read one of the selected images.', 'err');
+        }
+      }
+    }
+
+    fileCam.addEventListener('change', (e) => ingestFiles(e.target.files));
+    filePick.addEventListener('change', (e) => ingestFiles(e.target.files));
+
+    // Drag + drop
+    ;['dragenter','dragover'].forEach(ev => dropEl.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      dropEl.classList.add('is-hover');
+    }));
+    ;['dragleave','drop'].forEach(ev => dropEl.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      dropEl.classList.remove('is-hover');
+    }));
+    dropEl.addEventListener('drop', (e) => {
+      if (e.dataTransfer && e.dataTransfer.files) ingestFiles(e.dataTransfer.files);
+    });
+
+    // Privacy modal
+    function showPrivacyIfNeeded() {
+      try {
+        if (localStorage.getItem(PRIVACY_KEY) === '1') return Promise.resolve(true);
+      } catch (_) {}
+      return new Promise((resolve) => {
+        privacyModal.classList.add('is-shown');
+        const cleanup = (ok) => {
+          privacyModal.classList.remove('is-shown');
+          privacyOk.removeEventListener('click', okHandler);
+          privacyCancel.removeEventListener('click', cancelHandler);
+          if (ok) {
+            try { localStorage.setItem(PRIVACY_KEY, '1'); } catch (_) {}
+          }
+          resolve(!!ok);
+        };
+        const okHandler = () => cleanup(true);
+        const cancelHandler = () => cleanup(false);
+        privacyOk.addEventListener('click', okHandler);
+        privacyCancel.addEventListener('click', cancelHandler);
+      });
+    }
+
+    async function runExtraction() {
+      if (images.length === 0) return;
+      const ok = await showPrivacyIfNeeded();
+      if (!ok) return;
+      extractBtn.disabled = true;
+      const original = extractBtn.textContent;
+      extractBtn.innerHTML = '<span class="spinner"></span> Reading your photos…';
+      setMsg('', null);
+
+      let idToken = null;
+      try {
+        if (window.auth && window.auth.currentUser) idToken = await window.auth.currentUser.getIdToken();
+      } catch (_) {}
+      if (!idToken) {
+        setMsg('You must be signed in to scan.', 'err');
+        extractBtn.disabled = false; extractBtn.textContent = original;
+        return;
+      }
+
+      try {
+        const r = await fetch(EXTRACT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+          body: JSON.stringify({ images: images.map(x => x.dataUri) }),
+        });
+        if (!r.ok) {
+          const t = await r.text().catch(() => '');
+          setMsg(`The extraction failed (${r.status}). ${t.slice(0,160)}`, 'err');
+          extractBtn.disabled = false; extractBtn.textContent = original;
+          return;
+        }
+        const data = await r.json();
+
+        // Sanity: did we get anything?
+        const anyField = data.name || data.dosage || (Array.isArray(data.schedules) && data.schedules.length)
+          || data.startDate || data.endDate || (Array.isArray(data.bottles) && data.bottles.length);
+        if (!anyField) {
+          setMsg('We could not read enough from those photos. Try a clearer shot, or add the medication manually.', 'err');
+          extractBtn.disabled = false; extractBtn.textContent = original;
+          return;
+        }
+
+        // Hand off to add-medication.html via sessionStorage (no URL bloat).
+        try {
+          sessionStorage.setItem('scanMedicationDraft', JSON.stringify({
+            source: 'scan',
+            extractedAt: new Date().toISOString(),
+            data
+          }));
+        } catch (e) {
+          console.warn('[Scan] sessionStorage write failed:', e);
+        }
+
+        extractBtn.textContent = 'Opening form…';
+        location.href = 'add-medication.html?source=scan';
+      } catch (e) {
+        console.error('[Scan] extract error:', e);
+        setMsg('Network error while contacting the AI. Please try again.', 'err');
+        extractBtn.disabled = false; extractBtn.textContent = original;
+      }
+    }
+
+    extractBtn.addEventListener('click', runExtraction);
+  </script>
+</body>
+</html>

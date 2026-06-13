@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Main gradient -->
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f8cff"/>
+      <stop offset="50%" style="stop-color:#3c74f7"/>
+      <stop offset="100%" style="stop-color:#7de2d1"/>
+    </linearGradient>
+
+    <!-- Glow gradient for the shield -->
+    <radialGradient id="glowGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#4f8cff;stop-opacity:0.25"/>
+      <stop offset="100%" style="stop-color:#4f8cff;stop-opacity:0"/>
+    </radialGradient>
+
+    <!-- Inner shadow gradient -->
+    <linearGradient id="innerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.1"/>
+    </linearGradient>
+
+    <!-- E letter gradient -->
+    <linearGradient id="eGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#e0ecff"/>
+    </linearGradient>
+
+    <!-- Pulse ring gradient -->
+    <linearGradient id="pulseGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" style="stop-color:#7de2d1;stop-opacity:0"/>
+      <stop offset="30%" style="stop-color:#7de2d1;stop-opacity:0.9"/>
+      <stop offset="50%" style="stop-color:#4f8cff;stop-opacity:1"/>
+      <stop offset="70%" style="stop-color:#7de2d1;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#7de2d1;stop-opacity:0"/>
+    </linearGradient>
+
+    <!-- Drop shadow filter -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="18" flood-color="#4f8cff" flood-opacity="0.35"/>
+    </filter>
+
+    <!-- Inner glow for E -->
+    <filter id="eGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <!-- Clip path for shield shape -->
+    <clipPath id="shieldClip">
+      <path d="M256 42 C256 42, 420 72, 440 80 C440 80, 450 260, 420 340 C390 420, 310 465, 256 482 C202 465, 122 420, 92 340 C62 260, 72 80, 72 80 C92 72, 256 42, 256 42 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- Outer glow circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#glowGrad)"/>
+
+  <!-- Shield shape - main body -->
+  <path d="M256 42 C256 42, 420 72, 440 80 C440 80, 450 260, 420 340 C390 420, 310 465, 256 482 C202 465, 122 420, 92 340 C62 260, 72 80, 72 80 C92 72, 256 42, 256 42 Z"
+        fill="url(#mainGrad)" filter="url(#shadow)"/>
+
+  <!-- Shield inner overlay for depth -->
+  <path d="M256 42 C256 42, 420 72, 440 80 C440 80, 450 260, 420 340 C390 420, 310 465, 256 482 C202 465, 122 420, 92 340 C62 260, 72 80, 72 80 C92 72, 256 42, 256 42 Z"
+        fill="url(#innerGrad)"/>
+
+  <!-- Shield border highlight -->
+  <path d="M256 52 C256 52, 414 80, 432 87 C432 87, 442 258, 413 334 C384 410, 307 454, 256 470 C205 454, 128 410, 99 334 C70 258, 80 87, 80 87 C98 80, 256 52, 256 52 Z"
+        fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+
+  <!-- Heartbeat / pulse line running through the shield -->
+  <polyline points="100,268 170,268 195,268 210,230 225,310 240,200 255,340 270,220 285,300 300,248 315,268 342,268 412,268"
+            fill="none" stroke="url(#pulseGrad)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+
+  <!-- The E letter - bold, modern, geometric -->
+  <g filter="url(#eGlow)">
+    <!-- E main shape - thick strokes for boldness -->
+    <!-- Vertical bar -->
+    <rect x="172" y="130" width="42" height="252" rx="8" fill="url(#eGrad)"/>
+    <!-- Top horizontal bar -->
+    <rect x="172" y="130" width="168" height="38" rx="8" fill="url(#eGrad)"/>
+    <!-- Middle horizontal bar (slightly shorter for style) -->
+    <rect x="172" y="237" width="140" height="38" rx="8" fill="url(#eGrad)"/>
+    <!-- Bottom horizontal bar -->
+    <rect x="172" y="344" width="168" height="38" rx="8" fill="url(#eGrad)"/>
+  </g>
+
+  <!-- Small decorative cross/plus (medical symbol) top-right of E -->
+  <g transform="translate(350, 155)" opacity="0.8">
+    <rect x="-3" y="-12" width="6" height="24" rx="3" fill="#7de2d1"/>
+    <rect x="-12" y="-3" width="24" height="6" rx="3" fill="#7de2d1"/>
+  </g>
+
+  <!-- Small dots/particles for extra flair -->
+  <circle cx="365" cy="200" r="4" fill="#7de2d1" opacity="0.5"/>
+  <circle cx="380" cy="240" r="3" fill="#7de2d1" opacity="0.4"/>
+  <circle cx="355" cy="310" r="3.5" fill="#7de2d1" opacity="0.35"/>
+  <circle cx="130" cy="180" r="3" fill="rgba(255,255,255,0.3)"/>
+  <circle cx="120" cy="310" r="2.5" fill="rgba(255,255,255,0.25)"/>
+
+</svg>

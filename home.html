@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Home</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -645,7 +646,321 @@
         font-size: 0.9rem;
       }
     }
+
+    /* === Medication Groups === */
+    #groups-area { margin-bottom: 1.5rem; }
+    .group-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+    }
+    .group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .group-header h3 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .group-header .group-count {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .group-meds-list {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .group-med-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      background: color-mix(in oklab, var(--surface) 94%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
+    .group-med-item .med-label { font-weight: 600; }
+    .group-med-item .dose-status {
+      font-size: 0.8rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .dose-status.taken { background: color-mix(in oklab, var(--success) 20%, transparent); color: var(--success); }
+    .dose-status.pending { background: color-mix(in oklab, var(--brand) 15%, transparent); color: var(--brand); }
+    .dose-status.no-dose { color: var(--muted); }
+    .group-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+    .manage-groups-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .manage-groups-btn:hover {
+      color: var(--text);
+      border-color: color-mix(in oklab, var(--brand) 40%, var(--border));
+    }
+    /* Group management modal */
+    .group-mgmt-modal .modal-content {
+      max-width: 600px;
+      width: 95%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+    .group-mgmt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .group-mgmt-header h3 { margin: 0; }
+    .group-create-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .group-create-row input {
+      flex: 1;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .group-create-row input:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .group-edit-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+    }
+    .group-edit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .group-edit-header input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 600;
+      outline: none;
+    }
+    .group-med-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .group-med-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+    .take-all-feedback {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(34,197,94,.4);
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .take-all-feedback.show { opacity: 1; }
+
+    /* Lock/unlock states */
+    .group-locked {
+      opacity: 0.65;
+      border-color: color-mix(in oklab, var(--muted) 30%, var(--border));
+    }
+    .group-locked .take-all-btn {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .group-unlocked {
+      border-color: color-mix(in oklab, var(--success) 35%, var(--border));
+    }
+    .group-lock-reason {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+    .group-window {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-left: 0.5rem;
+    }
+    .group-all-taken .take-all-btn {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Wizard step styles */
+    .wizard-step-indicator {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    .wizard-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .anchor-option, .nearby-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .anchor-option:hover, .nearby-option:hover {
+      border-color: color-mix(in oklab, var(--brand) 40%, var(--border));
+      background: color-mix(in oklab, var(--brand) 5%, var(--surface));
+    }
+    .anchor-option input[type="radio"],
+    .nearby-option input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+    .anchor-option .option-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .anchor-option .option-time,
+    .nearby-option .option-time {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-left: auto;
+    }
+    .nearby-option .option-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    #anchor-summary {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: color-mix(in oklab, var(--brand) 8%, var(--surface));
+      border-radius: 10px;
+    }
+    .wizard-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .group-section { padding: 0.85rem; }
+      .group-header h3 { font-size: 1rem; }
+      .group-med-item { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+      .group-mgmt-modal .modal-content { padding: 1rem; }
+      .group-create-row { flex-direction: column; }
+    }
+
+    /* ── Mobile: pin the three Add buttons (Voice / Manual / Picture) to the
+       bottom of the viewport, all on ONE line, so they're always visible. ── */
+    @media (max-width: 720px) {
+      #add-actions {
+        position: fixed !important;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: 0 !important;
+        padding: 0.6rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, rgba(11,16,32,0.96) 70%, rgba(11,16,32,0.6) 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-top: 1px solid rgba(255,255,255,0.08);
+        z-index: 30;
+        flex-wrap: nowrap !important;   /* never wrap */
+        justify-content: stretch;
+        gap: 0.45rem !important;
+      }
+      @media (prefers-color-scheme: light) {
+        #add-actions {
+          background: linear-gradient(to top, rgba(248,250,252,0.97) 70%, rgba(248,250,252,0.7) 100%);
+          border-top-color: rgba(15,23,42,0.10);
+        }
+      }
+      #add-actions .add-action-btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;         /* allow shrink below the desktop 140px */
+        max-width: none !important;
+        padding: 0.7rem 0.4rem !important;
+        font-size: 0.85rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* Reserve scroll space so the last med card isn't hidden under the
+         fixed footer. Roughly: button height (44) + padding (12+12) + safe area. */
+      .content {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+    }
+    /* On very narrow phones (iPhone SE ~ 320px), strip the emoji label gap so
+       text fits comfortably. */
+    @media (max-width: 380px) {
+      #add-actions .add-action-btn {
+        font-size: 0.78rem !important;
+        padding: 0.7rem 0.3rem !important;
+      }
+    }
 </style>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3f6ff5">
+<script src="push-subscribe.js"></script>
+<script src="tutorial.js"></script>
+<script src="med-image.js"></script>
+<script src="auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -663,6 +978,7 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html" data-tutorial="medicom">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
@@ -672,27 +988,23 @@
       <h1>Home</h1>
         <button class="btn agenda-btn" id="open-agenda-btn">Agenda</button>
       </div>
-      <div id="med-list"></div>
-      <div style="text-align:center; margin-top:2rem;">
-        <button class="btn-primary" id="add-medication-btn">
-          + Add Medication
+      <div id="med-list" data-tutorial="med-list"></div>
+      <div id="add-actions" data-tutorial="add-medication" style="display:flex; gap:0.75rem; justify-content:center; margin-top:2rem; flex-wrap:wrap;">
+        <button class="btn btn-primary add-action-btn" id="use-voice-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          🎤 Voice Add
+        </button>
+        <button class="btn btn-secondary add-action-btn" id="type-manually-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          ✏️ Manual Add
+        </button>
+        <button class="btn btn-secondary add-action-btn" id="picture-add-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          📷 Picture Add
         </button>
       </div>
-    </div>
-  </div>
-
-  <!-- Add Medication Options Modal -->
-  <div id="add-medication-options-modal" class="modal">
-    <div class="modal-content" style="max-width: 400px;">
-      <h3 style="margin-bottom: 1.5rem; text-align: center;">How would you like to add a medication?</h3>
-      <div style="display: flex; flex-direction: column; gap: 1rem;">
-        <button class="btn btn-primary" id="use-voice-btn" style="padding: 1rem; font-size: 1rem;">
-          🎤 Use Voice
-        </button>
-        <button class="btn btn-secondary" id="type-manually-btn" style="padding: 1rem; font-size: 1rem;">
-          ⌨️ Type Manually
-        </button>
+      <div id="groups-header" style="display:flex; align-items:center; justify-content:space-between; margin-top:2rem; margin-bottom:0.75rem;">
+        <h2 style="margin:0;">Groups</h2>
+        <button class="manage-groups-btn" id="manage-groups-btn">⚙ Manage</button>
       </div>
+      <div id="groups-area"></div>
     </div>
   </div>
 
@@ -765,6 +1077,73 @@
     </div>
   </div>
 
+  <!-- Manage Groups Modal (3-step wizard) -->
+  <div id="groups-modal" class="modal group-mgmt-modal">
+    <div class="modal-content">
+      <div class="group-mgmt-header">
+        <h3 id="groups-modal-title">Manage Groups</h3>
+        <button class="agenda-close" id="groups-modal-close" aria-label="Close">&times;</button>
+      </div>
+
+      <!-- Step Main: List groups + create button -->
+      <div id="groups-step-main">
+        <button class="btn btn-primary" id="start-create-group-btn" style="width:100%;margin-bottom:1rem;">+ Create New Group</button>
+        <div id="groups-edit-list"></div>
+      </div>
+
+      <!-- Step 1: Enter group name -->
+      <div id="groups-step-1" style="display:none;">
+        <p class="wizard-step-indicator">Step 1 of 3: Name your group</p>
+        <div class="group-create-row">
+          <input type="text" id="new-group-name" placeholder="Group name..." maxlength="50">
+        </div>
+        <div class="wizard-nav">
+          <button class="btn btn-sm btn-secondary" id="wizard-back-to-main">Cancel</button>
+          <button class="btn btn-sm btn-primary" id="wizard-to-step-2">Next</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Pick anchor med+time -->
+      <div id="groups-step-2" style="display:none;">
+        <p class="wizard-step-indicator">Step 2 of 3: Choose anchor medication & time</p>
+        <p class="wizard-desc">Select one medication + dose time as the anchor. Other medications within 2 hours will be shown next.</p>
+        <div id="anchor-med-list" style="max-height:50vh;overflow-y:auto;"></div>
+        <div class="wizard-nav">
+          <button class="btn btn-sm btn-secondary" id="wizard-back-to-step-1">Back</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Pick additional meds within 2hr window -->
+      <div id="groups-step-3" style="display:none;">
+        <p class="wizard-step-indicator">Step 3 of 3: Add nearby medications</p>
+        <div id="anchor-summary"></div>
+        <div id="nearby-med-list" style="max-height:50vh;overflow-y:auto;"></div>
+        <div class="wizard-nav">
+          <button class="btn btn-sm btn-secondary" id="wizard-back-to-step-2">Back</button>
+          <button class="btn btn-sm btn-primary" id="wizard-save-group">Create Group</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Take All feedback toast -->
+  <div class="take-all-feedback" id="take-all-feedback"></div>
+
+  <!-- Delete Group Confirmation Modal -->
+  <div id="delete-group-modal" class="modal" style="z-index:1100;">
+    <div class="modal-content" style="max-width:380px;text-align:center;">
+      <p style="margin-bottom:0.25rem;font-size:1.05rem;font-weight:600;">Delete group?</p>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.25rem;">
+        <span id="delete-group-name" style="font-weight:600;color:var(--text);"></span><br>
+        <small>This won't delete any medications.</small>
+      </p>
+      <div style="display:flex;gap:0.5rem;justify-content:center;">
+        <button id="delete-group-yes" class="btn btn-sm btn-danger">Delete</button>
+        <button id="delete-group-no" class="btn btn-sm btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
 <script>
       document.addEventListener('DOMContentLoaded', () => {
       // Close mobile menu when clicking on nav links
@@ -776,17 +1155,10 @@
         });
       });
 
-      // Add Medication Options Modal
-      const addMedBtn = document.getElementById('add-medication-btn');
-      const addMedModal = document.getElementById('add-medication-options-modal');
+      // Add Medication buttons (Voice Add / Manual Add / Picture Add)
       const useVoiceBtn = document.getElementById('use-voice-btn');
       const typeManuallyBtn = document.getElementById('type-manually-btn');
-
-      if (addMedBtn) {
-        addMedBtn.addEventListener('click', () => {
-          addMedModal.classList.add('show');
-        });
-      }
+      const pictureAddBtn = document.getElementById('picture-add-btn');
 
       if (useVoiceBtn) {
         useVoiceBtn.addEventListener('click', () => {
@@ -800,12 +1172,9 @@
         });
       }
 
-      // Close modal when clicking outside
-      if (addMedModal) {
-        addMedModal.addEventListener('click', (e) => {
-          if (e.target === addMedModal) {
-            addMedModal.classList.remove('show');
-          }
+      if (pictureAddBtn) {
+        pictureAddBtn.addEventListener('click', () => {
+          window.location.href = 'scan-medication.html';
         });
       }
       
@@ -1116,7 +1485,7 @@
   // Import Firebase SDKs for verification check
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, getDocsFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
@@ -1286,8 +1655,19 @@
               schedules: medData.schedules || [],
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
-              reminder: medData.reminderMethod === 'E' ? 'Email' :
-                       medData.reminderMethod === 'S' ? 'SMS' : 'None',
+              reminder: (function(){
+                // Prefer new reminderChannels array; fall back to legacy reminderMethod
+                const chans = Array.isArray(medData.reminderChannels) && medData.reminderChannels.length > 0
+                  ? medData.reminderChannels
+                  : (medData.reminderMethod === 'E' ? ['email']
+                    : medData.reminderMethod === 'S' ? ['sms']
+                    : medData.reminderMethod === 'ES' ? ['email','sms']
+                    : []);
+                if (chans.length === 0) return 'None';
+                const label = { email: 'Email', sms: 'SMS', push: 'Push' };
+                return chans.map(c => label[c] || c).join(' + ');
+              })(),
+              reminderChannels: Array.isArray(medData.reminderChannels) ? medData.reminderChannels.slice() : [],
               bottles: medData.bottles ? medData.bottles.map(bottleStr => {
                 const parts = bottleStr.split('/');
                 if (parts.length >= 4) {
@@ -1297,7 +1677,12 @@
                   };
                 }
                 return null;
-              }).filter(Boolean) : []
+              }).filter(Boolean) : [],
+              doses: medData.doses || {},
+              groups: medData.groups || [],
+              imageUrl: medData.imageUrl || null,
+              imageCanonical: medData.imageCanonical || null,
+              imageGenericName: medData.imageGenericName || null
             };
 
             // Auto-migrate old format
@@ -1330,7 +1715,7 @@
       const getWeekdayIndex = (dayName) => weekdaysConst.indexOf(dayName.toLowerCase());
 
       const computeNextDosage = (medication) => {
-        const result = ScheduleUtils.computeNextDose(medication.schedules || [], new Date());
+        const result = ScheduleUtils.computeNextDose(medication.schedules || [], new Date(), medication.doses || {});
         if (!result) return 'N/A';
         if (result.time) {
           return `${formatTime12h(result.time)} on ${result.weekday.charAt(0).toUpperCase() + result.weekday.slice(1)}`;
@@ -1339,54 +1724,26 @@
       };
 
       const determineCurrentDose = (medication) => {
-        return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date());
+        return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), medication.doses || {});
+      };
+
+      // Looser variant for the "Not Taken" button:
+      // determineCurrentDose() skips doses already marked taken, which makes sense for "Taken"
+      // but blocks the user from un-taking a dose they just marked. This variant ignores
+      // taken-status when picking the closest dose to "now".
+      const determineDoseToToggle = (medication) => {
+        // First try the strict version (skips taken doses)
+        const strict = ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), medication.doses || {});
+        if (strict) return strict;
+        // Fall back: ignore taken-status so the user can flip an already-taken dose
+        return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), {});
       };
 
       // Store current dose for each medication (will be set when "Taken" is clicked)
       const medicationCurrentDoses = new Map();
 
-      medications.forEach((med) => {
-        // Calculate per week and per day
-        const perWeek = ScheduleUtils.getPerWeekCount(med.schedules || []);
-        const perDay = ScheduleUtils.getPerDayMax(med.schedules || []);
-        
-        // Calculate next dosage
-        const nextDosage = computeNextDosage(med);
-        
-        // Determine current dose automatically
-        const currentDose = determineCurrentDose(med);
-        
-        // Build current dose display
-        let currentDoseDisplay = '';
-        if (currentDose) {
-          const timeDisplay = currentDose.timeStr ? formatTime12h(currentDose.timeStr) : 'Any time';
-          const weekdayDisplay = currentDose.weekday ? currentDose.weekday.charAt(0).toUpperCase() + currentDose.weekday.slice(1) : '';
-          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay}${weekdayDisplay ? ` on ${weekdayDisplay}` : ''}, Dose #${currentDose.doseNumber}`;
-        }
-        
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.medicationId = med.id;
-        
-        card.innerHTML = `
-          <h2>${med.name}</h2>
-          <p>
-            <strong>Per Week:</strong> ${perWeek} dosage${perWeek !== 1 ? 's' : ''}<br>
-            <strong>Per Day:</strong> ${perDay} dosage${perDay !== 1 ? 's' : ''}<br>
-            <strong>Next Dosage:</strong> ${nextDosage}${currentDoseDisplay}
-          </p>
-          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-sm btn-success taken-btn">Taken</button>
-            <button class="btn btn-sm btn-danger not-taken-btn">Not Taken</button>
-            <button class="btn btn-sm btn-secondary" onclick="location.href='add-medication.html?edit=${med.id}'">Edit</button>
-            <button class="btn btn-sm btn-secondary" onclick="openStock('${med.id}')">Stock</button>
-            <button class="btn btn-sm btn-secondary delete-btn">Delete</button>
-          </div>
-        `;
-        
-        // Function to save/update dose in Firebase
-        // Helper function to update stock based on dose status change
-        const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+      // Helper function to update stock based on dose status change (extracted for reuse by Take All)
+      const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
           if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
             console.log('[Home] No bottles to update stock for');
             return medData.bottles || [];
@@ -1508,7 +1865,10 @@
             }
             
             // Check if an entry already exists for this dose# and date
-            const dateStr = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            const dy = date.getFullYear();
+            const dm = String(date.getMonth() + 1).padStart(2, '0');
+            const dday = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${dy}-${dm}-${dday}`; // Format as YYYY-MM-DD (local)
             // Ensure doseNumber is a number for comparison
             const doseNum = Number(doseNumber);
             const doseKey = `${dateStr}_${doseNum}`;
@@ -1573,19 +1933,77 @@
           }
         };
 
-        // Function to trigger flash animation
-        const triggerFlash = (cardElement, color) => {
-          // Remove any existing flash classes
-          cardElement.classList.remove('flash-green', 'flash-red');
-          // Force reflow to restart animation
-          void cardElement.offsetWidth;
-          // Add the flash class
-          cardElement.classList.add(`flash-${color}`);
-          // Remove the class after animation completes
-          setTimeout(() => {
-            cardElement.classList.remove(`flash-${color}`);
-          }, 1000);
-        };
+      // Make saveDoseToFirebase globally available for Take All feature
+      window.saveDoseToFirebase = saveDoseToFirebase;
+
+      // Function to trigger flash animation
+      const triggerFlash = (cardElement, color) => {
+        // Remove any existing flash classes
+        cardElement.classList.remove('flash-green', 'flash-red');
+        // Force reflow to restart animation
+        void cardElement.offsetWidth;
+        // Add the flash class
+        cardElement.classList.add(`flash-${color}`);
+        // Remove the class after animation completes
+        setTimeout(() => {
+          cardElement.classList.remove(`flash-${color}`);
+        }, 1000);
+      };
+
+      medications.forEach((med) => {
+        // Calculate per week and per day
+        const perWeek = ScheduleUtils.getPerWeekCount(med.schedules || []);
+        const perDay = ScheduleUtils.getPerDayMax(med.schedules || []);
+
+        // Calculate next dosage
+        const nextDosage = computeNextDosage(med);
+
+        // Determine current dose automatically
+        const currentDose = determineCurrentDose(med);
+
+        // Build current dose display
+        let currentDoseDisplay = '';
+        if (currentDose) {
+          const timeDisplay = currentDose.time ? formatTime12h(currentDose.time) : 'Any time';
+          const weekdayDisplay = currentDose.weekday ? currentDose.weekday.charAt(0).toUpperCase() + currentDose.weekday.slice(1) : '';
+          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay}${weekdayDisplay ? ` on ${weekdayDisplay}` : ''}, Dose #${currentDose.doseNumber}`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.medicationId = med.id;
+
+        card.innerHTML = `
+          <div class="med-card-header" style="display:flex; gap:1rem; align-items:flex-start; justify-content:space-between;">
+            <div style="flex:1; min-width:0;">
+              <h2 style="margin:0 0 .35rem 0;">${med.name}</h2>
+              <p style="margin:0;">
+                <strong>Per Week:</strong> ${perWeek} dosage${perWeek !== 1 ? 's' : ''}<br>
+                <strong>Per Day:</strong> ${perDay} dosage${perDay !== 1 ? 's' : ''}<br>
+                <strong>Next Dosage:</strong> ${nextDosage}${currentDoseDisplay}
+              </p>
+            </div>
+            <div class="med-card-image-slot" data-med-image-slot="1" style="flex-shrink:0;"></div>
+          </div>
+          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-success taken-btn">Taken</button>
+            <button class="btn btn-sm btn-danger not-taken-btn">Not Taken</button>
+            <button class="btn btn-sm btn-secondary" onclick="location.href='add-medication.html?edit=${med.id}'">Edit</button>
+            <button class="btn btn-sm btn-secondary" onclick="openStock('${med.id}')">Stock</button>
+            <button class="btn btn-sm btn-secondary delete-btn">Delete</button>
+          </div>
+        `;
+
+        // Mount the soft-blend medication image (right side of header).
+        try {
+          if (med.imageUrl && window.MedImage) {
+            const slot = card.querySelector('.med-card-image-slot');
+            if (slot) slot.appendChild(window.MedImage.renderCardImage({
+              imageUrl: med.imageUrl,
+              alt: med.imageCanonical || med.name || 'Medication',
+            }));
+          }
+        } catch (_) {}
 
         // Add event listener for "Taken" button
         const takenBtn = card.querySelector('.taken-btn');
@@ -1612,7 +2030,10 @@
                   if (medDoc.exists()) {
                     const medData = medDoc.data();
                     const doses = medData.doses || {};
-                    const dateStr = doseDate.toISOString().split('T')[0];
+                    const yy = doseDate.getFullYear();
+                    const mm = String(doseDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(doseDate.getDate()).padStart(2, '0');
+                    const dateStr = `${yy}-${mm}-${dd}`;
                     const doseKey = `${dateStr}_${currentDose.doseNumber}`;
                     const existingEntry = doses[doseKey];
                     if (existingEntry && existingEntry.taken === true) {
@@ -1624,15 +2045,15 @@
                   console.error('[Home] Error checking existing status:', error);
                 }
               }
-              
+
               // Mark as taken in Firebase and flash green
               const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, true);
-              
+
               // Flash green if status changed
               if (statusChanged) {
                 triggerFlash(card, 'green');
               }
-              
+
               // Only navigate to notes if it wasn't already taken
               if (!alreadyTaken) {
                 // Get date string in local timezone for URL
@@ -1640,19 +2061,24 @@
                 const month = String(doseDate.getMonth() + 1).padStart(2, '0');
                 const day = String(doseDate.getDate()).padStart(2, '0');
                 const dateString = `${year}-${month}-${day}`;
-                
+
                 // Build URL with parameters
-                const timeParam = currentDose.timeStr ? encodeURIComponent(currentDose.timeStr) : 'no-time';
+                const timeParam = currentDose.time ? encodeURIComponent(currentDose.time) : 'no-time';
                 const url = `medication-action.html?medication=${encodeURIComponent(med.name)}&dose=${currentDose.doseNumber}&time=${timeParam}&date=${dateString}&medId=${encodeURIComponent(med.id)}`;
-                
+
                 // Wait a moment for the flash to be visible, then navigate
                 setTimeout(() => {
                   window.location.href = url;
                 }, 400);
+              } else if (statusChanged) {
+                // If already taken and status changed, re-render to update Next/Current Dosage
+                setTimeout(() => {
+                  window.renderList();
+                }, 600);
               }
             } else {
               console.warn('[Home] Could not determine current dose for:', med.name);
-              alert('Could not determine current dose. Please check medication times and days.');
+              alert('No upcoming or recent dose found for this medication. Make sure it has a schedule with valid dates.');
             }
           });
         }
@@ -1664,22 +2090,25 @@
             e.preventDefault();
             e.stopPropagation();
             console.log('[Home] Not Taken button clicked for:', med.name);
-            
-            const currentDose = determineCurrentDose(med);
+
+            // Use the looser variant: if all of today's doses are already marked taken,
+            // we still want to let the user un-mark the closest one.
+            const currentDose = determineDoseToToggle(med);
             if (currentDose) {
               // Use the dateTime from currentDose, which contains the correct date for this dose
               const doseDate = new Date(currentDose.dateTime);
               // Reset time to midnight to get just the date part for the key
               doseDate.setHours(0, 0, 0, 0);
               const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, false);
-              
-              // Only flash if status actually changed
-              if (statusChanged) {
-                triggerFlash(card, 'red');
-              }
+
+              // Always flash + re-render so the user gets feedback even if it was already not-taken
+              triggerFlash(card, 'red');
+              setTimeout(() => {
+                window.renderList();
+              }, 600);
             } else {
               console.warn('[Home] Could not determine current dose for:', med.name);
-              alert('Could not determine current dose. Please check medication times and days.');
+              alert('No upcoming or recent dose found for this medication. Make sure it has a schedule with valid dates.');
             }
           });
         }
@@ -1695,6 +2124,35 @@
         renderAgendaEntries();
       }
       window.currentMedications = currentMedications;
+
+      // Load groups from Firestore subcollection (always from server to avoid stale cache)
+      const groupsCollectionRef = collection(window.db, "users", user.uid, "groups");
+      let groupsSnapshot;
+      try {
+        groupsSnapshot = await getDocsFromServer(groupsCollectionRef);
+      } catch (e) {
+        // Fallback to cache if offline
+        groupsSnapshot = await getDocs(groupsCollectionRef);
+      }
+      let groups = [];
+      groupsSnapshot.forEach(docSnap => {
+        groups.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      // Lazy migrate old-format groups if needed
+      const migrated = await migrateGroupsIfNeeded(user, medications, groups);
+      if (migrated) {
+        const freshSnapshot = await getDocs(groupsCollectionRef);
+        groups = [];
+        freshSnapshot.forEach(docSnap => {
+          groups.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      }
+
+      window.currentGroups = groups;
+
+      // Render medication groups
+      renderGroups(medications, groups);
     } catch (error) {
       console.error('Error in renderList:', error);
       document.getElementById('med-list').innerHTML = '<p style="text-align:center;color:red;">Error loading medications: ' + error.message + '</p>';
@@ -1703,6 +2161,655 @@
   
   // Make renderList globally available
   window.renderList = renderList;
+
+  // ============ MEDICATION GROUPS (Time-Based) ============
+
+  // Helper: convert "HH:MM" to total minutes since midnight
+  function timeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + (m || 0);
+  }
+
+  // Helper: convert minutes since midnight to "H:MM AM/PM"
+  function minutesToTime12h(totalMinutes) {
+    let mins = ((totalMinutes % 1440) + 1440) % 1440;
+    const hours = Math.floor(mins / 60);
+    const minutes = mins % 60;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  }
+
+  // Helper: show toast message
+  function showGroupToast(msg) {
+    const toast = document.getElementById('take-all-feedback');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  // Lazy migrate old string-array groups to new subcollection format (runs once only)
+  async function migrateGroupsIfNeeded(user, medications, existingGroups) {
+    // Check if migration already ran (stored in localStorage so it never re-runs)
+    const migrateKey = `groups_migrated_${user.uid}`;
+    if (localStorage.getItem(migrateKey)) return false;
+
+    // If new-format groups already exist, mark as migrated and skip
+    if (existingGroups.length > 0) {
+      localStorage.setItem(migrateKey, '1');
+      return false;
+    }
+
+    // Collect old-format groups from medication docs
+    const oldGroups = new Map();
+    for (const med of medications) {
+      for (const groupName of (med.groups || [])) {
+        if (!oldGroups.has(groupName)) oldGroups.set(groupName, []);
+        oldGroups.get(groupName).push(med.id);
+      }
+    }
+    // If no old groups to migrate, mark done and skip
+    if (oldGroups.size === 0) {
+      localStorage.setItem(migrateKey, '1');
+      return false;
+    }
+
+    for (const [groupName, medIds] of oldGroups) {
+      const members = [];
+      for (const medId of medIds) {
+        const med = medications.find(m => m.id === medId);
+        if (!med) continue;
+        const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], new Date());
+        if (todayDoses.length > 0) {
+          members.push({ medId, time: todayDoses[0].time });
+        } else {
+          const times = (med.schedules || []).map(s => s.time).filter(Boolean).sort();
+          if (times.length > 0) {
+            members.push({ medId, time: times[0] });
+          }
+        }
+      }
+      if (members.length > 0) {
+        const groupRef = doc(collection(window.db, "users", user.uid, "groups"));
+        await setDoc(groupRef, {
+          name: groupName,
+          members: members,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+    console.log('[Home] Migrated', oldGroups.size, 'groups to new format');
+    localStorage.setItem(migrateKey, '1');
+    return true;
+  }
+
+  // Render groups on the home page with lock/unlock logic
+  function renderGroups(medications, groups) {
+    const area = document.getElementById('groups-area');
+    const header = document.getElementById('groups-header');
+    if (!area) return;
+
+    // Always show the header so users can manage/create groups
+    if (header) header.style.display = 'flex';
+
+    if (!groups || groups.length === 0) {
+      area.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:0.9rem;padding:0.5rem 0;">No groups yet. Tap Manage to create one.</p>';
+      return;
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayISO = ScheduleUtils.toISODate(today);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    area.innerHTML = groups.map(group => {
+      // Resolve active members for today
+      const activeMembers = [];
+      const inactiveMembers = [];
+      for (const member of (group.members || [])) {
+        const med = medications.find(m => m.id === member.medId);
+        if (!med) continue;
+        const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], today);
+        const matchingDose = todayDoses.find(d => d.time === member.time);
+        if (matchingDose) {
+          const doseKey = `${todayISO}_${matchingDose.doseNumber}`;
+          const doseEntry = (med.doses || {})[doseKey];
+          const taken = doseEntry && doseEntry.taken === true;
+          activeMembers.push({ med, time: member.time, doseNumber: matchingDose.doseNumber, taken, doseKey });
+        } else {
+          inactiveMembers.push({ med, time: member.time });
+        }
+      }
+
+      // Calculate lock window
+      let isLocked = true;
+      let lockReason = '';
+      if (activeMembers.length === 0) {
+        isLocked = true;
+        lockReason = 'No medications due today';
+      } else {
+        const times = activeMembers.map(m => timeToMinutes(m.time));
+        const earliestMin = Math.min(...times);
+        const latestMin = Math.max(...times);
+        const unlockAt = earliestMin - 60;
+        const lockAt = latestMin + 60;
+        if (nowMinutes < unlockAt) {
+          isLocked = true;
+          lockReason = `Unlocks at ${minutesToTime12h(unlockAt)}`;
+        } else if (nowMinutes > lockAt) {
+          isLocked = true;
+          lockReason = `Window closed at ${minutesToTime12h(lockAt)}`;
+        } else {
+          isLocked = false;
+        }
+      }
+
+      const allTaken = activeMembers.length > 0 && activeMembers.every(m => m.taken);
+      const takenCount = activeMembers.filter(m => m.taken).length;
+
+      // Active member rows
+      const medRows = activeMembers.length > 0
+        ? activeMembers.map(am => {
+            const statusClass = am.taken ? 'taken' : 'pending';
+            const statusText = am.taken ? 'Taken' : formatTime12h(am.time);
+            return `<div class="group-med-item"><span class="med-label">${am.med.name}</span><span class="dose-status ${statusClass}">${statusText}</span></div>`;
+          }).join('')
+        : '<div style="color:var(--muted);font-size:0.85rem;">No medications due today.</div>';
+
+      // Inactive member rows (muted)
+      const inactiveHtml = inactiveMembers.length > 0
+        ? `<div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">
+             <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.25rem;">Not scheduled today:</div>
+             ${inactiveMembers.map(im => `<div class="group-med-item" style="opacity:0.5;"><span class="med-label">${im.med.name}</span><span class="dose-status no-dose">${formatTime12h(im.time)}</span></div>`).join('')}
+           </div>`
+        : '';
+
+      // Lock/unlock visuals
+      const lockIcon = isLocked ? '&#x1F512;' : '&#x1F513;';
+      const lockClass = isLocked ? 'group-locked' : 'group-unlocked';
+      const allTakenClass = allTaken ? ' group-all-taken' : '';
+      const takeAllDisabled = (isLocked || allTaken) ? 'disabled' : '';
+      const takeAllText = allTaken ? 'All Taken' : 'Take All';
+
+      // Time window display
+      let windowHtml = '';
+      if (activeMembers.length > 0) {
+        const times = activeMembers.map(m => timeToMinutes(m.time));
+        const earliest = Math.min(...times);
+        const latest = Math.max(...times);
+        windowHtml = `<span class="group-window">${minutesToTime12h(earliest - 60)} &ndash; ${minutesToTime12h(latest + 60)}</span>`;
+      }
+
+      return `
+        <div class="group-section ${lockClass}${allTakenClass}" data-group-id="${group.id}">
+          <div class="group-header">
+            <div>
+              <h3>${lockIcon} ${group.name}</h3>
+              <span class="group-count">${takenCount}/${activeMembers.length} taken ${windowHtml}</span>
+              ${lockReason ? `<div class="group-lock-reason">${lockReason}</div>` : ''}
+            </div>
+            <div class="group-actions">
+              <button class="btn btn-sm btn-success take-all-btn" data-group-id="${group.id}" ${takeAllDisabled}>${takeAllText}</button>
+            </div>
+          </div>
+          <div class="group-meds-list">${medRows}</div>
+          ${inactiveHtml}
+        </div>
+      `;
+    }).join('');
+
+    // Wire up Take All buttons
+    area.querySelectorAll('.take-all-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const groupId = btn.dataset.groupId;
+        btn.disabled = true;
+        btn.textContent = 'Marking...';
+        await takeAllForGroup(groupId, medications, groups);
+        btn.disabled = false;
+        btn.textContent = 'Take All';
+      });
+    });
+  }
+
+  // Take All: mark specific doses for active group members today
+  async function takeAllForGroup(groupId, medications, groups) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayISO = ScheduleUtils.toISODate(today);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Resolve active members
+    const activeMembers = [];
+    for (const member of (group.members || [])) {
+      const med = medications.find(m => m.id === member.medId);
+      if (!med) continue;
+      const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], today);
+      const matchingDose = todayDoses.find(d => d.time === member.time);
+      if (matchingDose) {
+        activeMembers.push({ med, doseNumber: matchingDose.doseNumber, time: member.time });
+      }
+    }
+
+    if (activeMembers.length === 0) {
+      showGroupToast('No medications due today in this group');
+      return;
+    }
+
+    // Re-verify lock window
+    const times = activeMembers.map(m => timeToMinutes(m.time));
+    const earliestMin = Math.min(...times);
+    const latestMin = Math.max(...times);
+    if (nowMinutes < earliestMin - 60 || nowMinutes > latestMin + 60) {
+      showGroupToast('Group is currently locked');
+      return;
+    }
+
+    let updated = 0;
+    let alreadyTaken = 0;
+
+    for (const am of activeMembers) {
+      const doseKey = `${todayISO}_${am.doseNumber}`;
+      const existing = (am.med.doses || {})[doseKey];
+      if (existing && existing.taken === true) {
+        alreadyTaken++;
+        continue;
+      }
+      const statusChanged = await window.saveDoseToFirebase(am.med.id, am.doseNumber, today, true);
+      if (statusChanged) updated++;
+    }
+
+    let msg = '';
+    if (updated > 0 && alreadyTaken > 0) {
+      msg = `Marked ${updated} dose${updated !== 1 ? 's' : ''} as taken, ${alreadyTaken} already taken`;
+    } else if (updated > 0) {
+      msg = `Marked ${updated} dose${updated !== 1 ? 's' : ''} as taken`;
+    } else if (alreadyTaken > 0) {
+      msg = `All ${alreadyTaken} dose${alreadyTaken !== 1 ? 's' : ''} already taken`;
+    } else {
+      msg = 'No doses to mark right now';
+    }
+    showGroupToast(msg);
+
+    if (updated > 0) {
+      await window.renderList();
+    }
+  }
+
+  // ============ GROUP MANAGEMENT MODAL (Wizard) ============
+
+  const groupsModal = document.getElementById('groups-modal');
+  const manageGroupsBtn = document.getElementById('manage-groups-btn');
+  const groupsModalClose = document.getElementById('groups-modal-close');
+  const groupsEditList = document.getElementById('groups-edit-list');
+  const newGroupInput = document.getElementById('new-group-name');
+
+  // Wizard state
+  let wizardState = {
+    groupName: '',
+    anchorMedId: null,
+    anchorTime: null,
+    allDoseTimes: [],
+    editingGroupId: null
+  };
+
+  // Delete group confirmation state
+  let pendingDeleteGroupId = null;
+
+  document.getElementById('delete-group-yes').addEventListener('click', async () => {
+    const groupIdToDelete = pendingDeleteGroupId;
+    if (!groupIdToDelete) return;
+    const user = window.auth.currentUser;
+    if (!user) return;
+    const btn = document.getElementById('delete-group-yes');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    try {
+      const groupRef = doc(window.db, "users", user.uid, "groups", groupIdToDelete);
+      await deleteDoc(groupRef);
+
+      // Remove from local cache immediately so UI updates instantly
+      window.currentGroups = (window.currentGroups || []).filter(g => g.id !== groupIdToDelete);
+
+      pendingDeleteGroupId = null;
+      document.getElementById('delete-group-modal').classList.remove('show');
+
+      // Re-render both the home page groups and the modal edit list from local data
+      renderGroups(window.currentMedications || [], window.currentGroups);
+      renderGroupsEditList();
+      showGroupToast('Group deleted');
+    } catch (error) {
+      console.error('[Groups] Error deleting group:', error);
+      pendingDeleteGroupId = null;
+      document.getElementById('delete-group-modal').classList.remove('show');
+      showGroupToast('Error deleting group');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+    }
+  });
+
+  document.getElementById('delete-group-no').addEventListener('click', () => {
+    pendingDeleteGroupId = null;
+    document.getElementById('delete-group-modal').classList.remove('show');
+  });
+
+  document.getElementById('delete-group-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'delete-group-modal') {
+      pendingDeleteGroupId = null;
+      document.getElementById('delete-group-modal').classList.remove('show');
+    }
+  });
+
+  // Show/hide wizard steps
+  function showWizardStep(stepId) {
+    ['groups-step-main', 'groups-step-1', 'groups-step-2', 'groups-step-3'].forEach(id => {
+      document.getElementById(id).style.display = (id === stepId) ? '' : 'none';
+    });
+    const title = document.getElementById('groups-modal-title');
+    if (stepId === 'groups-step-main') {
+      title.textContent = 'Manage Groups';
+    } else {
+      title.textContent = wizardState.editingGroupId ? 'Edit Group' : 'Create New Group';
+    }
+  }
+
+  // Open modal
+  if (manageGroupsBtn) {
+    manageGroupsBtn.addEventListener('click', () => {
+      renderGroupsEditList();
+      showWizardStep('groups-step-main');
+      groupsModal.classList.add('show');
+    });
+  }
+  if (groupsModalClose) {
+    groupsModalClose.addEventListener('click', () => groupsModal.classList.remove('show'));
+  }
+  if (groupsModal) {
+    groupsModal.addEventListener('click', (e) => {
+      if (e.target === groupsModal) groupsModal.classList.remove('show');
+    });
+  }
+
+  // Start create group
+  document.getElementById('start-create-group-btn').addEventListener('click', () => {
+    wizardState = { groupName: '', anchorMedId: null, anchorTime: null, allDoseTimes: [], editingGroupId: null };
+    newGroupInput.value = '';
+    showWizardStep('groups-step-1');
+  });
+
+  // Step 1 -> Main (cancel)
+  document.getElementById('wizard-back-to-main').addEventListener('click', () => {
+    showWizardStep('groups-step-main');
+  });
+
+  // Step 1 -> Step 2 (next)
+  document.getElementById('wizard-to-step-2').addEventListener('click', () => {
+    const name = newGroupInput.value.trim();
+    if (!name) { newGroupInput.focus(); return; }
+    // Check for duplicate name (unless editing same group)
+    const groups = window.currentGroups || [];
+    const dupe = groups.find(g => g.name === name && g.id !== wizardState.editingGroupId);
+    if (dupe) { showGroupToast('A group with that name already exists'); return; }
+    wizardState.groupName = name;
+    showStep2_AnchorSelection();
+    showWizardStep('groups-step-2');
+  });
+
+  // Step 2 -> Step 1 (back)
+  document.getElementById('wizard-back-to-step-1').addEventListener('click', () => {
+    showWizardStep('groups-step-1');
+  });
+
+  // Step 3 -> Step 2 (back)
+  document.getElementById('wizard-back-to-step-2').addEventListener('click', () => {
+    showWizardStep('groups-step-2');
+  });
+
+  // Step 2: Show ALL medication + dose time combos (across all schedules)
+  function showStep2_AnchorSelection() {
+    const meds = window.currentMedications || [];
+    const container = document.getElementById('anchor-med-list');
+
+    const allDoseTimes = [];
+    for (const med of meds) {
+      // Collect every unique time from all schedules for this medication
+      // Scan a full 7-day window to capture every possible dose time
+      const seenTimes = new Set();
+      const today = new Date();
+      for (let offset = 0; offset < 7; offset++) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+        const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], d);
+        for (const dose of doses) {
+          if (dose.time && !seenTimes.has(dose.time)) {
+            seenTimes.add(dose.time);
+            allDoseTimes.push({
+              medId: med.id,
+              medName: med.name,
+              dosage: med.dosage,
+              time: dose.time
+            });
+          }
+        }
+      }
+    }
+
+    // Sort by time, then by name
+    allDoseTimes.sort((a, b) => {
+      const tc = (a.time || '').localeCompare(b.time || '');
+      if (tc !== 0) return tc;
+      return a.medName.localeCompare(b.medName);
+    });
+
+    wizardState.allDoseTimes = allDoseTimes;
+
+    if (allDoseTimes.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem;">No medications with scheduled dose times found.</p>';
+      return;
+    }
+
+    container.innerHTML = allDoseTimes.map((dt, idx) => `
+      <label class="anchor-option">
+        <input type="radio" name="anchor-selection" value="${idx}"
+               data-med-id="${dt.medId}" data-time="${dt.time}">
+        <span class="option-name">${dt.medName}${dt.dosage ? ' (' + dt.dosage + ')' : ''}</span>
+        <span class="option-time">${formatTime12h(dt.time)}</span>
+      </label>
+    `).join('');
+
+    // When user clicks a radio, auto-advance to step 3
+    container.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        wizardState.anchorMedId = radio.dataset.medId;
+        wizardState.anchorTime = radio.dataset.time;
+        showStep3_NearbySelection();
+        showWizardStep('groups-step-3');
+      });
+    });
+  }
+
+  // Step 3: Show medications within 2-hour window of anchor
+  function showStep3_NearbySelection() {
+    const anchorMinutes = timeToMinutes(wizardState.anchorTime);
+    const WINDOW_MINUTES = 120;
+
+    const nearby = wizardState.allDoseTimes.filter(dt => {
+      if (dt.medId === wizardState.anchorMedId && dt.time === wizardState.anchorTime) return false;
+      const dtMinutes = timeToMinutes(dt.time);
+      return Math.abs(dtMinutes - anchorMinutes) <= WINDOW_MINUTES;
+    });
+
+    const anchorMed = (window.currentMedications || []).find(m => m.id === wizardState.anchorMedId);
+    document.getElementById('anchor-summary').innerHTML =
+      `Anchor: <strong>${anchorMed?.name || '?'}</strong> at ${formatTime12h(wizardState.anchorTime)}. Showing medications within 2 hours:`;
+
+    const container = document.getElementById('nearby-med-list');
+    if (nearby.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem;">No other medications scheduled within 2 hours of the anchor time.</p>';
+    } else {
+      container.innerHTML = nearby.map((dt, idx) => `
+        <label class="nearby-option">
+          <input type="checkbox" data-med-id="${dt.medId}" data-time="${dt.time}" checked>
+          <span class="option-name">${dt.medName}${dt.dosage ? ' (' + dt.dosage + ')' : ''}</span>
+          <span class="option-time">${formatTime12h(dt.time)}</span>
+        </label>
+      `).join('');
+    }
+
+    // Update button text
+    const saveBtn = document.getElementById('wizard-save-group');
+    saveBtn.textContent = wizardState.editingGroupId ? 'Save Group' : 'Create Group';
+  }
+
+  // Save group (create or edit)
+  document.getElementById('wizard-save-group').addEventListener('click', async () => {
+    const user = window.auth.currentUser;
+    if (!user) return;
+
+    const saveBtn = document.getElementById('wizard-save-group');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+      // Collect selected nearby meds
+      const selectedNearby = [...document.querySelectorAll('#nearby-med-list input[type="checkbox"]:checked')]
+        .map(cb => ({ medId: cb.dataset.medId, time: cb.dataset.time }));
+
+      // Build members array: anchor + selected nearby
+      const members = [
+        { medId: wizardState.anchorMedId, time: wizardState.anchorTime },
+        ...selectedNearby
+      ];
+
+      // Deduplicate
+      const seen = new Set();
+      const dedupedMembers = members.filter(m => {
+        const key = `${m.medId}_${m.time}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const groupData = {
+        name: wizardState.groupName,
+        members: dedupedMembers,
+        createdAt: new Date().toISOString()
+      };
+
+      if (wizardState.editingGroupId) {
+        const groupRef = doc(window.db, "users", user.uid, "groups", wizardState.editingGroupId);
+        await setDoc(groupRef, groupData, { merge: true });
+      } else {
+        const groupRef = doc(collection(window.db, "users", user.uid, "groups"));
+        await setDoc(groupRef, groupData);
+      }
+
+      await window.renderList();
+      renderGroupsEditList();
+      showWizardStep('groups-step-main');
+    } catch (error) {
+      console.error('[Home] Error saving group:', error);
+      showGroupToast('Error saving group');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = wizardState.editingGroupId ? 'Save Group' : 'Create Group';
+    }
+  });
+
+  // Render the groups editing list in the modal
+  function renderGroupsEditList() {
+    const groups = window.currentGroups || [];
+    const meds = window.currentMedications || [];
+    const container = document.getElementById('groups-edit-list');
+
+    if (groups.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem;">No groups yet. Create one above.</p>';
+      return;
+    }
+
+    container.innerHTML = groups.map(group => {
+      const memberRows = (group.members || []).map(member => {
+        const med = meds.find(m => m.id === member.medId);
+        return `<div class="group-med-item" style="font-size:0.85rem;">
+          <span>${med?.name || 'Unknown'}</span>
+          <span style="color:var(--muted);">${formatTime12h(member.time)}</span>
+        </div>`;
+      }).join('');
+
+      return `
+        <div class="group-edit-card" data-group-id="${group.id}">
+          <div class="group-edit-header">
+            <input type="text" value="${group.name}" class="group-name-input">
+            <div style="display:flex;gap:0.25rem;">
+              <button class="btn btn-sm btn-secondary group-edit-members-btn" data-group-id="${group.id}">Edit</button>
+              <button class="btn btn-sm btn-danger group-delete-btn" data-group-id="${group.id}">Delete</button>
+            </div>
+          </div>
+          <div style="margin-top:0.5rem;">${memberRows || '<div style="color:var(--muted);">No members.</div>'}</div>
+          <button class="btn btn-sm btn-primary group-rename-btn" data-group-id="${group.id}" style="margin-top:0.75rem;width:100%;">Save Name</button>
+        </div>
+      `;
+    }).join('');
+
+    // Wire up delete buttons (open confirmation modal)
+    container.querySelectorAll('.group-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const groupId = btn.dataset.groupId;
+        console.log('[Groups] Delete btn clicked, groupId:', groupId);
+        const group = (window.currentGroups || []).find(g => g.id === groupId);
+        if (!group) { console.error('[Groups] Group not found for id:', groupId); return; }
+        pendingDeleteGroupId = groupId;
+        document.getElementById('delete-group-name').textContent = group.name;
+        document.getElementById('delete-group-modal').classList.add('show');
+      });
+    });
+
+    // Wire up rename buttons
+    container.querySelectorAll('.group-rename-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const card = btn.closest('.group-edit-card');
+        const newName = card.querySelector('.group-name-input').value.trim();
+        if (!newName) { showGroupToast('Group name cannot be blank'); return; }
+        const user = window.auth.currentUser;
+        if (!user) return;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        try {
+          const groupRef = doc(window.db, "users", user.uid, "groups", btn.dataset.groupId);
+          await setDoc(groupRef, { name: newName }, { merge: true });
+          await window.renderList();
+          renderGroupsEditList();
+        } catch (error) {
+          console.error('[Home] Error renaming group:', error);
+          showGroupToast('Error renaming group');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Name';
+        }
+      });
+    });
+
+    // Wire up edit members buttons
+    container.querySelectorAll('.group-edit-members-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const groupId = btn.dataset.groupId;
+        const group = (window.currentGroups || []).find(g => g.id === groupId);
+        if (!group) return;
+        wizardState = {
+          groupName: group.name,
+          anchorMedId: null,
+          anchorTime: null,
+          allDoseTimes: [],
+          editingGroupId: groupId
+        };
+        newGroupInput.value = group.name;
+        showWizardStep('groups-step-1');
+      });
+    });
+  }
 
   console.log('[Home] Verification check initialized');
   
@@ -1752,25 +2859,8 @@
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(db, "users", user.uid, "medications", medId);
         
-        // Collect notes as a Map: {date: {dose: message}}
-        const notes = {};
-        Object.keys(localStorage).forEach(key => {
-          if (key.startsWith('note_')) {
-            const noteValue = localStorage.getItem(key);
-            if (noteValue && noteValue.trim()) {
-              const dateStr = key.replace('note_', '');
-              const noteDate = new Date(dateStr).toLocaleDateString();
-              const lines = noteValue.split('\n').filter(line => line.trim());
-              lines.forEach((line, index) => {
-                const dose = index + 1;
-                if (!notes[noteDate]) {
-                  notes[noteDate] = {};
-                }
-                notes[noteDate][dose] = line.trim();
-              });
-            }
-          }
-        });
+        // Preserve existing notes from Firestore (notes are saved directly to Firestore
+        // by medication-action.html and notes.html, not via localStorage)
 
         // Format dates as mm/dd/yyyy
         const formatDate = (dateStr) => {
@@ -1808,7 +2898,7 @@
           stock: stock,
           bottles: bottles,
           deletedStatus: med.deletedStatus || false,
-          notes: notes,
+          notes: existingData.notes || {}, // Preserve existing notes from Firestore
           doses: existingData.doses || {}, // Preserve existing doses field
           id: medId,
           updatedAt: new Date().toISOString()
@@ -1943,67 +3033,9 @@
     console.log('='.repeat(80));
   }
   
-  // ============ MEDICATION LOGGER (TRIGGERED BY HOME BUTTON CLICK) ============
-  // TODO: REMOVE THIS SECTION AFTER TESTING
-  
-  console.log('🔧 Medication logger script is running...');
-  
-  // Find the Home link in the sidebar and add click listener
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('📄 DOM loaded, looking for Home link...');
-    const homeLink = document.querySelector('nav.sidebar a[href="home.html"]');
-    if (homeLink) {
-      console.log('✅ Home link found! Adding click listener...');
-      homeLink.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevent page navigation
-        console.log('🏠 Home button clicked - printing Firebase hierarchy');
-        
-        // Print the EXACT hierarchy from Firebase
-        const user = auth.currentUser;
-        if (user) {
-          const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
-          getDocs(medicationsCollectionRef).then((snapshot) => {
-            console.log('🔥 FIREBASE HIERARCHY FROM DATABASE:');
-            console.log('='.repeat(80));
-            
-            if (snapshot.empty) {
-              console.log('No medications found in Firebase');
-            } else {
-              snapshot.forEach((doc) => {
-                const medData = doc.data();
-                console.log(`\n💊 MEDICATION: ${medData.name}`);
-                console.log('name:', medData.name);
-                console.log('dosage:', medData.dosage);
-                console.log('schedules:', medData.schedules);
-                console.log('startDate:', medData.startDate);
-                console.log('endDate:', medData.endDate);
-                console.log('reminderMethod:', medData.reminderMethod);
-                console.log('stock:', medData.stock);
-                console.log('bottles:', medData.bottles);
-                console.log('deletedStatus:', medData.deletedStatus);
-                console.log('notes:', medData.notes);
-                console.log('='.repeat(50));
-              });
-            }
-            console.log('='.repeat(80));
-          }).catch(error => {
-            console.error('Error loading from Firebase:', error);
-          });
-        } else {
-          console.log('No user logged in');
-        }
-      });
-    } else {
-      console.log('❌ Home link not found in sidebar');
-      // Let's see what links ARE in the sidebar
-      const allLinks = document.querySelectorAll('nav.sidebar a');
-      console.log('Available links in sidebar:', allLinks);
-      allLinks.forEach((link, i) => {
-        console.log(`Link ${i}:`, link.href, link.textContent);
-      });
-    }
-  });
-  
+  // (Removed) The "MEDICATION LOGGER" debug block that printed the Firebase
+  // hierarchy on Home-link click — it called e.preventDefault() which actually
+  // blocked Home navigation. It was leftover test instrumentation.
 </script>
 
   <!-- First-time User Help Popup -->

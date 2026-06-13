@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane — Log In</title>
   <style>
     /* --- Modern CSS Reset (lean) --- */
@@ -228,7 +229,7 @@
   <header class="navbar">
     <div class="container nav-inner">
       <a class="brand" href="index.html" aria-label="Everane Home">
-        <span class="brand-mark" aria-hidden="true">&#x1F48A;</span>
+        <img src="logo.svg" alt="" class="brand-mark" style="width:28px;height:28px;border-radius:7px">
         <span>Everane</span>
       </a>
 
@@ -288,9 +289,13 @@
           <a class="link" href="#" id="forgot-password-link">Forgot password?</a>
         </div>
         <p id="form-msg" class="msg" role="status" aria-live="polite"></p>
+        <p id="resend-verify" class="foot" style="display:none">
+          <a class="link" href="#" id="resend-verify-link">Resend verification email</a>
+        </p>
       </form>
 
       <p class="foot">No account? <a class="link" href="register.html">Register</a></p>
+      <p class="foot">Doctor with a patient ID? <a class="link" href="logindoctor.html">Login here</a></p>
     </div>
   </main>
 
@@ -311,9 +316,10 @@
   </div>
 
   <script>
-    // Password visibility toggle & redirect to home on submit (UI-only)
+    // Password visibility toggle (UI-only). Login submission is handled
+    // exclusively by the Firebase module script below, which enforces the
+    // email-verified check before any redirect.
     (function(){
-      const form = document.getElementById('login-form');
       document.querySelectorAll('.toggle').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.getAttribute('data-target');
@@ -322,11 +328,6 @@
           input.type = visible ? 'password' : 'text';
           btn.setAttribute('aria-label', visible ? 'Show password' : 'Hide password');
         });
-      });
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        window.location.href = 'home.html';
       });
     })();
 
@@ -368,7 +369,7 @@
   <script type="module">
     // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, signOut, reload } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     // Firebase configuration
@@ -434,6 +435,10 @@
       }, 5000);
     }
 
+    // Holds a just-authenticated but unverified user so the resend link can
+    // only ever email that real account, not an arbitrary address.
+    let pendingUnverifiedUser = null;
+
     // Override login form submission to use Firebase
     const form = document.getElementById('login-form');
     
@@ -465,7 +470,30 @@
         // 1. Sign in with Firebase Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const userId = userCredential.user.uid;
-        
+
+        // 1a. Refresh the user so emailVerified reflects the latest server
+        // state (e.g. they just clicked the link in another tab), not a stale
+        // cached token value.
+        try { await reload(userCredential.user); } catch (_) {}
+
+        // 1b. Block unverified accounts. Credentials were correct, but the
+        // email link was never clicked. Keep a reference to this exact user so
+        // the resend link can only target this verified-by-password account,
+        // never an arbitrary email typed into the box.
+        if (!userCredential.user.emailVerified) {
+          // Hold the live (still signed-in) user so the resend link works on a
+          // valid token. Navigation is still blocked here, and auth-guard.js
+          // signs out any unverified user who tries to reach a protected page.
+          pendingUnverifiedUser = userCredential.user;
+          msg.className = 'msg err';
+          msg.textContent = 'Please verify your email before logging in. Check your inbox for the verification link.';
+          document.getElementById('resend-verify').style.display = '';
+          return;
+        }
+        // Verified: hide any previously shown resend link.
+        pendingUnverifiedUser = null;
+        document.getElementById('resend-verify').style.display = 'none';
+
         // 2. Send timezone-change email if travel detected
         await maybeRequestTimezoneChangeEmail(userCredential.user);
 
@@ -566,6 +594,44 @@
     document.getElementById('reset-modal').addEventListener('click', (e) => {
       if (e.target.id === 'reset-modal') {
         hideResetModal();
+      }
+    });
+
+    // Handle resend verification email. This only works when the user just
+    // signed in with the correct password but is unverified (case 3). It will
+    // not send to an arbitrary email typed into the box, because
+    // pendingUnverifiedUser is only set after a successful sign-in.
+    document.getElementById('resend-verify-link').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('form-msg');
+
+      if (!pendingUnverifiedUser) {
+        msg.className = 'msg err';
+        msg.textContent = 'Please enter your email and password and press Continue first.';
+        return;
+      }
+
+      const link = document.getElementById('resend-verify-link');
+      link.style.pointerEvents = 'none';
+      link.textContent = 'Sending...';
+
+      try {
+        const actionCodeSettings = { url: 'https://everane.live/home.html', handleCodeInApp: false };
+        await sendEmailVerification(pendingUnverifiedUser, actionCodeSettings);
+        msg.className = 'msg ok';
+        msg.textContent = 'Verification email sent. Check your inbox, then log in again.';
+      } catch (err) {
+        console.error('Resend verification error:', err);
+        msg.className = 'msg err';
+        msg.textContent = 'Could not resend the verification email. Please try again in a moment.';
+      } finally {
+        // Sign the unverified user back out so they remain blocked until they
+        // click the link and log in again.
+        try { await signOut(auth); } catch (_) {}
+        pendingUnverifiedUser = null;
+        link.style.pointerEvents = '';
+        link.textContent = 'Resend verification email';
+        document.getElementById('resend-verify').style.display = 'none';
       }
     });
 

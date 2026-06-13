@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/logo.svg">
+  <title>Page Not Found / Everane</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --ink: #14140F;
+      --ink-soft: #3a3a34;
+      --paper: #F4F1EA;
+      --paper-2: #ECE7DC;
+      --card: #FBFAF6;
+      --amber: #FF5C2B;
+      --amber-deep: #E54A1C;
+      --clinic: #1E5C6B;
+      --clinic-light: #D6E5E5;
+      --line: #1A1A14;
+      --line-soft: rgba(20,20,15,0.14);
+      --muted: #6E6A60;
+      --good: #2F7D4F;
+      --warn: #B8590C;
+      --display: 'Space Grotesk', system-ui, sans-serif;
+      --body: 'Inter Tight', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--body);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    ::selection { background: var(--amber); color: #fff; }
+
+    /* ===== TICKER ===== */
+    .ticker {
+      background: var(--ink); color: var(--paper);
+      font-family: var(--mono); font-size: 0.72rem;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      padding: 9px 0; overflow: hidden; white-space: nowrap;
+      border-bottom: 2px solid var(--line);
+    }
+    .ticker-track {
+      display: inline-block; animation: scrollX 32s linear infinite;
+    }
+    .ticker-track span { margin: 0 28px; opacity: 0.82; }
+    .ticker-track span b { color: var(--amber); font-weight: 600; }
+    @keyframes scrollX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ===== NAV (identical to index.html) ===== */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 28px;
+      background: var(--paper);
+      border-bottom: 2px solid var(--line);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 11px;
+      text-decoration: none;
+      font-family: var(--display); font-weight: 700;
+      font-size: 1.35rem; letter-spacing: -0.02em; color: var(--ink);
+    }
+    .nav-logo img { width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--line); }
+    .nav-links { display: flex; align-items: center; gap: 8px; }
+    .nav-links a {
+      text-decoration: none; color: var(--ink-soft);
+      font-size: 0.82rem; font-weight: 600;
+      font-family: var(--mono); letter-spacing: 0.04em;
+      padding: 8px 14px; border-radius: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .nav-links a:hover { background: var(--paper-2); color: var(--ink); }
+    .nav-cta {
+      background: var(--ink) !important; color: var(--paper) !important;
+      border: 2px solid var(--line);
+    }
+    .nav-cta:hover { background: var(--amber) !important; color: #fff !important; }
+    .mobile-toggle { display: none; background: none; border: 2px solid var(--line); border-radius: 3px; cursor: pointer; padding: 8px 10px; }
+    .mobile-toggle span { display: block; width: 20px; height: 2px; background: var(--ink); margin: 4px 0; }
+
+    /* ===== LAYOUT ===== */
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; width: 100%; }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 72px 0;
+      position: relative;
+    }
+
+    /* faint grid backdrop to match the editorial feel */
+    main::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(var(--line-soft) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 30%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 30%, transparent 80%);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .err {
+      position: relative;
+      text-align: center;
+      max-width: 640px;
+    }
+
+    .err-tag {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      border: 2px solid var(--line); border-radius: 40px;
+      padding: 6px 15px; background: var(--card);
+      margin-bottom: 28px;
+    }
+    .err-tag .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 0 0 rgba(255,92,43,0.5);
+      animation: ping 2.2s ease-out infinite;
+    }
+    @keyframes ping {
+      0% { box-shadow: 0 0 0 0 rgba(255,92,43,0.45); }
+      100% { box-shadow: 0 0 0 11px rgba(255,92,43,0); }
+    }
+
+    .err-code {
+      font-family: var(--display); font-weight: 700;
+      font-size: clamp(5.5rem, 22vw, 13rem); line-height: 0.9;
+      letter-spacing: -0.05em;
+      color: var(--ink);
+    }
+    .err-code .mark {
+      position: relative; color: var(--amber-deep);
+    }
+    .err-code .mark::after {
+      content: ''; position: absolute; left: -2px; right: -2px; bottom: 8px;
+      height: clamp(8px, 2vw, 18px);
+      background: rgba(255,92,43,0.22); z-index: -1;
+    }
+
+    h1.err-title {
+      font-family: var(--display); font-weight: 700;
+      font-size: clamp(1.5rem, 4vw, 2.2rem); line-height: 1.1;
+      letter-spacing: -0.03em; margin: 14px 0 12px;
+    }
+    .err-lede {
+      font-size: 1.05rem; color: var(--ink-soft);
+      max-width: 460px; margin: 0 auto 32px;
+    }
+
+    .err-actions {
+      display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 9px;
+      font-family: var(--mono); font-size: 0.82rem; font-weight: 600;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      text-decoration: none;
+      padding: 13px 22px; border-radius: 3px;
+      border: 2px solid var(--line);
+      transition: background 0.15s, color 0.15s, transform 0.05s;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--ink); color: var(--paper); }
+    .btn-primary:hover { background: var(--amber); color: #fff; }
+    .btn-ghost { background: var(--card); color: var(--ink); }
+    .btn-ghost:hover { background: var(--paper-2); }
+
+    .err-meta {
+      margin-top: 34px;
+      font-family: var(--mono); font-size: 0.72rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      border-top: 2px solid var(--line);
+      background: var(--paper);
+      padding: 22px 0;
+    }
+    .foot-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 14px; flex-wrap: wrap;
+      font-family: var(--mono); font-size: 0.72rem;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    }
+    .foot-inner a { text-decoration: none; color: var(--ink-soft); }
+    .foot-inner a:hover { color: var(--amber-deep); }
+
+    @media (max-width: 860px) {
+      .nav-links { display: none; }
+      .mobile-toggle { display: block; }
+      .nav-links.open {
+        display: flex; flex-direction: column; align-items: stretch;
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: var(--paper); border-bottom: 2px solid var(--line);
+        padding: 14px; gap: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- TICKER (identical to index.html) -->
+  <div class="ticker">
+    <div class="ticker-track">
+      <span>Everane <b>//</b> Your medication, simplified</span>
+      <span>Never miss a dose <b>//</b> Smart reminders</span>
+      <span>Caregivers stay in the loop <b>//</b> Always</span>
+      <span>Everane <b>//</b> Your medication, simplified</span>
+      <span>Never miss a dose <b>//</b> Smart reminders</span>
+      <span>Caregivers stay in the loop <b>//</b> Always</span>
+    </div>
+  </div>
+
+  <!-- NAV (identical to index.html) -->
+  <nav>
+    <a href="/index.html" class="nav-logo">
+      <img src="/logo.svg" alt="Everane">
+      Everane
+    </a>
+    <div class="nav-links" id="navLinks">
+      <a href="/index.html#features">Features</a>
+      <a href="/index.html#capture">Snap a Photo</a>
+      <a href="/index.html#how">How It Works</a>
+      <a href="/index.html#caregivers">Caregivers</a>
+      <a href="/login.html">Log in</a>
+      <a href="/register.html" class="nav-cta">Sign up</a>
+    </div>
+    <button class="mobile-toggle" onclick="document.getElementById('navLinks').classList.toggle('open')" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- 404 CONTENT -->
+  <main>
+    <div class="wrap">
+      <div class="err">
+        <div class="err-tag"><span class="dot"></span> Error 404</div>
+        <div class="err-code">4<span class="mark">0</span>4</div>
+        <h1 class="err-title">This page took a sick day.</h1>
+        <p class="err-lede">
+          The page you're looking for doesn't exist, moved, or the link was mistyped.
+          Let's get you back to something that works.
+        </p>
+        <div class="err-actions">
+          <a href="/home.html" class="btn btn-primary">Go to my meds</a>
+          <a href="/index.html" class="btn btn-ghost">Back to home</a>
+        </div>
+        <p class="err-meta" id="err-path">Requested: —</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="wrap foot-inner">
+      <span>&copy; <span id="year"></span> Everane</span>
+      <span>
+        <a href="/privacypolicy.html">Privacy</a> &nbsp;//&nbsp;
+        <a href="/termsofservice.html">Terms</a> &nbsp;//&nbsp;
+        <a href="/login.html">Log in</a>
+      </span>
+    </div>
+  </footer>
+
+  <script>
+    // Show the path the user actually tried to reach.
+    (function () {
+      var y = document.getElementById('year');
+      if (y) y.textContent = new Date().getFullYear();
+      var pathEl = document.getElementById('err-path');
+      if (pathEl) {
+        var p = (window.location.pathname || '/') + (window.location.search || '');
+        // Keep it readable and avoid reflecting anything weird verbatim.
+        pathEl.textContent = 'Requested: ' + p.slice(0, 80);
+      }
+    })();
+  </script>
+</body>
+</html>

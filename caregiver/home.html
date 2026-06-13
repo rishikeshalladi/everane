@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
   <title>Everane – Caregiver Home</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -783,7 +784,124 @@
       .first-time-popup { right: 10px; bottom: 10px; width: calc(100vw - 20px); }
       .slideshow-container { height: 70vh; min-height: 420px; }
     }
+
+    /* Caregiver reminder opt-in */
+    .reminder-opt-in {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: auto;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    /* Hide native checkbox, use custom toggle */
+    .reminder-opt-in input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+    .reminder-toggle {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: color-mix(in oklab, var(--border) 180%, transparent);
+      border-radius: 999px;
+      flex-shrink: 0;
+      transition: background 0.25s ease;
+    }
+    .reminder-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.25s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .reminder-opt-in input:checked + .reminder-toggle {
+      background: var(--brand);
+    }
+    .reminder-opt-in input:checked + .reminder-toggle::after {
+      transform: translateX(16px);
+    }
+    .reminder-opt-in .reminder-label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .reminder-opt-in .reminder-method-tag {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 8px;
+      background: color-mix(in oklab, var(--brand) 15%, transparent);
+      color: var(--brand);
+      font-weight: 700;
+      margin-left: auto;
+      letter-spacing: 0.2px;
+    }
+    /* Reminder method modal */
+    .reminder-method-modal .modal {
+      width: min(420px, 90vw);
+    }
+    .reminder-method-options {
+      display: grid;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    .reminder-method-option {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      background: transparent;
+    }
+    .reminder-method-option:hover {
+      border-color: color-mix(in oklab, var(--brand) 35%, var(--border));
+      background: color-mix(in oklab, var(--brand) 8%, transparent);
+    }
+    .reminder-method-option input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+    .reminder-method-option span {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .reminder-save-feedback {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(34,197,94,.4);
+      z-index: 30000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .reminder-save-feedback.show { opacity: 1; }
 </style>
+<script src="../push-subscribe.js"></script>
+<script src="../auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -864,6 +982,40 @@
       </div>
       </div>
 
+  <!-- Reminder Method Modal -->
+  <div id="reminder-method-overlay" class="modal-overlay reminder-method-modal" role="dialog" aria-modal="true">
+    <div class="modal" role="document">
+      <div class="modal-header">
+        <h2 class="modal-title" id="reminder-method-title">Receive reminders for <span id="reminder-patient-name"></span></h2>
+        <button class="modal-close" id="reminder-method-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--muted);margin:0 0 0.5rem;">Choose how you want to receive this patient's medication reminders:</p>
+        <div class="reminder-method-options">
+          <label class="reminder-method-option">
+            <input type="checkbox" id="reminder-email-cb" value="email">
+            <span>Email</span>
+          </label>
+          <label class="reminder-method-option">
+            <input type="checkbox" id="reminder-sms-cb" value="sms">
+            <span>SMS</span>
+          </label>
+          <label class="reminder-method-option">
+            <input type="checkbox" id="reminder-push-cb" value="push">
+            <span>Push notification</span>
+            <small id="reminder-push-hint" style="display:block;color:var(--muted,#888);"></small>
+          </label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="reminder-method-save" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reminder save feedback -->
+  <div class="reminder-save-feedback" id="reminder-feedback"></div>
+
   <!-- First-time User Help Popup -->
   <div id="first-time-popup" class="first-time-popup" style="display: none;">
     <div class="popup-progress-bar">
@@ -939,7 +1091,7 @@
 
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, collection, getDocs, query, where, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, query, where, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
@@ -1241,19 +1393,35 @@
               <div class="meta"><span class="muted">${nextDoseText}</span></div>
               <div class="alerts">${alerts}</div>
             </div>
+
+            ${(() => {
+              const prefs = patientReminders[p.id];
+              const isOn = prefs && (prefs.email || prefs.sms || prefs.push);
+              const methodLabel = prefs ? [prefs.email ? 'Email' : '', prefs.sms ? 'SMS' : '', prefs.push ? 'Push' : ''].filter(Boolean).join(' + ') : '';
+              return `<div class="reminder-opt-in" data-patient-id="${p.id}">
+                <input type="checkbox" ${isOn ? 'checked' : ''} data-reminder-for="${p.id}" id="rem-${p.id}">
+                <span class="reminder-toggle"></span>
+                <span class="reminder-label">Receive reminders</span>
+                ${isOn ? `<span class="reminder-method-tag">${methodLabel}</span>` : ''}
+              </div>`;
+            })()}
           </div>
         `;
       }).join('');
 
-      // Wire up card click -> open modal
+      // Wire up card click -> open modal (but not when clicking reminder opt-in)
       const cards = Array.from(gridEl.querySelectorAll('.patient-card[data-patient-id]'));
       cards.forEach(card => {
-        const open = () => openPatientModal(card.getAttribute('data-patient-id'));
+        const open = (e) => {
+          if (e.target.closest('.reminder-opt-in')) return;
+          openPatientModal(card.getAttribute('data-patient-id'));
+        };
         card.addEventListener('click', open);
         card.addEventListener('keydown', (e) => {
+          if (e.target.closest('.reminder-opt-in')) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            open();
+            openPatientModal(card.getAttribute('data-patient-id'));
           }
         });
       });
@@ -1278,6 +1446,8 @@
     }
 
     let patientCache = [];
+    // Caregiver's reminder preferences per patient: { [patientId]: { email: bool, sms: bool } }
+    let patientReminders = {};
     // Live data cache for each patient so we can recompute metrics as time passes.
     const patientLive = new Map(); // patientId -> { profile, meds, unsubProfile, unsubMeds }
     let caregiverUnsub = null;
@@ -1657,11 +1827,171 @@
       }
     });
 
+    // ============ CAREGIVER REMINDER OPT-IN ============
+    const reminderOverlay = document.getElementById('reminder-method-overlay');
+    const reminderCloseBtn = document.getElementById('reminder-method-close');
+    const reminderSaveBtn = document.getElementById('reminder-method-save');
+    const reminderEmailCb = document.getElementById('reminder-email-cb');
+    const reminderSmsCb = document.getElementById('reminder-sms-cb');
+    const reminderPushCb = document.getElementById('reminder-push-cb');
+    const reminderPushHint = document.getElementById('reminder-push-hint');
+    const reminderPatientNameEl = document.getElementById('reminder-patient-name');
+    const reminderFeedback = document.getElementById('reminder-feedback');
+    let reminderCurrentPatientId = null;
+
+    function openReminderModal(patientId) {
+      reminderCurrentPatientId = patientId;
+      const p = patientCache.find(x => x.id === patientId);
+      reminderPatientNameEl.textContent = p?.name || 'this patient';
+      const prefs = patientReminders[patientId] || {};
+      reminderEmailCb.checked = !!prefs.email;
+      reminderSmsCb.checked = !!prefs.sms;
+      if (reminderPushCb) reminderPushCb.checked = !!prefs.push;
+      if (reminderPushHint) {
+        const P = window.Everane && window.Everane.Push;
+        if (!P || !P.isSupported()) {
+          reminderPushHint.textContent = 'Not supported on this browser';
+          if (reminderPushCb) reminderPushCb.disabled = true;
+        } else {
+          P.getCurrentSubscription().then(sub => {
+            reminderPushHint.textContent = sub ? 'Enabled on this device' : '';
+          });
+        }
+      }
+      reminderOverlay.classList.add('show');
+    }
+
+    function closeReminderModal() {
+      reminderOverlay.classList.remove('show');
+      reminderCurrentPatientId = null;
+    }
+
+    if (reminderCloseBtn) reminderCloseBtn.addEventListener('click', closeReminderModal);
+    if (reminderOverlay) reminderOverlay.addEventListener('click', (e) => { if (e.target === reminderOverlay) closeReminderModal(); });
+
+    if (reminderSaveBtn) {
+      reminderSaveBtn.addEventListener('click', async () => {
+        const pid = reminderCurrentPatientId;
+        if (!pid) return;
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const email = reminderEmailCb.checked;
+        const sms = reminderSmsCb.checked;
+        let push = reminderPushCb ? reminderPushCb.checked : false;
+
+        // If the caregiver just turned Push on, actually subscribe this device
+        if (push) {
+          const P = window.Everane && window.Everane.Push;
+          if (!P || !P.isSupported()) {
+            push = false;
+            if (reminderPushHint) reminderPushHint.textContent = 'Not supported on this browser';
+            if (reminderPushCb) reminderPushCb.checked = false;
+          } else if (P.isIosSafariNotInstalled()) {
+            push = false;
+            if (reminderPushHint) reminderPushHint.textContent = 'Add Everane to your Home Screen first (iOS Share → Add to Home Screen)';
+            if (reminderPushCb) reminderPushCb.checked = false;
+          } else {
+            const result = await P.subscribe(auth, db);
+            if (!result.ok) {
+              push = false;
+              if (reminderPushHint) reminderPushHint.textContent = 'Could not enable push on this device';
+              if (reminderPushCb) reminderPushCb.checked = false;
+            } else {
+              if (reminderPushHint) reminderPushHint.textContent = 'Enabled on this device';
+            }
+          }
+        }
+
+        // Save to Firestore on caregiver doc
+        const newPrefs = { ...patientReminders };
+        if (!email && !sms && !push) {
+          delete newPrefs[pid];
+        } else {
+          newPrefs[pid] = { email, sms, push };
+        }
+
+        try {
+          reminderSaveBtn.disabled = true;
+          reminderSaveBtn.textContent = 'Saving...';
+          await setDoc(doc(db, 'users', user.uid), { patientReminders: newPrefs }, { merge: true });
+          patientReminders = newPrefs;
+          closeReminderModal();
+          renderCards(patientCache);
+
+          // Show feedback
+          const label = (!email && !sms && !push) ? 'Reminders turned off' : `Reminders: ${[email ? 'Email' : '', sms ? 'SMS' : '', push ? 'Push' : ''].filter(Boolean).join(' + ')}`;
+          reminderFeedback.textContent = label;
+          reminderFeedback.classList.add('show');
+          setTimeout(() => reminderFeedback.classList.remove('show'), 2200);
+        } catch (err) {
+          console.error('[Caregiver Home] Error saving reminder prefs:', err);
+          alert('Error saving preferences: ' + err.message);
+        } finally {
+          reminderSaveBtn.disabled = false;
+          reminderSaveBtn.textContent = 'Save';
+        }
+      });
+    }
+
+    // Wire up reminder checkboxes on cards (delegate via grid)
+    gridEl.addEventListener('click', (e) => {
+      const optIn = e.target.closest('.reminder-opt-in');
+      if (!optIn) return;
+      e.stopPropagation(); // Don't open patient modal
+      const pid = optIn.dataset.patientId;
+      if (!pid) return;
+
+      const cb = optIn.querySelector('input[type="checkbox"]');
+      const prefs = patientReminders[pid];
+      const isCurrentlyOn = prefs && (prefs.email || prefs.sms);
+
+      if (isCurrentlyOn) {
+        // If turning off, uncheck and save immediately
+        cb.checked = false;
+        (async () => {
+          const user = auth.currentUser;
+          if (!user) return;
+          const newPrefs = { ...patientReminders };
+          delete newPrefs[pid];
+          try {
+            await setDoc(doc(db, 'users', user.uid), { patientReminders: newPrefs }, { merge: true });
+            patientReminders = newPrefs;
+            renderCards(patientCache);
+            reminderFeedback.textContent = 'Reminders turned off';
+            reminderFeedback.classList.add('show');
+            setTimeout(() => reminderFeedback.classList.remove('show'), 2200);
+          } catch (err) {
+            console.error('[Caregiver Home] Error removing reminder:', err);
+          }
+        })();
+      } else {
+        // If turning on, open modal to choose method
+        cb.checked = false; // Don't check yet, wait for modal save
+        openReminderModal(pid);
+      }
+    });
+
+    // Load caregiver's existing reminder preferences
+    async function loadCaregiverReminders(caregiverUid) {
+      try {
+        const snap = await getDoc(doc(db, 'users', caregiverUid));
+        if (snap.exists()) {
+          const data = snap.data();
+          patientReminders = data.patientReminders || {};
+        }
+      } catch (e) {
+        console.warn('[Caregiver Home] Could not load reminder prefs:', e);
+      }
+    }
+
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         window.location.href = '../login.html';
         return;
       }
+      // Load reminder preferences before rendering
+      await loadCaregiverReminders(user.uid);
       // Live-updating dashboard (so adherence/status updates when patients mark doses taken)
       await startLiveDashboard(user.uid);
     });

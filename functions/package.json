@@ -1,5 +1,5 @@
 {
-  "name": "medtracker-functions",
+  "name": "everane-functions",
   "description": "Cloud Functions for Everane medication reminders",
   "scripts": {
     "lint": "echo 'No linting configured'",
@@ -19,7 +19,8 @@
     "firebase-functions": "^4.5.0",
     "luxon": "^3.4.4",
     "nodemailer": "^6.9.7",
-    "@sinch/sdk-core": "^1.1.0"
+    "twilio": "^5.3.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "firebase-functions-test": "^3.1.0"

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
   <title>Everane – Detailed View</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -813,6 +814,7 @@
       .bottom-link { padding: 0.85rem 0.65rem; }
     }
   </style>
+  <script src="../auth-guard.js" type="module"></script>
 </head>
 <body>
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
@@ -1000,6 +1002,9 @@
         return;
       }
 
+      const now = new Date();
+      const todayStr = toISODateLocal(now);
+
       listEl.innerHTML = active.map(m => {
         const name = safeText(m.name || 'Medication');
         const dosage = safeText(m.dosage || '');
@@ -1007,6 +1012,88 @@
         const times = formatTimes(m.schedules || []);
         const stock = (m.stock === 0 || (Array.isArray(m.bottles) && m.bottles.length === 0)) ? 'Out of stock' : 'In stock';
         const chipClass = stock === 'Out of stock' ? 'warn' : 'ok';
+
+        // Build today's dose status using ScheduleUtils
+        let doseStatusHtml = '';
+        if (window.ScheduleUtils && m.schedules && m.schedules.length > 0) {
+          const scheduledDoses = ScheduleUtils.getScheduledDosesForDate(m.schedules, now);
+          const dosesObj = (m.doses && typeof m.doses === 'object') ? m.doses : {};
+          if (scheduledDoses.length > 0) {
+            const doseItems = scheduledDoses.map(dose => {
+              const key = `${todayStr}_${dose.doseNumber}`;
+              const entry = dosesObj[key] || null;
+              const takenBool = entry ? normalizeTaken(entry.taken, entry.autoMarked, entry.takenAt) : undefined;
+              const timeLabel = dose.time ? formatTime12(dose.time) : 'Any time';
+              let statusLabel, statusColor;
+              if (takenBool === true) {
+                statusLabel = 'Taken';
+                statusColor = 'var(--success)';
+              } else if (takenBool === false) {
+                statusLabel = 'Not Taken';
+                statusColor = 'var(--danger)';
+              } else {
+                // Check if past 45 min window
+                if (dose.time) {
+                  const [hh, mm] = dose.time.split(':').map(Number);
+                  if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
+                    const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+                    const minutesPast = (now.getTime() - dt.getTime()) / (1000 * 60);
+                    if (minutesPast > 45) {
+                      statusLabel = 'Missed';
+                      statusColor = 'var(--danger)';
+                    }
+                  }
+                }
+                if (!statusLabel) {
+                  statusLabel = 'Pending';
+                  statusColor = 'var(--muted)';
+                }
+              }
+              return `<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;padding:0.35rem 0.5rem;border-radius:10px;background:color-mix(in oklab, var(--surface) 85%, transparent);border:1px solid var(--border);">
+                <span style="font-weight:700;font-size:0.88rem;">Dose ${dose.doseNumber} — ${safeText(timeLabel)}</span>
+                <span style="font-weight:900;font-size:0.82rem;color:${statusColor};">${statusLabel}</span>
+              </div>`;
+            });
+            doseStatusHtml = `<div style="display:grid;gap:0.35rem;margin-top:0.5rem;">${doseItems.join('')}</div>`;
+          }
+        }
+
+        // Compute next dose and current dose
+        let nextDoseHtml = '';
+        let currentDoseHtml = '';
+        if (window.ScheduleUtils && m.schedules && m.schedules.length > 0) {
+          const nextResult = ScheduleUtils.computeNextDose(m.schedules, new Date(), m.doses || {});
+          if (nextResult && nextResult.time) {
+            const wd = nextResult.weekday ? nextResult.weekday.charAt(0).toUpperCase() + nextResult.weekday.slice(1) : '';
+            nextDoseHtml = `<div class="meta-row"><span class="muted">Next Dose:</span> <strong>${safeText(formatTime12(nextResult.time))}${wd ? ` on ${safeText(wd)}` : ''}</strong></div>`;
+          }
+          const currentResult = ScheduleUtils.determineCurrentDose(m.schedules, new Date(), m.doses || {});
+          if (currentResult) {
+            const timeDisp = currentResult.time ? formatTime12(currentResult.time) : 'Any time';
+            const wdDisp = currentResult.weekday ? currentResult.weekday.charAt(0).toUpperCase() + currentResult.weekday.slice(1) : '';
+            currentDoseHtml = `<div class="meta-row"><span class="muted">Current Dose:</span> <strong>${safeText(timeDisp)}${wdDisp ? ` on ${safeText(wdDisp)}` : ''}, Dose #${currentResult.doseNumber}</strong></div>`;
+          }
+        }
+
+        // Build classifications display
+        let classHtml = '';
+        const cls = m.classifications || {};
+        const classItems = [];
+        if (cls.color) classItems.push(`<span class="muted">Color:</span> <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:${cls.color};display:inline-block;border:1px solid var(--border);"></span> ${safeText(cls.color)}</span>`);
+        if (cls.shape) classItems.push(`<span class="muted">Shape:</span> <strong>${safeText(cls.shape)}</strong>`);
+        if (cls.size) classItems.push(`<span class="muted">Size:</span> <strong>${safeText(cls.size)}</strong>`);
+        if (cls.texture) classItems.push(`<span class="muted">Texture:</span> <strong>${safeText(cls.texture)}</strong>`);
+        if (cls.form) classItems.push(`<span class="muted">Form:</span> <strong>${safeText(cls.form)}</strong>`);
+        if (classItems.length > 0) {
+          classHtml = `<div class="med-meta" style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">${classItems.map(i => `<div class="meta-row">${i}</div>`).join('')}</div>`;
+        }
+
+        // Build groups display
+        const medGroups = m.groups || [];
+        let groupsHtml = '';
+        if (medGroups.length > 0) {
+          groupsHtml = `<div class="meta-row" style="margin-top:0.35rem;"><span class="muted">Groups:</span> <strong>${medGroups.map(g => safeText(g)).join(', ')}</strong></div>`;
+        }
 
         return `
           <div class="med-card">
@@ -1020,7 +1107,12 @@
             <div class="med-meta">
               <div class="meta-row"><span class="muted">Days:</span> <strong>${safeText(days)}</strong></div>
               <div class="meta-row"><span class="muted">Times:</span> <strong>${safeText(times)}</strong></div>
+              ${currentDoseHtml}
+              ${nextDoseHtml}
             </div>
+            ${doseStatusHtml}
+            ${classHtml}
+            ${groupsHtml}
           </div>
         `;
       }).join('');
@@ -1574,16 +1666,25 @@
 
         const allDoses = [];
         dayMeds.forEach(m => {
-          const times = Array.isArray(m.times) ? m.times.filter(t => t && String(t).trim()) : [];
-          if (times.length === 0) {
-            const n = Number(m.timesPerDay || 1);
-            for (let i = 1; i <= n; i += 1) {
-              allDoses.push({ med: m, doseNumber: i, time: null, sortTime: 0 });
-            }
-          } else {
-            times.forEach((t, idx) => {
-              allDoses.push({ med: m, doseNumber: idx + 1, time: t, sortTime: minutesFromHHMM(t) || 0 });
+          // Use ScheduleUtils (same as patient notes.html)
+          if (window.ScheduleUtils && m.schedules && m.schedules.length > 0) {
+            const doses = ScheduleUtils.getScheduledDosesForDate(m.schedules, currentDate);
+            doses.forEach(dose => {
+              allDoses.push({ med: m, doseNumber: dose.doseNumber, time: dose.time, sortTime: dose.time ? minutesFromHHMM(dose.time) : 0 });
             });
+          } else {
+            // Fallback for unmigrated data
+            const times = Array.isArray(m.times) ? m.times.filter(t => t && String(t).trim()) : [];
+            if (times.length === 0) {
+              const n = Number(m.timesPerDay || 1);
+              for (let i = 1; i <= n; i += 1) {
+                allDoses.push({ med: m, doseNumber: i, time: null, sortTime: 0 });
+              }
+            } else {
+              times.forEach((t, idx) => {
+                allDoses.push({ med: m, doseNumber: idx + 1, time: t, sortTime: minutesFromHHMM(t) || 0 });
+              });
+            }
           }
         });
 
@@ -1688,7 +1789,21 @@
           }
 
           onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
-            const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const meds = snap.docs.map(d => {
+              const medData = { id: d.id, ...d.data() };
+              medData.schedules = medData.schedules || [];
+              // Auto-migrate old format if schedules missing but old fields present
+              if (medData.schedules.length === 0 && window.ScheduleUtils) {
+                const oldDays = medData.daysOfWeek || medData.days || [];
+                const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
+                if (oldDays.length > 0 || oldTimes.length > 0 || medData.timesPerDay > 0) {
+                  const migrated = ScheduleUtils.migrateOldFormat(medData);
+                  medData.schedules = migrated.schedules;
+                  console.log(`[Student View] Notes auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
+                }
+              }
+              return medData;
+            });
             renderNotesTab(patientName, meds);
           }, (err) => {
             console.warn('[Student View] notes meds snapshot error:', err);
@@ -1807,7 +1922,21 @@
                 const scheduledDate = new Date(year, month - 1, day);
 
                 let scheduledDateTime = new Date(scheduledDate);
-                if (medData.times && Array.isArray(medData.times) && medData.times.length > 0) {
+                // Use ScheduleUtils to find scheduled time (same as patient stats.html)
+                const schedules = medData.schedules || [];
+                if (schedules.length > 0 && window.ScheduleUtils && dose.date) {
+                  const [yr, mo, dy] = dose.date.split('-').map(Number);
+                  const doseDate = new Date(yr, mo - 1, dy);
+                  const dosesForDate = ScheduleUtils.getScheduledDosesForDate(schedules, doseDate);
+                  const matchingDose = dosesForDate.find(d => d.doseNumber === (dose.doseNumber || 1));
+                  if (matchingDose && matchingDose.time) {
+                    const [hours, minutes] = matchingDose.time.split(':').map(Number);
+                    if (!isNaN(hours) && !isNaN(minutes)) {
+                      scheduledDateTime.setHours(hours, minutes, 0, 0);
+                    }
+                  }
+                } else if (medData.times && Array.isArray(medData.times) && medData.times.length > 0) {
+                  // Fallback for unmigrated data
                   const sortedTimes = [...medData.times].sort();
                   const timeIndex = (dose.doseNumber || 1) - 1;
                   if (timeIndex >= 0 && timeIndex < sortedTimes.length) {
@@ -2097,7 +2226,21 @@
           }
 
           onSnapshot(collection(db, 'users', patientId, 'medications'), (snapshot) => {
-            latestMedDocs = snapshot.docs.map(d => ({ id: d.id, data: d.data() }));
+            latestMedDocs = snapshot.docs.map(d => {
+              const medData = { ...d.data() };
+              medData.schedules = medData.schedules || [];
+              // Auto-migrate old format if schedules missing but old fields present
+              if (medData.schedules.length === 0 && window.ScheduleUtils) {
+                const oldDays = medData.daysOfWeek || medData.days || [];
+                const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
+                if (oldDays.length > 0 || oldTimes.length > 0 || medData.timesPerDay > 0) {
+                  const migrated = ScheduleUtils.migrateOldFormat(medData);
+                  medData.schedules = migrated.schedules;
+                  console.log(`[Student View] Stats auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
+                }
+              }
+              return { id: d.id, data: medData };
+            });
             updateCharts();
           }, (err) => {
             console.warn('[Student View][Stats] meds snapshot error:', err);

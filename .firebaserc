@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "medtracker-8c467"
-  }
+  },
+  "targets": {
+    "medtracker-8c467": {
+      "hosting": {
+        "main": [
+          "everane-live"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

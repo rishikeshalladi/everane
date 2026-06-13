@@ -1,0 +1,666 @@
+<!-- File: doctor/requestedit.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
+  <title>Everane — Request Edit</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    *{margin:0}
+    html:focus-within{scroll-behavior:smooth}
+    body{min-height:100dvh;line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    img,svg{display:block;max-width:100%}
+    input,button,textarea,select{font:inherit}
+    a{text-decoration:none;color:inherit}
+
+    :root{
+      --bg: #0b1020;
+      --bg-elev: rgba(255,255,255,0.04);
+      --surface: #0f1629;
+      --text: #e7ebf3;
+      --muted: #b1bad4;
+      --border: rgba(255,255,255,0.12);
+      --brand: #4f8cff;
+      --brand-600: #3c74f7;
+      --brand-700: #2b63e6;
+      --accent: #7de2d1;
+      --danger: #ff6b6b;
+      --success: #22c55e;
+      --radius: 20px;
+      --radius-sm: 12px;
+      --radius-xs: 8px;
+      --shadow: 0 10px 30px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.2);
+      --container: 1200px;
+      --glass-bg: rgba(15,22,41,0.6);
+      --glass-border: rgba(255,255,255,0.08);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #ffffff;
+        --bg-elev: rgba(0,0,0,0.04);
+        --surface: #ffffff;
+        --text: #000000;
+        --muted: #1a1a1a;
+        --border: #1a1a1a;
+        --shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        --glass-bg: rgba(255,255,255,0.7);
+        --glass-border: rgba(15,23,42,0.08);
+        --accent: #0d9488;
+      }
+    }
+
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+
+    /* Layout */
+    .page-wrap{
+      max-width:560px;
+      margin:0 auto;
+      padding:clamp(1.5rem,4vw,3rem) clamp(1rem,3vw,2rem);
+      min-height:100dvh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Top bar */
+    .top-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:1.5rem;
+    }
+    .back-link{
+      display:inline-flex;
+      align-items:center;
+      gap:.4rem;
+      color:var(--muted);
+      font-size:.9rem;
+      font-weight:600;
+      padding:.5rem .75rem;
+      border-radius:var(--radius-xs);
+      transition:color .2s, background .2s;
+    }
+    .back-link:hover{color:var(--text);background:var(--bg-elev)}
+    .close-btn{
+      display:grid;
+      place-items:center;
+      width:40px;height:40px;
+      border:1px solid var(--border);
+      border-radius:var(--radius-xs);
+      background:var(--surface);
+      cursor:pointer;
+      color:var(--muted);
+      transition:color .2s, border-color .2s, background .2s;
+    }
+    .close-btn:hover{color:var(--text);border-color:var(--text);background:color-mix(in oklab, var(--surface) 90%, var(--danger))}
+    .close-btn svg{width:20px;height:20px}
+
+    /* Card */
+    .card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:clamp(1.25rem,3vw,2rem);
+      flex:1;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Header */
+    .form-header{margin-bottom:1.5rem}
+    .form-header h1{
+      font-size:clamp(1.5rem,3.5vw,1.85rem);
+      font-weight:800;
+      letter-spacing:.2px;
+      margin:0 0 .25rem;
+    }
+    .form-header p{
+      color:var(--muted);
+      font-size:.95rem;
+      margin:0;
+    }
+    .step-indicator{
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+      margin-bottom:1rem;
+    }
+    .step-dot{
+      width:10px;height:10px;
+      border-radius:50%;
+      background:var(--border);
+      transition:background .3s var(--ease), transform .3s var(--ease);
+    }
+    .step-dot.active{
+      background:var(--brand);
+      transform:scale(1.25);
+    }
+    .step-dot.done{
+      background:var(--accent);
+    }
+    .step-line{
+      flex:1;
+      height:2px;
+      background:var(--border);
+      transition:background .3s var(--ease);
+    }
+    .step-line.active{background:var(--brand)}
+
+    /* Step 1 — Edit type selector */
+    .edit-type-grid{
+      display:flex;
+      flex-direction:column;
+      gap:.5rem;
+      margin-bottom:1.5rem;
+    }
+    .edit-type-option{
+      display:flex;
+      align-items:center;
+      gap:.85rem;
+      padding:.95rem 1.1rem;
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      background:color-mix(in oklab, var(--surface) 96%, transparent);
+      cursor:pointer;
+      transition:border-color .2s var(--ease), background .2s var(--ease), box-shadow .2s var(--ease), transform .15s var(--ease);
+      user-select:none;
+    }
+    .edit-type-option:hover{
+      border-color:color-mix(in oklab, var(--brand) 40%, var(--border));
+      background:color-mix(in oklab, var(--brand) 5%, var(--surface));
+      transform:translateY(-1px);
+    }
+    .edit-type-option.selected{
+      border-color:var(--brand);
+      background:color-mix(in oklab, var(--brand) 10%, var(--surface));
+      box-shadow:0 0 0 3px rgba(79,140,255,.2), 0 4px 16px rgba(79,140,255,.12);
+    }
+    .edit-type-icon{
+      width:40px;height:40px;
+      border-radius:10px;
+      display:grid;
+      place-items:center;
+      flex-shrink:0;
+      font-size:1.15rem;
+    }
+    .edit-type-option:nth-child(1) .edit-type-icon{background:color-mix(in oklab, var(--success) 15%, transparent)}
+    .edit-type-option:nth-child(2) .edit-type-icon{background:color-mix(in oklab, var(--danger) 15%, transparent)}
+    .edit-type-option:nth-child(3) .edit-type-icon{background:color-mix(in oklab, var(--brand) 15%, transparent)}
+    .edit-type-option:nth-child(4) .edit-type-icon{background:color-mix(in oklab, var(--accent) 15%, transparent)}
+    .edit-type-option:nth-child(5) .edit-type-icon{background:color-mix(in oklab, #f59e0b 15%, transparent)}
+    .edit-type-option:nth-child(6) .edit-type-icon{background:color-mix(in oklab, #a78bfa 15%, transparent)}
+    .edit-type-option:nth-child(7) .edit-type-icon{background:color-mix(in oklab, #f472b6 15%, transparent)}
+    .edit-type-option:nth-child(8) .edit-type-icon{background:color-mix(in oklab, #38bdf8 15%, transparent)}
+    .edit-type-option:nth-child(9) .edit-type-icon{background:color-mix(in oklab, var(--muted) 15%, transparent)}
+
+    .edit-type-text{display:flex;flex-direction:column;line-height:1.3}
+    .edit-type-name{font-size:.95rem;font-weight:700;color:var(--text)}
+    .edit-type-desc{font-size:.78rem;color:var(--muted);font-weight:500}
+
+    .edit-type-radio{
+      margin-left:auto;
+      width:20px;height:20px;
+      border-radius:50%;
+      border:2px solid var(--border);
+      flex-shrink:0;
+      display:grid;
+      place-items:center;
+      transition:border-color .2s, background .2s;
+    }
+    .edit-type-option.selected .edit-type-radio{
+      border-color:var(--brand);
+      background:var(--brand);
+    }
+    .edit-type-radio::after{
+      content:'';
+      width:8px;height:8px;
+      border-radius:50%;
+      background:#fff;
+      transform:scale(0);
+      transition:transform .2s var(--ease);
+    }
+    .edit-type-option.selected .edit-type-radio::after{
+      transform:scale(1);
+    }
+
+    /* Step 2 — Details */
+    .type-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:.4rem;
+      background:color-mix(in oklab, var(--brand) 12%, transparent);
+      border:1px solid color-mix(in oklab, var(--brand) 25%, transparent);
+      border-radius:999px;
+      padding:.3rem .85rem;
+      font-size:.82rem;
+      font-weight:700;
+      color:var(--brand);
+      margin-bottom:1rem;
+    }
+
+    .field{margin-bottom:1.25rem}
+    .field label{
+      display:block;
+      margin-bottom:.4rem;
+      font-size:.85rem;
+      font-weight:700;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.3px;
+    }
+    textarea{
+      width:100%;
+      min-height:180px;
+      padding:1rem;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      background:var(--surface);
+      color:var(--text);
+      font-size:.95rem;
+      line-height:1.6;
+      resize:vertical;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    textarea::placeholder{color:color-mix(in oklab, var(--muted) 60%, transparent)}
+    .field input[type="text"]{
+      width:100%;
+      padding:.85rem 1rem;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      background:var(--surface);
+      color:var(--text);
+      font-size:.95rem;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .field input[type="text"]::placeholder{color:color-mix(in oklab, var(--muted) 60%, transparent)}
+    .field input[type="text"]:focus{
+      outline:none;
+      border-color:var(--brand);
+      box-shadow:0 0 0 3px rgba(79,140,255,.2);
+    }
+    textarea:focus{
+      outline:none;
+      border-color:var(--brand);
+      box-shadow:0 0 0 3px rgba(79,140,255,.2);
+    }
+
+    /* Buttons */
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:.5rem;
+      padding:.85rem 1.2rem;
+      border-radius:12px;
+      border:1px solid transparent;
+      cursor:pointer;
+      font-size:.95rem;
+      font-weight:700;
+      transition:transform .04s ease, background-color .2s ease, box-shadow .2s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .btn-primary{
+      background:linear-gradient(180deg, var(--brand), var(--brand-600));
+      color:#fff;
+      box-shadow:0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover:not(:disabled){background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
+    .btn-secondary{
+      background:transparent;
+      color:var(--text);
+      border-color:var(--border);
+    }
+    .btn-secondary:hover{background:var(--bg-elev)}
+
+    .form-actions{
+      display:flex;
+      gap:.75rem;
+      margin-top:auto;
+      padding-top:1.25rem;
+    }
+    .form-actions .btn{flex:1;padding:.95rem 1rem}
+
+    /* Success state */
+    .success-view{
+      display:none;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      flex:1;
+      gap:1rem;
+      padding:2rem 0;
+    }
+    .success-view.visible{display:flex}
+    .success-icon{
+      width:72px;height:72px;
+      border-radius:50%;
+      background:color-mix(in oklab, var(--success) 15%, transparent);
+      display:grid;
+      place-items:center;
+    }
+    .success-icon svg{width:36px;height:36px;color:var(--success)}
+    .success-view h2{font-size:1.4rem;font-weight:800;margin:0}
+    .success-view p{color:var(--muted);font-size:.95rem;margin:0;max-width:320px}
+
+    /* Steps visibility */
+    .step{display:none;flex-direction:column;flex:1}
+    .step.active{display:flex}
+
+    /* Mobile */
+    @media (max-width:600px){
+      .page-wrap{padding:1rem}
+      .card{padding:1.25rem}
+      .edit-type-option{padding:.8rem .9rem}
+      .edit-type-icon{width:36px;height:36px;font-size:1rem}
+      .edit-type-name{font-size:.88rem}
+      .edit-type-desc{font-size:.72rem}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-wrap">
+    <div class="top-bar">
+      <a href="home.html" class="back-link">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </a>
+      <button class="close-btn" id="close-btn" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="card">
+      <!-- Step indicators -->
+      <div class="step-indicator">
+        <div class="step-dot active" id="dot-1"></div>
+        <div class="step-line" id="line-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+      </div>
+
+      <!-- STEP 1: Choose edit type -->
+      <div class="step active" id="step-1">
+        <div class="form-header">
+          <h1>Request Update</h1>
+          <p>Select the type of change you'd like to make.</p>
+        </div>
+
+        <div class="edit-type-grid" id="type-grid">
+          <div class="edit-type-option" data-type="Add Medication">
+            <div class="edit-type-icon">💊</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Add Medication</span>
+              <span class="edit-type-desc">Add a completely new medication</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Remove Medication">
+            <div class="edit-type-icon">🗑️</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Remove Medication</span>
+              <span class="edit-type-desc">Stop a medication entirely</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Change Dosage">
+            <div class="edit-type-icon">💉</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Change Dosage</span>
+              <span class="edit-type-desc">Adjust the amount per take</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Change Schedule">
+            <div class="edit-type-icon">🕐</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Change Schedule</span>
+              <span class="edit-type-desc">Adjust time(s) of day or frequency</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Pause Medication">
+            <div class="edit-type-icon">⏸️</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Pause Medication</span>
+              <span class="edit-type-desc">Temporarily stop a medication</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Change Instructions">
+            <div class="edit-type-icon">📝</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Change Instructions</span>
+              <span class="edit-type-desc">Update how medication should be taken</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Add Warning / Precaution">
+            <div class="edit-type-icon">⚠️</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Add Warning / Precaution</span>
+              <span class="edit-type-desc">Add a caution or symptom to watch for</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Add Follow-Up Requirement">
+            <div class="edit-type-icon">📋</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Add Follow-Up Requirement</span>
+              <span class="edit-type-desc">Add a future action or check</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+
+          <div class="edit-type-option" data-type="Other">
+            <div class="edit-type-icon">✏️</div>
+            <div class="edit-type-text">
+              <span class="edit-type-name">Other</span>
+              <span class="edit-type-desc">Something else not listed above</span>
+            </div>
+            <div class="edit-type-radio"></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" id="next-btn" disabled>
+            Next
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Details -->
+      <div class="step" id="step-2">
+        <div class="form-header">
+          <h1>Request Update</h1>
+          <p>Describe the changes you'd like to make.</p>
+        </div>
+
+        <span class="type-badge" id="type-badge"></span>
+
+        <div class="field">
+          <label id="details-label">Details</label>
+          <textarea id="details-input" placeholder="Describe the changes in detail..."></textarea>
+        </div>
+
+        <div class="field">
+          <label>Identify Yourself</label>
+          <input type="text" id="doctor-name-input" placeholder='e.g., Dr. Smith, Blood Pressure Doc, Doctor B.' />
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary" id="back-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+          <button class="btn btn-primary" id="submit-btn" disabled>Submit</button>
+        </div>
+      </div>
+
+      <!-- SUCCESS -->
+      <div class="success-view" id="success-view">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2>Update Submitted</h2>
+        <p>Your request has been sent. The patient will be notified of the changes.</p>
+        <a href="home.html" class="btn btn-primary" style="margin-top:.5rem;padding:.85rem 2rem">Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Session guard
+    const raw = sessionStorage.getItem('doctorSession');
+    if (!raw) { window.location.href = '../logindoctor.html'; }
+    let session;
+    try {
+      session = JSON.parse(raw);
+      if (!session.uid) throw new Error();
+    } catch (e) {
+      sessionStorage.removeItem('doctorSession');
+      window.location.href = '../logindoctor.html';
+    }
+
+    // Close button
+    document.getElementById('close-btn').addEventListener('click', () => {
+      window.location.href = 'home.html';
+    });
+
+    // State
+    let selectedType = '';
+
+    // Step elements
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const successView = document.getElementById('success-view');
+    const dot1 = document.getElementById('dot-1');
+    const dot2 = document.getElementById('dot-2');
+    const line1 = document.getElementById('line-1');
+    const nextBtn = document.getElementById('next-btn');
+    const backBtn = document.getElementById('back-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const typeBadge = document.getElementById('type-badge');
+    const detailsLabel = document.getElementById('details-label');
+    const detailsInput = document.getElementById('details-input');
+
+    // Placeholders per type
+    const placeholders = {
+      'Add Medication': 'e.g., Start Metformin 500mg twice daily with meals...',
+      'Remove Medication': 'e.g., Discontinue Lisinopril 10mg effective immediately...',
+      'Change Dosage': 'e.g., Increase Atorvastatin from 20mg to 40mg once daily...',
+      'Change Schedule': 'e.g., Move evening dose from 8 PM to 6 PM...',
+      'Pause Medication': 'e.g., Pause Aspirin for 2 weeks before surgery...',
+      'Change Instructions': 'e.g., Take with food instead of on an empty stomach...',
+      'Add Warning / Precaution': 'e.g., Watch for dizziness when standing up, stop if rash appears...',
+      'Add Follow-Up Requirement': 'e.g., Blood work needed in 2 weeks, review appointment in 30 days...',
+      'Other': 'Describe the change you want to make...'
+    };
+
+    // Type selection
+    const typeOptions = document.querySelectorAll('.edit-type-option');
+    typeOptions.forEach(opt => {
+      opt.addEventListener('click', () => {
+        typeOptions.forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedType = opt.getAttribute('data-type');
+        nextBtn.disabled = false;
+      });
+    });
+
+    // Next → Step 2
+    nextBtn.addEventListener('click', () => {
+      if (!selectedType) return;
+
+      step1.classList.remove('active');
+      step2.classList.add('active');
+
+      dot1.classList.remove('active');
+      dot1.classList.add('done');
+      line1.classList.add('active');
+      dot2.classList.add('active');
+
+      typeBadge.textContent = selectedType;
+      detailsLabel.textContent = selectedType;
+      detailsInput.placeholder = placeholders[selectedType] || 'Describe the changes...';
+      detailsInput.value = '';
+      submitBtn.disabled = true;
+      detailsInput.focus();
+    });
+
+    // Back → Step 1
+    backBtn.addEventListener('click', () => {
+      step2.classList.remove('active');
+      step1.classList.add('active');
+
+      dot2.classList.remove('active');
+      line1.classList.remove('active');
+      dot1.classList.remove('done');
+      dot1.classList.add('active');
+    });
+
+    const doctorNameInput = document.getElementById('doctor-name-input');
+
+    // Enable submit when textarea has content
+    detailsInput.addEventListener('input', () => {
+      submitBtn.disabled = detailsInput.value.trim().length === 0;
+    });
+
+    // Submit
+    submitBtn.addEventListener('click', async () => {
+      const details = detailsInput.value.trim();
+      if (!details || !selectedType) return;
+
+      const doctorName = doctorNameInput.value.trim() || 'Doctor';
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      try {
+        const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/submitDoctorEdit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: session.uid,
+            type: selectedType,
+            details,
+            doctorName
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed to submit');
+
+        step2.classList.remove('active');
+        successView.classList.add('visible');
+        document.querySelector('.step-indicator').style.display = 'none';
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+        alert('Error: ' + (err.message || 'Something went wrong.'));
+      }
+    });
+  </script>
+</body>
+</html>

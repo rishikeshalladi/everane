@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Add Medication (Voice)</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -365,6 +366,7 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
@@ -551,7 +553,7 @@
         next: 'reminder'
       },
       reminder: {
-        question: 'How would you like to be reminded? Email, SMS, Both, or None?',
+        question: 'How would you like to be reminded? You can pick Email, SMS, Push, or any combination \u2014 or say None.',
         next: 'clarify3'
       },
       clarify3: {
@@ -911,21 +913,21 @@
       return null;
     }
 
+    // Returns an array of selected channels, e.g. ["email","sms","push"], or null if unparsable.
     function parseReminder(text) {
       const lowerText = text.toLowerCase().trim();
-      if (lowerText.includes('both') || (lowerText.includes('email') && lowerText.includes('sms'))) {
-        return 'Email + SMS';
+      if (lowerText.includes('none') || /^\s*no\b/.test(lowerText)) return [];
+      const out = [];
+      if (lowerText.includes('email')) out.push('email');
+      if (lowerText.includes('sms') || lowerText.includes('text')) out.push('sms');
+      if (lowerText.includes('push') || lowerText.includes('notification')) out.push('push');
+      if (lowerText.includes('both') && out.length === 0) {
+        // ambiguous "both" with no prior matches — default to email+push (most common pair)
+        return ['email','push'];
       }
-      if (lowerText.includes('email')) {
-        return 'Email';
-      }
-      if (lowerText.includes('sms') || lowerText.includes('text')) {
-        return 'SMS';
-      }
-      if (lowerText.includes('none') || lowerText.includes('no')) {
-        return 'None';
-      }
-      return null;
+      if (lowerText.includes('all')) return ['email','sms','push'];
+      if (out.length === 0) return null;
+      return out;
     }
 
     function formatDaysForDisplay(days) {
@@ -1084,11 +1086,15 @@
           
         case 'reminder':
           parsedValue = parseReminder(transcript);
+          // (sms is now an accepted channel)
           if (parsedValue === null) {
-            askRepeat('Please say Email, SMS, Both, or None.');
+            askRepeat('Please say Email, SMS, Push, or None.');
             return; // Stay on the same step
           }
-          conversationData.reminder = parsedValue;
+          // parsedValue is now an array like ["email","push"] or []
+          conversationData.reminderChannels = parsedValue;
+          conversationData.reminder = parsedValue.length === 0 ? 'None'
+            : parsedValue.map(c => c === 'email' ? 'Email' : c === 'sms' ? 'SMS' : 'Push').join(' + ');
           break;
           
         default:
@@ -1267,9 +1273,19 @@
       if (type === 'clarify3') {
         const startDate = conversationData.startDate || formatDateForForm(new Date());
         const endDateText = conversationData.endDate ? conversationData.endDate : 'continue forever';
-        const reminderText = conversationData.reminder === 'None' 
-          ? 'you wouldn\'t like to be reminded' 
-          : `you would like to be reminded by ${conversationData.reminder}`;
+        const chans = Array.isArray(conversationData.reminderChannels) ? conversationData.reminderChannels : [];
+        let reminderText;
+        if (chans.length === 0) {
+          reminderText = 'you wouldn\'t like to be reminded';
+        } else {
+          const labels = chans.map(c => c === 'email' ? 'email' : c === 'sms' ? 'text message' : 'push notification');
+          const joined = labels.length === 1
+            ? labels[0]
+            : labels.length === 2
+              ? `${labels[0]} and ${labels[1]}`
+              : `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
+          reminderText = `you would like to be reminded by ${joined}`;
+        }
         return `Just to clarify, you would like to start on ${startDate} and end on ${endDateText}, and ${reminderText}. Is that correct?`;
       }
       
@@ -1392,7 +1408,8 @@
         times: conversationData.times || [],
         startDate: conversationData.startDate || formatDateForForm(new Date()),
         endDate: conversationData.endDate || null,
-        reminder: conversationData.reminder || 'None'
+        reminder: conversationData.reminder || 'None',
+        reminderChannels: Array.isArray(conversationData.reminderChannels) ? conversationData.reminderChannels.slice() : []
       };
       
       // Store data in localStorage and redirect

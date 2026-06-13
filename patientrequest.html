@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <title>Everane – Patient Update</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --radius-sm:12px; --radius-xs:8px;
+      --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      --bg-elev: rgba(255,255,255,0.04);
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        --bg-elev: rgba(0,0,0,0.04);
+        --accent: #0d9488;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+
+    /* Hamburger menu */
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a {
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+      }
+    }
+
+    /* Form card */
+    .form-card {
+      max-width: 560px;
+      margin-inline: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(1.25rem, 3vw, 2rem);
+      display: flex;
+      flex-direction: column;
+      min-height: 400px;
+    }
+
+    .form-header { margin-bottom: 1.5rem; }
+    .form-header h1 {
+      font-size: clamp(1.5rem, 3.5vw, 1.85rem);
+      font-weight: 800;
+      letter-spacing: .2px;
+      margin: 0 0 .25rem;
+    }
+    .form-header p {
+      color: var(--muted);
+      font-size: .95rem;
+      margin: 0;
+    }
+
+    /* Step indicators */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    .step-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background .3s var(--ease), transform .3s var(--ease);
+    }
+    .step-dot.active { background: var(--brand); transform: scale(1.25); }
+    .step-dot.done { background: var(--accent); }
+    .step-line {
+      flex: 1; height: 2px;
+      background: var(--border);
+      transition: background .3s var(--ease);
+    }
+    .step-line.active { background: var(--brand); }
+
+    /* Topic grid */
+    .topic-grid {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      margin-bottom: 1.5rem;
+    }
+    .topic-option {
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      padding: .95rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      cursor: pointer;
+      transition: border-color .2s var(--ease), background .2s var(--ease), box-shadow .2s var(--ease), transform .15s var(--ease);
+      user-select: none;
+    }
+    .topic-option:hover {
+      border-color: color-mix(in oklab, var(--brand) 40%, var(--border));
+      background: color-mix(in oklab, var(--brand) 5%, var(--surface));
+      transform: translateY(-1px);
+    }
+    .topic-option.selected {
+      border-color: var(--brand);
+      background: color-mix(in oklab, var(--brand) 10%, var(--surface));
+      box-shadow: 0 0 0 3px rgba(79,140,255,.2), 0 4px 16px rgba(79,140,255,.12);
+    }
+    .topic-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      font-size: 1.15rem;
+    }
+    .topic-option:nth-child(1) .topic-icon { background: color-mix(in oklab, var(--danger) 15%, transparent); }
+    .topic-option:nth-child(2) .topic-icon { background: color-mix(in oklab, var(--success) 15%, transparent); }
+    .topic-option:nth-child(3) .topic-icon { background: color-mix(in oklab, #f59e0b 15%, transparent); }
+    .topic-option:nth-child(4) .topic-icon { background: color-mix(in oklab, var(--brand) 15%, transparent); }
+    .topic-option:nth-child(5) .topic-icon { background: color-mix(in oklab, var(--accent) 15%, transparent); }
+    .topic-option:nth-child(6) .topic-icon { background: color-mix(in oklab, #f472b6 15%, transparent); }
+    .topic-option:nth-child(7) .topic-icon { background: color-mix(in oklab, var(--muted) 15%, transparent); }
+
+    .topic-text { display: flex; flex-direction: column; line-height: 1.3; }
+    .topic-name { font-size: .95rem; font-weight: 700; color: var(--text); }
+    .topic-desc { font-size: .78rem; color: var(--muted); font-weight: 500; }
+
+    .topic-radio {
+      margin-left: auto;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      transition: border-color .2s, background .2s;
+    }
+    .topic-option.selected .topic-radio {
+      border-color: var(--brand);
+      background: var(--brand);
+    }
+    .topic-radio::after {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      transform: scale(0);
+      transition: transform .2s var(--ease);
+    }
+    .topic-option.selected .topic-radio::after { transform: scale(1); }
+
+    /* Step 2 — Details */
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      background: color-mix(in oklab, var(--brand) 12%, transparent);
+      border: 1px solid color-mix(in oklab, var(--brand) 25%, transparent);
+      border-radius: 999px;
+      padding: .3rem .85rem;
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--brand);
+      margin-bottom: 1rem;
+    }
+
+    .field { margin-bottom: 1.25rem; }
+    .field label {
+      display: block;
+      margin-bottom: .4rem;
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 1rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: .95rem;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    textarea::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+    textarea:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(79,140,255,.2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      padding: .85rem 1.2rem;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: .95rem;
+      font-weight: 700;
+      transition: transform .04s ease, background-color .2s ease, box-shadow .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-primary {
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover:not(:disabled) { background: linear-gradient(180deg, var(--brand-600), var(--brand-700)); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: var(--bg-elev); }
+
+    .form-actions {
+      display: flex;
+      gap: .75rem;
+      margin-top: auto;
+      padding-top: 1.25rem;
+    }
+    .form-actions .btn { flex: 1; padding: .95rem 1rem; }
+
+    /* Success state */
+    .success-view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      gap: 1rem;
+      padding: 2rem 0;
+    }
+    .success-view.visible { display: flex; }
+    .success-icon {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--success) 15%, transparent);
+      display: grid;
+      place-items: center;
+    }
+    .success-icon svg { width: 36px; height: 36px; color: var(--success); }
+    .success-view h2 { font-size: 1.4rem; font-weight: 800; margin: 0; }
+    .success-view p { color: var(--muted); font-size: .95rem; margin: 0; max-width: 320px; }
+
+    /* Steps visibility */
+    .step { display: none; flex-direction: column; flex: 1; }
+    .step.active { display: flex; }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .form-card { padding: 1.25rem; }
+      .topic-option { padding: .8rem .9rem; }
+      .topic-icon { width: 36px; height: 36px; font-size: 1rem; }
+      .topic-name { font-size: .88rem; }
+      .topic-desc { font-size: .72rem; }
+    }
+  </style>
+  <script src="auth-guard.js" type="module"></script>
+</head>
+<body>
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="stats.html">Stats</a>
+    <a href="medicom.html" class="active">Communication</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <div class="form-card">
+        <!-- Step indicators -->
+        <div class="step-indicator">
+          <div class="step-dot active" id="dot-1"></div>
+          <div class="step-line" id="line-1"></div>
+          <div class="step-dot" id="dot-2"></div>
+        </div>
+
+        <!-- STEP 1: Choose topic -->
+        <div class="step active" id="step-1">
+          <div class="form-header">
+            <h1>Send Update</h1>
+            <p>Let your doctor know what's going on.</p>
+          </div>
+
+          <div class="topic-grid" id="topic-grid">
+            <div class="topic-option" data-type="Stopped Medication">
+              <div class="topic-icon">🛑</div>
+              <div class="topic-text">
+                <span class="topic-name">Stopped Medication</span>
+                <span class="topic-desc">I stopped taking a medication</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+
+            <div class="topic-option" data-type="Started New Medication">
+              <div class="topic-icon">💊</div>
+              <div class="topic-text">
+                <span class="topic-name">Started New Medication</span>
+                <span class="topic-desc">I began a new medication</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+
+            <div class="topic-option" data-type="Missed Doses">
+              <div class="topic-icon">⚠️</div>
+              <div class="topic-text">
+                <span class="topic-name">Missed Doses</span>
+                <span class="topic-desc">I missed one or more doses</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+
+            <div class="topic-option" data-type="Taking a Break">
+              <div class="topic-icon">⏸️</div>
+              <div class="topic-text">
+                <span class="topic-name">Taking a Break</span>
+                <span class="topic-desc">I'm pausing a medication temporarily</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+
+            <div class="topic-option" data-type="Picked Up / Refilled">
+              <div class="topic-icon">✅</div>
+              <div class="topic-text">
+                <span class="topic-name">Picked Up / Refilled</span>
+                <span class="topic-desc">I picked up or refilled a prescription</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+
+            <div class="topic-option" data-type="Side Effects">
+              <div class="topic-icon">🩹</div>
+              <div class="topic-text">
+                <span class="topic-name">Side Effects</span>
+                <span class="topic-desc">I'm experiencing side effects</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+
+            <div class="topic-option" data-type="Other">
+              <div class="topic-icon">✏️</div>
+              <div class="topic-text">
+                <span class="topic-name">Other</span>
+                <span class="topic-desc">Something else not listed above</span>
+              </div>
+              <div class="topic-radio"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" id="next-btn" disabled>
+              Next
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Details -->
+        <div class="step" id="step-2">
+          <div class="form-header">
+            <h1>Send Update</h1>
+            <p>Tell your doctor more about what happened.</p>
+          </div>
+
+          <span class="type-badge" id="type-badge"></span>
+
+          <div class="field">
+            <label id="details-label">Details</label>
+            <textarea id="details-input" placeholder="Tell your doctor what happened..."></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-secondary" id="back-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back
+            </button>
+            <button class="btn btn-primary" id="submit-btn" disabled>Submit</button>
+          </div>
+        </div>
+
+        <!-- SUCCESS -->
+        <div class="success-view" id="success-view">
+          <div class="success-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h2>Update Sent</h2>
+          <p>Your doctor has been notified. They'll see your message next time they check in.</p>
+          <a href="medicom.html" class="btn btn-primary" style="margin-top:.5rem;padding:.85rem 2rem">Back to Communication</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+    let patientName = '';
+
+    // Wait for auth
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      currentUser = user;
+
+      // Fetch patient name from profile
+      try {
+        const profileDoc = await getDoc(doc(db, 'users', user.uid));
+        if (profileDoc.exists()) {
+          patientName = profileDoc.data().name || user.displayName || 'Patient';
+        } else {
+          patientName = user.displayName || 'Patient';
+        }
+      } catch (e) {
+        patientName = user.displayName || 'Patient';
+      }
+    });
+
+    // State
+    let selectedType = '';
+
+    // Elements
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const successView = document.getElementById('success-view');
+    const dot1 = document.getElementById('dot-1');
+    const dot2 = document.getElementById('dot-2');
+    const line1 = document.getElementById('line-1');
+    const nextBtn = document.getElementById('next-btn');
+    const backBtn = document.getElementById('back-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const typeBadge = document.getElementById('type-badge');
+    const detailsLabel = document.getElementById('details-label');
+    const detailsInput = document.getElementById('details-input');
+
+    // Placeholders per type
+    const placeholders = {
+      'Stopped Medication': 'e.g., I stopped taking Lisinopril two days ago because of dizziness...',
+      'Started New Medication': 'e.g., I started taking Vitamin D 2000 IU daily, prescribed by my primary care doctor...',
+      'Missed Doses': 'e.g., I missed my evening dose of Metformin on Monday and Tuesday...',
+      'Taking a Break': 'e.g., I\'m pausing Aspirin for a week before my dental appointment...',
+      'Picked Up / Refilled': 'e.g., I picked up my Atorvastatin refill from the pharmacy today...',
+      'Side Effects': 'e.g., I\'ve been feeling nauseous after taking my morning medications...',
+      'Other': 'Tell your doctor what\'s on your mind...'
+    };
+
+    // Topic selection
+    const topicOptions = document.querySelectorAll('.topic-option');
+    topicOptions.forEach(opt => {
+      opt.addEventListener('click', () => {
+        topicOptions.forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedType = opt.getAttribute('data-type');
+        nextBtn.disabled = false;
+      });
+    });
+
+    // Next → Step 2
+    nextBtn.addEventListener('click', () => {
+      if (!selectedType) return;
+
+      step1.classList.remove('active');
+      step2.classList.add('active');
+
+      dot1.classList.remove('active');
+      dot1.classList.add('done');
+      line1.classList.add('active');
+      dot2.classList.add('active');
+
+      typeBadge.textContent = selectedType;
+      detailsLabel.textContent = selectedType;
+      detailsInput.placeholder = placeholders[selectedType] || 'Tell your doctor what happened...';
+      detailsInput.value = '';
+      submitBtn.disabled = true;
+      detailsInput.focus();
+    });
+
+    // Back → Step 1
+    backBtn.addEventListener('click', () => {
+      step2.classList.remove('active');
+      step1.classList.add('active');
+
+      dot2.classList.remove('active');
+      line1.classList.remove('active');
+      dot1.classList.remove('done');
+      dot1.classList.add('active');
+    });
+
+    // Enable submit when textarea has content
+    detailsInput.addEventListener('input', () => {
+      submitBtn.disabled = detailsInput.value.trim().length === 0;
+    });
+
+    // Submit
+    submitBtn.addEventListener('click', async () => {
+      const details = detailsInput.value.trim();
+      if (!details || !selectedType || !currentUser) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/submitPatientComment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: currentUser.uid,
+            idToken: await currentUser.getIdToken(),
+            type: selectedType,
+            details,
+            patientName: patientName
+          })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Failed to send');
+
+        step2.classList.remove('active');
+        successView.classList.add('visible');
+        document.querySelector('.step-indicator').style.display = 'none';
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+        alert('Error: ' + (err.message || 'Something went wrong.'));
+      }
+    });
+  </script>
+</body>
+</html>

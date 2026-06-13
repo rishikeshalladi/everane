@@ -6,7 +6,7 @@
   <title>Redirecting…</title>
   <meta http-equiv="refresh" content="0; url=home.html" />
   <script>
-    // Netlify sometimes serves extensionless routes (/caregiver/home).
+    // Some hosts serve extensionless routes (/caregiver/home).
     // This ensures it always lands on the real page (/caregiver/home.html).
     window.location.replace('home.html');
   </script>

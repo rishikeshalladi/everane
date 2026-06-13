@@ -4,6 +4,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
   <title>Everane – Profile</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -253,6 +257,9 @@
     }
 
     .profile-title { font-size: 1.5rem; font-weight: bold; color: var(--text); margin: 0; }
+
+    .profile-header-btns { display: flex; gap: 0.5rem; align-items: center; }
+    .profile-header-btns .btn { font-size: 0.85rem; padding: 0.5rem 1rem; }
 
     .help-question-btn {
       position: fixed;
@@ -706,7 +713,10 @@
       }
       
       .profile-title { font-size: 1.25rem; }
-      
+
+      .profile-header-btns { width: 100%; }
+      .profile-header-btns .btn { flex: 1; font-size: 0.8rem; padding: 0.45rem 0.75rem; }
+
       .btn-group {
         width: 100%;
         flex-direction: column;
@@ -815,7 +825,161 @@
       }
     }
 
+    /* ════════════════════════════════════════════════════════════════════════
+       MOBILE MINIMAL — additive only. Do NOT override the form layout or any
+       section card styling. The original styles above already handle desktop
+       AND mobile compactly. This block ONLY:
+         1. Hides the ⋯ button on desktop (we don't use it)
+         2. On mobile: shows the ⋯ button, hides Help/Replay/Sign Out/header-Save
+         3. On mobile: shows a working fixed-position popover for the ⋯ menu
+         4. On mobile: shows a sticky Save Changes bar at the bottom
+         5. Mobile-safe modal sizing (Add Phone, SMS Consent, FAQ, etc.)
+       Everything else is left to the existing styles.
+       ════════════════════════════════════════════════════════════════════════ */
+
+    /* ── ⋯ button + sheet: hidden on desktop ─────────────────────────── */
+    #profile-more-btn,
+    .profile-more-btn,
+    #profile-more-sheet,
+    .profile-more-sheet,
+    .profile-save-bar {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      /* ⋯ button visible on mobile */
+      #profile-more-btn,
+      .profile-more-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        font-size: 1.25rem !important;
+        line-height: 1 !important;
+        border-radius: 10px !important;
+        font-weight: 800 !important;
+        flex-shrink: 0;
+      }
+      /* Hide secondary header buttons + the header Save Changes (sticky bar covers it) */
+      .profile-header-btns .profile-secondary-btn { display: none !important; }
+      .profile-header-btns #header-save-btn { display: none !important; }
+
+      /* Popover sheet — fixed-position so it's never clipped by ancestors */
+      #profile-more-sheet,
+      .profile-more-sheet {
+        position: fixed !important;
+        top: calc(env(safe-area-inset-top, 0px) + 72px);
+        right: 1rem;
+        z-index: 200;
+        min-width: 200px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.35rem;
+        box-shadow: 0 18px 40px rgba(15,23,42,0.25);
+        flex-direction: column;
+      }
+      #profile-more-sheet.is-open,
+      .profile-more-sheet.is-open {
+        display: flex !important;
+      }
+      .profile-more-sheet-item {
+        background: transparent;
+        border: 0;
+        text-align: left;
+        padding: 0.7rem 0.9rem;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text);
+        cursor: pointer;
+      }
+      .profile-more-sheet-item:hover,
+      .profile-more-sheet-item:active {
+        background: color-mix(in oklab, var(--brand) 12%, transparent);
+      }
+      .profile-more-sheet-item--danger { color: var(--danger); }
+      .profile-more-sheet-item--danger:hover,
+      .profile-more-sheet-item--danger:active {
+        background: color-mix(in oklab, var(--danger) 12%, transparent);
+      }
+      @media (prefers-color-scheme: dark) {
+        #profile-more-sheet,
+        .profile-more-sheet { box-shadow: 0 18px 40px rgba(0,0,0,0.55); }
+      }
+
+      /* Sticky Save bar */
+      .profile-save-bar {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        padding: 0.55rem 0.85rem calc(0.55rem + env(safe-area-inset-bottom, 0px));
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        z-index: 40;
+      }
+      .profile-save-bar.is-shown { display: block !important; }
+      .profile-save-bar .btn {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        font-size: 0.98rem;
+        border-radius: 12px;
+        background: var(--brand);
+        color: #fff;
+        border: 1px solid var(--brand);
+      }
+      /* Reserve scroll space at the bottom so content clears the sticky bar */
+      .profile-container,
+      .content {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+
+      /* iOS no-focus-zoom on inputs */
+      .form-group input[type="text"],
+      .form-group input[type="email"],
+      .form-group input[type="tel"],
+      .form-group input[type="number"],
+      .form-group input[type="password"],
+      .form-group input[type="date"],
+      .form-group select,
+      .form-group textarea {
+        font-size: 16px !important;
+      }
+
+      /* Modal sizing */
+      .modal { padding: 0.6rem !important; }
+      .modal .modal-content,
+      .modal-content {
+        max-width: min(560px, 94vw) !important;
+        width: 100% !important;
+        max-height: calc(100dvh - 1.2rem) !important;
+        overflow-y: auto;
+        padding: 1rem 1rem !important;
+        border-radius: 16px !important;
+        -webkit-overflow-scrolling: touch;
+      }
+      .modal h3, .modal h2 { font-size: 1.02rem !important; line-height: 1.3; }
+      .modal .modal-description { font-size: 0.88rem !important; line-height: 1.5; }
+      .modal label { font-size: 0.86rem !important; }
+      .modal input, .modal select, .modal textarea {
+        font-size: 16px !important;
+        padding: 0.7rem 0.85rem !important;
+        border-radius: 10px !important;
+      }
+      #sms-consent-modal .modal-content ul { padding-left: 1rem; margin-bottom: 0.4rem; }
+      #sms-consent-modal .modal-content ul li { margin-bottom: 0.15rem; font-size: 0.85rem; }
+      #sms-consent-modal label[for="sms-consent-checkbox"] { font-size: 0.85rem !important; }
+
+      /* "Add a phone number" button — full width on mobile */
+      #add-phone-btn { width: 100%; }
+    }
+
+
+
   </style>
+  <script src="../auth-guard.js" type="module"></script>
 </head>
 
 <body>
@@ -845,11 +1009,22 @@
     <div class="profile-container">
       <div class="profile-header">
         <h1 class="profile-title">Your Profile</h1>
+        <div class="profile-header-btns">
+          <button type="button" id="header-save-btn" class="btn btn-primary">Save Changes</button>
+          <button type="button" id="header-sign-out-btn" class="btn btn-danger profile-secondary-btn">Sign Out</button>
+          <!-- Mobile-only "More⋯" toggle. Hidden on desktop via CSS. -->
+          <button type="button" id="profile-more-btn" class="btn btn-secondary profile-more-btn" aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
+        </div>
+      </div>
+      <!-- Mobile-only popover. Hidden on desktop and when not toggled. The
+           actual Sign Out click is forwarded to the original button so its
+           existing handler keeps working. -->
+      <div id="profile-more-sheet" class="profile-more-sheet" role="menu" aria-hidden="true">
+        <button type="button" class="profile-more-sheet-item profile-more-sheet-item--danger" data-forwards-to="header-sign-out-btn">Sign out</button>
       </div>
 
       <div class="profile-content">
         <div class="profile-card">
-          <h2>Account Information</h2>
           <form id="profile-form" novalidate>
             <div class="profile-form">
               <div class="form-group">
@@ -862,10 +1037,6 @@
                 <input id="name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
                 <div id="name-error" class="error-message"></div>
               </div>
-              <div class="form-group">
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" placeholder="••••••••" readonly />
-              </div>
               <!-- Phone Number section -->
               <div class="form-group">
                 <label for="phone">Phone Number <small>(optional)</small></label>
@@ -873,6 +1044,7 @@
                   <input id="phone" name="phone" type="tel" placeholder="+1 (123) 456-7890" readonly style="display: none;" />
                   <button type="button" id="add-phone-btn" class="btn btn-secondary" style="display: none; margin-top: 0.5rem;">Add a phone number</button>
                 </div>
+                <div id="sms-consent-note" style="display:none; margin-top:0.45rem; font-size:0.82rem; color:var(--muted,#64748b); line-height:1.5;"></div>
                 <div id="phone-error" class="error-message"></div>
               </div>
               <div class="form-group">
@@ -887,6 +1059,10 @@
                   <option>Guardian</option>
                   <option>Parent</option>
                 </select>
+              </div>
+              <div class="form-group">
+                <label for="tz">Time zone <small>(auto)</small></label>
+                <input id="tz" name="timezone" type="text" readonly />
               </div>
             </div>
 
@@ -933,17 +1109,17 @@
               <div class="email-reminders-selected-summary" id="email-reminders-selected-summary">No emails selected.</div>
             </div>
 
-            <div class="actions">
-              <button type="submit" class="btn-primary" style="padding: 1rem 1.5rem; font-size: 1rem; font-weight: 600;">Save Changes</button>
-            </div>
-            <div class="actions" style="margin-top: 1rem;">
-              <button type="button" id="sign-out-btn" class="btn-danger" style="padding: 1rem 1.5rem; font-size: 1rem; font-weight: 600;">Sign Out</button>
-            </div>
             <p id="message" class="msg" role="status" aria-live="polite"></p>
           </form>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Sticky bottom Save Changes bar (mobile only, shown via CSS).
+       Forwards click to the existing header save button. -->
+  <div id="profile-save-bar" class="profile-save-bar">
+    <button type="button" class="btn btn-primary" id="profile-save-bar-btn">Save Changes</button>
   </div>
 
   <!-- Email Verification Modal -->
@@ -986,6 +1162,56 @@
   </div>
 
   <!-- Add Phone Number Modal -->
+  <!-- SMS Consent Modal — shown BEFORE add-phone-modal. Required for Twilio
+       Toll-Free Verification: the user must explicitly opt in to SMS at the
+       moment of providing their number. -->
+  <div id="sms-consent-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sms-consent-title">
+    <div class="modal-content" style="max-width: 560px;">
+      <button class="modal-close" id="sms-consent-close" aria-label="Close">&times;</button>
+      <h3 id="sms-consent-title" style="margin-bottom: 0.4rem;">📱 SMS Alerts — Your Consent</h3>
+      <p class="modal-description" style="margin-bottom: 0.85rem;">
+        Before you add your phone number, please review what you'll receive and agree to receive SMS text messages.
+      </p>
+
+      <div style="background: color-mix(in oklab, #3f6ff5 8%, var(--surface, #fff)); border: 1px solid color-mix(in oklab, #3f6ff5 25%, var(--border, #e5e7eb)); border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.85rem; font-size: 0.92rem; line-height: 1.55;">
+        <div style="font-weight: 700; margin-bottom: 0.4rem;">What you'll receive (as a caregiver):</div>
+        <ul style="margin: 0 0 0.6rem 1.1rem; padding: 0;">
+          <li>Alerts when a patient you care for misses doses</li>
+          <li>Adherence summaries (e.g. below-80% alerts)</li>
+          <li>Weekly and monthly report notifications</li>
+          <li>Bottle expiration / refill alerts for your patients</li>
+          <li>One-time verification codes when you add or change your phone number</li>
+        </ul>
+        <div style="font-weight: 700; margin-bottom: 0.4rem;">What we will NOT do:</div>
+        <ul style="margin: 0 0 0.6rem 1.1rem; padding: 0;">
+          <li>No marketing or promotional messages — ever</li>
+          <li>No third-party sharing of your phone number</li>
+          <li>No selling your information</li>
+        </ul>
+        <div style="font-size: 0.85rem; color: var(--muted, #64748b);">
+          Message frequency depends on your patients' medication schedules. Message and data rates may apply. Reply <strong>STOP</strong> at any time to unsubscribe. Reply <strong>HELP</strong> for help. You can also remove your phone number from this profile at any time.
+        </div>
+      </div>
+
+      <label for="sms-consent-checkbox" style="display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; padding: 0.5rem 0; font-size: 0.95rem; line-height: 1.5;">
+        <input type="checkbox" id="sms-consent-checkbox" style="margin-top: 0.25rem; flex-shrink: 0; width: 1.05rem; height: 1.05rem; cursor: pointer;">
+        <span>
+          I agree to receive recurring SMS text messages from Everane at the phone number I provide for caregiver alerts, adherence summaries, and verification codes. I have read the
+          <a href="../privacypolicy.html" target="_blank" rel="noopener" style="color: var(--brand, #3f6ff5); text-decoration: underline;">Privacy Policy</a>
+          and
+          <a href="../termsofservice.html" target="_blank" rel="noopener" style="color: var(--brand, #3f6ff5); text-decoration: underline;">Terms of Service</a>.
+          I understand I can reply STOP to unsubscribe at any time.
+        </span>
+      </label>
+
+      <div style="display: flex; gap: 0.6rem; margin-top: 1rem;">
+        <button type="button" id="sms-consent-cancel" class="btn-secondary" style="flex: 1;">Cancel</button>
+        <button type="button" id="sms-consent-agree" class="btn-primary" style="flex: 1;" disabled>I Agree — Continue</button>
+      </div>
+      <p id="sms-consent-message" class="msg" role="status" aria-live="polite" style="margin-top: 0.6rem; font-size: 0.85rem;"></p>
+    </div>
+  </div>
+
   <div id="add-phone-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="add-phone-title">
     <div class="modal-content">
       <button class="modal-close" onclick="closeAddPhoneModal()" aria-label="Close">&times;</button>
@@ -1217,12 +1443,19 @@
       
       // Update phone display
       updatePhoneDisplay(profileData.phone);
-      
+      // Render the SMS consent footnote (Twilio TFV: surface explicit consent date).
+      if (window.renderSmsConsentNote) window.renderSmsConsentNote(profileData.smsConsent || null);
+
       if (profileData.relation) {
         const relationSelect = document.getElementById('relation');
         if (relationSelect) relationSelect.value = profileData.relation;
       }
       
+      // Timezone: use stored value from Firestore if available, otherwise keep browser-detected
+      const tzField = document.getElementById('tz');
+      if (tzField && profileData.timezone && profileData.timezone.trim()) {
+        tzField.value = profileData.timezone;
+      }
       if (window.setEmailReminders) {
         window.setEmailReminders(profileData.email_reminders || []);
       }
@@ -1355,10 +1588,12 @@
       const addPhoneBtn = document.getElementById('add-phone-btn');
       if (addPhoneBtn) {
         addPhoneBtn.addEventListener('click', () => {
-          if (window.openAddPhoneModal) {
+          if (window.openSmsConsentThenAddPhone) {
+            window.openSmsConsentThenAddPhone();
+          } else if (window.openAddPhoneModal) {
             window.openAddPhoneModal();
           } else {
-            console.error('openAddPhoneModal function not found');
+            console.error('No phone-add flow registered');
           }
         });
       }
@@ -1367,7 +1602,7 @@
 
   <script type="module">
     // Import Firebase SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
@@ -1383,13 +1618,157 @@
     };
 
     // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
-    
-    // Setup sign out button
+
+    // ═════════════════════════════════════════════════════════════════════
+    // SMS Consent Gate (Twilio Toll-Free Verification requirement)
+    // ═════════════════════════════════════════════════════════════════════
+    const SMS_CONSENT_VERSION = 'v1';
+
+    async function userHasValidSmsConsent() {
+      try {
+        const u = auth.currentUser;
+        if (!u) return false;
+        const snap = await getDoc(doc(db, 'users', u.uid));
+        if (!snap.exists()) return false;
+        const c = snap.data()?.smsConsent;
+        return !!(c && c.agreedAt && c.version === SMS_CONSENT_VERSION);
+      } catch (e) {
+        console.warn('[SMS Consent] read failed:', e);
+        return false;
+      }
+    }
+
+    async function recordSmsConsent() {
+      const u = auth.currentUser;
+      if (!u) {
+        const e = new Error('You are not signed in. Please refresh the page and try again.');
+        e.code = 'no-current-user';
+        throw e;
+      }
+      try { await u.getIdToken(true); } catch (e) {
+        console.warn('[SMS Consent] token refresh failed:', e);
+      }
+      const consent = {
+        agreedAt: new Date().toISOString(),
+        version: SMS_CONSENT_VERSION,
+        userAgent: (navigator.userAgent || '').slice(0, 300),
+        method: 'opt-in checkbox on caregiver profile page',
+      };
+      try {
+        await setDoc(doc(db, 'users', u.uid), { smsConsent: consent }, { merge: true });
+      } catch (e) {
+        console.error('[SMS Consent] Firestore write failed:', e && e.code, e && e.message, e);
+        const friendly = new Error(
+          (e && e.code === 'permission-denied')
+            ? 'Permission denied saving consent. Please sign out and back in, then try again.'
+            : ((e && e.message) || 'Could not save your consent. Please try again.')
+        );
+        friendly.cause = e;
+        throw friendly;
+      }
+      if (window.renderSmsConsentNote) window.renderSmsConsentNote(consent);
+      return consent;
+    }
+
+    window.renderSmsConsentNote = function(consent) {
+      const el = document.getElementById('sms-consent-note');
+      if (!el) return;
+      if (!consent || !consent.agreedAt) { el.style.display = 'none'; el.textContent = ''; return; }
+      let dateStr = '';
+      try {
+        const d = new Date(consent.agreedAt);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+      } catch (_) {}
+      el.style.display = '';
+      el.innerHTML = '\u2713 You agreed to receive SMS alerts' + (dateStr ? (' on <strong>' + dateStr + '</strong>') : '') + '. Reply STOP to any text to unsubscribe.';
+    };
+
+    function closeSmsConsentModal() {
+      const modal = document.getElementById('sms-consent-modal');
+      if (modal) modal.classList.remove('show');
+      const cb = document.getElementById('sms-consent-checkbox');
+      const agreeBtn = document.getElementById('sms-consent-agree');
+      const msg = document.getElementById('sms-consent-message');
+      if (cb) cb.checked = false;
+      if (agreeBtn) agreeBtn.disabled = true;
+      if (msg) { msg.textContent = ''; msg.className = 'msg'; }
+    }
+
+    function openSmsConsentModal() {
+      const modal = document.getElementById('sms-consent-modal');
+      if (!modal) { console.error('sms-consent-modal not found'); return; }
+      const cb = document.getElementById('sms-consent-checkbox');
+      const agreeBtn = document.getElementById('sms-consent-agree');
+      const msg = document.getElementById('sms-consent-message');
+      if (cb) cb.checked = false;
+      if (agreeBtn) agreeBtn.disabled = true;
+      if (msg) { msg.textContent = ''; msg.className = 'msg'; }
+      modal.classList.add('show');
+    }
+
+    (function wireConsentModal() {
+      const cb = document.getElementById('sms-consent-checkbox');
+      const agreeBtn = document.getElementById('sms-consent-agree');
+      const cancelBtn = document.getElementById('sms-consent-cancel');
+      const closeBtn = document.getElementById('sms-consent-close');
+      const msg = document.getElementById('sms-consent-message');
+      if (cb && agreeBtn) {
+        cb.addEventListener('change', () => { agreeBtn.disabled = !cb.checked; });
+      }
+      if (cancelBtn) cancelBtn.addEventListener('click', closeSmsConsentModal);
+      if (closeBtn) closeBtn.addEventListener('click', closeSmsConsentModal);
+      if (agreeBtn) {
+        agreeBtn.addEventListener('click', async () => {
+          if (!cb || !cb.checked) return;
+          agreeBtn.disabled = true;
+          const original = agreeBtn.textContent;
+          agreeBtn.textContent = 'Saving consent…';
+          if (msg) { msg.className = 'msg'; msg.textContent = ''; }
+          try {
+            await recordSmsConsent();
+            closeSmsConsentModal();
+            if (window.openAddPhoneModal) window.openAddPhoneModal();
+          } catch (e) {
+            console.error('[SMS Consent] record failed:', e);
+            agreeBtn.disabled = false;
+            agreeBtn.textContent = original;
+            if (msg) { msg.className = 'msg err'; msg.textContent = (e && e.message) || 'Could not save your consent. Please try again.'; }
+          }
+        });
+      }
+    })();
+
+    window.openSmsConsentThenAddPhone = async function () {
+      const ok = await userHasValidSmsConsent();
+      if (ok) {
+        if (window.openAddPhoneModal) window.openAddPhoneModal();
+      } else {
+        openSmsConsentModal();
+      }
+    };
+
+    // Setup header buttons
     document.addEventListener('DOMContentLoaded', () => {
-      const signOutBtn = document.getElementById('sign-out-btn');
+      // Header save button triggers form submit
+      const headerSaveBtn = document.getElementById('header-save-btn');
+      if (headerSaveBtn) {
+        headerSaveBtn.addEventListener('click', () => {
+          document.getElementById('profile-form').requestSubmit();
+        });
+      }
+
+      // Timezone — detect browser timezone as fallback only (Firestore value takes priority)
+      const tzEl = document.getElementById('tz');
+      if (tzEl) {
+        try { tzEl.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tzEl.value = ''; }
+      }
+
+      const signOutBtn = document.getElementById('header-sign-out-btn');
       if (signOutBtn) {
         signOutBtn.addEventListener('click', async () => {
           try {
@@ -1451,6 +1830,9 @@
             // Update phone display based on Firebase data
             if (window.updatePhoneDisplay) {
               window.updatePhoneDisplay(profileData.phone);
+            }
+            if (window.renderSmsConsentNote) {
+              window.renderSmsConsentNote(profileData.smsConsent || null);
             }
           } else {
             // No profile in Firestore - this shouldn't happen if registration worked
@@ -2612,6 +2994,65 @@
         }
       });
     });
+  </script>
+
+  <!-- Mobile UI helpers: More⋯ menu + sticky save bar. -->
+  <script>
+    (function () {
+      const moreBtn = document.getElementById('profile-more-btn');
+      const sheet   = document.getElementById('profile-more-sheet');
+
+      function closeSheet() {
+        if (!sheet) return;
+        sheet.classList.remove('is-open');
+        sheet.setAttribute('aria-hidden', 'true');
+        if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+      }
+      function openSheet() {
+        if (!sheet) return;
+        sheet.classList.add('is-open');
+        sheet.setAttribute('aria-hidden', 'false');
+        if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
+      }
+
+      if (moreBtn && sheet) {
+        moreBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (sheet.classList.contains('is-open')) closeSheet(); else openSheet();
+        });
+        document.addEventListener('click', (e) => {
+          if (!sheet.classList.contains('is-open')) return;
+          if (sheet.contains(e.target) || (moreBtn && moreBtn.contains(e.target))) return;
+          closeSheet();
+        });
+        sheet.querySelectorAll('.profile-more-sheet-item').forEach((item) => {
+          item.addEventListener('click', () => {
+            const targetId = item.getAttribute('data-forwards-to');
+            const target = document.getElementById(targetId);
+            closeSheet();
+            if (target) target.click();
+          });
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && sheet.classList.contains('is-open')) closeSheet();
+        });
+      }
+
+      const saveBar    = document.getElementById('profile-save-bar');
+      const saveBarBtn = document.getElementById('profile-save-bar-btn');
+      const headerSave = document.getElementById('header-save-btn');
+
+      function syncSaveBarVisibility() {
+        if (!saveBar) return;
+        if (window.matchMedia('(max-width: 720px)').matches) saveBar.classList.add('is-shown');
+        else saveBar.classList.remove('is-shown');
+      }
+      syncSaveBarVisibility();
+      window.addEventListener('resize', syncSaveBarVisibility);
+      if (saveBarBtn && headerSave) {
+        saveBarBtn.addEventListener('click', () => headerSave.click());
+      }
+    })();
   </script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane – Email Action</title>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -318,9 +319,117 @@
       font-size: 1.1rem;
       min-width: 150px;
     }
+
+    /* Medication characteristics */
+    .med-traits {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .75rem;
+    }
+    .med-trait {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .3rem .7rem;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 600;
+      background: color-mix(in oklab, var(--brand) 10%, transparent);
+      border: 1px solid color-mix(in oklab, var(--brand) 20%, transparent);
+      color: var(--text);
+    }
+    .med-color-swatch {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.25);
+      flex-shrink: 0;
+      box-shadow: 0 0 6px rgba(0,0,0,.2);
+    }
+    .med-trait-form {
+      background: color-mix(in oklab, var(--accent) 12%, transparent);
+      border-color: color-mix(in oklab, var(--accent) 25%, transparent);
+    }
+    .med-trait-shape {
+      background: color-mix(in oklab, #a78bfa 10%, transparent);
+      border-color: color-mix(in oklab, #a78bfa 20%, transparent);
+    }
+    .med-trait-texture {
+      background: color-mix(in oklab, #f59e0b 10%, transparent);
+      border-color: color-mix(in oklab, #f59e0b 20%, transparent);
+    }
+    .med-trait-size {
+      background: color-mix(in oklab, #f472b6 10%, transparent);
+      border-color: color-mix(in oklab, #f472b6 20%, transparent);
+    }
+
+    /* Tap-to-hear overlay */
+    .speak-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(11, 16, 32, 0.92);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      cursor: pointer;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .speak-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .speak-overlay-icon {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(79, 140, 255, 0.4), 0 0 80px rgba(125, 226, 209, 0.2);
+      animation: pulse-ring 2s ease-in-out infinite;
+    }
+    .speak-overlay-icon svg {
+      width: 48px;
+      height: 48px;
+      fill: #fff;
+    }
+    .speak-overlay-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      padding: 0 2rem;
+    }
+    .speak-overlay-sub {
+      font-size: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 40px rgba(79, 140, 255, 0.4), 0 0 80px rgba(125, 226, 209, 0.2); transform: scale(1); }
+      50% { box-shadow: 0 0 60px rgba(79, 140, 255, 0.6), 0 0 100px rgba(125, 226, 209, 0.35); transform: scale(1.05); }
+    }
   </style>
+  <script src="med-image.js"></script>
 </head>
 <body>
+  <!-- Tap-to-hear overlay (shown until user taps, which unlocks speech) -->
+  <div class="speak-overlay hidden" id="speak-overlay">
+    <div class="speak-overlay-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+    </div>
+    <div class="speak-overlay-text" id="speak-overlay-text">Tap to hear your medication</div>
+    <div class="speak-overlay-sub">We'll read it out loud for you</div>
+  </div>
+
   <input type="checkbox" id="menu-toggle" class="menu-toggle">
   <label for="menu-toggle" class="hamburger">
     <span></span>
@@ -336,6 +445,7 @@
     <a href="calendar.html">Calendar</a>
     <a href="notes.html">Notes</a>
     <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
     <a href="profile.html">Profile</a>
   </nav>
 
@@ -346,9 +456,13 @@
       </div>
 
       <div class="card">
-        <div class="dose-info">
-          <div class="dose-name" id="dose-name">Loading...</div>
-          <div class="dose-date" id="dose-date">Loading...</div>
+        <div class="medimg-inline-row">
+          <div class="dose-info">
+            <div class="dose-name" id="dose-name">Loading...</div>
+            <div class="med-traits" id="med-traits" style="display:none"></div>
+            <div class="dose-date" id="dose-date">Loading...</div>
+          </div>
+          <div id="email-action-image-mount" aria-live="polite"></div>
         </div>
 
         <div class="notes-section">
@@ -434,8 +548,134 @@
       return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     }
 
+    // Build a human-readable description from classifications
+    // e.g. "the pink oval rough Lisinopril" — only includes what was provided
+    function buildMedDescription(medName, cls) {
+      if (!cls) return medName;
+      const parts = [];
+
+      // Color → readable name
+      if (cls.color) {
+        parts.push(colorHexToName(cls.color));
+      }
+      // Shape
+      if (cls.shape) {
+        parts.push(cls.shape.toLowerCase());
+      }
+      // Texture
+      if (cls.texture) {
+        // Strip parenthetical like "Glossy / Shiny" → "glossy"
+        parts.push(cls.texture.split('/')[0].trim().toLowerCase());
+      }
+
+      if (parts.length === 0) return medName;
+      return 'the ' + parts.join(' ') + ' ' + medName;
+    }
+
+    // Convert hex color to a spoken color name
+    function colorHexToName(hex) {
+      if (!hex) return '';
+      const r = parseInt(hex.slice(1,3), 16);
+      const g = parseInt(hex.slice(3,5), 16);
+      const b = parseInt(hex.slice(5,7), 16);
+
+      // Simple heuristic mapping
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      if (brightness > 240) return 'white';
+      if (brightness < 30) return 'black';
+
+      // Check for grays
+      if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20) {
+        return brightness > 160 ? 'light gray' : 'gray';
+      }
+
+      // Determine dominant color
+      if (r > g && r > b) {
+        if (r > 200 && g > 150 && b < 100) return 'orange';
+        if (r > 200 && g < 100 && b < 100) return 'red';
+        if (r > 200 && g > 100 && b > 150) return 'pink';
+        return 'red';
+      }
+      if (g > r && g > b) {
+        if (g > 200 && r > 150) return 'yellow-green';
+        return 'green';
+      }
+      if (b > r && b > g) {
+        if (b > 200 && r > 100) return 'purple';
+        if (b > 200 && g > 150) return 'light blue';
+        return 'blue';
+      }
+      if (r > 200 && g > 200 && b < 100) return 'yellow';
+      if (r > 150 && b > 150 && g < 100) return 'purple';
+      if (r > 150 && g < 80 && b > 100) return 'maroon';
+      return 'colored';
+    }
+
+    // Render classification badges in the UI
+    function renderTraits(cls) {
+      const container = document.getElementById('med-traits');
+      if (!cls || !container) return;
+
+      const badges = [];
+
+      if (cls.color) {
+        badges.push(`<span class="med-trait"><span class="med-color-swatch" style="background:${cls.color}"></span>${colorHexToName(cls.color)}</span>`);
+      }
+      if (cls.form) {
+        badges.push(`<span class="med-trait med-trait-form">${cls.form}</span>`);
+      }
+      if (cls.shape) {
+        badges.push(`<span class="med-trait med-trait-shape">${cls.shape}</span>`);
+      }
+      if (cls.size) {
+        badges.push(`<span class="med-trait med-trait-size">${cls.size}</span>`);
+      }
+      if (cls.texture) {
+        badges.push(`<span class="med-trait med-trait-texture">${cls.texture}</span>`);
+      }
+
+      if (badges.length > 0) {
+        container.innerHTML = badges.join('');
+        container.style.display = 'flex';
+      }
+    }
+
+    // Speak the medication description out loud using Web Speech API
+    // Browsers require a user gesture (tap/click) to unlock speechSynthesis,
+    // so we show a full-screen overlay the user taps once.
+    function speakMedication(displayName, speechText) {
+      const overlay = document.getElementById('speak-overlay');
+      const overlayText = document.getElementById('speak-overlay-text');
+
+      if (!('speechSynthesis' in window) || !overlay) {
+        console.warn('[Email-Action] Speech synthesis not supported or overlay missing');
+        return;
+      }
+
+      // Update overlay text with the actual med name
+      overlayText.textContent = `Tap to hear: "${displayName}"`;
+
+      // Show the overlay
+      overlay.classList.remove('hidden');
+
+      // On tap, speak and dismiss
+      const handleTap = () => {
+        overlay.removeEventListener('click', handleTap);
+        speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(speechText);
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        speechSynthesis.speak(utterance);
+        // Dismiss overlay
+        overlay.classList.add('hidden');
+      };
+
+      overlay.addEventListener('click', handleTap);
+    }
+
     // Load and display medication info from URL parameters
-    function loadMedicationInfo() {
+    async function loadMedicationInfo() {
       const params = new URLSearchParams(window.location.search);
       const medicationName = params.get('medication');
       const doseNumber = params.get('dose');
@@ -463,6 +703,43 @@
         date: dateString,
         id: medId
       };
+
+      // Fetch medication doc from Firestore to get classifications + image
+      const user = auth.currentUser;
+      let cls = null;
+      let medDocData = null;
+      if (user) {
+        try {
+          const medDocRef = doc(db, 'users', user.uid, 'medications', medId);
+          const medDoc = await getDoc(medDocRef);
+          if (medDoc.exists()) {
+            medDocData = medDoc.data();
+            cls = medDocData.classifications || null;
+          }
+        } catch (e) {
+          console.warn('[Email-Action] Could not load classifications:', e);
+        }
+      }
+
+      // Mount the saved medication image (if any) to the right of the dose info.
+      try {
+        if (medDocData && medDocData.imageUrl && window.MedImage) {
+          const mount = document.getElementById('email-action-image-mount');
+          if (mount) mount.appendChild(window.MedImage.renderInlineCard({
+            imageUrl: medDocData.imageUrl,
+            canonical: medDocData.imageCanonical || medicationName || null,
+            genericName: medDocData.imageGenericName || null,
+            size: 160,
+          }));
+        }
+      } catch (_) {}
+
+      // Render visual trait badges
+      renderTraits(cls);
+
+      // Build descriptive speech: "Take the pink oval rough Lisinopril now"
+      const description = buildMedDescription(medicationName, cls);
+      speakMedication(medicationName, `Take ${description} now.`);
 
       // Load existing notes
       loadExistingNotes(medId, dateString, parseInt(doseNumber));
