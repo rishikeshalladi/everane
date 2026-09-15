@@ -429,6 +429,34 @@
       color: var(--muted);
     }
 
+    /* Quick Add chips */
+    .qa-chip-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .qa-chip {
+      flex: 1;
+      min-width: 90px;
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .qa-chip:hover {
+      border-color: color-mix(in oklab, var(--brand) 60%, var(--border));
+    }
+    .qa-chip--on {
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      border-color: var(--brand-600);
+      color: #fff;
+    }
+
     /* stock list items */
     .bottle-item {
       background: color-mix(in oklab, var(--surface) 96%, transparent);
@@ -999,6 +1027,9 @@
         <button class="btn btn-secondary add-action-btn" id="picture-add-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
           📷 Picture Add
         </button>
+        <button class="btn btn-secondary add-action-btn" id="quick-add-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          ⚡ Quick Add
+        </button>
       </div>
       <div id="groups-header" style="display:flex; align-items:center; justify-content:space-between; margin-top:2rem; margin-bottom:0.75rem;">
         <h2 style="margin:0;">Groups</h2>
@@ -1050,6 +1081,67 @@
     </div>
   </div>
 
+  <!-- Quick Add Modal -->
+  <div id="quick-add-modal" class="modal">
+    <div class="modal-content" style="max-width: 460px; width: 95%; text-align: left;">
+      <h3 style="margin-top:0;">⚡ Quick Add</h3>
+      <p style="color:var(--muted); font-size:0.9rem; margin-top:-0.25rem;">Just the essentials. You can add bottles, color, and more later from Edit.</p>
+
+      <div class="form-group">
+        <label>Medication name <span style="color:#ff5470;">*</span></label>
+        <input type="text" id="qa-name" placeholder="e.g. Azulix" autocomplete="off">
+        <div id="qa-name-error" class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label>How often?</label>
+        <div id="qa-freq" class="qa-chip-row">
+          <button type="button" class="qa-chip qa-chip--on" data-freq="once">Once a day</button>
+          <button type="button" class="qa-chip" data-freq="twice">Twice a day</button>
+          <button type="button" class="qa-chip" data-freq="interval">Every X hours</button>
+        </div>
+      </div>
+
+      <div class="form-group" id="qa-times-wrap">
+        <label>Time</label>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <input type="time" id="qa-time-1" value="09:00" style="flex:1; min-width:130px;">
+          <input type="time" id="qa-time-2" value="21:00" style="flex:1; min-width:130px; display:none;">
+        </div>
+      </div>
+
+      <div class="form-group" id="qa-interval-wrap" style="display:none;">
+        <label>Every how many hours?</label>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <input type="number" id="qa-interval-hours" min="1" value="8" style="flex:1;">
+          <span style="color:var(--muted);">hours, starting</span>
+          <input type="time" id="qa-interval-start" value="09:00" style="flex:1;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Dosage <small style="color:var(--muted);">(optional)</small></label>
+        <input type="number" id="qa-dosage" min="1" value="1" placeholder="pills per dose">
+      </div>
+
+      <div class="form-group">
+        <label>Remind me by</label>
+        <div id="qa-channels" class="qa-chip-row">
+          <button type="button" class="qa-chip qa-chip--on" data-channel="push">Push</button>
+          <button type="button" class="qa-chip" data-channel="email">Email</button>
+          <button type="button" class="qa-chip" data-channel="sms">SMS</button>
+        </div>
+      </div>
+
+      <div id="qa-error" class="error-message"></div>
+
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+        <button id="qa-cancel" class="btn btn-sm btn-secondary">Cancel</button>
+        <button id="qa-save" class="btn btn-sm btn-primary">Save medication</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Delete Bottle Confirmation Modal -->
   <div id="delete-bottle-modal" class="modal">
     <div class="modal-content">
@@ -1071,8 +1163,8 @@
         <button class="agenda-close" id="agenda-close" aria-label="Close agenda">&times;</button>
       </div>
       <div class="agenda-list" id="agenda-list"></div>
-      <div class="agenda-footer">
-        Automatic daily agenda emails are sent at 9:00 AM Pacific.
+      <div class="agenda-footer" id="agenda-footer">
+        Automatic daily agenda emails are sent at 9:00 AM your local time.
       </div>
     </div>
   </div>
@@ -1177,7 +1269,180 @@
           window.location.href = 'scan-medication.html';
         });
       }
-      
+
+      // ---- Quick Add ------------------------------------------------------
+      (function wireQuickAdd() {
+        const openBtn   = document.getElementById('quick-add-btn');
+        const modal     = document.getElementById('quick-add-modal');
+        if (!openBtn || !modal) return;
+
+        const nameEl     = document.getElementById('qa-name');
+        const nameErr    = document.getElementById('qa-name-error');
+        const freqRow    = document.getElementById('qa-freq');
+        const timesWrap  = document.getElementById('qa-times-wrap');
+        const time1El    = document.getElementById('qa-time-1');
+        const time2El    = document.getElementById('qa-time-2');
+        const intWrap    = document.getElementById('qa-interval-wrap');
+        const intHoursEl = document.getElementById('qa-interval-hours');
+        const intStartEl = document.getElementById('qa-interval-start');
+        const dosageEl   = document.getElementById('qa-dosage');
+        const channelRow = document.getElementById('qa-channels');
+        const errEl      = document.getElementById('qa-error');
+        const cancelBtn  = document.getElementById('qa-cancel');
+        const saveBtn    = document.getElementById('qa-save');
+
+        let freq = 'once'; // once | twice | interval
+
+        const resetForm = () => {
+          nameEl.value = '';
+          nameErr.textContent = '';
+          errEl.textContent = '';
+          dosageEl.value = '1';
+          time1El.value = '09:00';
+          time2El.value = '21:00';
+          intHoursEl.value = '8';
+          intStartEl.value = '09:00';
+          freq = 'once';
+          freqRow.querySelectorAll('.qa-chip').forEach(c => c.classList.toggle('qa-chip--on', c.dataset.freq === 'once'));
+          channelRow.querySelectorAll('.qa-chip').forEach(c => c.classList.toggle('qa-chip--on', c.dataset.channel === 'push'));
+          applyFreqUI();
+        };
+
+        const applyFreqUI = () => {
+          if (freq === 'interval') {
+            timesWrap.style.display = 'none';
+            intWrap.style.display = '';
+          } else {
+            timesWrap.style.display = '';
+            intWrap.style.display = 'none';
+            time2El.style.display = (freq === 'twice') ? '' : 'none';
+          }
+        };
+
+        const open  = () => { resetForm(); modal.classList.add('show'); setTimeout(() => nameEl.focus(), 50); };
+        const close = () => { modal.classList.remove('show'); };
+
+        openBtn.addEventListener('click', open);
+        cancelBtn.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        // Frequency chips (single-select)
+        freqRow.querySelectorAll('.qa-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            freq = chip.dataset.freq;
+            freqRow.querySelectorAll('.qa-chip').forEach(c => c.classList.toggle('qa-chip--on', c === chip));
+            applyFreqUI();
+          });
+        });
+
+        // Channel chips (multi-select)
+        channelRow.querySelectorAll('.qa-chip').forEach(chip => {
+          chip.addEventListener('click', () => chip.classList.toggle('qa-chip--on'));
+        });
+
+        const channelsToLegacyMethod = (channels) => {
+          const set = new Set(channels);
+          const hasE = set.has('email'), hasS = set.has('sms');
+          if (hasE && hasS) return 'ES';
+          if (hasE) return 'E';
+          if (hasS) return 'S';
+          return 'N';
+        };
+
+        // Build a WEEKLY schedule for all 7 days at the given time (= "every day").
+        const dailySchedulesForTime = (time) => {
+          const out = [];
+          for (let wd = 0; wd < 7; wd++) {
+            out.push({
+              scheduleId: `sch_${Date.now()}_${wd}_${Math.random().toString(36).substr(2, 6)}`,
+              type: 'WEEKLY',
+              weekday: wd,
+              time: time,
+              everyWeeks: 1
+            });
+          }
+          return out;
+        };
+
+        const buildSchedules = () => {
+          if (freq === 'interval') {
+            const hours = parseInt(intHoursEl.value, 10);
+            const start = intStartEl.value;
+            if (!hours || hours < 1 || !start) return null;
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return [{
+              scheduleId: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: 'INTERVAL',
+              interval: { value: hours, unit: 'HOUR' },
+              anchorDateTime: `${y}-${m}-${d}T${start}:00`
+            }];
+          }
+          if (freq === 'twice') {
+            if (!time1El.value || !time2El.value) return null;
+            return [...dailySchedulesForTime(time1El.value), ...dailySchedulesForTime(time2El.value)];
+          }
+          // once
+          if (!time1El.value) return null;
+          return dailySchedulesForTime(time1El.value);
+        };
+
+        saveBtn.addEventListener('click', async () => {
+          errEl.textContent = '';
+          nameErr.textContent = '';
+
+          const name = (nameEl.value || '').trim();
+          if (!name) { nameErr.textContent = 'Please enter a medication name'; nameEl.focus(); return; }
+
+          const schedules = buildSchedules();
+          if (!schedules) { errEl.textContent = 'Please complete the schedule fields'; return; }
+
+          const channels = Array.from(channelRow.querySelectorAll('.qa-chip--on')).map(c => c.dataset.channel);
+          // Push is a device-only channel; only email/sms persist in reminderChannels
+          const reminderChannels = channels.filter(c => c === 'email' || c === 'sms');
+          const reminderMethod = channelsToLegacyMethod(reminderChannels);
+
+          const user = window.auth.currentUser;
+          if (!user) { errEl.textContent = 'Please log in to save medications'; return; }
+
+          const dosage = parseInt(dosageEl.value, 10) || 1;
+
+          const medData = {
+            name: name,
+            dosage: String(dosage),
+            schedules: schedules,
+            reminderMethod: reminderMethod,
+            reminderChannels: reminderChannels,
+            stock: 0,
+            bottles: [],
+            // Quick Add never collects bottles — opt out so no add-a-bottle nags.
+            skipBottleTracking: true,
+            classifications: {},
+            groups: [],
+            deletedStatus: false,
+            notes: {},
+            doses: {},
+            createdAt: new Date().toISOString()
+          };
+
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+          try {
+            const ref = window.collection(window.db, "users", user.uid, "medications");
+            await window.addDoc(ref, medData);
+            close();
+            window.location.href = 'home.html?t=' + Date.now();
+          } catch (e) {
+            console.error('[QuickAdd] Save failed:', e);
+            errEl.textContent = 'Could not save. Please try again.';
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save medication';
+          }
+        });
+      })();
+
       let pendingDeleteIndex = null;
       let currentStockMedId = null;
       let pendingDeleteBottleIndex = null;
@@ -1250,6 +1515,7 @@
         const med = {
           id: medDoc.id,
           name: medData.name,
+          skipBottleTracking: medData.skipBottleTracking === true,
           bottles: medData.bottles ? medData.bottles.map(bottleStr => {
             const parts = bottleStr.split('/');
             if (parts.length >= 2) {
@@ -1289,6 +1555,7 @@
         
         const medData = medDoc.data();
         med = {
+          skipBottleTracking: medData.skipBottleTracking === true,
           bottles: medData.bottles ? medData.bottles.map(bottleStr => {
             const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
             if (dateMatch) {
@@ -1301,9 +1568,14 @@
           }).filter(Boolean) : []
         };
       }
-      
+
       if (!med || !med.bottles || med.bottles.length === 0) {
-        stockList.innerHTML = '<p style="text-align:center;color:#666;padding:2rem;">No bottles added yet.</p>';
+        // If the user opted out of bottle tracking, say so plainly (no nagging).
+        // Otherwise prompt them that none have been added yet.
+        const msg = (med && med.skipBottleTracking)
+          ? 'No bottles added.'
+          : 'No bottles added yet.';
+        stockList.innerHTML = '<p style="text-align:center;color:#666;padding:2rem;">' + msg + '</p>';
         return;
       }
 
@@ -1485,7 +1757,7 @@
   // Import Firebase SDKs for verification check
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, getDocsFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, getDocsFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
@@ -1522,6 +1794,22 @@
   const closeAgendaBtn = document.getElementById('agenda-close');
   const agendaListEl = document.getElementById('agenda-list');
   const agendaDateEl = document.getElementById('agenda-date');
+  const agendaFooterEl = document.getElementById('agenda-footer');
+
+  // Show the user's actual local timezone in the footer, since the server now
+  // sends the daily agenda at 9:00 AM in each user's own timezone.
+  if (agendaFooterEl) {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzAbbr = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' })
+        .formatToParts(new Date())
+        .find(p => p.type === 'timeZoneName')?.value;
+      const label = tzAbbr ? `9:00 AM ${tzAbbr}` : (tz ? `9:00 AM (${tz})` : '9:00 AM your local time');
+      agendaFooterEl.textContent = `Automatic daily agenda emails are sent at ${label}.`;
+    } catch (_) {
+      // Leave the static fallback text in place.
+    }
+  }
 
   const buildAgendaEntries = (medications) => {
     const entries = [];
@@ -1614,6 +1902,7 @@
   window.doc = doc;
   window.getDoc = getDoc;
   window.setDoc = setDoc;
+  window.addDoc = addDoc;
   window.deleteDoc = deleteDoc;
   
   // Define renderList function inside the module

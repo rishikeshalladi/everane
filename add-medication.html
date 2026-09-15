@@ -1004,11 +1004,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         <div id="step-3" class="form-step">
           <h2>Add Bottles</h2>
           <p>Add the expiration date and number of pills left of each bottle.</p>
-          <p>If you don't add a bottle, you will receive a reminder to add one.</p>
           <div id="bottles-list"></div>
           <button type="button" id="add-bottle" class="btn-secondary btn-sm">+ Add Bottle</button>
           <div class="wizard-nav">
             <button type="button" id="back-to-step-2" class="btn-secondary">Back</button>
+            <button type="button" id="skip-bottles" class="btn-secondary">Proceed with no bottles</button>
             <button type="button" id="to-step-4" class="btn-primary">Continue to Classifications</button>
           </div>
         </div>
@@ -1561,12 +1561,30 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     document.getElementById('back-to-step-1').onclick= ()=> showStep(1);
     document.getElementById('to-step-3').onclick    = ()=> valid2() && showStep(3);
     document.getElementById('back-to-step-2').onclick= ()=> showStep(2);
-    document.getElementById('to-step-4').onclick    = ()=> { initColorCanvas(); showStep(4); };
+    document.getElementById('to-step-4').onclick    = ()=> {
+      // Proceeding the normal way means the user is tracking bottles
+      // (whether or not they added any yet), so clear the skip flag.
+      skipBottleTracking = false;
+      initColorCanvas();
+      showStep(4);
+    };
+    // "Proceed with no bottles": user opts out of bottle tracking entirely.
+    // Clear any bottles they may have entered, set the flag, and move on.
+    document.getElementById('skip-bottles').onclick = ()=> {
+      skipBottleTracking = true;
+      bottles = [];
+      renderBottlesList();
+      initColorCanvas();
+      showStep(4);
+    };
     document.getElementById('back-to-step-3').onclick= ()=> showStep(3);
 
     // Bottle popup (Add OR Edit) + central renderer.
     // popupMode is either { kind: 'add' } or { kind: 'edit', index: N }.
     let popupResolve, popupMode = null, bottles = [];
+    // When true, the user explicitly chose "Proceed with no bottles" and should
+    // NOT receive add-a-bottle / low-stock reminders for this medication.
+    let skipBottleTracking = false;
 
     // Normalize an expiration value coming from any source into the
     // <input type="date"> format ("YYYY-MM-DD"). Accepts: ISO YYYY-MM-DD,
@@ -1673,6 +1691,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } else {
         bottles.push({ expiration: exp, quantity: qty });
       }
+      // Adding a real bottle means the user IS tracking bottles after all.
+      skipBottleTracking = false;
       renderBottlesList();
       document.getElementById('bottle-popup').style.display = 'none';
       popupMode = null;
@@ -1988,6 +2008,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         schedules = [];
         renderSchedulesList();
       }
+
+      // Restore the "no bottle tracking" choice when editing.
+      skipBottleTracking = (med.skipBottleTracking === true);
 
       // Set bottles
       if (med.bottles && med.bottles.length > 0) {
@@ -2372,6 +2395,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
+          // User opted out of bottle tracking (only meaningful with no bottles).
+          // Suppresses add-a-bottle / low-stock reminders for this med.
+          skipBottleTracking: (skipBottleTracking && formattedBottles.length === 0),
           classifications: classifications,
           groups: existingData.groups || [],
           updatedAt: new Date().toISOString(),
@@ -2462,6 +2488,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
+          // User opted out of bottle tracking (only meaningful with no bottles).
+          // Suppresses add-a-bottle / low-stock reminders for this med.
+          skipBottleTracking: (skipBottleTracking && formattedBottles.length === 0),
           classifications: classifications,
           groups: existingData.groups || [],
           deletedStatus: false, // Mark as active (not deleted)
@@ -2533,6 +2562,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
+          // User opted out of bottle tracking (only meaningful with no bottles).
+          // Suppresses add-a-bottle / low-stock reminders for this med.
+          skipBottleTracking: (skipBottleTracking && formattedBottles.length === 0),
           classifications: classifications,
           groups: [],
           deletedStatus: false, // New medications are active
