@@ -836,7 +836,15 @@
       if (user) {
         loadMedicationInfo();
       } else {
-        window.location.href = 'index.html';
+        // Preserve where the user was headed. Every "Take your dose" link in
+        // every reminder email lands here, and dropping the query string sent
+        // signed-out users to the marketing page with no way back to the dose
+        // they were trying to mark.
+        try {
+          sessionStorage.setItem('postLoginRedirect', window.location.pathname + window.location.search);
+        } catch (e) { /* private mode — fall through */ }
+        window.location.href = 'login.html?returnUrl=' +
+          encodeURIComponent(window.location.pathname + window.location.search);
       }
     });
 

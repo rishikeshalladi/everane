@@ -2970,9 +2970,14 @@
           addPhoneSendCodeBtn.textContent = 'Sending...';
 
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendPhoneVerificationCode';
+          // This endpoint now requires auth (it spends real money on Twilio).
+          const phoneIdToken = await auth.currentUser.getIdToken();
           const response = await fetch(functionUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + phoneIdToken
+            },
             body: JSON.stringify({ phoneNumber: fullPhoneNumber })
           });
 

@@ -938,9 +938,11 @@
       try {
         const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/replyToDoctorEdit', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (session.doctorToken || '')
+          },
           body: JSON.stringify({
-            uid: session.uid,
             editId: replyEditId,
             message,
             doctorName
@@ -964,8 +966,11 @@
       try {
         const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/getDoctorEdits', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: session.uid })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (session.doctorToken || '')
+          },
+          body: JSON.stringify({})
         });
 
         const data = await resp.json();

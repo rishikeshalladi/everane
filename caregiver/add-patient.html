@@ -1196,15 +1196,20 @@
           
           // Call Cloud Function to send invitation email
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendCaregiverInvitation';
+          // The endpoint is authenticated now — it sends mail to an arbitrary
+          // address, so it must know who is asking. The caregiver's display name
+          // is read server-side from the profile doc and is no longer trusted
+          // from this body.
+          const inviteIdToken = await user.getIdToken();
           const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + inviteIdToken
             },
             body: JSON.stringify({
               patientEmail: patientEmail.toLowerCase(),
               caregiverId: user.uid,
-              caregiverName: caregiverName,
               customMessage: customMessage || null
             })
           });

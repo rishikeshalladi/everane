@@ -64,9 +64,12 @@ service cloud.firestore {
       allow write: if false; // Only Cloud Functions (admin) write invitations
     }
     
-    // Email verifications - allow authenticated users to read/write their own
+    // Email verifications - the custom code-based flow was replaced by Firebase
+    // Auth's own verification links, and its Cloud Functions have been removed.
+    // The old rule granted every signed-in user read access to EVERY document
+    // here, i.e. the live verification code for any email address. Locked down.
     match /emailVerifications/{verificationId} {
-      allow read, write: if signedIn();
+      allow read, write: if false;
     }
 
     // Medication image cache (populated by lookupMedicationImage Cloud Function).

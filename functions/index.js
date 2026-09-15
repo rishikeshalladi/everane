@@ -12,6 +12,7 @@ const { DateTime } = require('luxon');
 const twilio = require('twilio');
 const webpush = require('web-push');
 const cors = require('cors')({ origin: true });
+const crypto = require('crypto');
 const ScheduleUtils = require('./schedule-utils');
 
 admin.initializeApp();
@@ -95,6 +96,98 @@ const transporter = nodemailer.createTransport({
     pass: gmailPassword // Use App Password, not regular password
   }
 });
+
+// ---- Doctor portal session tokens -------------------------------------------
+// The doctor portal previously passed a bare Firebase `uid` as its credential:
+// any endpoint that received a uid returned that patient's data. A uid is not a
+// secret, so that was an unauthenticated PHI read. doctorLogin now mints a
+// short-lived HMAC-signed token, and every doctor endpoint verifies it.
+const doctorSessionSecret =
+  functions.config().doctor?.session_secret ||
+  process.env.DOCTOR_SESSION_SECRET ||
+  (gmailPassword
+    ? crypto.createHash('sha256').update('everane-doctor-session:' + gmailPassword).digest('hex')
+    : null);
+
+if (!functions.config().doctor?.session_secret && !process.env.DOCTOR_SESSION_SECRET) {
+  console.warn('⚠️ doctor.session_secret not configured — falling back to a derived key. Set it with: firebase functions:config:set doctor.session_secret="<random 32+ chars>"');
+}
+
+const DOCTOR_SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+
+function b64url(buf) {
+  return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function issueDoctorToken(uid) {
+  if (!doctorSessionSecret) return null;
+  const payload = b64url(JSON.stringify({ uid, exp: Date.now() + DOCTOR_SESSION_TTL_MS }));
+  const sig = b64url(crypto.createHmac('sha256', doctorSessionSecret).update(payload).digest());
+  return `${payload}.${sig}`;
+}
+
+/**
+ * Verify a doctor session token and return its uid, or null if invalid/expired.
+ * Uses a timing-safe comparison so the signature can't be probed byte by byte.
+ */
+function verifyDoctorToken(token) {
+  if (!doctorSessionSecret || typeof token !== 'string' || !token.includes('.')) return null;
+  const [payload, sig] = token.split('.');
+  if (!payload || !sig) return null;
+  const expected = b64url(crypto.createHmac('sha256', doctorSessionSecret).update(payload).digest());
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    if (!data || !data.uid || typeof data.exp !== 'number') return null;
+    if (Date.now() > data.exp) return null;
+    return data.uid;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Extract and verify the doctor session token from a request.
+ * Accepts `Authorization: Bearer <token>` or `{ doctorToken }` in the body.
+ * Returns the uid, or null.
+ */
+function requireDoctorSession(req) {
+  const authHeader = req.headers.authorization || '';
+  const token =
+    (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '') ||
+    (req.body && typeof req.body.doctorToken === 'string' ? req.body.doctorToken : '');
+  return verifyDoctorToken(token);
+}
+
+/**
+ * Escape a value for safe interpolation into an HTML email body.
+ * Every user- or patient-supplied string (names, medication names, free-text
+ * messages) MUST go through this before being placed in an email template —
+ * otherwise a medication named `<img src=x onerror=...>` becomes live markup
+ * in someone else's inbox.
+ */
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Strip CR/LF from a string destined for an email header (subject, display
+ * name). Prevents header injection via user-supplied values.
+ */
+function sanitizeHeader(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .slice(0, 200);
+}
 
 // Verify transporter is configured
 transporter.verify(function(error, success) {
@@ -418,7 +511,14 @@ const WINDOW_MINUTES = 10;
 // Safety cap: don't send reminders more than this many minutes late (prevents a backlog of
 // old reminders blasting out if the function was down for hours).
 const MAX_SEND_LATENESS_MINUTES = 180;
-const EXPIRATION_ALERT_DAYS = 7;
+// Safety cap for the missed-dose sweep: a dose more than this many minutes old
+// is never newly reported as missed (prevents a backlog after an outage, and
+// bounds the overnight yesterday sweep).
+const MAX_MISSED_LOOKBACK_MINUTES = 12 * 60;
+// NOTE: the caregiver digest reports every alert getBottleAlertsForUser
+// produces (expired / out-of-stock / low-stock / expiring within
+// EXPIRING_SOON_DAYS). It has never filtered to a 7-day expiry window, so the
+// old EXPIRATION_ALERT_DAYS constant only ever produced misleading copy.
 
 function getNowInZone(userTimezone = null) {
   const tz = userTimezone || DEFAULT_TIME_ZONE;
@@ -463,30 +563,37 @@ function shouldSendReminderToday(med, nowDateTime = getNowInZone()) {
   return true;
 }
 
-function parseBottleRecord(bottleStr) {
+function parseBottleRecord(bottleStr, zone = DEFAULT_TIME_ZONE) {
   if (!bottleStr || typeof bottleStr !== 'string') return null;
 
   const parts = bottleStr.split('/');
   if (parts.length < 3) return null;
 
   const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
-  
-  // Note: parseBottleExpiration is called from getBottleAlertsForUser which receives nowDateTime
-  // The timezone should be passed from the caller, but for backward compatibility, use DEFAULT_TIME_ZONE
+
+  // Parse in the USER's timezone, not a hardcoded one — otherwise a bottle
+  // flips to "expired" at the wrong local moment for anyone outside Pacific.
+  const tz = zone || DEFAULT_TIME_ZONE;
+
   // Try M/d/yyyy format first (e.g., "12/14/2025")
-  let expiration = DateTime.fromFormat(expirationStr, 'M/d/yyyy', { zone: DEFAULT_TIME_ZONE });
-  
+  let expiration = DateTime.fromFormat(expirationStr, 'M/d/yyyy', { zone: tz });
+
   // If that fails, try MM/dd/yyyy format (e.g., "12/14/2025" with padding)
   if (!expiration.isValid) {
-    expiration = DateTime.fromFormat(expirationStr, 'MM/dd/yyyy', { zone: DEFAULT_TIME_ZONE });
+    expiration = DateTime.fromFormat(expirationStr, 'MM/dd/yyyy', { zone: tz });
   }
-  
+
   // If that fails, try ISO format (YYYY-MM-DD)
   if (!expiration.isValid) {
-    expiration = DateTime.fromISO(expirationStr, { zone: DEFAULT_TIME_ZONE });
+    expiration = DateTime.fromISO(expirationStr, { zone: tz });
   }
-  
+
   if (!expiration.isValid) return null;
+
+  // A bottle stamped "12/14/2025" is good THROUGH the 14th. Parsing to 00:00
+  // marked it expired for the whole of its final valid day. Match parseEndDate,
+  // which already uses endOf('day') for medication end dates.
+  expiration = expiration.endOf('day');
 
   const quantityPart = parts[3];
   const quantity = quantityPart && quantityPart !== 'N/A' ? Number(quantityPart) : null;
@@ -504,8 +611,14 @@ function analyzeMedicationStock(med, nowDateTime) {
   const medName = med.name || 'Medication';
   const dosage = Number(med.dosage) || 1;
 
+  // User explicitly opted out of bottle tracking for this med
+  // ("Proceed with no bottles"). Never generate stock/expiration alerts.
+  if (med.skipBottleTracking === true) {
+    return alerts;
+  }
+
   const bottles = Array.isArray(med.bottles)
-    ? med.bottles.map(parseBottleRecord).filter(Boolean)
+    ? med.bottles.map(b => parseBottleRecord(b, nowDateTime && nowDateTime.zoneName)).filter(Boolean)
     : [];
 
   // Case: no bottles entered at all
@@ -853,10 +966,11 @@ function shouldSendOffsetReminder(reminderTime, offsetMinutes, nowDateTime = get
     // Too stale — don't send a dose reminder hours after the fact.
     return false;
   }
-  // Don't cross day boundaries: if target was yesterday in user's zone, drop it.
-  if (nowDateTime.toISODate() !== targetDateTime.toISODate()) {
-    return false;
-  }
+  // NOTE: we deliberately do NOT require target and now to share a calendar
+  // date. For an early-morning dose (e.g. 00:15) an advance offset puts the
+  // target on the *previous* day (23:45), and a date-equality guard silently
+  // dropped every such reminder. MAX_SEND_LATENESS_MINUTES above already caps
+  // how stale a reminder may be, and lastSentReminders still dedups per day.
   console.log(`  -> shouldSendOffsetReminder: ${reminderTime} [offset=${offsetMinutes}], diff=${diffMinutes.toFixed(1)}min, shouldSend=true, now=${nowDateTime.toFormat('HH:mm')}, target=${targetDateTime.toFormat('HH:mm')}`);
   return true;
 }
@@ -964,7 +1078,7 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
         <div style="margin-bottom:10px; color:#7f1d1d; font-size:15px;">These doses were not marked taken yesterday and were auto-marked as missed. If you took any of them, you can correct the status in Everane.</div>
         ${missedYesterday.map(m => `
           <div style="margin-bottom:8px; padding:10px 14px; background:white; border-radius:10px; border:1px solid #fca5a5;">
-            <span style="font-weight:700; color:#991b1b;">${m.medName}</span>
+            <span style="font-weight:700; color:#991b1b;">${escapeHtml(m.medName)}</span>
             <span style="color:#7f1d1d;"> &middot; dose #${m.doseNumber}${m.doseTime ? ' at ' + format12Hour(m.doseTime) : ''}</span>
           </div>
         `).join('')}
@@ -975,12 +1089,12 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
   const scheduleItemsHtml = scheduleEntries.map((entry, index) => {
     const timeLabel = entry.time ? format12Hour(entry.time) : 'Any time';
     const doseLabel = entry.totalDoses > 1 ? `Dose ${entry.doseNumber}` : 'Scheduled dose';
-    const dosageLabel = entry.dosage ? `<div class="agenda-entry-dose">${entry.dosage}</div>` : '';
+    const dosageLabel = entry.dosage ? `<div class="agenda-entry-dose">${escapeHtml(entry.dosage)}</div>` : '';
     return `
       <div class="agenda-entry">
         <div class="agenda-entry-time">${timeLabel}</div>
         <div class="agenda-entry-body">
-          <div class="agenda-entry-name">${doseLabel} · ${entry.name}</div>
+          <div class="agenda-entry-name">${doseLabel} · ${escapeHtml(entry.name)}</div>
           ${dosageLabel}
         </div>
       </div>
@@ -1034,8 +1148,8 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
                     <h3 style="margin:0 0 12px 0; color:#991b1b; font-size:18px;">🚨 Urgent: Action Needed</h3>
                     ${criticals.map(alert => `
                       <div style="margin-bottom:12px; padding:12px; background:white; border-radius:12px; border:1px solid #fca5a5;">
-                        <div style="font-weight:700; color:#991b1b; margin-bottom:4px;">${alert.medName}</div>
-                        <div style="color:#991b1b; font-size:15px;">${alert.message}</div>
+                        <div style="font-weight:700; color:#991b1b; margin-bottom:4px;">${escapeHtml(alert.medName)}</div>
+                        <div style="color:#991b1b; font-size:15px;">${escapeHtml(alert.message)}</div>
                       </div>
                     `).join('')}
                   </div>
@@ -1047,8 +1161,8 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
                     <h3 style="margin:0 0 12px 0; color:#856404; font-size:18px;">⚠️ Heads Up</h3>
                     ${warnings.map(alert => `
                       <div style="margin-bottom:12px; padding:12px; background:white; border-radius:12px; border:1px solid #ffc107;">
-                        <div style="font-weight:600; color:#856404; margin-bottom:4px;">${alert.medName}</div>
-                        <div style="color:#856404; font-size:15px;">${alert.message}</div>
+                        <div style="font-weight:600; color:#856404; margin-bottom:4px;">${escapeHtml(alert.medName)}</div>
+                        <div style="color:#856404; font-size:15px;">${escapeHtml(alert.message)}</div>
                       </div>
                     `).join('')}
                   </div>
@@ -1166,7 +1280,7 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
     const doseLabel = missedDoses.length > 1 ? `Dose #${doseNumber}` : 'Scheduled dose';
     return `
       <div class="med-info">
-        <p class="med-name">${med.name}</p>
+        <p class="med-name">${escapeHtml(med.name)}</p>
         <div class="dose-row">
           <span class="dose-chip">${doseLabel}</span>
           <span class="time-badge">${time12}</span>
@@ -1252,8 +1366,11 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
       'X-Priority': '1',
       'X-Mailer': 'Everane/1.0',
       'X-Entity-Ref-ID': refId,
+      // List-Unsubscribe-Post=One-Click requires the https URL to accept a POST.
+      // unsubLink is a static page, so advertising One-Click made every attempt
+      // fail — worse for reputation than not advertising it. Mailto-only until
+      // a real one-click endpoint exists.
       'List-Unsubscribe': `<${unsubMailto}>, <${unsubLink}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       'Precedence': 'transactional'
     }
   };
@@ -1317,13 +1434,7 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
     }
     
     // Check if medication should send reminder today
-    if (!shouldSendReminderToday(med, nowDateTime)) {
-      continue;
-    }
-    
-    // === NEW: Get ALL doses for today and check each one for missed status ===
-    let allTodayDoses = [];
-    // Also need schedules field for getScheduledDosesForDate
+    // Normalise schedules once (needed by getScheduledDosesForDate below).
     const medSchedules = rawData.schedules || null;
     if (!medSchedules && (med.daysOfWeek.length > 0 || med.times.length > 0)) {
       const migrated = ScheduleUtils.migrateOldFormat(med);
@@ -1332,15 +1443,31 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
       med.schedules = medSchedules;
     }
 
-    if (med.schedules && med.schedules.length > 0) {
-      allTodayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules, nowDateTime);
-    } else if (med.times.length > 0) {
-      allTodayDoses = med.times.filter(Boolean).sort().map((t, i) => ({ time: t, doseNumber: i + 1 }));
+    // Evaluate BOTH yesterday and today.
+    //
+    // A dose scheduled late in the evening (e.g. 23:30) only becomes "missed"
+    // 45 minutes later — which is 00:15 the *next* calendar day. Checking only
+    // today's date meant that dose read as "in the future" forever and was
+    // never flagged. We therefore sweep yesterday as well during the early
+    // hours, which is the only window where a yesterday dose can newly cross
+    // the 45-minute threshold.
+    const dateContexts = [{ dt: nowDateTime, iso: nowDateTime.toISODate() }];
+    if (nowDateTime.hour < 6) {
+      const y = nowDateTime.minus({ days: 1 });
+      dateContexts.unshift({ dt: y, iso: y.toISODate() });
     }
 
-    if (allTodayDoses.length === 0) continue;
+    for (const ctx of dateContexts) {
+      if (!shouldSendReminderToday(med, ctx.dt)) continue;
 
-    const todayIso = nowDateTime.toISODate();
+      let allTodayDoses = [];
+      if (med.schedules && med.schedules.length > 0) {
+        allTodayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules, ctx.dt);
+      } else if (med.times.length > 0) {
+        allTodayDoses = med.times.filter(Boolean).sort().map((t, i) => ({ time: t, doseNumber: i + 1 }));
+      }
+
+      if (allTodayDoses.length === 0) continue;
 
     for (const dose of allTodayDoses) {
       const doseTime = dose.time;
@@ -1349,23 +1476,29 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
       const [doseHour, doseMinute] = doseTime.split(':').map(Number);
       if (Number.isNaN(doseHour) || Number.isNaN(doseMinute)) continue;
 
-      const scheduledDateTime = nowDateTime.set({
+      const scheduledDateTime = ctx.dt.set({
         hour: doseHour,
         minute: doseMinute,
         second: 0,
         millisecond: 0
       });
 
-      // Skip future doses
+      // Skip doses that genuinely haven't happened yet.
+      // A late-evening dose (e.g. 23:30) becomes "missed" at 00:15 the NEXT
+      // day, when scheduledDateTime still points at today and reads as future.
+      // Those are handled by the yesterday sweep below, not here.
       if (scheduledDateTime > nowDateTime) continue;
 
-      // Check if 45+ minutes have passed
+      // Check if 45+ minutes have passed. Cap the look-back so the yesterday
+      // sweep can only surface doses that just crossed the threshold overnight
+      // — never a backlog of old ones.
       const minutesPast = nowDateTime.diff(scheduledDateTime, 'minutes').minutes;
       if (minutesPast < 45) continue;
+      if (minutesPast > MAX_MISSED_LOOKBACK_MINUTES) continue;
 
       // Look up the dose entry. If the user manually marked it taken, this is
       // NOT a missed dose — skip entirely.
-      const doseKey = `${todayIso}_${dose.doseNumber}`;
+      const doseKey = `${ctx.iso}_${dose.doseNumber}`;
       const doseEntry = med.doses[doseKey];
       if (doseEntry && doseEntry.taken === true) continue;
 
@@ -1383,7 +1516,7 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
           };
         }
         updates[med.id].doseUpdates[`doses.${doseKey}`] = {
-          date: todayIso,
+          date: ctx.iso,
           doseNumber: dose.doseNumber,
           time: doseTime,           // store so daily-agenda safety-net can display it
           taken: false,
@@ -1396,9 +1529,11 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
         med,
         reminderTime: doseTime,
         doseNumber: dose.doseNumber,
-        scheduledDateTime
+        scheduledDateTime,
+        dateIso: ctx.iso
       });
     }
+    } // end dateContexts loop
   }
 
   // Save all updates to Firebase using dot-notation updates (won't overwrite other dose keys)
@@ -1414,24 +1549,26 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
   // Build per-dose dedup keys. Filter out doses we've already emailed/SMSed
   // successfully on a previous cycle today.
   const todayIso = nowDateTime.toISODate();
-  const missedKey = (medId, doseNumber, channel) =>
-    `MISSED|${medId}|d${doseNumber}|${todayIso}|${channel}`;
+  // Keyed by the DOSE's date (not the current date) so a 23:30 dose flagged at
+  // 00:15 the next morning dedups against its own day, not the new one.
+  const missedKey = (medId, doseNumber, channel, dateIso) =>
+    `MISSED|${medId}|d${doseNumber}|${dateIso || todayIso}|${channel}`;
 
   // EMAIL: only doses with email channel AND no successful send yet.
   // SEND ONE EMAIL PER DOSE so Gmail can't bundle/spam-filter "similar"
   // missed-dose emails. Each call goes through sendMissedDoseEmail which
   // gives it a unique subject (with dose time + med name) and a unique
   // X-Entity-Ref-ID.
-  const emailMissedDoses = missedDoses.filter(({ med, doseNumber }) => {
+  const emailMissedDoses = missedDoses.filter(({ med, doseNumber, dateIso }) => {
     if (!getMedChannels(med).has('email')) return false;
-    return !missedDedup[missedKey(med.id, doseNumber, 'email')];
+    return !missedDedup[missedKey(med.id, doseNumber, 'email', dateIso)];
   });
   if (emailMissedDoses.length > 0 && userEmail) {
     for (const m of emailMissedDoses) {
       try {
         // Pass a single-element array so the email is specifically about this dose
         await sendMissedDoseEmail(userEmail, [m]);
-        missedDedup[missedKey(m.med.id, m.doseNumber, 'email')] = nowDateTime.toISO();
+        missedDedup[missedKey(m.med.id, m.doseNumber, 'email', m.dateIso)] = nowDateTime.toISO();
         await recordSendAttempt(db, userId, {
           channel: 'email', medId: m.med.id, medName: m.med.name,
           doseNumber: m.doseNumber, doseTime: m.reminderTime,
@@ -1454,16 +1591,16 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
   }
 
   // SMS: only doses with sms channel AND phone verified AND not yet sent
-  const smsMissedDoses = missedDoses.filter(({ med, doseNumber }) => {
+  const smsMissedDoses = missedDoses.filter(({ med, doseNumber, dateIso }) => {
     if (!getMedChannels(med).has('sms')) return false;
-    return !missedDedup[missedKey(med.id, doseNumber, 'sms')];
+    return !missedDedup[missedKey(med.id, doseNumber, 'sms', dateIso)];
   });
   if (smsMissedDoses.length > 0) {
     if (userPhoneNumber && phoneVerified) {
       try {
         await sendMissedDoseSMS(userPhoneNumber, smsMissedDoses, nowDateTime);
         for (const m of smsMissedDoses) {
-          missedDedup[missedKey(m.med.id, m.doseNumber, 'sms')] = nowDateTime.toISO();
+          missedDedup[missedKey(m.med.id, m.doseNumber, 'sms', m.dateIso)] = nowDateTime.toISO();
           await recordSendAttempt(db, userId, {
             channel: 'sms', medId: m.med.id, medName: m.med.name,
             doseNumber: m.doseNumber, doseTime: m.reminderTime,
@@ -1484,13 +1621,13 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
           });
           // SMS frequently fails carrier-side (A2P 10DLC). Mark dedup anyway
           // so we don't burn cycles re-trying against a permanent block.
-          missedDedup[missedKey(m.med.id, m.doseNumber, 'sms')] = nowDateTime.toISO();
+          missedDedup[missedKey(m.med.id, m.doseNumber, 'sms', m.dateIso)] = nowDateTime.toISO();
         }
       }
     } else {
       // Phone unverified — record skipped, mark dedup so we don't retry forever
       for (const m of smsMissedDoses) {
-        missedDedup[missedKey(m.med.id, m.doseNumber, 'sms')] = nowDateTime.toISO();
+        missedDedup[missedKey(m.med.id, m.doseNumber, 'sms', m.dateIso)] = nowDateTime.toISO();
         await recordSendAttempt(db, userId, {
           channel: 'sms', medId: m.med.id, medName: m.med.name,
           doseNumber: m.doseNumber, doseTime: m.reminderTime,
@@ -1659,7 +1796,7 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 
     return `
       <div class="med-info" style="${isAlreadyTaken ? 'border-left-color: #10b981; background: #f0fdf4;' : ''}">
-        <p class="med-name">${med.name}${isAlreadyTaken ? ' <span style="color: #10b981; font-size: 16px;">✓ Already Taken</span>' : ''}</p>
+        <p class="med-name">${escapeHtml(med.name)}${isAlreadyTaken ? ' <span style="color: #10b981; font-size: 16px;">✓ Already Taken</span>' : ''}</p>
         <div class="dose-row">
           <span class="dose-chip">${doseLabel}</span>
           <span class="time-badge">${scheduledTime} ${timezoneAbbr}</span>
@@ -1686,7 +1823,7 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
           : 'Your medication stock is empty. Please arrange a refill soon.';
         return `
           <div class="alert-info">
-            <p class="alert-title">${alertIcon} ${alertTitle}: ${med.name}</p>
+            <p class="alert-title">${alertIcon} ${alertTitle}: ${escapeHtml(med.name)}</p>
             <div>${alertMessage}</div>
           </div>
         `;
@@ -1703,8 +1840,8 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
         <h2 class="section-title" style="color:#991b1b;">🚨 Urgent: Action Needed</h2>
         ${criticalBottleAlerts.map(alert => `
           <div style="margin-bottom:12px; padding:16px; background:#fee2e2; border:1px solid #ef4444; border-left:5px solid #dc2626; border-radius:14px;">
-            <div style="font-weight:700; color:#991b1b; font-size:17px; margin-bottom:4px;">${alert.medName}</div>
-            <div style="color:#991b1b; font-size:15px;">${alert.message}</div>
+            <div style="font-weight:700; color:#991b1b; font-size:17px; margin-bottom:4px;">${escapeHtml(alert.medName)}</div>
+            <div style="color:#991b1b; font-size:15px;">${escapeHtml(alert.message)}</div>
           </div>
         `).join('')}
       ` : ''}
@@ -1712,8 +1849,8 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
         <h2 class="section-title" style="color:#856404; ${criticalBottleAlerts.length > 0 ? 'margin-top:20px;' : ''}">⚠️ Heads Up</h2>
         ${warningBottleAlerts.map(alert => `
           <div style="margin-bottom:12px; padding:16px; background:#fff8e1; border:1px solid #ffc107; border-left:5px solid #f59b45; border-radius:14px;">
-            <div style="font-weight:700; color:#856404; font-size:17px; margin-bottom:4px;">${alert.medName}</div>
-            <div style="color:#856404; font-size:15px;">${alert.message}</div>
+            <div style="font-weight:700; color:#856404; font-size:17px; margin-bottom:4px;">${escapeHtml(alert.medName)}</div>
+            <div style="color:#856404; font-size:15px;">${escapeHtml(alert.message)}</div>
           </div>
         `).join('')}
       ` : ''}
@@ -1869,8 +2006,11 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
       'X-Entity-Ref-ID': reminderRef,
       // RFC 8058 / RFC 2369 — Gmail strongly prefers transactional senders that
       // include unsubscribe headers. They also dedupe identical messages without it.
+      // List-Unsubscribe-Post=One-Click requires the https URL to accept a POST.
+      // unsubLink is a static page, so advertising One-Click made every attempt
+      // fail — worse for reputation than not advertising it. Mailto-only until
+      // a real one-click endpoint exists.
       'List-Unsubscribe': `<${unsubMailto}>, <${unsubLink}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       // Gmail-specific: hints this is a personal/transactional message
       'Precedence': 'transactional'
     }
@@ -2130,7 +2270,7 @@ async function sendReminderEmail(userEmail, med, reminderTime, isAdvance = false
         </div>
         <div class="content">
           <div class="med-info">
-            <p class="med-name">${med.name}</p>
+            <p class="med-name">${escapeHtml(med.name)}</p>
             <div class="detail"><span class="label">Dosage:</span> ${med.dosage || 'N/A'}</div>
             <div class="detail"><span class="label">Time:</span> <span class="time-badge">${time12}</span></div>
             ${med.stock ? `<div class="detail"><span class="label">Bottles in stock:</span> ${med.stock}</div>` : ''}
@@ -2182,11 +2322,144 @@ Everane
 }
 
 /**
+ * Sends a "group has opened up" email. Fired once per day per group when the
+ * group's unlock window begins (earliest member dose time minus 60 minutes).
+ * Reminds the user to take everything in the group and tap "Take All".
+ * @param {string} userEmail - Recipient email
+ * @param {Object} group - Group object { id, name, ... }
+ * @param {Array} activeMembers - [{ name, time }] members scheduled today
+ * @param {string|null} userTimezone - IANA timezone for display
+ * @returns {Promise}
+ */
+async function sendGroupOpenedEmail(userEmail, group, activeMembers, userTimezone = null) {
+  const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
+  const nowDateTime = getNowInZone(displayTimezone);
+  const timezoneAbbr = nowDateTime.toFormat('ZZZZ');
+  const groupName = group.name || 'your group';
+
+  const styles = `
+    body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
+    .wrapper { width:100%; padding:24px 0; }
+    .container { width:90%; max-width:640px; margin:0 auto; background:white; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12); }
+    .header { background:linear-gradient(135deg,#22a06b,#15834f); padding:32px 28px; color:white; text-align:center; }
+    .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
+    .header p { margin:12px 0 0; font-size:17px; font-weight:500; opacity:0.92; }
+    .content { background:#f9f9f9; padding:32px 28px; line-height:1.7; font-size:18px; }
+    .content-section { margin-bottom:24px; }
+    .section-title { font-size:20px; font-weight:700; margin:0 0 14px; color:#15834f; letter-spacing:0.3px; }
+    .med-item { display:flex; justify-content:space-between; align-items:center; background:white; padding:14px 18px; border-radius:14px; margin-bottom:10px; border-left:5px solid #22a06b; box-shadow:0 6px 18px rgba(34,160,107,0.12); }
+    .med-name { font-weight:700; color:#1f3c2b; }
+    .med-time { display:inline-flex; align-items:center; padding:6px 14px; border-radius:999px; background:#22a06b; color:white; font-weight:600; letter-spacing:0.3px; }
+    .closing-note { margin:24px 0 0; font-size:17px; color:#1f2933; }
+    .cta-wrap { text-align:center; margin-top:30px; }
+    .cta { display:inline-block; padding:14px 32px; border-radius:14px; background:#22a06b; color:white; font-weight:700; letter-spacing:0.5px; text-decoration:none; box-shadow:0 12px 24px rgba(34,160,107,0.28); }
+    .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
+  `;
+
+  const memberRows = (activeMembers || []).map(m => `
+    <div class="med-item">
+      <span class="med-name">${escapeHtml(m.name)}</span>
+      <span class="med-time">${m.time ? format12Hour(m.time) + ' ' + timezoneAbbr : 'Any time'}</span>
+    </div>
+  `).join('');
+
+  const subject = sanitizeHeader(`Group "${groupName}" has opened up`);
+
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>${styles}</style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="container">
+          <div class="header">
+            <h1>🔓 ${escapeHtml(groupName)} is open</h1>
+            <p>Your medication group has opened up.</p>
+          </div>
+          <div class="content">
+            <div class="content-section">
+              <h2 class="section-title">Time to take these together</h2>
+              ${memberRows || '<p>No medications listed.</p>'}
+            </div>
+            <p class="closing-note">✅ When you take them, make sure you tap <strong>Take All</strong> in Everane so we can keep your history up to date.</p>
+            <div class="cta-wrap">
+              <a class="cta" href="${APP_BASE_URL}/home.html">Open Everane</a>
+            </div>
+          </div>
+          <div class="footer">
+            This is an automated reminder from Everane.<br/>
+            You can update reminder times anytime from your profile.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textLines = [];
+  textLines.push(`Group "${groupName}" has opened up.`);
+  textLines.push('');
+  textLines.push('Take these together:');
+  (activeMembers || []).forEach(m => {
+    textLines.push(`- ${m.name}${m.time ? ` (${format12Hour(m.time)} ${timezoneAbbr})` : ''}`);
+  });
+  textLines.push('');
+  textLines.push('When you take them, tap "Take All" in Everane.');
+  textLines.push(`${APP_BASE_URL}/home.html`);
+  const textBody = textLines.join('\n');
+
+  const reminderRef = `${nowDateTime.toFormat('yyyyLLdd-HHmm')}-${Math.random().toString(36).slice(2, 8)}`;
+  const unsubMailto = `mailto:${gmailEmail}?subject=${encodeURIComponent('Unsubscribe ' + (userEmail || ''))}`;
+  const unsubLink = `${APP_BASE_URL}/profile.html`;
+
+  const mailOptions = {
+    from: `Everane Reminders <${gmailEmail}>`,
+    to: userEmail,
+    replyTo: userEmail || gmailEmail,
+    subject,
+    text: textBody,
+    html: htmlBody,
+    headers: {
+      'X-Priority': '1',
+      'X-Mailer': 'Everane/1.0',
+      'X-Entity-Ref-ID': reminderRef,
+      // List-Unsubscribe-Post=One-Click requires the https URL to accept a POST.
+      // unsubLink is a static page, so advertising One-Click made every attempt
+      // fail — worse for reputation than not advertising it. Mailto-only until
+      // a real one-click endpoint exists.
+      'List-Unsubscribe': `<${unsubMailto}>, <${unsubLink}>`,
+      'Precedence': 'transactional'
+    }
+  };
+
+  if (!gmailEmail || !gmailPassword) {
+    throw new Error('Email configuration missing - cannot send group-opened email');
+  }
+
+  const result = await withRetry(
+    `sendGroupOpenedEmail->${userEmail}`,
+    () => transporter.sendMail(mailOptions),
+    3,
+    750
+  );
+  console.log(`✅ Group-opened email sent to ${userEmail} for group "${groupName}"`);
+  return result;
+}
+
+/**
  * Main scheduled function - runs every 5 minutes
  * Checks all users and sends medication reminders as needed
  * Combines multiple reminders at the same time into ONE email
  */
-exports.sendMedicationReminders = functions.pubsub
+exports.sendMedicationReminders = functions
+  // maxInstances:1 — with a 540s timeout a slow cycle can still be running when
+  // the next minute fires. Two concurrent runs both read lastSentReminders
+  // before either writes it, so both would send the same reminder.
+  .runWith({ timeoutSeconds: 540, memory: '512MB', maxInstances: 1 })
+  .pubsub
   .schedule('every 1 minutes') // Run every minute for tighter timing
   .timeZone('UTC') // Use UTC for schedule, then convert to each user's timezone
   .onRun(async (context) => {
@@ -2460,9 +2733,13 @@ exports.sendMedicationReminders = functions.pubsub
 
           // === Check TOMORROW's doses for large advance reminders (e.g., 1_day_before) ===
           // Only needed if user has preferences with offset <= -720 minutes (12+ hours)
+          // Any negative offset can need the "tomorrow" branch: an offset of
+          // -30 on a 00:15 dose fires at 23:45 the day before. Previously this
+          // was gated at <= -720 (12h), so only 1_day_before was ever rescued
+          // and every other advance reminder for an early-morning dose was lost.
           const largeAdvancePrefs = reminderPreferences.filter(p => {
             const opt = getReminderOption(p);
-            return opt && opt.minutes <= -720;
+            return opt && opt.minutes < 0;
           });
           if (largeAdvancePrefs.length > 0) {
             const tomorrowDateTime = userNowDateTime.plus({ days: 1 });
@@ -2644,7 +2921,11 @@ exports.sendMedicationReminders = functions.pubsub
                 let carrierFailed = false;
                 let dlrInfo = null;
                 if (sid) {
-                  for (const waitMs of [3000, 4000]) {
+                  // Single short poll. This runs inside the every-minute loop and
+                  // blocks every remaining user, so a long wait here starves the
+                  // whole cycle. One check still catches the common carrier
+                  // rejections (30003/30005/30007).
+                  for (const waitMs of [2500]) {
                     await new Promise(r => setTimeout(r, waitMs));
                     const report = await getSmsDeliveryStatus(sid, userPhoneNumber);
                     if (!report) break;
@@ -2768,12 +3049,22 @@ exports.sendMedicationReminders = functions.pubsub
           }
 
           if (anyChannelSucceeded) {
-            // Forward reminders to opted-in caregivers (once per group, not per-channel)
-            try {
-              const patientName = userData.name || userEmail;
-              await forwardRemindersToCaregiver(db, userId, patientName, group.meds, group.reminderTime, group.offsetKey, userTimezone);
-            } catch (cgErr) {
-              console.warn(`[CaregiverReminders] Error forwarding for ${userId}:`, cgErr.message);
+            // Forward reminders to opted-in caregivers.
+            //
+            // This must be deduped independently of the per-channel keys above.
+            // anyChannelSucceeded flips true again whenever a *previously failed*
+            // channel later succeeds (e.g. email delivers this minute, SMS retries
+            // and delivers the next) — which forwarded a second, identical copy to
+            // the caregiver. Key on the group + day instead.
+            const cgKey = `CGFWD|${group.offsetKey}|${group.reminderTime}|${todayIso}|email`;
+            if (!lastSentReminders[cgKey]) {
+              try {
+                const patientName = userData.name || userEmail;
+                await forwardRemindersToCaregiver(db, userId, patientName, group.meds, group.reminderTime, group.offsetKey, userTimezone);
+                lastSentReminders[cgKey] = userNowDateTime.toISO();
+              } catch (cgErr) {
+                console.warn(`[CaregiverReminders] Error forwarding for ${userId}:`, cgErr.message);
+              }
             }
           } else {
             console.log(`  ⚠️ No channels succeeded for group ${groupKey} — will retry next run`);
@@ -2828,6 +3119,102 @@ exports.sendMedicationReminders = functions.pubsub
           }
         }
         
+        // ---- Group "opened up" reminder emails -------------------------------
+        // For every group, on top of the per-medication reminders above, send a
+        // single email when the group's window opens (earliest member dose time
+        // minus 60 minutes — matching the unlock math in home.html). Deduped once
+        // per group per day via a GROUP_OPENED|<groupId>|<date>|email key.
+        try {
+          const groupsSnapshot = await db
+            .collection('users')
+            .doc(userId)
+            .collection('groups')
+            .get();
+
+          if (!groupsSnapshot.empty) {
+            // Build a lookup of this user's (non-deleted) medications by id,
+            // including schedules, so we can resolve each group member's doses.
+            const medsById = {};
+            for (const medDoc of medicationsSnapshot.docs) {
+              const raw = medDoc.data();
+              if (raw.deletedStatus === true) continue;
+              let schedules = raw.schedules || null;
+              if (!schedules && ((raw.daysOfWeek || raw.days || []).length > 0 || (raw.times || []).length > 0)) {
+                schedules = ScheduleUtils.migrateOldFormat({
+                  daysOfWeek: raw.daysOfWeek || raw.days || [],
+                  times: Array.isArray(raw.times) ? raw.times.filter(Boolean) : [],
+                  timesPerDay: raw.timesPerDay || 0,
+                  startDate: raw.startDate || null,
+                  endDate: raw.endDate || null
+                }).schedules;
+              }
+              medsById[medDoc.id] = { id: medDoc.id, name: raw.name || 'Medication', schedules: schedules || [] };
+            }
+
+            const nowMinutes = userNowDateTime.hour * 60 + userNowDateTime.minute;
+            let groupEmailSent = false;
+
+            for (const groupDoc of groupsSnapshot.docs) {
+              const group = { id: groupDoc.id, ...groupDoc.data() };
+              const members = Array.isArray(group.members) ? group.members : [];
+              if (members.length === 0) continue;
+
+              // Resolve members scheduled for a dose today at their group time.
+              const activeMembers = [];
+              for (const member of members) {
+                const med = medsById[member.medId];
+                if (!med || !Array.isArray(med.schedules) || med.schedules.length === 0) continue;
+                const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules, userNowDateTime);
+                const matchingDose = todayDoses.find(d => d.time === member.time);
+                if (matchingDose) {
+                  activeMembers.push({ name: med.name, time: member.time });
+                }
+              }
+
+              if (activeMembers.length === 0) continue;
+
+              // Unlock window = earliest member time minus 60 minutes.
+              const memberMinutes = activeMembers
+                .map(m => {
+                  const [hh, mm] = String(m.time).split(':').map(Number);
+                  return (Number.isNaN(hh) ? null : hh * 60 + (mm || 0));
+                })
+                .filter(v => v !== null);
+              if (memberMinutes.length === 0) continue;
+
+              const earliestMin = Math.min(...memberMinutes);
+              const unlockAt = earliestMin - 60;
+              const latestMin = Math.max(...memberMinutes);
+              const lockAt = latestMin + 60;
+
+              // Only fire once we've reached the unlock time and the window is
+              // still open. The daily dedup key guarantees a single send/day.
+              if (nowMinutes < unlockAt || nowMinutes > lockAt) continue;
+
+              const dedupKey = `GROUP_OPENED|${group.id}|${todayIso}|email`;
+              if (lastSentReminders[dedupKey]) continue;
+
+              try {
+                await sendGroupOpenedEmail(userEmail, group, activeMembers, userTimezone);
+                lastSentReminders[dedupKey] = userNowDateTime.toISO();
+                groupEmailSent = true;
+                console.log(`  Marked sent: ${dedupKey}`);
+              } catch (gErr) {
+                console.warn(`[GroupOpened] Failed for group ${group.id} (${userId}):`, gErr.message);
+              }
+            }
+
+            // Persist any GROUP_OPENED keys we just added.
+            if (groupEmailSent) {
+              await db.collection('users').doc(userId).set({
+                lastSentReminders: lastSentReminders
+              }, { merge: true });
+            }
+          }
+        } catch (groupErr) {
+          console.error(`Failed to process group-opened reminders for ${userId}:`, groupErr.message);
+        }
+
         // SPEC v2: standalone 9 AM bottle/stock alerts email REMOVED.
         // Stock and expiration alerts are now included only in the daily agenda email
         // (see sendDailyAgenda).
@@ -2923,7 +3310,9 @@ exports.sendLowStockAlerts = functions.pubsub
     return null;
   });
 
-exports.sendDailyAgenda = functions.pubsub
+exports.sendDailyAgenda = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB', maxInstances: 1 })
+  .pubsub
   .schedule('every 1 minutes') // Run every minute to check each user's 9 AM in their timezone
   .timeZone('UTC') // Use UTC for the schedule, then convert to user timezone
   .onRun(async (context) => {
@@ -2963,6 +3352,9 @@ exports.sendDailyAgenda = functions.pubsub
         const scheduleEntries = await buildTodaysSchedule(userDoc.id, userNow);
         if (!scheduleEntries.length) {
           console.log(`No schedule entries for ${userEmail} today, skipping`);
+          // Record the day so we don't rebuild this user's schedule every
+          // minute until midnight just to reach the same conclusion.
+          await userDoc.ref.set({ lastAgendaSentDate: todayIso }, { merge: true });
           continue;
         }
 
@@ -3009,7 +3401,9 @@ exports.sendDailyAgenda = functions.pubsub
         missedYesterday.sort((a, b) => String(a.doseTime).localeCompare(String(b.doseTime)));
 
         let sentAny = false;
+        let attemptedAny = false;
         if (hasEmailMed) {
+          attemptedAny = true;
           try {
             await sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts, userTimezone, missedYesterday);
             sentAny = true;
@@ -3022,6 +3416,7 @@ exports.sendDailyAgenda = functions.pubsub
         }
 
         if (hasSmsMed && userPhoneNumber && phoneVerified) {
+          attemptedAny = true;
           try {
             await sendDailyAgendaSMS(userPhoneNumber, scheduleEntries, bottleAlerts, userTimezone);
             sentAny = true;
@@ -3031,9 +3426,13 @@ exports.sendDailyAgenda = functions.pubsub
           }
         }
 
-        // Only mark sent if at least one channel actually delivered, so we don't
-        // permanently lose the agenda if both fail.
-        if (sentAny) {
+        // Mark the day done if a channel delivered, OR if there was nothing to
+        // attempt at all (no email-channel meds and no verified phone). Without
+        // the second case those users were re-evaluated every single minute from
+        // 9am to midnight — three full medication-collection reads each time —
+        // and the flag never advanced. A genuine send FAILURE still leaves the
+        // flag unset so the next cycle retries.
+        if (sentAny || !attemptedAny) {
           await userDoc.ref.set({ lastAgendaSentDate: todayIso }, { merge: true });
         }
       } catch (error) {
@@ -3077,97 +3476,6 @@ exports.sendAgendaEmail = functions.https.onCall(async (data, context) => {
 
   return { status: 'success' };
 });
-
-/**
- * Sends email verification code for registration
- * @param {string} email - User's email address
- * @param {string} code - 6-digit verification code
- */
-async function sendEmailVerificationCode(email, code) {
-  const styles = `
-    body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
-    .wrapper { width:100%; padding:24px 0; }
-    .container { width:90%; max-width:640px; margin:0 auto; background:white; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12); }
-    .header { background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:32px 28px; color:white; text-align:center; }
-    .header h1 { margin:0; font-size:28px; letter-spacing:0.5px; }
-    .content { padding:32px 28px; line-height:1.7; font-size:18px; background:#f9f9f9; }
-    .code-box { background:white; border:2px solid #3f6ff5; border-radius:16px; padding:32px; text-align:center; margin:24px 0; }
-    /* Keep all 6 digits on one line, even on narrow mobile email clients */
-    .code { font-size:48px; font-weight:700; letter-spacing:8px; color:#3f6ff5; font-family:monospace; white-space:nowrap; }
-    @media (max-width: 420px) {
-      .code-box { padding:22px; }
-      .code { font-size:38px; letter-spacing:6px; }
-    }
-    .instructions { color:#44506b; margin:20px 0; font-size:16px; }
-    .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
-    .warning { background:#fff8f0; padding:18px; border-radius:12px; margin:20px 0; border-left:4px solid #f59b45; color:#543210; font-size:15px; }
-  `;
-
-  const htmlBody = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8" />
-      <style>${styles}</style>
-    </head>
-    <body>
-      <div class="wrapper">
-        <div class="container">
-          <div class="header">
-            <h1>Verify Your Email</h1>
-            <p>Everane Registration</p>
-          </div>
-          <div class="content">
-            <p>Thank you for registering with Everane! Please use the verification code below to complete your registration:</p>
-            <div class="code-box">
-              <div class="code">${code}</div>
-            </div>
-            <p class="instructions">Enter this code in the registration form to verify your email address.</p>
-            <div class="warning">
-              <strong>⚠️ Security Notice:</strong> This code will expire in 10 minutes. If you didn't request this code, please ignore this email.
-            </div>
-            <p>If you have any questions, please contact our support team.</p>
-          </div>
-          <div class="footer">
-            This is an automated message from Everane.<br/>
-            Please do not reply to this email.
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  const textBody = `
-Verify Your Email - Everane Registration
-
-Thank you for registering with Everane! Please use the verification code below to complete your registration:
-
-${code}
-
-Enter this code in the registration form to verify your email address.
-
-⚠️ Security Notice: This code will expire in 10 minutes. If you didn't request this code, please ignore this email.
-
-If you have any questions, please contact our support team.
-
----
-This is an automated message from Everane.
-Please do not reply to this email.
-  `;
-
-  const mailOptions = {
-    from: `Everane <${gmailEmail}>`,
-    to: email,
-    subject: `Everane: Email Verification Code`,
-    text: textBody,
-    html: htmlBody
-  };
-
-  await transporter.sendMail(mailOptions);
-  console.log(`Verification email sent to ${email}`);
-}
-
 /**
  * Helper function to send caregiver invitation email
  * @param {string} patientEmail - Patient's email address
@@ -3188,8 +3496,11 @@ async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, care
     .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
   `;
 
-  const messageBoxHtml = customMessage 
-    ? `<div class="message-box"><strong>Message from ${caregiverName}:</strong><br><br>"${customMessage.replace(/"/g, '&quot;')}"</div>` 
+  // Everything below is rendered as HTML in someone else's inbox — escape it.
+  const safeCaregiverName = escapeHtml(caregiverName);
+  const safePatientFirstName = escapeHtml(patientFirstName);
+  const messageBoxHtml = customMessage
+    ? `<div class="message-box"><strong>Message from ${safeCaregiverName}:</strong><br><br>"${escapeHtml(customMessage)}"</div>`
     : '';
 
   const htmlBody = `
@@ -3206,9 +3517,9 @@ async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, care
             <h1>Invitation to monitor medications on Everane</h1>
           </div>
           <div class="content">
-            <p>Hello ${patientFirstName},</p>
-            <p>${caregiverName} has invited you to share medication updates through Everane.</p>
-            <p>If you accept, ${caregiverName} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on the preferences you choose. Your medications cannot be changed by anyone else.</p>
+            <p>Hello ${safePatientFirstName},</p>
+            <p>${safeCaregiverName} has invited you to share medication updates through Everane.</p>
+            <p>If you accept, ${safeCaregiverName} will be able to receive medication-related updates (such as adherence summaries or expiration alerts) based on the preferences you choose. Your medications cannot be changed by anyone else.</p>
             ${messageBoxHtml}
             <p>To review this request and decide whether to allow access, click the link below:</p>
             <p style="text-align: center; margin: 24px 0;">
@@ -3283,20 +3594,55 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
   }
 
   try {
-    const { patientEmail, caregiverId, caregiverName, customMessage } = req.body;
+    // AUTH: this endpoint sends mail to an arbitrary address with caller-supplied
+    // content. Unauthenticated, it was an open relay usable to send convincing
+    // phishing from our own domain. The caller must be signed in, and may only
+    // invite on their own behalf.
+    const authHeader = req.headers.authorization || '';
+    const idToken =
+      (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '') ||
+      (typeof req.body?.idToken === 'string' ? req.body.idToken : '');
+    if (!idToken) {
+      res.status(401).json({ error: 'Missing auth token' });
+      return;
+    }
+    let decodedCaller;
+    try {
+      decodedCaller = await admin.auth().verifyIdToken(idToken);
+    } catch (_) {
+      res.status(401).json({ error: 'Invalid auth token' });
+      return;
+    }
+    if (!decodedCaller?.uid) {
+      res.status(401).json({ error: 'Invalid auth token' });
+      return;
+    }
+
+    const { patientEmail, caregiverId, customMessage } = req.body;
 
     if (!patientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
       res.status(400).json({ error: 'Valid patient email address is required' });
       return;
     }
 
-    if (!caregiverId || !caregiverId.trim()) {
-      res.status(400).json({ error: 'Caregiver ID is required' });
+    if (caregiverId && caregiverId !== decodedCaller.uid) {
+      res.status(403).json({ error: 'You can only send invitations as yourself' });
       return;
     }
 
-    if (!caregiverName || !caregiverName.trim()) {
-      res.status(400).json({ error: 'Caregiver name is required' });
+    // Take the caregiver's display name from their own profile document, never
+    // from the request body — the body is attacker-controlled and this string is
+    // rendered inside the email.
+    const callerSnap = await admin.firestore().collection('users').doc(decodedCaller.uid).get();
+    if (!callerSnap.exists) {
+      res.status(403).json({ error: 'Caregiver profile not found' });
+      return;
+    }
+    const callerData = callerSnap.data() || {};
+    const caregiverName = callerData.name || 'A caregiver';
+
+    if (typeof customMessage === 'string' && customMessage.length > 1000) {
+      res.status(400).json({ error: 'Message is too long' });
       return;
     }
 
@@ -3322,7 +3668,7 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
 
     // Store invitation in Firestore
     await db.collection('invitations').doc(invitationId).set({
-      caregiverId: caregiverId,
+      caregiverId: decodedCaller.uid,
       caregiverName: caregiverName,
       patientEmail: patientEmail.toLowerCase(),
       patientName: patientName,
@@ -3798,10 +4144,30 @@ function computeAdherenceForRange(meds, nowDateTime, days) {
 
       if (!shouldSendReminderToday(med, day)) continue;
 
-      const times = getReminderTimes(med);
-      const dosesPerDay = Array.isArray(times) && times.length > 0 ? times.length : 1;
+      // Resolve the doses scheduled for THAT day. Previously this called
+      // getReminderTimes(med) with no date, so today's dose count was applied
+      // to every historical day — and a med not scheduled today silently fell
+      // back to a single 09:00 dose.
+      const times = getReminderTimes(med, day);
+      const dayTimes = Array.isArray(times) && times.length > 0 ? times : [null];
 
-      for (let doseNumber = 1; doseNumber <= dosesPerDay; doseNumber += 1) {
+      for (let idx = 0; idx < dayTimes.length; idx += 1) {
+        const doseNumber = idx + 1;
+        const doseTime = dayTimes[idx];
+
+        // Skip doses that aren't due yet. Counting a dose scheduled for later
+        // today as "missed" understated adherence by up to a full day's worth
+        // — enough on its own to trip the below-80% caregiver alert.
+        if (doseTime) {
+          const [hh, mm] = String(doseTime).split(':').map(Number);
+          if (!Number.isNaN(hh)) {
+            const due = day.set({ hour: hh, minute: mm || 0, second: 0, millisecond: 0 });
+            if (due > nowDateTime) continue;
+          }
+        } else if (day.hasSame(nowDateTime, 'day')) {
+          continue; // untimed dose today — can't say it's missed yet
+        }
+
         total += 1;
         const key = `${dayIso}_${doseNumber}`;
         const entry = med.doses ? med.doses[key] : null;
@@ -3864,7 +4230,9 @@ function caregiverAlreadySent(caregiverData, key) {
   return Boolean(caregiverData?.caregiverEmailState && caregiverData.caregiverEmailState[key]);
 }
 
-exports.sendCaregiverExpirationDatesEmails = functions.pubsub
+exports.sendCaregiverExpirationDatesEmails = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub
   .schedule('0 9 * * *') // daily 09:00 UTC
   .timeZone('UTC')
   .onRun(async () => {
@@ -3902,11 +4270,11 @@ exports.sendCaregiverExpirationDatesEmails = functions.pubsub
         bottleAlerts.forEach(a => linesText.push(`- ${a.message}`));
         linesText.push('');
 
-        const alertsHtml = bottleAlerts.map(a => `<li style="margin:6px 0;">${a.message}</li>`).join('');
+        const alertsHtml = bottleAlerts.map(a => `<li style="margin:6px 0;">${escapeHtml(a.message)}</li>`).join('');
         sectionsHtml.push(`
           <div style="padding:16px 16px; border:1px solid #d7e3ff; border-radius:16px; background:#ffffff; margin:14px 0;">
-            <div style="font-size:18px; font-weight:800; color:#1f3c88;">${patient.name}</div>
-            <div style="color:#64748b; margin-top:4px; font-size:14px;">${patient.email || ''}</div>
+            <div style="font-size:18px; font-weight:800; color:#1f3c88;">${escapeHtml(patient.name)}</div>
+            <div style="color:#64748b; margin-top:4px; font-size:14px;">${escapeHtml(patient.email || '')}</div>
             <ul style="margin:12px 0 0; padding-left:18px; color:#0f172a; font-size:15px; line-height:1.5;">
               ${alertsHtml}
             </ul>
@@ -3925,7 +4293,7 @@ exports.sendCaregiverExpirationDatesEmails = functions.pubsub
           <div style="width:92%; max-width:680px; margin:0 auto; background:#ffffff; border-radius:22px; overflow:hidden; box-shadow:0 12px 32px rgba(15,23,42,0.12);">
             <div style="background:linear-gradient(135deg,#3f6ff5,#2850c6); padding:26px 22px; color:#fff; text-align:center;">
               <div style="font-size:22px; font-weight:900;">Patient expiration alerts</div>
-              <div style="margin-top:8px; opacity:.92; font-weight:600;">Bottles expiring within the next ${EXPIRATION_ALERT_DAYS} days</div>
+              <div style="margin-top:8px; opacity:.92; font-weight:600;">Stock, refill and expiration alerts across your patients</div>
             </div>
             <div style="padding:22px;">
               ${sectionsHtml.join('')}
@@ -3938,21 +4306,30 @@ exports.sendCaregiverExpirationDatesEmails = functions.pubsub
       `;
       const textBody = [
         'Patient expiration alerts',
-        `Bottles expiring within the next ${EXPIRATION_ALERT_DAYS} days`,
+        'Stock, refill and expiration alerts across your patients',
         '',
         ...linesText
       ].join('\n');
 
       // Stock / bottle / expiration alerts are email-only — no SMS for caregivers.
-      await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, null);
-      await markCaregiverEmailSent(db, caregiverId, todayKey);
+      try {
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, null);
+        await markCaregiverEmailSent(db, caregiverId, todayKey);
+      } catch (cgErr) {
+        // Without this, a single bad address / SMTP hiccup threw out of the
+        // whole scheduled run and every remaining caregiver silently got nothing.
+        console.error(`[Caregiver] expiration digest failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
+        continue;
+      }
       console.log(`[Caregiver] Sent expiration digest to ${caregiverEmail} (${caregiverId})`);
     }
 
     return null;
   });
 
-exports.sendCaregiverAdherenceBelow80Alerts = functions.pubsub
+exports.sendCaregiverAdherenceBelow80Alerts = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub
   .schedule('30 9 * * *') // daily 09:30 UTC
   .timeZone('UTC')
   .onRun(async () => {
@@ -3992,7 +4369,7 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions.pubsub
         linesText.push(`${patient.name} (${patient.email || patientId}) - 7d adherence: ${pct}% (missed ${missed}/${total})`);
         rowsHtml.push(`
           <tr>
-            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${patient.name}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${escapeHtml(patient.name)}</td>
             <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${pct}%</td>
             <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${missed}/${total}</td>
           </tr>
@@ -4030,15 +4407,24 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions.pubsub
       const textBody = ['Adherence below 80% (last 7 days)', '', ...linesText].join('\n');
 
       const smsBody = `Everane: Adherence below 80%\n${linesText.join('\n')}`;
-      await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
-      await markCaregiverEmailSent(db, caregiverId, todayKey);
+      try {
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await markCaregiverEmailSent(db, caregiverId, todayKey);
+      } catch (cgErr) {
+        // Without this, a single bad address / SMTP hiccup threw out of the
+        // whole scheduled run and every remaining caregiver silently got nothing.
+        console.error(`[Caregiver] adherence<80 alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
+        continue;
+      }
       console.log(`[Caregiver] Sent adherence<80 alert to ${caregiverEmail} (${caregiverId})`);
     }
 
     return null;
   });
 
-exports.sendCaregiverWeeklyReports = functions.pubsub
+exports.sendCaregiverWeeklyReports = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub
   .schedule('0 9 * * 1') // Mondays 09:00 UTC
   .timeZone('UTC')
   .onRun(async () => {
@@ -4077,7 +4463,7 @@ exports.sendCaregiverWeeklyReports = functions.pubsub
         linesText.push(`${patient.name} - 7d adherence: ${pct}% (missed ${missed}/${total})`);
         rowsHtml.push(`
           <tr>
-            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${patient.name}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${escapeHtml(patient.name)}</td>
             <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${pct}%</td>
             <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${missed}/${total}</td>
           </tr>
@@ -4115,15 +4501,24 @@ exports.sendCaregiverWeeklyReports = functions.pubsub
       const textBody = ['Weekly patient report (last 7 days)', '', ...linesText].join('\n');
 
       const smsBody = `Everane: Weekly report\n${linesText.join('\n')}`;
-      await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
-      await markCaregiverEmailSent(db, caregiverId, weekKey);
+      try {
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await markCaregiverEmailSent(db, caregiverId, weekKey);
+      } catch (cgErr) {
+        // Without this, a single bad address / SMTP hiccup threw out of the
+        // whole scheduled run and every remaining caregiver silently got nothing.
+        console.error(`[Caregiver] weekly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
+        continue;
+      }
       console.log(`[Caregiver] Sent weekly report to ${caregiverEmail} (${caregiverId})`);
     }
 
     return null;
   });
 
-exports.sendCaregiverMonthlyReports = functions.pubsub
+exports.sendCaregiverMonthlyReports = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub
   .schedule('0 9 1 * *') // 1st of month 09:00 UTC
   .timeZone('UTC')
   .onRun(async () => {
@@ -4162,7 +4557,7 @@ exports.sendCaregiverMonthlyReports = functions.pubsub
         linesText.push(`${patient.name} - 30d adherence: ${pct}% (missed ${missed}/${total})`);
         rowsHtml.push(`
           <tr>
-            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${patient.name}</td>
+            <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; font-weight:800; color:#1f3c88;">${escapeHtml(patient.name)}</td>
             <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${pct}%</td>
             <td style="padding:10px 12px; border-bottom:1px solid #e5ecff; color:#0f172a;">${missed}/${total}</td>
           </tr>
@@ -4200,8 +4595,15 @@ exports.sendCaregiverMonthlyReports = functions.pubsub
       const textBody = ['Monthly patient report (last 30 days)', '', ...linesText].join('\n');
 
       const smsBody = `Everane: Monthly report\n${linesText.join('\n')}`;
-      await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
-      await markCaregiverEmailSent(db, caregiverId, monthKey);
+      try {
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await markCaregiverEmailSent(db, caregiverId, monthKey);
+      } catch (cgErr) {
+        // Without this, a single bad address / SMTP hiccup threw out of the
+        // whole scheduled run and every remaining caregiver silently got nothing.
+        console.error(`[Caregiver] monthly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
+        continue;
+      }
       console.log(`[Caregiver] Sent monthly report to ${caregiverEmail} (${caregiverId})`);
     }
 
@@ -4250,10 +4652,10 @@ exports.onPatientMedicationCreated = functions.firestore
             </div>
             <div style="padding:22px;">
               <div style="padding:16px; border:1px solid #d7e3ff; border-radius:16px; background:#ffffff; margin:14px 0;">
-                <div style="font-size:18px; font-weight:800; color:#1f3c88;">${patient.name}</div>
-                <div style="color:#64748b; margin-top:4px; font-size:14px;">${patient.email || ''}</div>
+                <div style="font-size:18px; font-weight:800; color:#1f3c88;">${escapeHtml(patient.name)}</div>
+                <div style="color:#64748b; margin-top:4px; font-size:14px;">${escapeHtml(patient.email || '')}</div>
                 <div style="margin-top:12px; font-size:16px; color:#0f172a;">
-                  Added: <strong>${medName}</strong>${medData.dosage ? ` (${medData.dosage})` : ''}
+                  Added: <strong>${escapeHtml(medName)}</strong>${medData.dosage ? ` (${escapeHtml(medData.dosage)})` : ''}
                 </div>
               </div>
               <div style="margin-top:18px; color:#64748b; font-size:13px;">
@@ -4280,7 +4682,9 @@ exports.onPatientMedicationCreated = functions.firestore
 // ============================================================
 // CAREGIVER: Nothing recorded today (daily check)
 // ============================================================
-exports.sendCaregiverNothingRecordedAlerts = functions.pubsub
+exports.sendCaregiverNothingRecordedAlerts = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub
   .schedule('0 21 * * *') // daily 21:00 UTC (afternoon/evening in most US timezones)
   .timeZone('UTC')
   .onRun(async () => {
@@ -4321,9 +4725,15 @@ exports.sendCaregiverNothingRecordedAlerts = functions.pubsub
         for (const med of activeMeds) {
           if (!shouldSendReminderToday(med, patientNow)) continue;
           const doses = med.doses || {};
-          // Check all dose keys for today
+          // Check all dose keys for today.
+          // IMPORTANT: only a dose the patient actually marked TAKEN counts as
+          // "recorded". checkAndMarkMissedDoses auto-writes {taken:false,
+          // autoMarked:true} entries 45 min after a missed dose — counting those
+          // as "recorded" silenced this alert in exactly the case it exists for.
           for (const key of Object.keys(doses)) {
-            if (key.startsWith(todayIso + '_')) {
+            if (!key.startsWith(todayIso + '_')) continue;
+            const entry = doses[key];
+            if (entry && entry.taken === true) {
               anyRecorded = true;
               break;
             }
@@ -4335,8 +4745,8 @@ exports.sendCaregiverNothingRecordedAlerts = functions.pubsub
           linesText.push(`${patient.name} - No doses recorded today`);
           sectionsHtml.push(`
             <div style="padding:16px; border:1px solid #fecaca; border-radius:16px; background:#fff5f5; margin:14px 0;">
-              <div style="font-size:18px; font-weight:800; color:#dc2626;">${patient.name}</div>
-              <div style="color:#64748b; margin-top:4px; font-size:14px;">${patient.email || ''}</div>
+              <div style="font-size:18px; font-weight:800; color:#dc2626;">${escapeHtml(patient.name)}</div>
+              <div style="color:#64748b; margin-top:4px; font-size:14px;">${escapeHtml(patient.email || '')}</div>
               <div style="margin-top:8px; font-size:15px; color:#0f172a;">No doses recorded today.</div>
             </div>
           `);
@@ -4365,199 +4775,18 @@ exports.sendCaregiverNothingRecordedAlerts = functions.pubsub
       const textBody = ['Nothing recorded today', '', ...linesText].join('\n');
       const smsBody = `Everane: Nothing recorded today\n${linesText.join('\n')}`;
 
-      await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
-      await markCaregiverEmailSent(db, caregiverId, todayKey);
+      try {
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await markCaregiverEmailSent(db, caregiverId, todayKey);
+      } catch (cgErr) {
+        console.error(`[Caregiver] nothing-recorded alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
+        continue;
+      }
       console.log(`[Caregiver] Sent nothing-recorded alert to ${caregiverEmail} (${caregiverId})`);
     }
 
     return null;
   });
-
-/**
- * Cloud Function to send caregiver acceptance confirmation email
- * POST /sendCaregiverAcceptanceEmail
- * Body: { caregiverId: string, caregiverEmail?: string, patientName: string, patientEmail: string }
- */
-exports.sendCaregiverAcceptanceEmail = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  try {
-    const { caregiverId, caregiverEmail, patientName, patientEmail } = req.body;
-
-    if (!caregiverId || !patientName) {
-      res.status(400).json({ error: 'Caregiver ID and patient name are required' });
-      return;
-    }
-
-    const db = admin.firestore();
-
-    // Get caregiver's email and name from Firestore if not provided
-    let finalCaregiverEmail = caregiverEmail;
-    let caregiverName = 'Caregiver';
-
-    const caregiverDocRef = db.collection('users').doc(caregiverId);
-    const caregiverDoc = await caregiverDocRef.get();
-
-    if (caregiverDoc.exists) {
-      const caregiverData = caregiverDoc.data();
-      finalCaregiverEmail = finalCaregiverEmail || caregiverData.email;
-      caregiverName = caregiverData.name || 'Caregiver';
-    }
-
-    if (!finalCaregiverEmail) {
-      res.status(404).json({ error: 'Caregiver email not found' });
-      return;
-    }
-
-    // Send email
-    await sendCaregiverAcceptanceEmail(finalCaregiverEmail, caregiverName, patientName);
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'Acceptance email sent successfully'
-    });
-
-  } catch (error) {
-    console.error('Error sending caregiver acceptance email:', error);
-    res.status(500).json({ error: 'Failed to send acceptance email: ' + error.message });
-  }
-});
-
-/**
- * Cloud Function to send email verification code
- * POST /sendEmailVerificationCode
- * Body: { email: string }
- */
-exports.sendEmailVerificationCode = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  try {
-    const { email } = req.body;
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      res.status(400).json({ error: 'Valid email address is required' });
-      return;
-    }
-
-    // Generate 6-digit verification code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // Store code in Firestore with 10-minute expiration
-    const db = admin.firestore();
-    const verificationRef = db.collection('emailVerifications').doc();
-    await verificationRef.set({
-      email: email.toLowerCase(),
-      code: code,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 10 * 60 * 1000)) // 10 minutes
-    });
-
-    // Send email
-    await sendEmailVerificationCode(email, code);
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'Verification email sent',
-      // For testing only - remove in production
-      code: code
-    });
-
-  } catch (error) {
-    console.error('Error sending verification email:', error);
-    res.status(500).json({ error: 'Failed to send verification email: ' + error.message });
-  }
-});
-
-/**
- * Cloud Function to verify email code
- * POST /verifyEmailCode
- * Body: { email: string, code: string }
- */
-exports.verifyEmailCode = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  try {
-    const { email, code } = req.body;
-
-    if (!email || !code) {
-      res.status(400).json({ error: 'Email and code are required' });
-      return;
-    }
-
-    // Find verification record
-    const db = admin.firestore();
-    const verificationsSnapshot = await db.collection('emailVerifications')
-      .where('email', '==', email.toLowerCase())
-      .where('code', '==', code)
-      .limit(1)
-      .get();
-
-    if (verificationsSnapshot.empty) {
-      res.status(400).json({ error: 'Invalid verification code' });
-      return;
-    }
-
-    const verification = verificationsSnapshot.docs[0].data();
-    const expiresAt = verification.expiresAt.toDate();
-
-    // Check if code has expired
-    if (new Date() > expiresAt) {
-      res.status(400).json({ error: 'Verification code has expired' });
-      return;
-    }
-
-    // Mark as verified and delete the verification record
-    await verificationsSnapshot.docs[0].ref.delete();
-
-    res.status(200).json({ 
-      success: true, 
-      message: 'Email verified successfully' 
-    });
-
-  } catch (error) {
-    console.error('Error verifying email code:', error);
-    res.status(500).json({ error: 'Failed to verify code: ' + error.message });
-  }
-});
 
 /**
  * Send phone verification code via Twilio SMS API
@@ -4600,6 +4829,24 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
       if (!twilioClient || !twilioFromNumber) {
         console.error('❌ Twilio SMS client not initialized!');
         res.status(500).json({ error: 'SMS not configured' });
+        return;
+      }
+
+      // AUTH: unauthenticated, this let anyone make us send SMS to arbitrary
+      // numbers on our Twilio account (toll fraud / SMS pumping).
+      const authHeader = req.headers.authorization || '';
+      const idToken =
+        (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '') ||
+        (typeof req.body?.idToken === 'string' ? req.body.idToken : '');
+      if (!idToken) {
+        res.status(401).json({ error: 'Missing auth token' });
+        return;
+      }
+      try {
+        const decodedCaller = await admin.auth().verifyIdToken(idToken);
+        if (!decodedCaller?.uid) throw new Error('no uid');
+      } catch (_) {
+        res.status(401).json({ error: 'Invalid auth token' });
         return;
       }
 
@@ -4765,16 +5012,16 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
             <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
               <tr>
                 <td style="padding: 10px 12px; font-weight: bold; color: #555555; border-bottom: 1px solid #eeeeee; width: 100px;">Name</td>
-                <td style="padding: 10px 12px; color: #333333; border-bottom: 1px solid #eeeeee;">${name}</td>
+                <td style="padding: 10px 12px; color: #333333; border-bottom: 1px solid #eeeeee;">${escapeHtml(name)}</td>
               </tr>
               <tr>
                 <td style="padding: 10px 12px; font-weight: bold; color: #555555; border-bottom: 1px solid #eeeeee;">Email</td>
-                <td style="padding: 10px 12px; color: #333333; border-bottom: 1px solid #eeeeee;"><a href="mailto:${email}" style="color: #4A90D9;">${email}</a></td>
+                <td style="padding: 10px 12px; color: #333333; border-bottom: 1px solid #eeeeee;"><a href="mailto:${encodeURIComponent(email)}" style="color: #4A90D9;">${escapeHtml(email)}</a></td>
               </tr>
             </table>
             <div style="margin-top: 20px;">
               <h3 style="color: #555555; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Message</h3>
-              <div style="background-color: #f9f9f9; border-left: 4px solid #4A90D9; padding: 16px; border-radius: 4px; color: #333333; line-height: 1.6; white-space: pre-wrap;">${message}</div>
+              <div style="background-color: #f9f9f9; border-left: 4px solid #4A90D9; padding: 16px; border-radius: 4px; color: #333333; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message)}</div>
             </div>
             <hr style="border: none; border-top: 1px solid #eeeeee; margin: 24px 0;" />
             <p style="color: #999999; font-size: 12px; text-align: center; margin-bottom: 0;">This email was sent from the Everane contact form. Reply directly to respond to the sender.</p>
@@ -4787,7 +5034,8 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
         from: gmailEmail,
         replyTo: email,
         to: 'rishikeshalladi@gmail.com',
-        subject: `[Everane Contact] Message from ${name}`,
+        // sanitizeHeader strips CR/LF so a crafted name can't inject headers.
+        subject: sanitizeHeader(`[Everane Contact] Message from ${name}`),
         html: htmlBody
       };
 
@@ -5793,22 +6041,26 @@ exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) 
     if (userEmail) {
       const link = `${APP_BASE_URL}/traveltimezone.html?request=${requestRef.id}`;
 
+      const safeUserName = escapeHtml(userName);
+      const safeStoredTz = escapeHtml(storedTimezone);
+      const safeDetectedTz = escapeHtml(detectedTimezone);
+
       const msg = {
         to: userEmail,
-        from: { email: 'no-reply@everane.live', name: 'Everane' },
+        from: `Everane <${gmailEmail}>`,
         subject: 'Did you change timezones?',
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; background: #0b1020; color: #e7ebf3;">
             <div style="text-align: center; margin-bottom: 24px;">
               <h1 style="font-size: 1.6rem; margin: 0; color: #4f8cff;">Timezone Change Detected</h1>
             </div>
-            <p style="font-size: 1rem; line-height: 1.6; color: #e7ebf3;">Hi ${userName},</p>
+            <p style="font-size: 1rem; line-height: 1.6; color: #e7ebf3;">Hi ${safeUserName},</p>
             <p style="font-size: 1rem; line-height: 1.6; color: #b1bad4;">We noticed you may have traveled or changed timezones.</p>
             <div style="background: #0f1629; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 16px 20px; margin: 20px 0;">
               <p style="margin: 0 0 8px; color: #b1bad4; font-size: 0.9rem;">Current timezone on file:</p>
-              <p style="margin: 0 0 16px; color: #e7ebf3; font-weight: 700; font-size: 1.05rem;">${storedTimezone}</p>
+              <p style="margin: 0 0 16px; color: #e7ebf3; font-weight: 700; font-size: 1.05rem;">${safeStoredTz}</p>
               <p style="margin: 0 0 8px; color: #b1bad4; font-size: 0.9rem;">Detected timezone:</p>
-              <p style="margin: 0; color: #7de2d1; font-weight: 700; font-size: 1.05rem;">${detectedTimezone}</p>
+              <p style="margin: 0; color: #7de2d1; font-weight: 700; font-size: 1.05rem;">${safeDetectedTz}</p>
             </div>
             <p style="font-size: 0.95rem; line-height: 1.6; color: #b1bad4;">If you've traveled, you can update your timezone so reminders arrive at the right local time. If this was temporary, just keep your current timezone.</p>
             <div style="text-align: center; margin: 28px 0;">
@@ -5820,7 +6072,12 @@ exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) 
         text: `Hi ${userName},\n\nWe noticed you may have changed timezones.\n\nCurrent timezone: ${storedTimezone}\nDetected timezone: ${detectedTimezone}\n\nClick here to update or keep your timezone: ${link}\n\n— Everane`
       };
 
-      await sgMail.send(msg);
+      await withRetry(
+        `requestTimezoneChangeEmail->${userEmail}`,
+        () => transporter.sendMail(msg),
+        3,
+        750
+      );
       console.log(`[Timezone] Sent timezone change email to ${userEmail} (${storedTimezone} -> ${detectedTimezone})`);
     }
 
@@ -5947,38 +6204,6 @@ exports.resolveTimezoneChange = functions.https.onRequest(async (req, res) => {
 });
 
 /**
- * One-time callable: Backfill patientId for all existing users who don't have one.
- * Call via: https://us-central1-medtracker-8c467.cloudfunctions.net/backfillPatientIds
- */
-exports.backfillPatientIds = functions.https.onRequest(async (req, res) => {
-  cors(req, res, async () => {
-    try {
-      const db = admin.firestore();
-      const usersSnap = await db.collection('users').get();
-      let backfilled = 0;
-      let skipped = 0;
-
-      for (const userDoc of usersSnap.docs) {
-        const data = userDoc.data();
-        if (data.patientId) {
-          skipped++;
-          continue;
-        }
-        const newId = await generateUniquePatientId(db);
-        await db.collection('users').doc(userDoc.id).set({ patientId: newId }, { merge: true });
-        backfilled++;
-        console.log(`[Backfill] ${userDoc.id} -> ${newId}`);
-      }
-
-      res.status(200).json({ success: true, backfilled, skipped, total: usersSnap.size });
-    } catch (error) {
-      console.error('[Backfill] Error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-});
-
-/**
  * Doctor login — validates patientId + doctorPassword server-side.
  * Returns the patient's Firebase UID on success so the frontend can load their data.
  */
@@ -6095,10 +6320,13 @@ exports.doctorLogin = functions.https.onRequest((req, res) => {
       });
       medications.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Success — return patient info + medications
+      // Success — return patient info + medications + a signed session token.
+      // The token (not the bare uid) is what authorises subsequent doctor calls.
+      const doctorToken = issueDoctorToken(userDoc.id);
       res.status(200).json({
         success: true,
         uid: userDoc.id,
+        doctorToken,
         name: userData.name || '',
         email: userData.email || '',
         medications
@@ -6126,7 +6354,13 @@ exports.submitDoctorEdit = functions.https.onRequest((req, res) => {
     }
 
     try {
-      const { uid, type, details, doctorName } = req.body;
+      const sessionUid = requireDoctorSession(req);
+      if (!sessionUid) {
+        res.status(401).json({ error: 'Doctor session expired. Please log in again.' });
+        return;
+      }
+      const { type, details, doctorName } = req.body;
+      const uid = sessionUid;
 
       if (!uid || !type || !details) {
         res.status(400).json({ error: 'uid, type, and details are required.' });
@@ -6174,7 +6408,12 @@ exports.getDoctorEdits = functions.https.onRequest((req, res) => {
     }
 
     try {
-      const { uid } = req.body;
+      const sessionUid = requireDoctorSession(req);
+      if (!sessionUid) {
+        res.status(401).json({ error: 'Doctor session expired. Please log in again.' });
+        return;
+      }
+      const uid = sessionUid;
 
       if (!uid) {
         res.status(400).json({ error: 'uid is required.' });
@@ -6219,7 +6458,13 @@ exports.replyToDoctorEdit = functions.https.onRequest((req, res) => {
     }
 
     try {
-      const { uid, editId, message, doctorName } = req.body;
+      const sessionUid = requireDoctorSession(req);
+      if (!sessionUid) {
+        res.status(401).json({ error: 'Doctor session expired. Please log in again.' });
+        return;
+      }
+      const { editId, message, doctorName } = req.body;
+      const uid = sessionUid;
 
       if (!uid || !editId || !message) {
         res.status(400).json({ error: 'uid, editId, and message are required.' });
@@ -6308,73 +6553,6 @@ exports.submitPatientComment = functions.https.onRequest((req, res) => {
       res.status(200).json({ success: true, id: docRef.id, comment: commentData });
     } catch (error) {
       console.error('[submitPatientComment] Error:', error);
-      res.status(500).json({ error: 'Something went wrong.' });
-    }
-  });
-});
-
-exports.getDoctorPatientMeds = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    if (req.method !== 'POST') {
-      res.status(405).json({ error: 'Method not allowed' });
-      return;
-    }
-
-    try {
-      const { uid } = req.body;
-
-      if (!uid) {
-        res.status(400).json({ error: 'UID is required.' });
-        return;
-      }
-
-      const db = admin.firestore();
-
-      // Verify the user exists and has a doctorPassword set (i.e. doctor access was enabled)
-      const userDoc = await db.collection('users').doc(uid).get();
-      if (!userDoc.exists || !userDoc.data().doctorPassword) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-
-      // Fetch medications
-      const medsSnap = await db.collection('users').doc(uid).collection('medications').get();
-      const medications = [];
-
-      medsSnap.forEach(medDoc => {
-        const d = medDoc.data();
-        if (d.deletedStatus === true) return;
-
-        // Collect times from schedules or legacy fields
-        let times = [];
-        let days = [];
-        if (d.schedules && d.schedules.length > 0) {
-          d.schedules.forEach(s => {
-            if (Array.isArray(s.times)) times.push(...s.times);
-            if (Array.isArray(s.daysOfWeek)) days.push(...s.daysOfWeek);
-          });
-          // De-duplicate
-          times = [...new Set(times)].sort();
-          days = [...new Set(days)];
-        } else {
-          if (Array.isArray(d.times)) times = d.times.filter(Boolean).sort();
-          if (Array.isArray(d.daysOfWeek || d.days)) days = (d.daysOfWeek || d.days || []);
-        }
-
-        medications.push({
-          name: d.name || 'Unnamed',
-          dosage: d.dosage || '',
-          times,
-          days
-        });
-      });
-
-      // Sort alphabetically
-      medications.sort((a, b) => a.name.localeCompare(b.name));
-
-      res.status(200).json({ success: true, medications });
-    } catch (error) {
-      console.error('[getDoctorPatientMeds] Error:', error);
       res.status(500).json({ error: 'Something went wrong.' });
     }
   });

@@ -1,0 +1,24 @@
+{
+  "indexes": [
+    {
+      "//": "Required by sendCaregiverExpirationDatesEmails, sendCaregiverAdherenceBelow80Alerts, sendCaregiverWeeklyReports, sendCaregiverMonthlyReports and sendCaregiverNothingRecordedAlerts. Each runs users.where('type','==','C').where('email_reminders','array-contains',<key>) — Firestore cannot serve equality + array-contains from single-field indexes, so without this composite index every one of those scheduled functions throws FAILED_PRECONDITION and no caregiver email is sent at all.",
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "email_reminders", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "//": "Required by requestTimezoneChangeEmail: timezoneRequests.where('status','==',...).where('newTimezone','==',...).orderBy('createdAt','desc').",
+      "collectionGroup": "timezoneRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "newTimezone", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

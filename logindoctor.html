@@ -272,6 +272,7 @@
         // Success — store session with medications and redirect
         sessionStorage.setItem('doctorSession', JSON.stringify({
           uid: data.uid,
+          doctorToken: data.doctorToken || '',
           name: data.name || '',
           email: data.email || '',
           patientId: patientId,

@@ -367,6 +367,26 @@
   </script>
 
   <script type="module">
+    /**
+     * Resolve a post-login destination from ?returnUrl= (set when a reminder
+     * email's "Take your dose" link hits a signed-out browser), falling back to
+     * sessionStorage. Only same-origin relative paths are accepted so the
+     * parameter can't be used to bounce a user to an external site.
+     */
+    function getSafeReturnUrl() {
+      let candidate = '';
+      try {
+        candidate = new URLSearchParams(window.location.search).get('returnUrl') || '';
+        if (!candidate) candidate = sessionStorage.getItem('postLoginRedirect') || '';
+        sessionStorage.removeItem('postLoginRedirect');
+      } catch (e) { /* private mode */ }
+      if (!candidate) return '';
+      // Reject absolute URLs, protocol-relative URLs and anything with a scheme.
+      if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(candidate)) return '';
+      if (candidate.startsWith('//')) return '';
+      return candidate.replace(/^\/+/, '');
+    }
+
     // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, signOut, reload } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -513,11 +533,14 @@
           localStorage.setItem('userEmail', profileData.email);
           console.log('Loaded profile from Firestore:', profileData);
           
-          // 5. Redirect based on user type
+          // 5. Redirect based on user type (honouring an email deep-link if present)
           msg.textContent = 'Success! Redirecting...';
           const userType = profileData.type || 'P'; // Default to Patient if type not set
           setTimeout(() => {
-            if (userType === 'C') {
+            const deepLink = getSafeReturnUrl();
+            if (deepLink) {
+              window.location.href = deepLink;
+            } else if (userType === 'C') {
               // Caregiver - redirect to caregiver home
               window.location.href = 'caregiver/home.html';
             } else {
@@ -535,7 +558,7 @@
           // Default to Patient home if no profile
           msg.textContent = 'Success! Redirecting...';
           setTimeout(() => {
-            window.location.href = 'home.html';
+            window.location.href = getSafeReturnUrl() || 'home.html';
           }, 500);
         }
         
