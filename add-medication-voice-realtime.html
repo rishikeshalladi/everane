@@ -674,6 +674,14 @@
       try{state.localStream?.getAudioTracks()?.forEach(t=>t.enabled=!state.muted)}catch{}
     });
 
+    // Release the microphone and tear down the Realtime peer connection if the
+    // page goes away (tab closed, navigated away, app backgrounded on mobile).
+    // Browsers usually collapse the connection on unload anyway, but relying on
+    // that left the mic track and a billed session open in the cases where they
+    // don't — notably a backgrounded mobile tab. Purely cleanup: no UI effect,
+    // and it is a no-op when no session is running.
+    window.addEventListener("pagehide",()=>{ try{ if(state.pc||state.localStream) stopAll(); }catch{} });
+
     onAuthStateChanged(auth,(user)=>{if(!user)setStatus("Not logged in. Please log in first, then return here.")});
   </script>
 </body>

@@ -5056,6 +5056,105 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
  * Creates an ephemeral OpenAI Realtime session and returns the client_secret.
  * The client uses this secret to connect directly to OpenAI via WebRTC.
  */
+// ---- Shared guards for the billable AI endpoints -----------------------------
+// Every endpoint below spends real money per call. They were previously gated
+// only by "is this a valid Firebase token", which any self-registered account
+// has — the emailVerified gate lived solely in client-side auth-guard.js.
+
+// Generous daily ceilings: far above any realistic human use of these features,
+// low enough to bound a runaway loop or a scripted abuser.
+const AI_DAILY_LIMITS = {
+  realtime: 40,        // voice sessions/day
+  imageExtract: 60,    // label scans/day
+  medLookup: 300       // name lookups/day (only counted on cache MISS)
+};
+
+/**
+ * Today's date in the CALLER's timezone (from their profile), not UTC.
+ * A user in Pacific after 17:00 is a calendar day behind UTC, so a UTC "today"
+ * shifts every relative date and computed endDate by one day.
+ */
+async function callerLocalDate(uid) {
+  let zone = DEFAULT_TIME_ZONE;
+  try {
+    const snap = await admin.firestore().collection('users').doc(uid).get();
+    const tz = snap.exists && (snap.data() || {}).timezone;
+    if (tz && DateTime.now().setZone(tz).isValid) zone = tz;
+  } catch (e) {
+    console.warn(`[AI] timezone lookup failed for ${uid}, using ${DEFAULT_TIME_ZONE}:`, e.message);
+  }
+  return DateTime.now().setZone(zone).toISODate();
+}
+
+/**
+ * Verify the caller and require a verified email address.
+ * Returns { ok:true, uid, email } or { ok:false, status, error }.
+ *
+ * If the ID token says the address is unverified we re-check the Auth record
+ * before rejecting — a user who verified moments ago may still be holding a
+ * cached token, and bouncing them would be a visible regression.
+ */
+async function requireVerifiedCaller(req) {
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
+  if (!idToken) return { ok: false, status: 401, error: 'Missing auth token' };
+
+  let decoded;
+  try {
+    decoded = await admin.auth().verifyIdToken(idToken);
+  } catch (_) {
+    return { ok: false, status: 401, error: 'Invalid auth token' };
+  }
+  if (!decoded || !decoded.uid) return { ok: false, status: 401, error: 'Invalid auth token' };
+
+  if (decoded.email_verified !== true) {
+    // Stale-token fallback: consult the authoritative Auth record.
+    try {
+      const rec = await admin.auth().getUser(decoded.uid);
+      if (!rec.emailVerified) {
+        return { ok: false, status: 403, error: 'Please verify your email address first.' };
+      }
+    } catch (_) {
+      return { ok: false, status: 403, error: 'Please verify your email address first.' };
+    }
+  }
+
+  return { ok: true, uid: decoded.uid, email: decoded.email || null };
+}
+
+/**
+ * Count one use of a billable AI feature against the caller's daily allowance.
+ *
+ * FAILS OPEN BY DESIGN. If the counter cannot be read or written we allow the
+ * call: a bookkeeping outage must never stop someone adding their medication.
+ * Returns { allowed, used, limit }.
+ */
+async function consumeAiQuota(uid, kind, limit) {
+  try {
+    const dayKey = DateTime.utc().toISODate();
+    const ref = admin.firestore()
+      .collection('users').doc(uid)
+      .collection('aiUsage').doc(`${kind}_${dayKey}`);
+
+    const snap = await ref.get();
+    const used = snap.exists ? Number(snap.data().count || 0) : 0;
+    if (used >= limit) {
+      console.warn(`[AI quota] ${uid} hit ${kind} limit (${used}/${limit})`);
+      return { allowed: false, used, limit };
+    }
+    await ref.set({
+      count: admin.firestore.FieldValue.increment(1),
+      kind,
+      day: dayKey,
+      lastAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    return { allowed: true, used: used + 1, limit };
+  } catch (e) {
+    console.warn(`[AI quota] bookkeeping failed for ${uid}/${kind} — allowing through:`, e.message);
+    return { allowed: true, used: 0, limit, degraded: true };
+  }
+}
+
 exports.createRealtimeSession = functions.https.onRequest((req, res) => {
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Origin', '*');
@@ -5075,15 +5174,18 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
     }
 
     try {
-      // Verify Firebase auth token
-      const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
-      if (!idToken) {
-        res.status(401).json({ error: 'Missing auth token' });
+      // Verify Firebase auth token (and that the address is verified)
+      const caller = await requireVerifiedCaller(req);
+      if (!caller.ok) {
+        res.status(caller.status).json({ error: caller.error });
         return;
       }
 
-      await admin.auth().verifyIdToken(idToken);
+      const quota = await consumeAiQuota(caller.uid, 'realtime', AI_DAILY_LIMITS.realtime);
+      if (!quota.allowed) {
+        res.status(429).json({ error: 'Daily voice-session limit reached. Please try again tomorrow.' });
+        return;
+      }
 
       // Get OpenAI API key from functions config
       const openaiKey = functions.config().openai?.key;
@@ -5091,6 +5193,11 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
         res.status(500).json({ error: 'OpenAI API key not configured' });
         return;
       }
+
+      // The model has no clock. Without an injected date it cannot resolve
+      // "tomorrow" / "next Monday", and the prompt previously hardcoded the
+      // year 2026 — correct only by coincidence, and wrong from Jan 2027.
+      const realtimeToday = await callerLocalDate(caller.uid);
 
       // Create ephemeral Realtime client secret with instructions + tools baked in.
       // This guarantees instructions are applied BEFORE the client connects (no race condition).
@@ -5104,7 +5211,7 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
           session: {
             type: 'realtime',
             model: 'gpt-realtime',
-            instructions: 'You are a medication data collector for Everane. You collect 6 fields one at a time through conversation.\n\nCRITICAL RULE: Each response must contain ONLY ONE short question or acknowledgment. Never ask multiple questions. Never give medical facts, advice, drug information, or commentary. Never mention side effects or drug interactions.\n\nThe 6 fields to collect in order:\n- name: medication name\n- dosage: e.g. "2 pills", "1 tablet", "500 mg". Accept the first answer. Never ask follow-ups about strength or milligrams.\n- schedule: days and times. If they say morning/evening, ask for exact time. Ask if they want to add another schedule.\n- startDate: convert to YYYY-MM-DD, default year 2026\n- endDate: YYYY-MM-DD or null if ongoing\n- reminderChannels: How the user wants to be reminded. Ask exactly: "How would you like to be reminded? You can pick email, text message, push notifications, or any combination — or say none." Accept MULTIPLE channels in a single answer (e.g. "email and text"). Valid values are any subset of ["email","sms","push"]. Map "text", "text message", or "texts" to "sms". An empty array means no reminders. If the user picks sms, do not ask for their phone number — they enter it in their profile.\n\nStart by asking for the medication name. After the user answers each question, acknowledge briefly and ask the next one. After collecting all 6, say "All set!" and call submit_medication_draft immediately. Do not recap or summarize.\n\nIf the user asks a follow-up question, asks you to repeat something, or asks for clarification, answer it briefly and then continue collecting the next field.\n\nCRITICAL — ANTI-ASSUMPTION RULES (MUST FOLLOW):\n1. NEVER move to the next question until the user has given a clear, audible verbal answer to the current question.\n2. If you hear silence, background noise, or anything unclear, say "Sorry, I didn\'t catch that. Could you repeat your answer?" Do NOT treat silence as an answer.\n3. NEVER guess, assume, or fill in ANY field on your own. Every single field value must come directly from the user\'s spoken words.\n4. If the user\'s response is ambiguous or partial, ask a clarifying follow-up before moving on.\n5. Do NOT skip ahead. Do NOT bundle questions. Ask exactly one question, then STOP and WAIT.\n6. If you are unsure whether the user answered, ask again. It is always better to re-ask than to assume.\n7. NEVER auto-advance to the next field based on context clues, previous answers, or common defaults.',
+            instructions: 'You are a medication data collector for Everane. You collect 6 fields one at a time through conversation.\n\nCRITICAL RULE: Each response must contain ONLY ONE short question or acknowledgment. Never ask multiple questions. Never give medical facts, advice, drug information, or commentary. Never mention side effects or drug interactions.\n\nThe 6 fields to collect in order:\n- name: medication name\n- dosage: e.g. "2 pills", "1 tablet", "500 mg". Accept the first answer. Never ask follow-ups about strength or milligrams.\n- schedule: days and times. If they say morning/evening, ask for exact time. Ask if they want to add another schedule.\n- startDate: convert to YYYY-MM-DD. Today is ' + realtimeToday + '. Resolve relative dates such as "today", "tomorrow" or "next Monday" against that date, and if the user gives no year use the year of that date.\n- endDate: YYYY-MM-DD or null if ongoing\n- reminderChannels: How the user wants to be reminded. Ask exactly: "How would you like to be reminded? You can pick email, text message, push notifications, or any combination — or say none." Accept MULTIPLE channels in a single answer (e.g. "email and text"). Valid values are any subset of ["email","sms","push"]. Map "text", "text message", or "texts" to "sms". An empty array means no reminders. If the user picks sms, do not ask for their phone number — they enter it in their profile.\n\nStart by asking for the medication name. After the user answers each question, acknowledge briefly and ask the next one. After collecting all 6, say "All set!" and call submit_medication_draft immediately. Do not recap or summarize.\n\nIf the user asks a follow-up question, asks you to repeat something, or asks for clarification, answer it briefly and then continue collecting the next field.\n\nCRITICAL — ANTI-ASSUMPTION RULES (MUST FOLLOW):\n1. NEVER move to the next question until the user has given a clear, audible verbal answer to the current question.\n2. If you hear silence, background noise, or anything unclear, say "Sorry, I didn\'t catch that. Could you repeat your answer?" Do NOT treat silence as an answer.\n3. NEVER guess, assume, or fill in ANY field on your own. Every single field value must come directly from the user\'s spoken words.\n4. If the user\'s response is ambiguous or partial, ask a clarifying follow-up before moving on.\n5. Do NOT skip ahead. Do NOT bundle questions. Ask exactly one question, then STOP and WAIT.\n6. If you are unsure whether the user answered, ask again. It is always better to re-ask than to assume.\n7. NEVER auto-advance to the next field based on context clues, previous answers, or common defaults.',
             tools: [{
               type: 'function',
               name: 'submit_medication_draft',
@@ -5165,7 +5272,7 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
         return;
       }
 
-      console.log('✅ Created Realtime client secret for session:', sessionData.session?.id || 'unknown');
+      console.log(`✅ Created Realtime client secret for session ${sessionData.session?.id || 'unknown'} (uid=${caller.uid}, ${quota.used}/${quota.limit} today)`);
 
       res.status(200).json({
         client_secret: clientSecret,
@@ -5174,84 +5281,6 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
 
     } catch (error) {
       console.error('❌ createRealtimeSession error:', error);
-      res.status(500).json({ error: error.message || 'Internal server error' });
-    }
-  });
-});
-
-/**
- * transcribeAudio
- * Receives base64-encoded audio, sends to OpenAI transcription API, returns transcript text.
- */
-exports.transcribeAudio = functions.https.onRequest((req, res) => {
-  if (req.method === 'OPTIONS') {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Max-Age', '3600');
-    res.status(204).send('');
-    return;
-  }
-
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-
-    try {
-      const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
-      if (!idToken) { res.status(401).json({ error: 'Missing auth token' }); return; }
-      await admin.auth().verifyIdToken(idToken);
-
-      const openaiKey = functions.config().openai?.key;
-      if (!openaiKey) { res.status(500).json({ error: 'OpenAI API key not configured' }); return; }
-
-      const { audio, mimeType } = req.body || {};
-      if (!audio) { res.status(400).json({ error: 'Missing audio data' }); return; }
-
-      const audioBuffer = Buffer.from(audio, 'base64');
-      const contentType = mimeType || 'audio/webm';
-      const ext = contentType.includes('wav') ? 'wav' : contentType.includes('mp4') ? 'mp4' : 'webm';
-
-      // Build multipart boundary manually — most reliable in all Node 20 environments
-      const boundary = '----FormBoundary' + Math.random().toString(36).slice(2);
-      const CRLF = '\r\n';
-      const parts = [];
-      // File part
-      parts.push(`--${boundary}${CRLF}`);
-      parts.push(`Content-Disposition: form-data; name="file"; filename="recording.${ext}"${CRLF}`);
-      parts.push(`Content-Type: ${contentType}${CRLF}${CRLF}`);
-      const headerBuf = Buffer.from(parts.join(''));
-      const footerParts = [];
-      footerParts.push(`${CRLF}--${boundary}${CRLF}`);
-      footerParts.push(`Content-Disposition: form-data; name="model"${CRLF}${CRLF}gpt-4o-mini-transcribe`);
-      footerParts.push(`${CRLF}--${boundary}${CRLF}`);
-      footerParts.push(`Content-Disposition: form-data; name="response_format"${CRLF}${CRLF}json`);
-      footerParts.push(`${CRLF}--${boundary}--${CRLF}`);
-      const footerBuf = Buffer.from(footerParts.join(''));
-      const multipartBody = Buffer.concat([headerBuf, audioBuffer, footerBuf]);
-
-      const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        },
-        body: multipartBody,
-      });
-
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        console.error('OpenAI transcription error:', resp.status, errText.slice(0, 500));
-        res.status(502).json({ error: `OpenAI returned ${resp.status}`, details: errText.slice(0, 300) });
-        return;
-      }
-
-      const data = await resp.json();
-      console.log('Transcription:', (data.text || '').slice(0, 100));
-      res.status(200).json({ text: data.text || '' });
-    } catch (error) {
-      console.error('transcribeAudio error:', error);
       res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });
@@ -5322,12 +5351,9 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
     try {
-      // Auth (signed-in users only — keeps the API key + cache private).
-      const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
-      if (!idToken) { res.status(401).json({ error: 'Missing auth token' }); return; }
-      try { await admin.auth().verifyIdToken(idToken); }
-      catch (e) { res.status(401).json({ error: 'Invalid auth token' }); return; }
+      // Auth (verified users only — keeps the API keys + shared cache private).
+      const caller = await requireVerifiedCaller(req);
+      if (!caller.ok) { res.status(caller.status).json({ error: caller.error }); return; }
 
       const rawName = (req.body && req.body.name) || '';
       const key = normalizeMedKey(rawName);
@@ -5368,6 +5394,20 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         }
       } catch (e) {
         console.warn('[lookupMedicationImage] cache read failed:', e.message);
+      }
+
+      // Past this point we are about to call OpenAI + Serper, so this is where
+      // the call gets charged against the caller's allowance. Cache hits above
+      // return without consuming quota — browsing known medications is free.
+      const quota = await consumeAiQuota(caller.uid, 'medLookup', AI_DAILY_LIMITS.medLookup);
+      if (!quota.allowed) {
+        // Degrade quietly rather than surfacing an error: the caller just gets
+        // the same shape they'd get for an unrecognised name.
+        res.status(200).json({
+          isMed: false, canonical: null, genericName: null, form: null,
+          summary: null, imageUrl: null, source: 'none', cachedAt: null
+        });
+        return;
       }
 
       // 2. OpenAI validator
@@ -5548,12 +5588,15 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
     try {
-      // Auth
-      const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
-      if (!idToken) { res.status(401).json({ error: 'Missing auth token' }); return; }
-      try { await admin.auth().verifyIdToken(idToken); }
-      catch (e) { res.status(401).json({ error: 'Invalid auth token' }); return; }
+      // Auth (verified address required — this call costs money per image)
+      const caller = await requireVerifiedCaller(req);
+      if (!caller.ok) { res.status(caller.status).json({ error: caller.error }); return; }
+
+      const quota = await consumeAiQuota(caller.uid, 'imageExtract', AI_DAILY_LIMITS.imageExtract);
+      if (!quota.allowed) {
+        res.status(429).json({ error: 'Daily scan limit reached. Please try again tomorrow.' });
+        return;
+      }
 
       // Validate images
       const images = Array.isArray(req.body && req.body.images) ? req.body.images : [];
@@ -5569,7 +5612,7 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
       const openaiKey = functions.config().openai?.key;
       if (!openaiKey) { res.status(500).json({ error: 'OpenAI API key not configured' }); return; }
 
-      const today = DateTime.utc().toISODate();
+      const today = await callerLocalDate(caller.uid);
       const systemPrompt = [
         "You are a medication extraction assistant. The user uploads 1 or more images that may be:",
         "- Prescription bottle labels (most common)",
@@ -5682,7 +5725,10 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
             model: 'gpt-4o-mini',
             response_format: { type: 'json_object' },
             temperature: 0.1,
-            max_tokens: 1200,
+            // The schema plus up to 10 ambiguities and a 500-char notes field can
+            // approach the old 1200 ceiling; truncation yields unparseable JSON
+            // and a 502 rather than a partial result.
+            max_tokens: 1800,
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userContent },
@@ -5826,137 +5872,12 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
         imageCount: images.length,
       };
 
-      console.log('[extractMedicationFromImages] ok:', out.name || '(no name)', '|', out.imageCount, 'image(s)');
+      // Deliberately does NOT log the medication name — Cloud Logging is not an
+      // appropriate store for health data. Shape only.
+      console.log(`[extractMedicationFromImages] ok: ${out.imageCount} image(s), name=${out.name ? 'yes' : 'no'}, schedules=${out.schedules ? out.schedules.length : 0} (uid=${caller.uid})`);
       res.status(200).json(out);
     } catch (error) {
       console.error('[extractMedicationFromImages] error:', error);
-      res.status(500).json({ error: error.message || 'Internal server error' });
-    }
-  });
-});
-
-/**
- * chatWithAI
- * Receives conversation messages, calls OpenAI Chat Completions with tool support.
- */
-exports.chatWithAI = functions.https.onRequest((req, res) => {
-  if (req.method === 'OPTIONS') {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Max-Age', '3600');
-    res.status(204).send('');
-    return;
-  }
-
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-
-    try {
-      const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
-      if (!idToken) { res.status(401).json({ error: 'Missing auth token' }); return; }
-      await admin.auth().verifyIdToken(idToken);
-
-      const openaiKey = functions.config().openai?.key;
-      if (!openaiKey) { res.status(500).json({ error: 'OpenAI API key not configured' }); return; }
-
-      const { messages, tools, tool_choice } = req.body || {};
-      if (!messages || !Array.isArray(messages)) { res.status(400).json({ error: 'Missing messages array' }); return; }
-
-      const body = {
-        model: 'gpt-4o-mini',
-        messages,
-        temperature: 0.1,
-      };
-      if (tools && tools.length) body.tools = tools;
-      if (tool_choice) body.tool_choice = tool_choice;
-
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        console.error('OpenAI chat error:', resp.status, errText.slice(0, 500));
-        res.status(502).json({ error: `OpenAI returned ${resp.status}`, details: errText.slice(0, 300) });
-        return;
-      }
-
-      const data = await resp.json();
-      const choice = data.choices?.[0];
-      console.log('Chat response:', (choice?.message?.content || '').slice(0, 100));
-      res.status(200).json({ message: choice?.message || {} });
-    } catch (error) {
-      console.error('chatWithAI error:', error);
-      res.status(500).json({ error: error.message || 'Internal server error' });
-    }
-  });
-});
-
-/**
- * textToSpeech
- * Receives text, calls OpenAI TTS, returns audio as base64.
- */
-exports.textToSpeech = functions.https.onRequest((req, res) => {
-  if (req.method === 'OPTIONS') {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Access-Control-Max-Age', '3600');
-    res.status(204).send('');
-    return;
-  }
-
-  return cors(req, res, async () => {
-    res.set('Access-Control-Allow-Origin', '*');
-    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-
-    try {
-      const authHeader = req.headers.authorization || '';
-      const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
-      if (!idToken) { res.status(401).json({ error: 'Missing auth token' }); return; }
-      await admin.auth().verifyIdToken(idToken);
-
-      const openaiKey = functions.config().openai?.key;
-      if (!openaiKey) { res.status(500).json({ error: 'OpenAI API key not configured' }); return; }
-
-      const { text, voice } = req.body || {};
-      if (!text) { res.status(400).json({ error: 'Missing text' }); return; }
-
-      const resp = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini-tts',
-          input: text,
-          voice: voice || 'verse',
-          response_format: 'mp3',
-        }),
-      });
-
-      if (!resp.ok) {
-        const errText = await resp.text().catch(() => '');
-        console.error('OpenAI TTS error:', resp.status, errText.slice(0, 500));
-        res.status(502).json({ error: `OpenAI returned ${resp.status}`, details: errText.slice(0, 300) });
-        return;
-      }
-
-      const arrayBuf = await resp.arrayBuffer();
-      const base64Audio = Buffer.from(arrayBuf).toString('base64');
-      console.log('TTS generated:', base64Audio.length, 'chars base64');
-      res.status(200).json({ audio: base64Audio, mimeType: 'audio/mpeg' });
-    } catch (error) {
-      console.error('textToSpeech error:', error);
       res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });

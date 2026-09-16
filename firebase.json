@@ -17,7 +17,10 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "functions/**"
+      "functions/**",
+      "**/*.md",
+      "**/*.txt",
+      "**/*.log"
     ]
   }
 }

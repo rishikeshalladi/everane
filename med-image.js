@@ -39,11 +39,21 @@
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(PILL_SVG);
   }
 
-  function applyImgFallback(imgEl) {
-    if (!imgEl) return;
+  // Set privacy/loading attributes BEFORE assigning .src. Once src is set the
+  // browser may already have started the request, so a referrerPolicy applied
+  // afterwards can arrive too late to suppress the Referer header — which would
+  // disclose to a third-party image host which medication the user looked up.
+  function prepImgAttrs(imgEl) {
+    if (!imgEl) return imgEl;
     imgEl.referrerPolicy = 'no-referrer';
     imgEl.loading = 'lazy';
     imgEl.decoding = 'async';
+    return imgEl;
+  }
+
+  function applyImgFallback(imgEl) {
+    if (!imgEl) return;
+    prepImgAttrs(imgEl);
     imgEl.addEventListener('error', function onErr() {
       imgEl.removeEventListener('error', onErr);
       imgEl.src = fallbackPillSvgDataUri();
@@ -293,6 +303,7 @@
     const img = document.createElement('img');
     img.className = 'medimg-card__img';
     img.alt = opts.canonical || 'Medication';
+    prepImgAttrs(img);
     img.src = opts.imageUrl || fallbackPillSvgDataUri();
     applyImgFallback(img);
     wrap.appendChild(img);
@@ -363,6 +374,7 @@
     const img = document.createElement('img');
     img.className = 'medimg-soft';
     img.alt = (opts && opts.alt) || 'Medication';
+    prepImgAttrs(img);
     img.src = (opts && opts.imageUrl) || fallbackPillSvgDataUri();
     applyImgFallback(img);
     return img;
