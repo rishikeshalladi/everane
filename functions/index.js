@@ -5248,6 +5248,11 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
                 required: ['name', 'dosage', 'schedule', 'startDate', 'endDate', 'reminderChannels'],
               },
             }],
+            // The prompt requires exactly one short question per turn, so ~500
+            // tokens is far more headroom than any legitimate reply needs. It
+            // exists only to stop a degenerate loop from monologuing at
+            // per-second audio pricing.
+            max_output_tokens: 500,
             tool_choice: 'auto',
           },
         }),
@@ -5305,17 +5310,156 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
  * }
  */
 const MED_IMAGE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const MED_IMAGE_HOST_BLOCKLIST = new Set([
-  'facebook.com', 'fbcdn.net', 'instagram.com', 'cdninstagram.com',
-  'twitter.com', 'twimg.com', 'pinimg.com', 'pinterest.com',
-  'tiktok.com', 'tiktokcdn.com', 'youtube.com', 'ytimg.com',
-  'reddit.com', 'redd.it', 'imgur.com',
-  'lookaside.fbsbx.com',
+// Serper returns images from anywhere on the open web. A blocklist only kept
+// out the handful of social domains someone thought to name; everything else —
+// including arbitrary hosts that then get embedded in a health app and learn a
+// user's IP — was allowed. This is an allowlist of pharmacy, retailer, drug
+// reference and government sources, which is where "<drug> prescription bottle"
+// results legitimately come from. No allowed candidate => no image (the neutral
+// pill SVG is shown instead), which is the correct failure direction.
+const MED_IMAGE_HOST_ALLOWLIST = new Set([
+  // Government / authoritative
+  'nih.gov', 'nlm.nih.gov', 'dailymed.nlm.nih.gov', 'medlineplus.gov', 'fda.gov', 'cdc.gov',
+  // Pharmacies & retailers
+  'walgreens.com', 'cvs.com', 'riteaid.com', 'walmart.com', 'target.com', 'costco.com',
+  'samsclub.com', 'kroger.com', 'amazon.com', 'ssl-images-amazon.com', 'media-amazon.com',
+  'sainsburys.co.uk', 'boots.com', 'chemistwarehouse.com.au', 'shopkodiak.com',
+  'healthwarehouse.com', 'pillpack.com', 'costcobusinessdelivery.com',
+  // Drug references
+  'drugs.com', 'goodrx.com', 'rxlist.com', 'webmd.com', 'healthline.com', 'medicines.org.uk',
+  'empr.com', 'pdr.net', 'druginfo.nlm.nih.gov', 'epocrates.com', 'medscape.com',
+  // Manufacturers / wholesalers commonly surfaced for bottle shots
+  'mckesson.com', 'cardinalhealth.com', 'amerisourcebergen.com', 'teva.com', 'pfizer.com',
+  'novartis.com', 'lilly.com', 'sandoz.com', 'viatris.com', 'sunpharma.com',
+  // Medical-supply distributors. These turned out to be where most real
+  // "<drug> prescription bottle" photos actually live — an allowlist without
+  // them dropped image coverage to 2 of 6 sampled medications.
+  'henryschein.com', 'medline.com', 'macgill.com', 'bettymills.com',
+  'mountainside-medical.com', 'empowerpharmacy.com', 'mms.mckesson.com',
+  'mediusa.com', 'moorebrand.com', 'discountmedicalsupplies.com', 'vitalitymedical.com',
+  'praxisdental.com', 'dentalhealthproducts.com', 'schein.com',
+  // Telehealth / pharmacy services that publish their own product shots
+  'plushcare.com', 'lemonaidhealth.com', 'ro.co', 'hims.com', 'capsule.com',
+  'medpagetoday.net', 'singlecare.com', 'optum.com', 'expressscripts.com',
+  // Storefront CDNs used by legitimate pharmacy retailers
+  'shopify.com', 'shopifycdn.com', 'squarespace-cdn.com', 'bigcommerce.com',
+  // Encyclopedic
+  'wikimedia.org', 'wikipedia.org',
 ]);
 
 // Bump this whenever the Serper search query OR LLM output shape changes (so
 // existing cache entries for old shapes are bypassed and re-fetched cleanly).
-const MED_IMAGE_CACHE_VERSION = 'v3-bottle-summary';
+const MED_IMAGE_CACHE_VERSION = 'v4-fda-grounded-summary';
+
+/**
+ * Fetch the FDA-approved label text for a medication from openFDA.
+ *
+ * Returns { text, labelName, section } or null when there is no confident match.
+ *
+ * Filtering matters here: a loose search for "metformin" happily returns
+ * combination products such as ZITUVIMET (sitagliptin + metformin), whose
+ * indications describe a different drug entirely. We therefore keep only
+ * single-ingredient labels whose generic name actually contains the term.
+ */
+async function fetchFdaLabel(term) {
+  const q = String(term || '').trim();
+  if (q.length < 2) return null;
+
+  const url = 'https://api.fda.gov/drug/label.json?search=' +
+    encodeURIComponent(`openfda.generic_name:"${q}"`) + '&limit=10';
+
+  let data;
+  try {
+    const resp = await fetch(url, { method: 'GET' });
+    if (!resp.ok) return null; // 404 simply means "no such label"
+    data = await resp.json();
+  } catch (e) {
+    console.warn('[FDA] label fetch failed:', e.message);
+    return null;
+  }
+
+  const results = Array.isArray(data && data.results) ? data.results : [];
+  const upper = q.toUpperCase();
+
+  for (const r of results) {
+    const openfda = r.openfda || {};
+    const generics = Array.isArray(openfda.generic_name) ? openfda.generic_name.map(x => String(x).toUpperCase()) : [];
+
+    // Single active ingredient only — reject "A AND B" / comma-joined combos.
+    if (generics.length !== 1) continue;
+    if (generics[0].includes(' AND ') || generics[0].includes(',')) continue;
+    if (!generics[0].includes(upper)) continue;
+
+    // Prefer the indications section; OTC monographs use "purpose"/"description".
+    for (const section of ['indications_and_usage', 'purpose', 'description']) {
+      const arr = r[section];
+      const text = Array.isArray(arr) && arr.length ? String(arr[0]).trim() : '';
+      if (text && text.length > 40) {
+        return {
+          text: text.slice(0, 4000),
+          labelName: generics[0],
+          section
+        };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Turn an FDA label extract into 2-3 plain-English sentences.
+ *
+ * The model is given the label text and told to use ONLY that text. It is a
+ * summariser here, not a source of drug knowledge — which is the whole point:
+ * previously it wrote these descriptions from memory, and a small model
+ * inventing indications inside a medication app is a bad failure mode.
+ * No label means no summary; we never fall back to unsourced text.
+ */
+async function summarizeFdaLabel(openaiKey, canonical, label) {
+  if (!openaiKey || !label || !label.text) return null;
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0.1,
+        max_tokens: 220,
+        messages: [
+          {
+            role: 'system',
+            content: [
+              'You rewrite an official FDA drug label extract into plain English for a patient.',
+              '',
+              'Use ONLY the label text supplied by the user. Never add facts from your own knowledge.',
+              'If the text does not make the purpose clear, reply with exactly: NONE',
+              '',
+              'Write 2-3 short sentences, 35-60 words total, describing what the medication is and',
+              'what it is used for. Neutral and factual.',
+              'Do NOT include dosing instructions, specific side effects, drug interactions, or advice.',
+              'Do not mention a brand name unless the label names it as the drug itself.',
+              'Do not say "the label states" — just describe the medication. End with a complete sentence.',
+              'Reply with the sentences only. No preamble, no markdown.'
+            ].join('\n')
+          },
+          { role: 'user', content: `Medication: ${canonical}\n\nFDA label extract:\n${label.text}` }
+        ]
+      })
+    });
+    if (!resp.ok) {
+      console.warn('[FDA] summariser returned', resp.status);
+      return null;
+    }
+    const data = await resp.json();
+    let out = (data?.choices?.[0]?.message?.content || '').trim();
+    if (!out || out.toUpperCase().startsWith('NONE')) return null;
+    if (out.length > 500) out = out.slice(0, 500);
+    return out;
+  } catch (e) {
+    console.warn('[FDA] summariser failed:', e.message);
+    return null;
+  }
+}
 
 function normalizeMedKey(raw) {
   const base = String(raw || '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
@@ -5326,15 +5470,58 @@ function isAllowedImageHost(urlStr) {
   try {
     const u = new URL(urlStr);
     if (u.protocol !== 'https:') return false;
-    const host = u.hostname.replace(/^www\./, '');
-    for (const blocked of MED_IMAGE_HOST_BLOCKLIST) {
-      if (host === blocked || host.endsWith('.' + blocked)) return false;
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+    for (const allowed of MED_IMAGE_HOST_ALLOWLIST) {
+      if (host === allowed || host.endsWith('.' + allowed)) return true;
     }
-    return true;
+    return false;
   } catch (_) {
     return false;
   }
 }
+
+/**
+ * The medication image cache is shared across all users and was only ever
+ * expired lazily — a document was refreshed when someone happened to look the
+ * same name up again. Entries nobody revisits (typos, one-off searches, names
+ * from deleted accounts) stayed forever, and a stale or poisoned entry kept
+ * being served until a later lookup happened to overwrite it.
+ *
+ * This sweeps anything past the TTL once a night so bad entries age out on a
+ * bounded schedule and the collection stops growing without limit.
+ */
+exports.cleanMedicationImageCache = functions
+  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .pubsub
+  .schedule('0 4 * * *') // daily 04:00 UTC — quiet hours
+  .timeZone('UTC')
+  .onRun(async () => {
+    const db = admin.firestore();
+    const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - MED_IMAGE_CACHE_TTL_MS);
+    let deleted = 0;
+
+    try {
+      // Page through so a large collection cannot blow the memory limit.
+      for (;;) {
+        const snap = await db.collection('medicationImageCache')
+          .where('fetchedAt', '<', cutoff)
+          .limit(400)
+          .get();
+        if (snap.empty) break;
+
+        const batch = db.batch();
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        deleted += snap.size;
+
+        if (snap.size < 400) break;
+      }
+      console.log(`[cacheSweep] removed ${deleted} expired medicationImageCache entr${deleted === 1 ? 'y' : 'ies'}`);
+    } catch (e) {
+      console.error('[cacheSweep] failed:', e.message);
+    }
+    return null;
+  });
 
 exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.onRequest((req, res) => {
   if (req.method === 'OPTIONS') {
@@ -5385,6 +5572,7 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
               genericName: c.genericName || null,
               form: c.form || null,
               summary: c.summary || null,
+              summarySource: c.summarySource || null,
               imageUrl: c.imageUrl || null,
               source: 'cache',
               cachedAt: new Date(fetchedAtMs).toISOString(),
@@ -5416,7 +5604,7 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
 
       let validator = { isMed: false, canonical: null, genericName: null, form: null, summary: null };
       try {
-        const sys = "You are a strict medication name validator and brief information writer. The user types a free-form string. Decide if it's a real prescription drug, a recognized OTC medication (e.g. ibuprofen, acetaminophen, loratadine, melatonin, aspirin), or a recognized supplement/vitamin used in daily reminder schedules (e.g. Vitamin D, Vitamin B12, Fish Oil, Iron, Magnesium). Reject pure non-medical words, foods, brand jokes, or random text. Tolerate common misspellings (e.g. 'metforminn' -> 'Metformin').\n\nRespond with STRICT JSON only, no prose. Schema: { \"isMed\": boolean, \"canonical\": string|null, \"genericName\": string|null, \"form\": \"tablet\"|\"capsule\"|\"liquid\"|\"injection\"|\"patch\"|\"inhaler\"|\"cream\"|\"other\"|null, \"summary\": string|null }.\n\nRules:\n- canonical: canonical capitalization (e.g. 'Metformin', 'Vitamin D').\n- genericName: active ingredient if the user typed a brand (e.g. 'Lipitor' -> 'Atorvastatin'). Otherwise null.\n- summary: when isMed is true, write 2–3 short, plain-English sentences (35–60 words total) describing what the medication is and what it's commonly used for. Be factual and neutral. Do NOT include dosing instructions, do NOT give medical advice, do NOT list specific side effects, do NOT mention drug interactions. Mention the drug class if helpful (e.g. 'Metformin is a biguanide used to manage type 2 diabetes...'). End with a complete sentence. When isMed is false, set summary to null.\n- If isMed is false, set every other field to null.";
+        const sys = "You are a strict medication name validator. The user types a free-form string. Decide if it's a real prescription drug, a recognized OTC medication (e.g. ibuprofen, acetaminophen, loratadine, melatonin, aspirin), or a recognized supplement/vitamin used in daily reminder schedules (e.g. Vitamin D, Vitamin B12, Fish Oil, Iron, Magnesium). Reject pure non-medical words, foods, brand jokes, or random text. Tolerate common misspellings (e.g. 'metforminn' -> 'Metformin').\n\nRespond with STRICT JSON only, no prose. Schema: { \"isMed\": boolean, \"canonical\": string|null, \"genericName\": string|null, \"form\": \"tablet\"|\"capsule\"|\"liquid\"|\"injection\"|\"patch\"|\"inhaler\"|\"cream\"|\"other\"|null }.\n\nRules:\n- canonical: canonical capitalization (e.g. 'Metformin', 'Vitamin D').\n- genericName: active ingredient if the user typed a brand (e.g. 'Lipitor' -> 'Atorvastatin'). Otherwise null.\n- If isMed is false, set every other field to null.";
         const llmResp = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
@@ -5444,11 +5632,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
             validator.genericName = typeof parsed.genericName === 'string' ? parsed.genericName.trim() : null;
             const formAllowed = new Set(['tablet','capsule','liquid','injection','patch','inhaler','cream','other']);
             validator.form = formAllowed.has(parsed.form) ? parsed.form : null;
-            if (typeof parsed.summary === 'string') {
-              const s = parsed.summary.trim();
-              // Cap at ~500 chars defensively; the prompt asks for ~60 words.
-              validator.summary = s.length > 500 ? s.slice(0, 500) : s;
-            }
           } catch (e) {
             console.warn('[lookupMedicationImage] LLM JSON parse failed:', e.message, raw.slice(0, 200));
           }
@@ -5472,6 +5655,26 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
           imageUrl: null, source: 'fresh', cachedAt: new Date().toISOString(),
         });
         return;
+      }
+
+      // 2b. Summary, grounded in the official FDA label.
+      // Query by generic name first (that is what openFDA indexes), then fall
+      // back to whatever the user actually typed. No label found => no summary.
+      try {
+        const candidates = [validator.genericName, validator.canonical].filter(Boolean);
+        let label = null;
+        for (const c of candidates) {
+          label = await fetchFdaLabel(c);
+          if (label) break;
+        }
+        if (label) {
+          validator.summary = await summarizeFdaLabel(openaiKey, validator.canonical, label);
+          if (validator.summary) validator.summarySource = `FDA label (${label.labelName})`;
+        } else {
+          console.log(`[FDA] no single-ingredient label for ${validator.canonical} — omitting summary`);
+        }
+      } catch (e) {
+        console.warn('[FDA] summary step failed:', e.message);
       }
 
       // 3. Serper image search
@@ -5502,6 +5705,14 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
               imageUrl = u;
               break;
             }
+            if (!imageUrl && candidates.length > 0) {
+              // Surfaces allowlist gaps in the logs so the list can be widened
+              // deliberately rather than by loosening the rule.
+              const hosts = candidates.slice(0, 5).map(c => {
+                try { return new URL(c.imageUrl || c.thumbnailUrl).hostname; } catch (_) { return '?'; }
+              });
+              console.log(`[lookupMedicationImage] no allowlisted image for "${validator.canonical}" among: ${hosts.join(', ')}`);
+            }
           } else {
             const t = await srResp.text().catch(() => '');
             console.warn('[lookupMedicationImage] Serper returned', srResp.status, t.slice(0, 200));
@@ -5521,6 +5732,7 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
           genericName: validator.genericName,
           form: validator.form,
           summary: validator.summary,
+          summarySource: validator.summarySource || null,
           imageUrl: imageUrl,
           source: 'serper',
           fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -5536,6 +5748,7 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         genericName: validator.genericName,
         form: validator.form,
         summary: validator.summary,
+        summarySource: validator.summarySource || null,
         imageUrl: imageUrl,
         source: 'fresh',
         cachedAt: new Date().toISOString(),

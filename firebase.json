@@ -20,7 +20,13 @@
       "functions/**",
       "**/*.md",
       "**/*.txt",
-      "**/*.log"
+      "**/*.log",
+      "test.html",
+      "sampleaddmedication.html",
+      "samplecalendar.html",
+      "samplehome.html",
+      "stats_mobile_fixed.html",
+      "add-medication-voice.html"
     ]
   }
 }
