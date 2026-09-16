@@ -7,18 +7,18 @@
   <title>Everane – Calendar</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* Default to light mode */
+    
     :root {
       --bg:#f6f8fc; --surface:#ffffff; --text:#111827; --muted:#4b5563; --border:rgba(2,6,23,0.1);
       --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
       --radius:20px; --shadow:0 8px 24px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.06);
       --container:1200px;
-      /* compatibility var */
+      
       --danger-color: var(--danger);
     }
 
-    /* Dark mode override */
+    
     @media (prefers-color-scheme: dark) {
       :root {
         --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
@@ -26,7 +26,7 @@
       }
     }
 
-    /* base */
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -42,7 +42,7 @@
     }
     a { color: inherit; text-decoration: none; }
 
-    /* layout */
+    
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
     .sidebar {
@@ -66,7 +66,7 @@
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -171,11 +171,11 @@
       }
     }
 
-    /* headings */
+    
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
     h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
 
-    /* cards */
+    
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -186,7 +186,7 @@
     .card p { color: var(--muted); margin: 0; }
     .card strong { color: var(--text); }
 
-    /* buttons */
+    
     .btn {
       appearance: none; border: 1px solid transparent;
       border-radius: 12px; padding: .7rem 1rem;
@@ -209,7 +209,7 @@
     .btn-danger { background: var(--danger); color: #fff; border: none; }
     .btn-danger:hover { background: color-mix(in oklab, var(--danger) 85%, black); box-shadow: 0 6px 16px rgba(255,107,107,.25); }
 
-    /* === Calendar specific (adapted to dark surface) === */
+    
     .calendar-container{max-width:95%; margin:0 auto; padding:1rem}
     
     @media (max-width: 900px) {
@@ -345,11 +345,11 @@
         margin-bottom: 0;
         line-height: 1;
       }
-      /* Hide medication checklist on mobile */
+      
       .calendar-day .medication-checklist {
         display: none !important;
       }
-      /* Show medication indicator instead */
+      
       .medication-indicator {
         display: block !important;
         width: 4px;
@@ -360,12 +360,12 @@
       }
     }
 
-    /* Medication indicator - hidden on desktop */
+    
     .medication-indicator {
       display: none;
     }
     
-    /* Day details modal for mobile */
+    
     .day-details-modal {
       display: flex;
       position: fixed;
@@ -437,7 +437,7 @@
     .calendar-title{font-size:1.5rem; font-weight:800; color:var(--text); margin:0; cursor:pointer; flex:1; min-width:200px;}
     .calendar-nav{display:flex; gap:.5rem; align-items:center; flex-shrink:0;}
 
-    /* visible, themed calendar nav buttons */
+    
     .nav-btn{background:transparent; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:.6rem 1rem}
     .nav-btn:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
     .mini-calendar-picker{position:relative; display:inline-block}
@@ -459,7 +459,7 @@
     .mini-calendar-day.selected{background:linear-gradient(135deg, var(--brand), var(--brand-600)); color:#fff; font-weight:bold}
     .mini-calendar-day.other-month{color:var(--muted); opacity:0.4}
 
-    /* main grid */
+    
     .calendar-grid{background:var(--surface); border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden}
     .calendar-weekdays{display:grid; grid-template-columns:repeat(7,1fr); background: linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; font-weight:700}
     .weekday{padding:1rem .5rem; text-align:center; font-size:.9rem}
@@ -470,7 +470,7 @@
     .calendar-day:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
     .day-number{font-size:.9rem; font-weight:700; margin-bottom:.25rem}
 
-    /* checklist items inside days */
+    
     .medication-checklist{margin-top:.25rem}
     .medication-item{
       display:flex; align-items:center; justify-content:space-between; padding:.3rem .4rem; margin-bottom:.25rem;
@@ -479,7 +479,7 @@
     }
     .medication-item:hover{background: color-mix(in oklab, var(--brand) 15%, transparent)}
     
-    /* Status colors for medication items */
+    
     .medication-item.status-grey{
       background: color-mix(in oklab, var(--muted) 20%, var(--surface));
       border-color: color-mix(in oklab, var(--muted) 40%, transparent);
@@ -513,7 +513,7 @@
     .medication-plus::before{width:2px; height:12px}
     .medication-plus::after{width:12px; height:2px}
 
-    /* Dose status modal */
+    
     .dose-status-modal {
       display: none;
       position: fixed;
@@ -622,7 +622,7 @@
       box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
     }
 
-    /* Flash animations */
+    
     @keyframes flash-green {
       0%, 100% { background: color-mix(in oklab, var(--success) 30%, var(--surface)); }
       50% { background: color-mix(in oklab, var(--success) 60%, var(--surface)); }
@@ -703,13 +703,11 @@
           <div class="weekday">Sat</div>
         </div>
         <div class="calendar-days" id="calendar-days">
-          <!-- Will be populated by JavaScript -->
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Day Details Modal for Mobile -->
   <div id="day-details-modal" class="day-details-modal">
     <div class="day-details-content">
       <div class="day-details-header">
@@ -720,7 +718,6 @@
     </div>
   </div>
 
-  <!-- Dose Status Modal -->
   <div id="dose-status-modal" class="dose-status-modal">
     <div class="dose-status-content">
       <div class="dose-status-header">
@@ -742,7 +739,6 @@
     </div>
   </div>
 
-  <!-- Schedule and Dose Logs Utilities -->
   <script src="schedule-utils.js"></script>
   <script src="dose-logs-utils.js"></script>
   
@@ -764,7 +760,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Make globally available
     window.auth = auth;
     window.db = db;
     window.collection = collection;
@@ -774,7 +769,6 @@
     window.setDoc = setDoc;
     window.deleteField = deleteField;
 
-    // Global medications array
     window.globalMedications = [];
 
     async function loadMedicationsFromFirebase() {
@@ -789,7 +783,6 @@
         medicationsSnapshot.forEach((doc) => {
           const medData = doc.data();
           
-          // Only include active medications (not deleted)
           if (!medData.deletedStatus) {
             const schedules = medData.schedules || [];
             console.log(`[Calendar] Loading medication: ${medData.name}, schedules:`, schedules.length);
@@ -801,10 +794,10 @@
               id: doc.id,
               name: medData.name,
               dosage: medData.dosage,
-              schedules: schedules, // Load schedules array
+              schedules: schedules,
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
-              createdAt: medData.createdAt || null, // Include createdAt for fallback
+              createdAt: medData.createdAt || null,
             });
           }
         });
@@ -817,9 +810,8 @@
       }
     }
 
-    // Load dose logs - make globally accessible
     let globalDoseLogs = [];
-    window.globalDoseLogs = globalDoseLogs; // Make it globally accessible
+    window.globalDoseLogs = globalDoseLogs;
     
     async function loadDoseLogs() {
       const user = auth.currentUser;
@@ -829,7 +821,7 @@
       }
       try {
         globalDoseLogs = await window.DoseLogsUtils.getDoseLogs(db, user.uid);
-        window.globalDoseLogs = globalDoseLogs; // Update global
+        window.globalDoseLogs = globalDoseLogs;
         return globalDoseLogs;
       } catch (error) {
         console.error('[Calendar] Error loading dose logs:', error);
@@ -838,9 +830,8 @@
       }
     }
 
-    // Get user timezone - make it globally accessible
     let userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
-    window.userTimezone = userTimezone; // Make it globally accessible
+    window.userTimezone = userTimezone;
     
     async function getUserTimezone() {
       const user = auth.currentUser;
@@ -852,16 +843,15 @@
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists() && userDoc.data().timezone) {
           userTimezone = userDoc.data().timezone;
-          window.userTimezone = userTimezone; // Update global
+          window.userTimezone = userTimezone;
         }
       } catch (e) {
         console.warn('[Calendar] Could not get user timezone');
       }
-      window.userTimezone = userTimezone; // Ensure it's set
+      window.userTimezone = userTimezone;
       return userTimezone;
     }
 
-    // Wait for auth and load medications, then render
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         await getUserTimezone();
@@ -875,13 +865,11 @@
         globalDoseLogs = [];
         window.globalDoseLogs = [];
       }
-      // Trigger initial render
       if (typeof window.renderCalendar === 'function') {
         window.renderCalendar();
       }
     });
 
-    // Verification warning
     onAuthStateChanged(auth, async (user) => {
       const warningIcon = document.getElementById('profile-verify-warning');
       if (!warningIcon) return;
@@ -917,12 +905,10 @@
   </script>
 
   <script>
-    // Function to close day modal
     function closeDayModal() {
       document.getElementById('day-details-modal').classList.remove('show');
     }
 
-    // Close mobile menu when clicking on nav links
     document.addEventListener('DOMContentLoaded', () => {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
@@ -980,21 +966,17 @@
 
         dayElement.appendChild(dayNumber);
 
-        // Add medication checklist for this day
         if (isCurrentMonth) {
           const medications = getMedicationsForDate(date);
           if (medications.length > 0) {
             const checklist = createMedicationChecklist(medications, date);
             dayElement.appendChild(checklist);
             
-            // Add indicator for mobile
             const indicator = document.createElement('div');
             indicator.className = 'medication-indicator';
             dayElement.appendChild(indicator);
             
-            // Add click handler for mobile to show modal
             dayElement.addEventListener('click', (e) => {
-              // Only on mobile (window width <= 900px)
               if (window.innerWidth <= 900) {
                 e.stopPropagation();
                 showDayDetailsModal(date, medications);
@@ -1007,10 +989,8 @@
       }
     }
 
-    // Make renderCalendar globally available
     window.renderCalendar = renderCalendar;
 
-    // Get occurrences for a specific date
     function getOccurrencesForDate(date) {
       try {
         const medications = window.globalMedications || [];
@@ -1040,7 +1020,6 @@
           }
           
           try {
-            // Generate occurrences for this date
             const tz = window.userTimezone || userTimezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
             const occurrences = window.ScheduleUtils.generateOccurrencesForMedication(
               med,
@@ -1051,11 +1030,9 @@
             
             console.log(`[Calendar] Generated ${occurrences.length} occurrences for ${med.name} on ${dateString}`);
             
-            // Merge with dose logs
             const doseLogs = window.globalDoseLogs || globalDoseLogs || [];
             const occurrencesWithStatus = window.ScheduleUtils.mergeDoseLogs(occurrences, doseLogs);
             
-            // Filter to only this date (compare date strings)
             occurrencesWithStatus.forEach(occ => {
               if (!occ.dueAt) return;
               
@@ -1066,13 +1043,11 @@
                   return;
                 }
                 
-                // Get date string in local timezone to match
                 const occYear = occDate.getFullYear();
                 const occMonth = String(occDate.getMonth() + 1).padStart(2, '0');
                 const occDay = String(occDate.getDate()).padStart(2, '0');
                 const occDateString = `${occYear}-${occMonth}-${occDay}`;
                 
-                // Also get target date string in same format
                 const targetYear = date.getFullYear();
                 const targetMonth = String(date.getMonth() + 1).padStart(2, '0');
                 const targetDay = String(date.getDate()).padStart(2, '0');
@@ -1095,7 +1070,6 @@
         
         console.log(`[Calendar] Total occurrences for ${dateString}:`, allOccurrences.length);
         
-        // Sort by time
         allOccurrences.sort((a, b) => {
           if (!a.dueAt || !b.dueAt) return 0;
           return new Date(a.dueAt) - new Date(b.dueAt);
@@ -1109,7 +1083,6 @@
     }
 
     function getMedicationsForDate(date) {
-      // Return medications that have occurrences on this date
       const occurrences = getOccurrencesForDate(date);
       const medicationIds = new Set(occurrences.map(occ => occ.medId));
       return window.globalMedications.filter(med => medicationIds.has(med.id));
@@ -1120,14 +1093,12 @@
         const checklist = document.createElement('div');
         checklist.className = 'medication-checklist';
         
-        // Get all occurrences for this date
         const occurrences = getOccurrencesForDate(date);
         
         if (occurrences.length === 0) {
-          return checklist; // Return empty checklist
+          return checklist;
         }
         
-        // Group occurrences by medication and count dose numbers
         const medOccurrences = new Map();
         occurrences.forEach(occ => {
           if (!occ.medId) return;
@@ -1137,7 +1108,6 @@
           medOccurrences.get(occ.medId).push(occ);
         });
         
-        // Count dose numbers per medication (for display)
         const doseCounts = new Map();
         medOccurrences.forEach((occs, medId) => {
           occs.forEach((occ, idx) => {
@@ -1149,7 +1119,6 @@
           });
         });
         
-        // Create medication items from occurrences
         occurrences.forEach(occ => {
           try {
             if (!occ.dueAt) return;
@@ -1169,7 +1138,7 @@
               doseNumber,
               date,
               occ.medication || occ,
-              occ // Pass the occurrence for status
+              occ
             );
             checklist.appendChild(medItem);
           } catch (error) {
@@ -1189,12 +1158,10 @@
     function convertTo12Hour(time24) {
       if (!time24) return time24;
       
-      // Check if it's already in 12-hour format (contains AM/PM)
       if (time24.includes('AM') || time24.includes('PM')) {
         return time24;
       }
       
-      // Parse 24-hour time (HH:MM format)
       const [hours, minutes] = time24.split(':');
       const hour24 = parseInt(hours, 10);
       
@@ -1213,12 +1180,10 @@
       const medItem = document.createElement('div');
       medItem.className = 'medication-item';
       
-      // Check dose status from doseLogs
-      let statusClass = 'status-grey'; // Default: no status
+      let statusClass = 'status-grey';
       let hasExistingLog = false;
       
       if (occurrence) {
-        // Check status from occurrence (already merged with doseLogs)
         if (occurrence.status === 'TAKEN') {
           statusClass = 'status-green';
           hasExistingLog = true;
@@ -1228,7 +1193,6 @@
         }
       }
       
-      // Auto-mark as red if more than 45 minutes past scheduled time (ONLY if no existing log)
       if (!hasExistingLog && statusClass !== 'status-green' && time && occurrence) {
         const now = new Date();
         const dueDate = new Date(occurrence.dueAt);
@@ -1251,7 +1215,6 @@
       
       medInfo.appendChild(medName);
       
-      // Only add time if it exists
       if (time) {
         const medTime = document.createElement('div');
         medTime.className = 'medication-time';
@@ -1263,19 +1226,16 @@
       plusBtn.className = 'medication-plus';
       plusBtn.title = 'Go to notes for this dose';
       
-      // Add click handler to navigate to notes page
       plusBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         
-        // Create date string in local timezone
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const dateString = `${year}-${month}-${day}`;
         
         const timeParam = time ? encodeURIComponent(time) : 'no-time';
-        // Include schedule info for notes
         const medId = medication?.id || '';
         const scheduleId = occurrence?.scheduleId || '';
         const dueAt = occurrence?.dueAt || '';
@@ -1284,7 +1244,6 @@
         window.location.href = url;
       });
       
-      // Add click handler for the medication box (excluding plus button)
       medItem.addEventListener('click', (e) => {
         if (e.target.closest('.medication-plus')) {
           return;
@@ -1293,7 +1252,6 @@
         e.preventDefault();
         e.stopPropagation();
         
-        // Open the dose status modal with occurrence
         openDoseStatusModal(name, time, doseNumber, date, medication, medItem, occurrence);
       });
       
@@ -1315,20 +1273,15 @@
         return;
       }
       
-      // Format date nicely
       const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
       titleEl.textContent = dateStr;
       
-      // Clear previous content
       listEl.innerHTML = '';
       
-      // Collect all medication items with their times for sorting
       const allItems = [];
       
-      // Get occurrences for this date
       const occurrences = getOccurrencesForDate(date);
       
-      // Group by medication and count dose numbers
       const medOccurrences = new Map();
       occurrences.forEach(occ => {
         if (!medOccurrences.has(occ.medId)) {
@@ -1347,7 +1300,6 @@
         });
       });
       
-      // Create medication items from occurrences
       occurrences.forEach(occ => {
         const dueDate = new Date(occ.dueAt);
         const timeStr = dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1381,7 +1333,6 @@
 
       miniCalendarTitle.textContent = `${months[miniCalendarMonth]} ${miniCalendarYear}`;
 
-      // Clear previous days (keep weekday headers)
       const weekdayHeaders = Array.from(miniCalendarGrid.querySelectorAll('.weekday-mini'));
       miniCalendarGrid.innerHTML = '';
       weekdayHeaders.forEach(header => miniCalendarGrid.appendChild(header));
@@ -1474,7 +1425,6 @@
       renderMiniCalendar();
     });
 
-    // Close mini calendar when clicking outside
     document.addEventListener('click', (e) => {
       const miniCalendarPicker = document.querySelector('.mini-calendar-picker');
       const dropdown = document.getElementById('mini-calendar-dropdown');
@@ -1484,17 +1434,14 @@
       }
     });
 
-    // Close day details modal when clicking outside
     document.getElementById('day-details-modal').addEventListener('click', (e) => {
       if (e.target.id === 'day-details-modal') {
         closeDayModal();
       }
     });
 
-    // Initialize calendar
     renderCalendar();
 
-    // Dose Status Modal Functions
     window.closeDoseStatusModal = function() {
       const modal = document.getElementById('dose-status-modal');
       if (modal) {
@@ -1514,7 +1461,6 @@
       
       console.log('[Calendar] Modal elements found:', { modal: !!modal, takenBtn: !!takenBtn, notTakenBtn: !!notTakenBtn });
       
-      // Set modal content
       medNameEl.textContent = name;
       
       const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1523,7 +1469,6 @@
       
       doseNumEl.textContent = `Dose #${doseNumber}`;
       
-      // Check if dose is already taken and show taken time
       const takenTimeEl = document.getElementById('dose-taken-time');
       if (medication && medication.doses) {
         const year = date.getFullYear();
@@ -1549,23 +1494,18 @@
         takenTimeEl.style.display = 'none';
       }
       
-      // Helper function to update stock based on dose status change
       const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
         if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
           console.log('[Calendar] No bottles to update stock for');
           return medData.bottles || [];
         }
 
-        // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
         let stockChange = 0;
         if (previousTaken !== true && newTaken === true) {
-          // Going from not-taken (or null) to taken: subtract dosage
           stockChange = -dosage;
         } else if (previousTaken === true && newTaken === false) {
-          // Going from taken to not-taken: add dosage back
           stockChange = dosage;
         }
-        // If status doesn't change or goes from not-taken to not-taken: no change
 
         if (stockChange === 0) {
           console.log('[Calendar] No stock change needed (status unchanged or not-taken to not-taken)');
@@ -1574,7 +1514,6 @@
 
         console.log(`[Calendar] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
 
-        // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
         const now = new Date();
         const parsedBottles = medData.bottles.map((bottleStr, index) => {
           const parts = bottleStr.split('/');
@@ -1592,15 +1531,12 @@
           };
         }).filter(b => b !== null);
 
-        // Sort by expiration date (earliest first)
         parsedBottles.sort((a, b) => a.expiration - b.expiration);
 
-        // Find the first bottle that hasn't expired and has quantity
         let activeBottle = parsedBottles.find(b => 
           b.expiration >= now && (b.quantity === null || b.quantity > 0)
         );
 
-        // If no unexpired bottle, use the earliest one (even if expired)
         if (!activeBottle && parsedBottles.length > 0) {
           activeBottle = parsedBottles[0];
         }
@@ -1612,21 +1548,18 @@
 
         console.log(`[Calendar] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
 
-        // Update the quantity
         const newBottles = [...medData.bottles];
         const bottleParts = newBottles[activeBottle.index].split('/');
         
         if (bottleParts.length >= 4) {
           let newQuantity = activeBottle.quantity;
           if (newQuantity === null) {
-            // If quantity was N/A, we can't track it, so don't update
             console.log('[Calendar] Bottle quantity is N/A, cannot update stock');
             return medData.bottles;
           }
           
-          newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+          newQuantity = Math.max(0, newQuantity + stockChange);
           
-          // Rebuild bottle string with updated quantity
           const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
           newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
           
@@ -1636,8 +1569,6 @@
         return newBottles;
       };
 
-      // Handler to save dose to Firebase
-      // Handler to save dose to doseLogs
       const saveDose = async (taken) => {
         console.log('[Calendar] saveDose called with taken:', taken);
         try {
@@ -1659,7 +1590,6 @@
           
           const occurrence = window.currentDoseOccurrence;
           
-          // Get previous status
           const existingLog = window.DoseLogsUtils.getDoseLogForOccurrence(
             globalDoseLogs,
             medication.id,
@@ -1670,7 +1600,6 @@
           const previousTaken = previousStatus === 'TAKEN';
           const statusChanged = previousStatus !== (taken ? 'TAKEN' : 'MISSED');
           
-          // Save to doseLogs
           const newStatus = taken ? 'TAKEN' : 'MISSED';
           await window.DoseLogsUtils.saveDoseLog(window.db, user.uid, {
             medId: medication.id,
@@ -1680,7 +1609,6 @@
             loggedAt: new Date().toISOString()
           });
           
-          // Update stock
           const medDocRef = window.doc(window.db, "users", user.uid, "medications", medication.id);
           const medDoc = await window.getDoc(medDocRef);
           if (medDoc.exists()) {
@@ -1690,7 +1618,6 @@
             await window.setDoc(medDocRef, { bottles: updatedBottles }, { merge: true });
           }
           
-          // Reload dose logs and refresh
           globalDoseLogs = await loadDoseLogs();
         window.globalDoseLogs = globalDoseLogs;
           
@@ -1702,23 +1629,20 @@
         }
       };
       
-      // Flash animation
       const triggerFlash = (color) => {
         medItem.classList.remove('flash-green', 'flash-red', 'status-grey', 'status-green', 'status-red');
-        void medItem.offsetWidth; // Force reflow
+        void medItem.offsetWidth;
         medItem.classList.add(`flash-${color}`, `status-${color}`);
         setTimeout(() => {
           medItem.classList.remove(`flash-${color}`);
         }, 1000);
       };
       
-      // Remove old event listeners by cloning buttons
       const newTakenBtn = takenBtn.cloneNode(true);
       takenBtn.parentNode.replaceChild(newTakenBtn, takenBtn);
       const newNotTakenBtn = notTakenBtn.cloneNode(true);
       notTakenBtn.parentNode.replaceChild(newNotTakenBtn, notTakenBtn);
       
-      // Taken button handler
       newTakenBtn.addEventListener('click', async (e) => {
         console.log('[Calendar] Taken button clicked');
         e.preventDefault();
@@ -1730,14 +1654,12 @@
         }
         closeDoseStatusModal();
         
-        // Reload dose logs and refresh calendar
         globalDoseLogs = await loadDoseLogs();
         window.globalDoseLogs = globalDoseLogs;
         renderCalendar();
         console.log('[Calendar] Calendar re-rendered after marking as taken');
       });
       
-      // Not Taken button handler
       newNotTakenBtn.addEventListener('click', async (e) => {
         console.log('[Calendar] Not Taken button clicked');
         e.preventDefault();
@@ -1749,17 +1671,14 @@
         }
         closeDoseStatusModal();
         
-        // Reload dose logs and refresh calendar
         globalDoseLogs = await loadDoseLogs();
         window.globalDoseLogs = globalDoseLogs;
         renderCalendar();
         console.log('[Calendar] Calendar re-rendered after marking as not taken');
       });
       
-      // Show modal
       modal.classList.add('show');
       
-      // Close on background click
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
           closeDoseStatusModal();

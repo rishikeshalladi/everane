@@ -1,11 +1,6 @@
-// Everane Service Worker - handles Web Push + notification clicks.
 
 const SW_VERSION = 'everane-sw-v3';
 
-// In-memory cache of the user's Firebase ID token.
-// Pages push fresh tokens to the SW via `EVERANE_SET_ID_TOKEN` messages.
-// Fallback: if the SW wakes up with no client open, we use this cache.
-// ID tokens are valid for 60 min; Firebase clients refresh them automatically.
 let cachedIdToken = null;
 let cachedIdTokenExpiresAt = 0;
 
@@ -17,14 +12,11 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// Pages can push a fresh ID token into the SW so that notificationclick can
-// authenticate even when no app window is currently open.
 self.addEventListener('message', (event) => {
   const msg = event && event.data;
   if (!msg || typeof msg !== 'object') return;
   if (msg.type === 'EVERANE_SET_ID_TOKEN' && typeof msg.idToken === 'string') {
     cachedIdToken = msg.idToken;
-    // Be conservative — assume 55 min of remaining validity
     cachedIdTokenExpiresAt = Date.now() + (typeof msg.expiresInMs === 'number' ? msg.expiresInMs : 55 * 60 * 1000);
   } else if (msg.type === 'EVERANE_CLEAR_ID_TOKEN') {
     cachedIdToken = null;
@@ -52,11 +44,7 @@ self.addEventListener('push', (event) => {
     tag: payload.tag || undefined,
     renotify: payload.renotify === true,
     requireInteraction: payload.requireInteraction === true,
-    // Vibrate pattern (ms): vibrate, pause, vibrate, pause, vibrate.
-    // Helps make the notification noticeable on Android even with the screen off.
     vibrate: payload.vibrate || [200, 100, 200, 100, 200],
-    // Allow the OS to play the default notification sound (it does anyway, but
-    // marking silent:false explicitly prevents Android from ever silencing).
     silent: false,
     timestamp: Date.now(),
     data: payload.data || {},
@@ -66,13 +54,11 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Handle action buttons AND the notification body click.
 self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data || {};
   const action = event.action || '';
   event.notification.close();
 
-  // Action button -> Mark dose as Taken / Not Taken directly, without opening the app.
   if ((action === 'taken' || action === 'not_taken') && data.medId && data.doseDate && data.doseNumber) {
     event.waitUntil((async () => {
       try {
@@ -83,7 +69,6 @@ self.addEventListener('notificationclick', (event) => {
           doseTime: data.doseTime || '',
           taken: action === 'taken'
         });
-        // Show a small confirmation notification so the user knows it worked.
         await self.registration.showNotification(
           action === 'taken' ? `✓ Marked as Taken` : `✓ Marked as Not Taken`,
           {
@@ -96,7 +81,6 @@ self.addEventListener('notificationclick', (event) => {
           }
         );
       } catch (err) {
-        // Fall back to opening the email-action page so the user can mark manually.
         const url = data.url || '/home.html';
         if (self.clients.openWindow) await self.clients.openWindow(url);
       }
@@ -104,7 +88,6 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Default click -> open the app to the relevant page.
   const actionUrl = data.url || '/home.html';
   event.waitUntil((async () => {
     const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -114,11 +97,11 @@ self.addEventListener('notificationclick', (event) => {
         if (url.origin === self.location.origin) {
           await client.focus();
           if ('navigate' in client) {
-            try { await client.navigate(actionUrl); } catch (e) { /* ignore */ }
+            try { await client.navigate(actionUrl); } catch (e) { }
           }
           return;
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) { }
     }
     if (self.clients.openWindow) {
       await self.clients.openWindow(actionUrl);
@@ -127,15 +110,8 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('pushsubscriptionchange', (event) => {
-  // Browser invalidated the subscription; the app will re-subscribe next visit.
 });
 
-/**
- * Mark a dose's taken/not-taken status from within the service worker.
- * Uses the Firebase callable endpoint `markDoseFromPush`. Auth comes from
- * an ID token — first tries any open app window (freshest), then falls back
- * to the cached token from a previous session.
- */
 async function markDoseFromPush({ medId, doseDate, doseNumber, doseTime, taken }) {
   const idToken = await getIdToken();
   if (!idToken) throw new Error('no-auth-client');
@@ -154,7 +130,6 @@ async function markDoseFromPush({ medId, doseDate, doseNumber, doseTime, taken }
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    // If the token is expired/invalid, clear our cache so we don't keep trying it
     if (res.status === 401 || res.status === 403) {
       cachedIdToken = null;
       cachedIdTokenExpiresAt = 0;
@@ -164,13 +139,6 @@ async function markDoseFromPush({ medId, doseDate, doseNumber, doseTime, taken }
   return res.json();
 }
 
-/**
- * Get a Firebase ID token to authenticate SW-side calls.
- * Order of preference:
- *   1. Ask any currently-open client window for a fresh token (best)
- *   2. Use our cached token if still within its validity window
- * Returns null if neither is available.
- */
 async function getIdToken() {
   const fromClient = await getIdTokenFromAnyClient();
   if (fromClient) {
@@ -184,11 +152,6 @@ async function getIdToken() {
   return null;
 }
 
-/**
- * Post a message to any client window asking for the current user's
- * Firebase ID token. Uses a MessageChannel so we can await the reply.
- * Returns null if no client is open or replies in time.
- */
 async function getIdTokenFromAnyClient(timeoutMs = 2500) {
   const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   if (clients.length === 0) return null;

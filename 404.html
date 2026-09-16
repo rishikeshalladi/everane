@@ -44,7 +44,7 @@
     a { color: inherit; }
     ::selection { background: var(--amber); color: #fff; }
 
-    /* ===== TICKER ===== */
+    
     .ticker {
       background: var(--ink); color: var(--paper);
       font-family: var(--mono); font-size: 0.72rem;
@@ -59,7 +59,7 @@
     .ticker-track span b { color: var(--amber); font-weight: 600; }
     @keyframes scrollX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-    /* ===== NAV (identical to index.html) ===== */
+    
     nav {
       position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
@@ -91,7 +91,7 @@
     .mobile-toggle { display: none; background: none; border: 2px solid var(--line); border-radius: 3px; cursor: pointer; padding: 8px 10px; }
     .mobile-toggle span { display: block; width: 20px; height: 2px; background: var(--ink); margin: 4px 0; }
 
-    /* ===== LAYOUT ===== */
+    
     .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; width: 100%; }
 
     main {
@@ -103,7 +103,7 @@
       position: relative;
     }
 
-    /* faint grid backdrop to match the editorial feel */
+    
     main::before {
       content: '';
       position: absolute; inset: 0;
@@ -192,7 +192,7 @@
       color: var(--muted);
     }
 
-    /* ===== FOOTER ===== */
+    
     footer {
       border-top: 2px solid var(--line);
       background: var(--paper);
@@ -220,7 +220,6 @@
   </style>
 </head>
 <body>
-  <!-- TICKER (identical to index.html) -->
   <div class="ticker">
     <div class="ticker-track">
       <span>Everane <b>//</b> Your medication, simplified</span>
@@ -232,7 +231,6 @@
     </div>
   </div>
 
-  <!-- NAV (identical to index.html) -->
   <nav>
     <a href="/index.html" class="nav-logo">
       <img src="/logo.svg" alt="Everane">
@@ -251,7 +249,6 @@
     </button>
   </nav>
 
-  <!-- 404 CONTENT -->
   <main>
     <div class="wrap">
       <div class="err">
@@ -271,7 +268,6 @@
     </div>
   </main>
 
-  <!-- FOOTER -->
   <footer>
     <div class="wrap foot-inner">
       <span>&copy; <span id="year"></span> Everane</span>
@@ -284,14 +280,12 @@
   </footer>
 
   <script>
-    // Show the path the user actually tried to reach.
     (function () {
       var y = document.getElementById('year');
       if (y) y.textContent = new Date().getFullYear();
       var pathEl = document.getElementById('err-path');
       if (pathEl) {
         var p = (window.location.pathname || '/') + (window.location.search || '');
-        // Keep it readable and avoid reflecting anything weird verbatim.
         pathEl.textContent = 'Requested: ' + p.slice(0, 80);
       }
     })();

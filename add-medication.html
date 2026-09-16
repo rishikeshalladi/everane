@@ -20,7 +20,7 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #020617;
         --muted-strong: #334155;
       }
@@ -82,7 +82,7 @@
       transform: translateY(-1px);
       box-shadow: 0 5px 15px rgba(255, 107, 107, .25);
     }
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -205,7 +205,7 @@
       }
     }
 
-/* === Step 4: Classification styles === */
+
 .color-picker-wrap {
   display: flex;
   flex-direction: column;
@@ -397,7 +397,7 @@
     }
     ::-webkit-scrollbar-track { background: transparent; }
 
-/* === Page-specific additions to match auth/welcome/home === */
+
 .form-group input[type="text"],
 .form-group input[type="time"],
 .form-group input[type="date"],
@@ -463,9 +463,9 @@
 
 
 
-/* === Fixes: white dynamic time fields & Back button visibility === */
 
-/* Ensure ANY dynamically created inputs/selects inherit dark theme */
+
+
 input[type="time"],
 input[type="text"],
 input[type="number"],
@@ -487,7 +487,7 @@ select:focus {
   border-color: color-mix(in oklab, var(--brand) 40%, transparent);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
 }
-/* Make native pickers readable in dark mode (Safari/Chrome) */
+
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(.85);
@@ -499,7 +499,7 @@ select, option {
 }
 
 
-/* Make "Back" look like the primary "Continue" button */
+
 .btn-secondary,
 button.back, .back-btn, .btn.back, a.back, #back, #back-btn {
   color: #fff !important;
@@ -512,7 +512,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   background: linear-gradient(180deg, var(--brand-600), var(--brand-700)) !important;
 }
 
-/* Mobile form optimizations */
+
 @media (max-width: 640px) {
   .container { padding-inline: 1rem; }
   .content { padding-block: 1.5rem; padding-top: 4.5rem; }
@@ -585,8 +585,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   .toggle-btn {
     padding: .5rem .75rem;
     font-size: 0.85rem;
-    /* Keep each day block the same width (so Saturday doesn't stretch on the last row),
-       while the row stays centered. */
+    
     flex: 0 0 calc(33.333% - 0.3rem);
     max-width: calc(33.333% - 0.3rem);
   }
@@ -603,7 +602,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   }
 }
 
-/* ========= Custom reminder-channel picker ========= */
+
 .channel-group {
   display: grid;
   grid-template-columns: 1fr;
@@ -712,7 +711,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
-/* Checked state */
+
 .channel-card:has(input:checked) {
   border-color: var(--accent);
   background: linear-gradient(135deg,
@@ -738,7 +737,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   color: var(--text);
 }
 
-/* Disabled (e.g. push not supported on this browser) */
+
 .channel-card:has(input:disabled) {
   opacity: .5;
   cursor: not-allowed;
@@ -748,7 +747,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   border-color: var(--border);
 }
 
-/* Subtle pulse when first checked */
+
 @keyframes channelCheckPop {
   0%   { transform: scale(.6); }
   60%  { transform: scale(1.15); }
@@ -758,7 +757,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   animation: channelCheckPop .35s ease both;
 }
 
-/* Yellow highlight for low-confidence fields populated by Picture Add. */
+
 .scan-uncertain {
   background: color-mix(in oklab, #facc15 22%, transparent) !important;
   border-color: #facc15 !important;
@@ -780,7 +779,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   letter-spacing: 0.02em;
   vertical-align: middle;
 }
-/* Blue source-attribution badge on fields populated by Picture Add. */
+
 .scan-source-badge {
   display: inline-block;
   margin-left: 0.4rem;
@@ -828,7 +827,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       <h1 id="form-title">Add Medication</h1>
       <form id="med-form" novalidate>
 
-        <!-- STEP 1: Basic Medication Info -->
         <div id="step-1" class="form-step active">
           <div class="form-group">
             <label>Name of Medication <span style="color: #ff0000; font-weight: bold;">*</span></label>
@@ -912,7 +910,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
         </div>
 
-        <!-- STEP 2: Add Dose Schedules -->
         <div id="step-2" class="form-step">
           <h2>Add Dose Schedules</h2>
           <p class="muted">Create one or more schedules for when this medication should be taken.</p>
@@ -930,7 +927,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               </select>
             </div>
 
-            <!-- WEEKLY Schedule Fields -->
             <div id="weekly-fields" style="display: none;">
               <div class="form-group">
                 <label>Day of Week <span style="color: red;">*</span></label>
@@ -964,7 +960,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               </div>
             </div>
 
-            <!-- INTERVAL Schedule Fields -->
             <div id="interval-fields" style="display: none;">
               <div class="form-group">
                 <label>Interval <span style="color: red;">*</span></label>
@@ -1000,7 +995,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
         </div>
 
-        <!-- STEP 3 -->
         <div id="step-3" class="form-step">
           <h2>Add Bottles</h2>
           <p>Add the expiration date and number of pills left of each bottle.</p>
@@ -1013,12 +1007,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
         </div>
 
-        <!-- STEP 4: Classifications (all optional) -->
         <div id="step-4" class="form-step">
           <h2>Classifications</h2>
           <p class="muted">Optionally describe your medication's appearance. All fields are optional.</p>
 
-          <!-- Color -->
           <div class="form-group">
             <label>Color</label>
             <div class="color-picker-wrap">
@@ -1030,7 +1022,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             </div>
           </div>
 
-          <!-- Shape -->
           <div class="form-group">
             <label>Shape</label>
             <div class="shape-grid" id="shape-grid">
@@ -1065,7 +1056,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             </div>
           </div>
 
-          <!-- Size -->
           <div class="form-group">
             <label>Size</label>
             <select id="med-size">
@@ -1078,7 +1068,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             </select>
           </div>
 
-          <!-- Texture -->
           <div class="form-group">
             <label>Texture</label>
             <select id="med-texture">
@@ -1096,7 +1085,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             </select>
           </div>
 
-          <!-- Form -->
           <div class="form-group">
             <label>Form</label>
             <select id="med-form-type">
@@ -1121,7 +1109,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     </div>
   </div>
 
-  <!-- Bottle Popup (used for both Add and Edit) -->
   <div id="bottle-popup">
     <div class="popup-content">
       <h3 id="bottle-popup-title">Add Bottle</h3>
@@ -1136,7 +1123,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   </div>
 
   <script type="module">
-    // Import Firebase SDKs
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, addDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -1150,12 +1136,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       appId: "1:847799899373:web:170bf9c693a78ec42168e4"
     };
 
-    // Initialize Firebase only if not already initialized
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Make auth, db, and Firebase functions globally available
     window.auth = auth;
     window.db = db;
     window.doc = doc;
@@ -1167,7 +1151,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     window.addDoc = addDoc;
     window.deleteField = deleteField;
 
-    // Set up auth ready promise
     window.authReady = new Promise((resolve) => {
       onAuthStateChanged(auth, (user) => {
         console.log('[Add-Medication] Auth state changed:', user ? user.email : 'No user');
@@ -1179,9 +1162,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
   <script>
     const params    = new URLSearchParams(window.location.search);
-    const editIdx   = params.has('edit') ? params.get('edit') : null; // Keep as string for Firebase ID
+    const editIdx   = params.has('edit') ? params.get('edit') : null;
     const renewIdx  = params.has('renew') ? +params.get('renew') : null;
-    const isVoice   = params.has('voice') || params.get('source') === 'voice'; // v2: check both param names
+    const isVoice   = params.has('voice') || params.get('source') === 'voice';
     const storageKey= 'medications';
 
     console.log('[Add-Medication] Page loaded. URL:', window.location.href);
@@ -1189,19 +1172,16 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     console.log('[Add-Medication] isVoice:', isVoice);
     console.log('[Add-Medication] localStorage has voiceMedicationData:', !!localStorage.getItem('voiceMedicationData'));
 
-    // Check for voice data from localStorage
     let voiceData = null;
     if (isVoice) {
       console.log('[Add-Medication] isVoice is true. Checking localStorage for voiceMedicationData.');
       const voiceDataStr = localStorage.getItem('voiceMedicationData');
       if (voiceDataStr) {
-        console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...'); // Log first 100 chars
+        console.log('[Add-Medication] Found voiceMedicationData in localStorage.', voiceDataStr.substring(0, 100) + '...');
         try {
           voiceData = JSON.parse(voiceDataStr);
           console.log('[Add-Medication] Successfully parsed voiceData:', voiceData);
-          // Expose to the med-image bootstrap script so it can mount the saved image.
           try { window.__voiceMedicationDataForImage = voiceData; } catch (_) {}
-          // Clear it after reading
           localStorage.removeItem('voiceMedicationData');
           console.log('[Add-Medication] Cleared voiceMedicationData from localStorage.');
         } catch (e) {
@@ -1212,9 +1192,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
     }
 
-    // Check for SCAN data (Picture Add flow) from sessionStorage.
-    // The scan page (scan-medication.html) writes { source:'scan', data:{...} }.
-    // Notification preferences are intentionally NEVER pre-filled from a scan.
     const isScan = params.get('source') === 'scan';
     let scanData = null;
     if (isScan) {
@@ -1233,21 +1210,17 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
     }
 
-    // Steps
     const steps = ['step-1','step-2','step-3','step-4'].map(id=>document.getElementById(id));
     function showStep(n){ steps.forEach((el,i)=>el.classList.toggle('active', i+1===n)); }
 
-    // Title for edit or renew
     if (editIdx !== null) {
       document.getElementById('form-title').textContent = 'Edit Medication';
     } else if (renewIdx !== null) {
       document.getElementById('form-title').textContent = 'Renew Medication';
     }
 
-    // Schedule management
-    let schedules = []; // Array of schedule objects
+    let schedules = [];
 
-    // Schedule type toggle
     const scheduleTypeSelect = document.getElementById('schedule-type');
     const weeklyFields = document.getElementById('weekly-fields');
     const intervalFields = document.getElementById('interval-fields');
@@ -1258,7 +1231,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       intervalFields.style.display = type === 'INTERVAL' ? 'block' : 'none';
     });
 
-    // Render schedules list
     function renderSchedulesList() {
       const schedulesList = document.getElementById('schedules-list');
       schedulesList.innerHTML = '';
@@ -1305,13 +1277,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       });
     }
 
-    // Make removeSchedule available globally
     window.removeSchedule = function(index) {
       schedules.splice(index, 1);
       renderSchedulesList();
     };
 
-    // Add schedule button
     document.getElementById('add-schedule-btn').addEventListener('click', () => {
       const type = scheduleTypeSelect.value;
       if (!type) {
@@ -1355,10 +1325,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           return;
         }
 
-        // Create anchorDateTime with just date and time (no seconds/milliseconds)
-        const anchorDateTime = new Date(`${anchorDate}T${anchorTime}:00`); // Add :00 for seconds
+        const anchorDateTime = new Date(`${anchorDate}T${anchorTime}:00`);
         schedule.interval = { value: intervalValue, unit: intervalUnit };
-        // Format as YYYY-MM-DDTHH:MM:SS (without milliseconds)
         const year = anchorDateTime.getFullYear();
         const month = String(anchorDateTime.getMonth() + 1).padStart(2, '0');
         const day = String(anchorDateTime.getDate()).padStart(2, '0');
@@ -1371,7 +1339,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       schedules.push(schedule);
       renderSchedulesList();
 
-      // Reset form
       scheduleTypeSelect.value = '';
       weeklyFields.style.display = 'none';
       intervalFields.style.display = 'none';
@@ -1387,13 +1354,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       document.getElementById('interval-end-date').value = '';
     });
 
-    // Error helpers
     function clearErr(id){ const el = document.getElementById(id); if (el) el.textContent=''; }
     function showErr(id,msg){ const el = document.getElementById(id); if (el) el.textContent=msg; }
 
-    // --- Reminder channel helpers ---------------------------------------
-    // New model: array of strings ["email","sms","push"], any combination (or []).
-    // Legacy: reminderMethod single string "E"|"S"|"ES"|"N".
     function getSelectedChannels(){
       return Array.from(document.querySelectorAll('.reminder-channel'))
         .filter(cb => cb.checked)
@@ -1423,15 +1386,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
     }
 
-    // Handle push checkbox: ask for permission + subscribe the first time it's checked
     (function wirePushCheckbox(){
       const cb = document.getElementById('reminder-channel-push');
       const status = document.getElementById('push-status');
       if (!cb) return;
       const P = window.Everane && window.Everane.Push;
 
-      // `status` is the `.channel-card__sub` subtitle inside the card.
-      // We display a clean phrase there, not a prefixed fragment.
       const DEFAULT_SUB = 'Native alert on this device';
       function setStatus(msg){ if (status) status.textContent = msg || DEFAULT_SUB; }
 
@@ -1456,21 +1416,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         return;
       }
 
-      // If this device is already subscribed to push, just update the subtitle —
-      // do NOT auto-check the box. Each new medication should start with all
-      // channels unchecked; the checkbox is the user's per-medication choice.
-      // (When editing an existing medication, setSelectedChannels() will set the
-      // checkbox state based on that med's reminderChannels.)
       P.getCurrentSubscription().then(sub => {
         if (sub) setStatus('Enabled on this device');
       });
 
       cb.addEventListener('change', async () => {
         if (!cb.checked) {
-          // Unchecking the box should ONLY remove push from this medication's
-          // channels — it must NOT unsubscribe this device, because other
-          // medications may still want to receive push on this device.
-          // Just update the status label and let the form save the new channels.
           const sub = await P.getCurrentSubscription();
           setStatus(sub ? 'Enabled on this device' : DEFAULT_SUB);
           return;
@@ -1481,8 +1432,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           showIosInstallModal();
           return;
         }
-        // If this device is already subscribed, no permission prompt needed —
-        // just confirm the status. Otherwise trigger the browser permission flow.
         const existing = await P.getCurrentSubscription();
         if (existing) {
           setStatus('Enabled on this device');
@@ -1495,7 +1444,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         } else {
           cb.checked = false;
           setStatus(reasonMessage(result));
-          // Full detail for debugging
           console.warn('[Push] subscribe failed:', result);
         }
       });
@@ -1506,8 +1454,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       if (modal) { modal.style.display = 'flex'; return; }
       modal = document.createElement('div');
       modal.id = 'ios-install-modal';
-      // Use CSS vars so the modal adapts to the page's current theme (light/dark).
-      // Fallbacks keep it readable even if the host page omits the variables.
       modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;';
       modal.innerHTML =
         '<div style="background:var(--surface,#fff);color:var(--text,#1f2933);border:1px solid var(--border,transparent);border-radius:20px;max-width:420px;width:100%;padding:24px;font-family:inherit;box-shadow:0 24px 60px -8px rgba(8,12,24,0.55);">' +
@@ -1525,7 +1471,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       modal.querySelector('#ios-install-close').onclick = () => { modal.style.display='none'; };
     }
 
-    // Validate Step 1 (name, dosage, reminder)
     function valid1(){
       clearErr('name-error');
       clearErr('dosage-error');
@@ -1542,11 +1487,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         showErr('dosage-error','Dosage must be \u22651');
         ok = false;
       }
-      // Reminder channels are optional — a user can pick "None" by leaving all unchecked.
       return ok;
     }
 
-    // Validate Step 2 (schedules)
     function valid2(){
       clearErr('schedule-error');
       if (schedules.length === 0) {
@@ -1556,20 +1499,15 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       return true;
     }
 
-    // Wizard navigation
     document.getElementById('to-step-2').onclick    = ()=> valid1() && showStep(2);
     document.getElementById('back-to-step-1').onclick= ()=> showStep(1);
     document.getElementById('to-step-3').onclick    = ()=> valid2() && showStep(3);
     document.getElementById('back-to-step-2').onclick= ()=> showStep(2);
     document.getElementById('to-step-4').onclick    = ()=> {
-      // Proceeding the normal way means the user is tracking bottles
-      // (whether or not they added any yet), so clear the skip flag.
       skipBottleTracking = false;
       initColorCanvas();
       showStep(4);
     };
-    // "Proceed with no bottles": user opts out of bottle tracking entirely.
-    // Clear any bottles they may have entered, set the flag, and move on.
     document.getElementById('skip-bottles').onclick = ()=> {
       skipBottleTracking = true;
       bottles = [];
@@ -1579,16 +1517,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     };
     document.getElementById('back-to-step-3').onclick= ()=> showStep(3);
 
-    // Bottle popup (Add OR Edit) + central renderer.
-    // popupMode is either { kind: 'add' } or { kind: 'edit', index: N }.
     let popupResolve, popupMode = null, bottles = [];
-    // When true, the user explicitly chose "Proceed with no bottles" and should
-    // NOT receive add-a-bottle / low-stock reminders for this medication.
     let skipBottleTracking = false;
 
-    // Normalize an expiration value coming from any source into the
-    // <input type="date"> format ("YYYY-MM-DD"). Accepts: ISO YYYY-MM-DD,
-    // MM/DD/YYYY (from scan + saved meds), or empty.
     function normalizeBottleExpForInput(v) {
       if (!v) return '';
       const s = String(v).trim();
@@ -1601,13 +1532,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
       return '';
     }
-    // For display in the bottle card.
     function displayBottleExp(v) {
       if (!v) return '(no expiration set)';
       const s = String(v).trim();
       const iso = normalizeBottleExpForInput(s);
       if (!iso) return s;
-      // Show as MM/DD/YYYY for readability.
       const [y, m, d] = iso.split('-');
       return `${parseInt(m,10)}/${parseInt(d,10)}/${y}`;
     }
@@ -1691,7 +1620,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } else {
         bottles.push({ expiration: exp, quantity: qty });
       }
-      // Adding a real bottle means the user IS tracking bottles after all.
       skipBottleTracking = false;
       renderBottlesList();
       document.getElementById('bottle-popup').style.display = 'none';
@@ -1699,7 +1627,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       if (typeof popupResolve === 'function') { popupResolve(); popupResolve = null; }
     };
 
-    // Close mobile menu when clicking on nav links
     document.addEventListener('DOMContentLoaded', async ()=>{
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
@@ -1715,10 +1642,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       if (editIdx !== null) {
         console.log('[Add-Medication] Loading medication for edit, ID:', editIdx);
 
-        // Wait for auth to be ready
         await window.authReady;
 
-        // Load medication directly from Firebase using the ID
         const user = window.currentUser;
         if (!user) {
           console.error('[Add-Medication] No user logged in');
@@ -1742,12 +1667,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           const medData = medDocSnap.data();
           console.log('[Add-Medication] Loaded medication data:', medData);
 
-          // Check if medication has new schedules format, or needs migration from old format
           let medSchedules = [];
           if (medData.schedules && Array.isArray(medData.schedules) && medData.schedules.length > 0) {
             medSchedules = medData.schedules;
           } else if (medData.daysOfWeek || medData.times) {
-            // Migrate old format using ScheduleUtils
             if (typeof ScheduleUtils !== 'undefined' && ScheduleUtils.migrateOldFormat) {
               medSchedules = ScheduleUtils.migrateOldFormat(medData);
               console.log('[Add-Medication] Migrated old format to schedules:', medSchedules);
@@ -1783,7 +1706,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             imageSource: medData.imageSource || null,
             imageFetchedAt: medData.imageFetchedAt || null
           };
-          // Expose the loaded med to the med-image bootstrap script (edit path).
           try { window.__editLoadedMedForImage = med; } catch (_) {}
 
           console.log('[Add-Medication] Converted medication for form:', med);
@@ -1793,22 +1715,17 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           return;
         }
       } else if (renewIdx !== null) {
-        // Wait for auth to be ready for renew as well
         await window.authReady;
 
         sourceArray = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
         med = sourceArray[renewIdx];
       } else if (voiceData) {
-        // Handle voice data - pre-fill form with voice conversation data
         console.log('[Add-Medication] Voice data received:', voiceData);
 
-        // Voice data now provides schedules[] array directly
         let voiceSchedules = [];
         if (Array.isArray(voiceData.schedules) && voiceData.schedules.length > 0) {
-          // AI voice provides schedules in the correct format
           voiceSchedules = voiceData.schedules.map(s => {
             const schedule = { ...s };
-            // Generate scheduleId if missing
             if (!schedule.scheduleId) {
               schedule.scheduleId = 'sch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             }
@@ -1816,7 +1733,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           });
           console.log('[Add-Medication] Voice schedules (new format):', voiceSchedules);
         } else if (voiceData.days && voiceData.times) {
-          // Legacy fallback: convert old days/times format to WEEKLY schedules
           const dayNameToNum = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
           const days = Array.isArray(voiceData.days) ? voiceData.days : [];
           const times = Array.isArray(voiceData.times) ? voiceData.times : [];
@@ -1838,14 +1754,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           console.log('[Add-Medication] Voice schedules (legacy converted):', voiceSchedules);
         }
 
-        // Extract numeric dosage from voice string like "2 pills", "1 tablet", "500 mg"
         let voiceDosage = '';
         if (voiceData.dosage) {
           const dm = String(voiceData.dosage).match(/[\d.]+/);
           voiceDosage = dm ? dm[0] : voiceData.dosage;
         }
 
-        // Voice data may supply reminderChannels (new, array) or reminder (old, string).
         let voiceChannels = [];
         if (Array.isArray(voiceData.reminderChannels)) {
           voiceChannels = voiceData.reminderChannels.slice();
@@ -1863,7 +1777,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         };
         console.log('[Add-Medication] Converted voice data to medication object:', med);
 
-        // Show a message that this came from voice
         const voiceNotice = document.createElement('div');
         voiceNotice.style.cssText = 'background: #10b981; color: white; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;';
         voiceNotice.textContent = '\u2713 Form pre-filled from voice conversation. Please review and edit as needed.';
@@ -1872,18 +1785,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           container.insertBefore(voiceNotice, container.firstChild);
         }
       } else if (scanData) {
-        // ── PICTURE ADD: pre-fill from extractMedicationFromImages response ──
-        // Schema from the function:
-        //   { name, genericName, dosage, dosageQuantity, schedules:[{type,days,times,every,unit}],
-        //     startDate, endDate, bottles:[{expiration,quantity}], notes,
-        //     confidence:{field:0..1}, ambiguities:[strings] }
         console.log('[Add-Medication] Scan data received:', scanData);
 
-        // Build per-(day,time) entries in the form's expected shape:
-        //   {scheduleId, type:'WEEKLY', weekday:0-6, time:'HH:MM', everyWeeks:1, startDate, endDate}
-        // or for intervals:
-        //   {scheduleId, type:'INTERVAL', time:'HH:MM', interval:{unit:'HOUR'|'DAY'|'WEEK', value:N},
-        //    anchorDateTime, startDate, endDate}
         const DAY_TO_NUM = { sunday:0, monday:1, tuesday:2, wednesday:3, thursday:4, friday:5, saturday:6 };
         const UNIT_MAP   = { hours:'HOUR', days:'DAY', weeks:'WEEK' };
         const sd = scanData.startDate || new Date().toISOString().split('T')[0];
@@ -1925,7 +1828,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           }
         }
 
-        // Dosage: prefer the explicit numeric pills-per-dose; else extract digits.
         let scanDosage = '';
         if (typeof scanData.dosageQuantity === 'number' && Number.isFinite(scanData.dosageQuantity)) {
           scanDosage = String(scanData.dosageQuantity);
@@ -1934,7 +1836,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           scanDosage = dm ? dm[0] : '';
         }
 
-        // Bottles: pass through if any.
         const scanBottles = Array.isArray(scanData.bottles)
           ? scanData.bottles.map(b => ({
               expiration: b.expiration || '',
@@ -1946,19 +1847,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           name: scanData.name || '',
           dosage: scanDosage,
           schedules: scanSchedules,
-          reminderChannels: [],  // NEVER pre-fill from a scan
+          reminderChannels: [],
           bottles: scanBottles
         };
-        // Persistence for the med-image cache miss (the bottle photo is best
-        // obtained from Serper rather than the user's own photo). On save, the
-        // bootstrap will re-lookup if the name matches a real medication.
 
-        // Stash for the yellow-highlight pass + ambiguities banner.
         window.__scanResolved = scanData;
 
         console.log('[Add-Medication] Converted scan data to medication object:', med);
 
-        // Banner: success + a hint that uncertain fields are highlighted.
         const ambig = Array.isArray(scanData.ambiguities) ? scanData.ambiguities.filter(Boolean) : [];
         const banner = document.createElement('div');
         banner.style.cssText = 'background: linear-gradient(135deg,#3f6ff5,#7a5cff); color: white; padding: 0.95rem 1.1rem; border-radius: 14px; margin-bottom: 1rem; box-shadow: 0 10px 24px rgba(63,111,245,0.25);';
@@ -1982,16 +1878,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
       console.log('[Add-Medication] Populating form with medication data:', med);
 
-      // If this is a renew flow, clear channel selections
       if (renewIdx !== null) {
         setSelectedChannels([]);
       }
 
-      // Populate form fields
       document.getElementById('med-name').value = med.name || '';
       document.getElementById('dosage').value = med.dosage || '';
 
-      // Set reminder channels (new array format; fall back to translating legacy `reminder`)
       if (Array.isArray(med.reminderChannels)) {
         setSelectedChannels(med.reminderChannels);
       } else if (typeof med.reminder === 'string') {
@@ -1999,9 +1892,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         setSelectedChannels(map[med.reminder] || []);
       }
 
-      // Load schedules into the schedule builder
       if (med.schedules && Array.isArray(med.schedules) && med.schedules.length > 0) {
-        schedules = med.schedules.map(s => ({ ...s })); // Clone schedules
+        schedules = med.schedules.map(s => ({ ...s }));
         renderSchedulesList();
         console.log('[Add-Medication] Loaded schedules:', schedules);
       } else {
@@ -2009,16 +1901,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         renderSchedulesList();
       }
 
-      // Restore the "no bottle tracking" choice when editing.
       skipBottleTracking = (med.skipBottleTracking === true);
 
-      // Set bottles
       if (med.bottles && med.bottles.length > 0) {
         console.log('[Add-Medication] Setting bottles:', med.bottles);
         med.bottles.forEach(b => {
-          // Normalize to {expiration, quantity}. Accept already-formatted
-          // entries plus the raw shapes coming from edit (Firestore strings)
-          // and scan (Vision JSON).
           const exp = b && (b.expiration || b.exp || null);
           const qty = b && (b.quantity != null ? b.quantity : (b.qty != null ? b.qty : null));
           bottles.push({ expiration: exp, quantity: qty });
@@ -2029,12 +1916,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         renderBottlesList();
       }
 
-      // Pre-fill classification fields if editing
       if (med.classifications) {
         const cls = med.classifications;
         if (cls.color) {
           selectedColor = cls.color;
-          // Defer color preview update until canvas is available
           setTimeout(() => { updateColorPreview(cls.color); }, 50);
         }
         if (cls.shape) {
@@ -2050,10 +1935,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
       console.log('[Add-Medication] Form population complete');
 
-      // ── PICTURE ADD: trigger the med-image (Serper) lookup with the extracted
-      // name so the bottle photo + summary card populates on the right side.
-      // We DIRECTLY invoke MedImage.lookup + render to bypass any short-circuit
-      // guards in the bootstrap script's blur handler.
       try {
         const scanName = (window.__scanResolved && window.__scanResolved.name) || null;
         if (scanName && window.MedImage && window.MedImage.lookup) {
@@ -2064,7 +1945,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               if (!imgMount) return;
               const result = await window.MedImage.lookup(scanName);
               if (!result || !result.isMed || !result.imageUrl) return;
-              // Stash so the eventual save persists imageUrl + canonical + summary.
               window.__resolvedMedImage = {
                 imageUrl: result.imageUrl,
                 canonical: result.canonical || scanName,
@@ -2073,7 +1953,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
                 form: result.form || null,
                 source: result.source || 'serper',
               };
-              // Clear any placeholder mounts first.
               while (imgMount.firstChild) imgMount.removeChild(imgMount.firstChild);
               const card = window.MedImage.renderInlineCard({
                 imageUrl: result.imageUrl,
@@ -2096,7 +1975,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
       } catch (_) {}
 
-      // ── PICTURE ADD: show source-attribution badges (from your note / bottle / etc.) ──
       try {
         const scanFrom = window.__scanResolved && window.__scanResolved.extractedFrom;
         if (scanFrom && typeof scanFrom === 'object') {
@@ -2113,7 +1991,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             if (!label) return;
             const labelEl = el.closest('.form-group')?.querySelector('label');
             if (!labelEl) return;
-            if (labelEl.querySelector('.scan-source-badge')) return; // don't double-add
+            if (labelEl.querySelector('.scan-source-badge')) return;
             const badge = document.createElement('span');
             badge.className = 'scan-source-badge';
             badge.textContent = label;
@@ -2122,7 +2000,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           tagSource('name',           document.getElementById('med-name'));
           tagSource('dosage',         document.getElementById('dosage'));
           tagSource('dosageQuantity', document.getElementById('dosage'));
-          // Schedule source: tag a wrapper of the schedule list area.
           const schedSrc = scanFrom.schedules;
           if (schedSrc && SOURCE_LABEL[schedSrc]) {
             const schedListEl = document.getElementById('schedules-list') || document.querySelector('[data-tutorial="schedule-builder"]');
@@ -2137,8 +2014,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
       } catch (e) { console.warn('[Add-Medication] Source-label pass failed:', e); }
 
-      // ── PICTURE ADD: apply yellow highlights for low-confidence fields. ──
-      // Threshold: confidence < 0.7 → flag as uncertain.
       try {
         const scan = window.__scanResolved;
         if (scan && scan.confidence) {
@@ -2156,7 +2031,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
                 badge.textContent = 'Please verify';
                 label.appendChild(badge);
               }
-              // Clear the highlight on first edit by the user.
               const onEdit = () => {
                 el.classList.remove('scan-uncertain');
                 const b = el.closest('.form-group')?.querySelector('.scan-uncertain-badge');
@@ -2172,9 +2046,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           flag('dosage',  document.getElementById('dosage'));
           flag('dosageQuantity', document.getElementById('dosage'));
 
-          // Schedule confidence: highlight the schedule builder container if
-          // either the schedules field is low-confidence OR any schedule has a
-          // null time (means the AI flagged the dose times as unknown).
           const scheduleConf = scan.confidence.schedules;
           const scheduleListEl = document.getElementById('schedules-list') || document.querySelector('[data-tutorial="schedule-builder"]');
           if (scheduleListEl && typeof scheduleConf === 'number' && scheduleConf < UNCERTAIN_THRESHOLD) {
@@ -2189,11 +2060,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       } catch (e) { console.warn('[Add-Medication] Highlight pass failed:', e); }
     });
 
-    // === Step 4: Classification logic ===
-    let selectedColor = '';  // hex string
-    let selectedShape = '';  // shape name
+    let selectedColor = '';
+    let selectedShape = '';
 
-    // Color canvas: draw a hue spectrum
     let colorCanvasInitialized = false;
     function initColorCanvas() {
       if (colorCanvasInitialized) return;
@@ -2217,7 +2086,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       gradient.addColorStop(1,    '#ff0000');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, w, h);
-      // Add white-to-transparent top layer for lighter shades
       const whiteGrad = ctx.createLinearGradient(0, 0, 0, h);
       whiteGrad.addColorStop(0, 'rgba(255,255,255,0.6)');
       whiteGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
@@ -2225,7 +2093,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       ctx.fillStyle = whiteGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Handle clicks and touches
       const pick = (e) => {
         const rect = canvas.getBoundingClientRect();
         const cX = (e.touches ? e.touches[0].clientX : e.clientX);
@@ -2247,7 +2114,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       const preview = document.getElementById('color-preview');
       const previewText = document.getElementById('color-preview-text');
       const clearBtn = document.getElementById('clear-color');
-      // Add swatch if not exists
       let swatch = preview.querySelector('.color-preview-swatch');
       if (!swatch) {
         swatch = document.createElement('div');
@@ -2261,7 +2127,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       clearBtn.style.display = 'inline-flex';
     }
 
-    // Clear color button
     document.getElementById('clear-color').addEventListener('click', () => {
       selectedColor = '';
       const preview = document.getElementById('color-preview');
@@ -2272,7 +2137,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       document.getElementById('clear-color').style.display = 'none';
     });
 
-    // Shape selection
     document.querySelectorAll('.shape-option').forEach(btn => {
       btn.addEventListener('click', () => {
         const wasActive = btn.classList.contains('active');
@@ -2286,16 +2150,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       });
     });
 
-    // Final save
     document.getElementById('med-form').onsubmit = async (e)=>{
       e.preventDefault();
 
-      // Gather form data
       const name = document.getElementById('med-name').value.trim();
       const dosage = +document.getElementById('dosage').value;
       const reminderChannels = getSelectedChannels();
 
-      // Validate schedules
       if (schedules.length === 0) {
         alert('Please add at least one dose schedule');
         return;
@@ -2308,28 +2169,23 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         return;
       }
 
-      // Dual-write: new array field + legacy single-char field for back-compat
       const reminderMethod = channelsToLegacyMethod(reminderChannels);
 
-      // Format bottles
       const formatDate = (dateStr) => {
         if (!dateStr || dateStr === 'N/A') return 'N/A';
 
-        // If it's already in MM/DD/YYYY format, return as is
         if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
           return dateStr;
         }
 
-        // If it's in YYYY-MM-DD format (from HTML date input), convert properly
         if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-          const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+          const dateObj = new Date(dateStr + 'T00:00:00');
           const month = dateObj.getMonth() + 1;
           const day = dateObj.getDate();
           const year = dateObj.getFullYear();
           return `${month}/${day}/${year}`;
         }
 
-        // For other formats, try to parse and convert
         const dateObj = new Date(dateStr);
         if (isNaN(dateObj.getTime())) return 'N/A';
         const month = dateObj.getMonth() + 1;
@@ -2347,7 +2203,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         });
       }
 
-      // If renewing, we need to get the medication ID from the temp data
       let renewMedId = null;
       if (renewIdx !== null) {
         const tempRenewMed = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
@@ -2357,11 +2212,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
       }
 
-      // Determine medId and attach to each schedule
       const medId = editIdx || (renewMedId) || `med_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       schedules.forEach(s => { s.medId = medId; });
 
-      // Gather classification data (all optional)
       const classifications = {};
       if (selectedColor) classifications.color = selectedColor;
       if (selectedShape) classifications.shape = selectedShape;
@@ -2373,10 +2226,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       if (formTypeVal) classifications.form = formTypeVal;
 
       if (editIdx !== null) {
-        // Edit existing medication - update directly in Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
 
-        // Get existing data to preserve notes, doses, createdAt
         let existingData = {};
         try {
           const existingDoc = await getDoc(medDocRef);
@@ -2395,8 +2246,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
-          // User opted out of bottle tracking (only meaningful with no bottles).
-          // Suppresses add-a-bottle / low-stock reminders for this med.
           skipBottleTracking: (skipBottleTracking && formattedBottles.length === 0),
           classifications: classifications,
           groups: existingData.groups || [],
@@ -2405,18 +2254,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           doses: existingData.doses || {}
         };
 
-        // Preserve createdAt
         if (existingData.createdAt) {
           medData.createdAt = existingData.createdAt;
         }
 
-        // Preserve deletedStatus
         if (existingData.deletedStatus !== undefined) {
           medData.deletedStatus = existingData.deletedStatus;
         }
 
-        // Persist medication image (if Serper lookup resolved one on this page).
-        // Otherwise keep whatever was previously saved on the doc.
         try {
           const resolved = (typeof window !== 'undefined' && window.__resolvedMedImage) || null;
           if (resolved && resolved.imageUrl) {
@@ -2436,7 +2281,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           }
         } catch (_) {}
 
-        // Remove old fields if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -2444,7 +2288,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (existingData.doseHistory !== undefined) {
           updateData.doseHistory = deleteField();
         }
-        // Delete old format fields
         if (existingData.daysOfWeek !== undefined) {
           updateData.daysOfWeek = deleteField();
         }
@@ -2458,7 +2301,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         await setDoc(medDocRef, updateData, { merge: true });
         console.log(`[Add-Medication] Updated medication: ${name} (ID: ${editIdx})`);
       } else if (renewIdx !== null) {
-        // Renew medication - update in Firebase and set deletedStatus: false
         if (!renewMedId) {
           console.error('[Add-Medication] No medication ID found for renewal');
           alert('Error: Could not find medication ID for renewal');
@@ -2469,7 +2311,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
         const medDocRef = doc(window.db, "users", user.uid, "medications", renewMedId);
 
-        // Get existing data to preserve createdAt, notes, and doses
         let existingData = {};
         try {
           const existingDoc = await getDoc(medDocRef);
@@ -2488,24 +2329,19 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
-          // User opted out of bottle tracking (only meaningful with no bottles).
-          // Suppresses add-a-bottle / low-stock reminders for this med.
           skipBottleTracking: (skipBottleTracking && formattedBottles.length === 0),
           classifications: classifications,
           groups: existingData.groups || [],
-          deletedStatus: false, // Mark as active (not deleted)
+          deletedStatus: false,
           updatedAt: new Date().toISOString(),
           notes: existingData.notes || {},
           doses: existingData.doses || {}
         };
 
-        // Preserve createdAt
         if (existingData.createdAt) {
           medData.createdAt = existingData.createdAt;
         }
 
-        // Persist medication image (if Serper lookup resolved one on this page).
-        // Otherwise keep whatever was previously saved on the doc.
         try {
           const resolved = (typeof window !== 'undefined' && window.__resolvedMedImage) || null;
           if (resolved && resolved.imageUrl) {
@@ -2525,7 +2361,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           }
         } catch (_) {}
 
-        // Remove old fields if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -2533,7 +2368,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (existingData.doseHistory !== undefined) {
           updateData.doseHistory = deleteField();
         }
-        // Delete old format fields
         if (existingData.daysOfWeek !== undefined) {
           updateData.daysOfWeek = deleteField();
         }
@@ -2547,13 +2381,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         await setDoc(medDocRef, updateData, { merge: true });
         console.log(`[Add-Medication] Renewed medication: ${name} (ID: ${renewMedId}), set deletedStatus to false`);
 
-        // Clean up temporary data
         localStorage.removeItem('tempRenewMed');
       } else {
-        // Add new medication - create in Firebase
         console.log('[Add-Medication] Adding new medication:', name);
 
-        // Prepare medication data for Firebase
         const medData = {
           name: name,
           dosage: dosage,
@@ -2562,18 +2393,15 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           reminderChannels: reminderChannels,
           stock: formattedBottles.length,
           bottles: formattedBottles,
-          // User opted out of bottle tracking (only meaningful with no bottles).
-          // Suppresses add-a-bottle / low-stock reminders for this med.
           skipBottleTracking: (skipBottleTracking && formattedBottles.length === 0),
           classifications: classifications,
           groups: [],
-          deletedStatus: false, // New medications are active
-          notes: {}, // Empty notes map
-          doses: {}, // Object map of dose entries
+          deletedStatus: false,
+          notes: {},
+          doses: {},
           createdAt: new Date().toISOString()
         };
 
-        // Persist medication image (if Serper lookup resolved one on this page).
         try {
           const resolved = (typeof window !== 'undefined' && window.__resolvedMedImage) || null;
           if (resolved && resolved.imageUrl) {
@@ -2586,31 +2414,25 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           }
         } catch (_) {}
 
-        // Create a new document in Firebase with auto-generated ID
         const medicationsCollectionRef = window.collection(window.db, "users", user.uid, "medications");
         const newMedDocRef = await window.addDoc(medicationsCollectionRef, medData);
 
         console.log(`[Add-Medication] Created new medication: ${name} (ID: ${newMedDocRef.id})`);
       }
 
-      // Force reload to show updated data
       window.location.href='home.html?t=' + Date.now();
     }
 
-    // Close button logic
     document.getElementById('close-btn').addEventListener('click', () => {
       if (renewIdx !== null) {
-        // If renewing, clean up temporary data and go back to history
         localStorage.removeItem('tempRenewMed');
         window.location.href = 'history.html';
       } else {
-        // Otherwise go back to home
         window.location.href = 'home.html';
       }
     });
 
 
-    // constant
     const weekdaysConst = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   </script>
 
@@ -2628,9 +2450,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     console.log('[Add-Medication] Auth state changed:', user ? `User: ${user.email}` : 'No user');
   });
 
-  // ============ FIRESTORE MEDICATION SYNC HELPERS ============
 
-  // Helper function to save medications to Firestore (NEW STRUCTURE)
   async function saveMedicationsToFirestore(medications) {
     const user = window.auth.currentUser;
     if (!user) {
@@ -2641,34 +2461,27 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     try {
       console.log('[Add-Medication] Saving medications to Firestore (new structure):', medications.length, 'items');
 
-      // Save each medication as a separate document
       for (let i = 0; i < medications.length; i++) {
         const med = medications[i];
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
 
-        // Preserve existing notes from Firestore (notes are saved directly to Firestore
-        // by medication-action.html and notes.html, not via localStorage)
 
-        // Format dates as MM/DD/YYYY
         const formatDate = (dateStr) => {
           if (!dateStr || dateStr === 'N/A') return 'N/A';
 
-          // If it's already in MM/DD/YYYY format, return as is
           if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
             return dateStr;
           }
 
-          // If it's in YYYY-MM-DD format (from HTML date input), convert properly
           if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-            const dateObj = new Date(dateStr + 'T00:00:00'); // Add time to avoid timezone issues
+            const dateObj = new Date(dateStr + 'T00:00:00');
             const month = dateObj.getMonth() + 1;
             const day = dateObj.getDate();
             const year = dateObj.getFullYear();
             return `${month}/${day}/${year}`;
           }
 
-          // For other formats, try to parse and convert
           const dateObj = new Date(dateStr);
           if (isNaN(dateObj.getTime())) return 'N/A';
           const month = dateObj.getMonth() + 1;
@@ -2677,7 +2490,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           return `${month}/${day}/${year}`;
         };
 
-        // Format reminder method (supports both new reminderChannels array and legacy string)
         let reminderChannels = Array.isArray(med.reminderChannels) ? med.reminderChannels.slice() : [];
         if (reminderChannels.length === 0 && typeof med.reminder === 'string') {
           if (med.reminder === 'Email') reminderChannels = ['email'];
@@ -2686,7 +2498,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
         const reminderMethod = channelsToLegacyMethod(reminderChannels);
 
-        // Format bottles as array
         const stock = med.bottles ? med.bottles.length : 0;
         const bottles = [];
         if (med.bottles && med.bottles.length > 0) {
@@ -2697,11 +2508,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           });
         }
 
-        // Get existing medication data to preserve doses and remove old fields
         const existingMedDoc = await getDoc(medDocRef);
         const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
 
-        // Sort times chronologically before saving
         const sortedTimes = (med.times || []).slice().sort((a, b) => {
           const [aHour, aMin] = a.split(':').map(Number);
           const [bHour, bMin] = b.split(':').map(Number);
@@ -2722,13 +2531,12 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           stock: stock,
           bottles: bottles,
           deletedStatus: med.deletedStatus || false,
-          notes: existingData.notes || {}, // Preserve existing notes from Firestore
-          doses: existingData.doses || med.doses || {}, // Preserve existing doses field
+          notes: existingData.notes || {},
+          doses: existingData.doses || med.doses || {},
           id: medId,
           updatedAt: new Date().toISOString()
         };
 
-        // Remove doseStatus and doseHistory if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -2737,7 +2545,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           updateData.doseHistory = deleteField();
         }
 
-        // Log the EXACT hierarchy you specified
         console.log('FIREBASE HIERARCHY:');
         console.log('name:', medData.name);
         console.log('dosage:', medData.dosage);
@@ -2764,7 +2571,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     }
   }
 
-  // Helper function to save history to Firestore
   async function saveHistoryToFirestore(history) {
     const user = window.auth.currentUser;
     if (!user) {
@@ -2785,9 +2591,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   }
   </script>
 
-  <!-- Medication image lookup: on blur of #med-name, validate via OpenAI and
-       fetch an image via Serper. Mounts in #med-name-image-mount. Also prefills
-       on renew/edit when the doc already has imageUrl saved. -->
   <script>
     (function () {
       if (!window.MedImage) {
@@ -2837,11 +2640,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         const raw = (input.value || '').trim();
         if (raw.length < 2) { clearMount(); currentKey = ''; return; }
         const key = raw.toLowerCase();
-        if (key === currentKey) return; // unchanged since last lookup
+        if (key === currentKey) return;
         currentKey = key;
         try {
           const result = await window.MedImage.lookup(raw);
-          // Guard against race: if input changed during fetch, drop.
           if ((input.value || '').trim().toLowerCase() !== key) return;
           mountResult(result);
         } catch (e) {
@@ -2850,13 +2652,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
 
       input.addEventListener('blur', doLookup);
-      // If the user clears the field, clear the card too.
       input.addEventListener('input', function () {
         const raw = (input.value || '').trim();
         if (raw.length < 2) { clearMount(); currentKey = ''; }
       });
 
-      // Edit prefill (poll a few times since the Firestore fetch is async).
       let editProbeTries = 0;
       const editProbe = setInterval(() => {
         editProbeTries++;
@@ -2885,7 +2685,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
       }, 200);
 
-      // Voice handoff prefill: if AI Voice resolved an image, mount it.
       try {
         const v = (window.__voiceMedicationDataForImage) || null;
         if (v && v.imageUrl) {
@@ -2908,9 +2707,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
       } catch (_) {}
 
-      // Renew/edit prefill: if Firestore med doc already has an imageUrl, show it.
-      // The renew loader stores the source med in `tempRenewMed` localStorage entry
-      // with the same fields as Firestore. We just probe that on load.
       try {
         const params = new URLSearchParams(location.search);
         const renewParam = params.get('renew') ?? params.get('renewIdx');

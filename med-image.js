@@ -1,24 +1,8 @@
-/* med-image.js
- * Shared helper for the Everane medication-image feature.
- *
- * Public API (mounted on window.MedImage):
- *   - lookup(name)                     -> Promise<{isMed, canonical, genericName, form, imageUrl, source}>
- *   - fallbackPillSvgDataUri()         -> string (data: URI for the neutral pill icon)
- *   - applyImgFallback(imgEl)          -> attaches onerror handler swapping to pill SVG
- *   - renderInlineCard(opts)           -> HTMLElement (a styled image card for inline/right-side use)
- *   - renderFloatingCard(opts)         -> HTMLElement (a fixed-positioned floating card for voice flow)
- *   - renderCardImage(opts)            -> HTMLElement (a soft-blend image for home cards)
- *   - debounce(fn, ms)                 -> debounce helper
- *
- * The helper depends on Firebase Auth being initialized on the page; it grabs
- * an ID token via window.auth.currentUser.getIdToken().
- */
 (function () {
   'use strict';
 
   const LOOKUP_URL = 'https://us-central1-medtracker-8c467.cloudfunctions.net/lookupMedicationImage';
 
-  // Neutral pill silhouette — minimal SVG, dark-mode friendly via currentColor.
   const PILL_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
   <defs>
@@ -39,10 +23,6 @@
     return 'data:image/svg+xml;utf8,' + encodeURIComponent(PILL_SVG);
   }
 
-  // Set privacy/loading attributes BEFORE assigning .src. Once src is set the
-  // browser may already have started the request, so a referrerPolicy applied
-  // afterwards can arrive too late to suppress the Referer header — which would
-  // disclose to a third-party image host which medication the user looked up.
   function prepImgAttrs(imgEl) {
     if (!imgEl) return imgEl;
     imgEl.referrerPolicy = 'no-referrer';
@@ -61,9 +41,7 @@
     });
   }
 
-  // Tiny in-tab memo so the same page doesn't refetch a name twice during a session.
   const memo = new Map();
-  // De-dupe concurrent lookups for the same key.
   const inflight = new Map();
 
   async function getIdTokenOrThrow() {
@@ -118,7 +96,6 @@
     };
   }
 
-  // ---------- Renderers ---------------------------------------------------
 
   function ensureStylesInjected() {
     if (document.getElementById('med-image-styles')) return;
@@ -283,15 +260,6 @@
     document.head.appendChild(styleEl);
   }
 
-  /**
-   * Render an inline image card (used in add-medication, renew, email-action).
-   * @param {Object} opts
-   * @param {string} opts.imageUrl
-   * @param {string} [opts.canonical]
-   * @param {string} [opts.genericName]
-   * @param {number} [opts.size] pixel size; default 140
-   * @returns {HTMLElement}
-   */
   function renderInlineCard(opts) {
     ensureStylesInjected();
     const card = document.createElement('div');
@@ -325,11 +293,6 @@
     return card;
   }
 
-  /**
-   * Render a fixed-positioned floating image card (used in the AI Voice page).
-   * Returns the wrapper element; caller is responsible for inserting + later removing.
-   * @param {Object} opts {imageUrl, canonical, genericName}
-   */
   function renderFloatingCard(opts) {
     ensureStylesInjected();
     const wrap = document.createElement('div');
@@ -340,12 +303,6 @@
     return wrap;
   }
 
-  /**
-   * Render the standalone "About this medication" summary block.
-   * Used ONLY on add/edit/renew forms (not on home cards or email-action).
-   * @param {Object} opts {summary, canonical}
-   * @returns {HTMLElement|null}
-   */
   function renderSummary(opts) {
     ensureStylesInjected();
     const summary = opts && typeof opts.summary === 'string' ? opts.summary.trim() : '';
@@ -364,11 +321,6 @@
     return box;
   }
 
-  /**
-   * Render the soft-blend square image used on home med cards.
-   * @param {Object} opts {imageUrl, alt}
-   * @returns {HTMLImageElement}
-   */
   function renderCardImage(opts) {
     ensureStylesInjected();
     const img = document.createElement('img');

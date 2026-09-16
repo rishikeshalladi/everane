@@ -20,7 +20,7 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #000000;
         --muted-strong: #1a1a1a;
       }
@@ -65,7 +65,7 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -172,7 +172,7 @@
 
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
 
-    /* Voice conversation styles */
+    
     .voice-container {
       max-width: 800px;
       margin: 0 auto;
@@ -181,7 +181,7 @@
       gap: 2rem;
     }
 
-    /* Floating voice bubble */
+    
     .voice-bubble {
       position: fixed;
       bottom: 2rem;
@@ -223,7 +223,7 @@
       color: white;
     }
 
-    /* Transcript area */
+    
     .transcript-container {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -397,13 +397,11 @@
     </div>
   </div>
 
-  <!-- Floating voice bubble -->
   <div class="voice-bubble" id="voice-bubble">
     <div class="voice-bubble-icon">🎤</div>
   </div>
 
   <script>
-    // Check for browser support
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const SpeechSynthesis = window.speechSynthesis;
 
@@ -412,7 +410,6 @@
       document.getElementById('voice-bubble').style.display = 'none';
     }
 
-    // Conversation state
     let recognition = null;
     let isListening = false;
     let conversationData = {};
@@ -420,10 +417,10 @@
     let waitingForClarification = false;
     let clarificationType = null;
     let wrongField = null;
-    let shouldAutoRestart = false; // Flag to control auto-restart
-    let restartTimeout = null; // Track restart timeout
+    let shouldAutoRestart = false;
+    let restartTimeout = null;
     let isPaused = false;
-    const stepHistory = []; // Last answered (non-clarification) steps, used by "Fix previous answer"
+    const stepHistory = [];
 
     function isFixableStep(step) {
       return !!step && !!steps[step] && !steps[step].isClarification && step !== 'finish';
@@ -486,17 +483,14 @@
       try {
         if (recognition && isListening) recognition.stop();
       } catch (e) {
-        // ignore
       }
       try {
         if (speechSynthesis) speechSynthesis.cancel();
       } catch (e) {
-        // ignore
       }
       document.getElementById('voice-bubble').classList.remove('speaking');
     }
 
-    // Conversation flow steps
     const steps = {
       name: {
         question: 'What is the name of your medication?',
@@ -507,7 +501,7 @@
         next: 'clarify1'
       },
       clarify1: {
-        question: null, // Will be generated dynamically
+        question: null,
         next: 'days',
         isClarification: true
       },
@@ -527,10 +521,10 @@
       times: {
         question: 'What are those times?',
         next: 'clarify2',
-        conditional: true // Only asked if specificTimes was Yes
+        conditional: true
       },
       clarify2: {
-        question: null, // Will be generated dynamically
+        question: null,
         next: 'startDate',
         isClarification: true
       },
@@ -557,7 +551,7 @@
         next: 'clarify3'
       },
       clarify3: {
-        question: null, // Will be generated dynamically
+        question: null,
         next: 'finish',
         isClarification: true
       },
@@ -567,7 +561,6 @@
       }
     };
 
-    // Initialize
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.continuous = false;
@@ -582,7 +575,6 @@
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript.trim();
-        // Clear any pending restart since we got a result
         shouldAutoRestart = false;
         if (restartTimeout) {
           clearTimeout(restartTimeout);
@@ -604,11 +596,8 @@
         
         console.log('[Voice] recognition.onend - currentStep:', currentStep, 'shouldAutoRestart:', shouldAutoRestart, 'waitingForClarification:', waitingForClarification);
         
-        // Only auto-restart if we explicitly set the flag (after asking a question)
-        // This prevents permission dialogs from appearing unexpectedly
-        // Also check that we're not in the middle of transitioning between steps
         if (!isPaused && shouldAutoRestart && currentStep !== 'finish' && !waitingForClarification && currentStep !== null) {
-          shouldAutoRestart = false; // Reset flag
+          shouldAutoRestart = false;
           restartTimeout = setTimeout(() => {
             if (!isPaused && !isListening && currentStep !== 'finish' && currentStep !== null) {
               console.log('[Voice] Auto-restarting listening for step:', currentStep);
@@ -621,7 +610,6 @@
       };
     }
 
-    // Voice bubble click handler
     document.getElementById('voice-bubble').addEventListener('click', () => {
       if (!SpeechRecognition) return;
       
@@ -636,14 +624,12 @@
       if (isPaused) return;
       if (recognition && !isListening && currentStep !== 'finish') {
         try {
-          // Clear any pending restart
           if (restartTimeout) {
             clearTimeout(restartTimeout);
             restartTimeout = null;
           }
           recognition.start();
         } catch (error) {
-          // If recognition is already starting or in use, wait a bit and try again
           if (error.name === 'InvalidStateError' || error.name === 'NotAllowedError') {
             console.log('Recognition not ready, waiting...', error);
             setTimeout(() => {
@@ -676,12 +662,11 @@
         utterance.onerror = safeResolve;
         document.getElementById('voice-bubble').classList.add('speaking');
         speechSynthesis.speak(utterance);
-        // Safety timeout: onend can fail to fire on some browsers (or after cancel).
         const maxMs = Math.min(Math.max(text.length * 70, 900), 15000);
         setTimeout(safeResolve, maxMs);
         setTimeout(() => {
           document.getElementById('voice-bubble').classList.remove('speaking');
-        }, text.length * 50); // Rough estimate
+        }, text.length * 50);
       });
     }
 
@@ -693,7 +678,6 @@
       messageDiv.textContent = text;
       messagesDiv.appendChild(messageDiv);
       
-      // Auto-scroll both the messages container and the transcript container
       setTimeout(() => {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
         if (transcriptContainer) {
@@ -702,7 +686,6 @@
       }, 10);
     }
 
-    // Helper functions for parsing responses
     function textToNumber(text) {
       const numberMap = {
         'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
@@ -714,13 +697,11 @@
       
       const lowerText = text.toLowerCase().trim();
       
-      // First try to find a digit
       const digitMatch = text.match(/\d+/);
       if (digitMatch) {
         return parseInt(digitMatch[0]);
       }
       
-      // Then try to find text numbers
       for (const [word, num] of Object.entries(numberMap)) {
         if (lowerText.includes(word)) {
           return num;
@@ -731,14 +712,12 @@
     }
 
     function parseMedicationName(text) {
-      // Capitalize first letter of each word
       return text.split(' ').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
       ).join(' ');
     }
 
     function parseDosage(text) {
-      // Extract number from text (handles both digits and text numbers)
       return textToNumber(text);
     }
 
@@ -768,29 +747,23 @@
     }
 
     function parseTimesPerDay(text) {
-      // Extract number from text (handles both digits and text numbers)
       return textToNumber(text);
     }
 
     function parseTime(text) {
-      // Handle various time formats: "9 am", "9:00 am", "09:00", "9pm", etc.
       const lowerText = text.toLowerCase().trim();
       
-      // Remove common words
       let cleanText = lowerText.replace(/\b(at|around|about|approximately)\b/g, '').trim();
       
-      // Check for AM/PM
       const isPM = /pm|p\.m\.|p m/.test(cleanText);
       const isAM = /am|a\.m\.|a m/.test(cleanText);
       
-      // Extract hour and minute
       const timeMatch = cleanText.match(/(\d{1,2})(?::(\d{2}))?/);
       if (!timeMatch) return null;
       
       let hour = parseInt(timeMatch[1]);
       const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
       
-      // Convert to 24-hour format
       if (isPM && hour !== 12) hour += 12;
       if (isAM && hour === 12) hour = 0;
       
@@ -798,7 +771,6 @@
     }
 
     function parseMultipleTimes(text) {
-      // Split by common separators: "and", ",", "then", etc.
       const parts = text.split(/\s*(?:and|,|then|&)\s*/i);
       const times = [];
       
@@ -811,24 +783,20 @@
     }
 
     function parseDate(text) {
-      // Try to parse various date formats
       const today = new Date();
       const lowerText = text.toLowerCase().trim();
       const DEFAULT_YEAR_IF_MISSING = 2026;
       
-      // Handle "today"
       if (lowerText.includes('today')) {
         return formatDateForForm(today);
       }
       
-      // Handle "tomorrow"
       if (lowerText.includes('tomorrow')) {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         return formatDateForForm(tomorrow);
       }
       
-      // Handle "in X days" or "in X months" (digits or words)
       const inXMatch = lowerText.match(/in\s*([\w-]+)\s*(day|days|month|months)/);
       if (inXMatch) {
         const num = Number.isFinite(parseInt(inXMatch[1], 10)) ? parseInt(inXMatch[1], 10) : textToNumber(inXMatch[1]);
@@ -844,7 +812,6 @@
         }
       }
 
-      // Handle "feb 1", "feb 1st", "february 1st" (optionally with year: "feb 1 2027")
       const monthMap = {
         jan: 0, january: 0,
         feb: 1, february: 1,
@@ -874,7 +841,6 @@
         }
       }
        
-      // Try parsing as MM/DD/YYYY or YYYY-MM-DD
       const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
       if (dateMatch) {
         const month = parseInt(dateMatch[1]);
@@ -886,7 +852,6 @@
         }
       }
       
-      // Try parsing as natural language date
       const parsed = new Date(text);
       if (!isNaN(parsed.getTime())) {
         return formatDateForForm(parsed);
@@ -913,7 +878,6 @@
       return null;
     }
 
-    // Returns an array of selected channels, e.g. ["email","sms","push"], or null if unparsable.
     function parseReminder(text) {
       const lowerText = text.toLowerCase().trim();
       if (lowerText.includes('none') || /^\s*no\b/.test(lowerText)) return [];
@@ -922,7 +886,6 @@
       if (lowerText.includes('sms') || lowerText.includes('text')) out.push('sms');
       if (lowerText.includes('push') || lowerText.includes('notification')) out.push('push');
       if (lowerText.includes('both') && out.length === 0) {
-        // ambiguous "both" with no prior matches — default to email+push (most common pair)
         return ['email','push'];
       }
       if (lowerText.includes('all')) return ['email','sms','push'];
@@ -981,7 +944,6 @@
       let parsedValue = null;
       let isValid = true;
       
-      // Process response based on current step
       switch (currentStep) {
         case 'name':
           parsedValue = parseMedicationName(transcript);
@@ -1016,13 +978,12 @@
           recordAnsweredStep('specificTimes');
           conversationData.wantsSpecificTimes = wantsTimes;
           if (!wantsTimes) {
-            // Skip times step
             currentStep = 'clarify2';
             moveToNextStep();
           } else {
             moveToNextStep();
           }
-          return; // Return here as specificTimes has its own flow
+          return;
           
         case 'times':
           parsedValue = parseMultipleTimes(transcript);
@@ -1037,22 +998,21 @@
             return;
           }
           recordAnsweredStep('startDate');
-          conversationData.wantsStartDate = wantsStartDate; // Store the user's preference
+          conversationData.wantsStartDate = wantsStartDate;
           if (!wantsStartDate) {
-            // If no start date, set to today's date and skip startDateValue
             conversationData.startDate = formatDateForForm(new Date());
-            currentStep = 'endDate'; // Move directly to endDate
+            currentStep = 'endDate';
             askCurrentQuestion();
           } else {
             moveToNextStep();
           }
-          return; // Return here as startDate has its own flow
+          return;
           
         case 'startDateValue':
           parsedValue = parseDate(transcript);
           if (!parsedValue) {
             askRepeat();
-            return; // Stay on the same step
+            return;
           }
           conversationData.startDate = parsedValue;
           break;
@@ -1064,41 +1024,37 @@
             return;
           }
           recordAnsweredStep('endDate');
-          conversationData.wantsEndDate = wantsEndDate; // Store the user's preference
+          conversationData.wantsEndDate = wantsEndDate;
           if (!wantsEndDate) {
-            // If no end date, set to null (forever) and skip endDateValue
             conversationData.endDate = null;
-            currentStep = 'reminder'; // Move directly to reminder
+            currentStep = 'reminder';
             askCurrentQuestion();
           } else {
             moveToNextStep();
           }
-          return; // Return here as endDate has its own flow
+          return;
           
         case 'endDateValue':
           parsedValue = parseDate(transcript);
           if (!parsedValue) {
             askRepeat();
-            return; // Stay on the same step
+            return;
           }
           conversationData.endDate = parsedValue;
           break;
           
         case 'reminder':
           parsedValue = parseReminder(transcript);
-          // (sms is now an accepted channel)
           if (parsedValue === null) {
             askRepeat('Please say Email, SMS, Push, or None.');
-            return; // Stay on the same step
+            return;
           }
-          // parsedValue is now an array like ["email","push"] or []
           conversationData.reminderChannels = parsedValue;
           conversationData.reminder = parsedValue.length === 0 ? 'None'
             : parsedValue.map(c => c === 'email' ? 'Email' : c === 'sms' ? 'SMS' : 'Push').join(' + ');
           break;
           
         default:
-          // Fallback for unhandled steps (should not happen if flow is well-defined)
           console.warn('Unhandled step in handleUserResponse:', currentStep);
           isValid = false;
           break;
@@ -1108,9 +1064,7 @@
         recordAnsweredStep(currentStep);
         moveToNextStep();
       } else {
-        // Generic re-prompt if parsing failed and no specific re-prompt was given
         askRepeat();
-        // Do not move to next step
       }
     }
 
@@ -1128,27 +1082,22 @@
           waitingForClarification = false;
           clarificationType = null;
           currentStep = 'days';
-          // Clear any pending auto-restart to prevent interference
           shouldAutoRestart = false;
           if (restartTimeout) {
             clearTimeout(restartTimeout);
             restartTimeout = null;
           }
-          // Stop any active recognition to ensure clean state
           if (isListening && recognition) {
             try {
               recognition.stop();
             } catch (e) {
-              // Ignore errors if already stopped
             }
           }
-          // Small delay to ensure state is clean before asking next question
           setTimeout(() => {
             console.log('[Voice] Transitioning from clarify1 to days, currentStep:', currentStep);
             askCurrentQuestion();
           }, 300);
         } else {
-          // Ask which one is wrong
           addMessage('Which one is wrong? Please say "name" or "dosage".', 'system');
           speak('Which one is wrong? Please say name or dosage.').then(() => {
             wrongField = null;
@@ -1163,7 +1112,6 @@
         }
       }
       
-      // Handle "which one is wrong" response
       if (wrongField === null && (lowerText.includes('name') || lowerText.includes('medication'))) {
         wrongField = 'name';
         currentStep = 'name';
@@ -1208,7 +1156,6 @@
           currentStep = 'startDate';
           askCurrentQuestion();
         } else {
-          // Go back to days
           currentStep = 'days';
           waitingForClarification = false;
           addMessage('Let\'s go back. Which days of the week do you take the medication?', 'system');
@@ -1235,7 +1182,6 @@
           currentStep = 'finish';
           askCurrentQuestion();
         } else {
-          // Go back to start date
           currentStep = 'startDate';
           waitingForClarification = false;
           addMessage('Let\'s go back. Would you like to add a start date?', 'system');
@@ -1303,21 +1249,17 @@
       const nextStep = currentStepData.next;
       console.log('[Voice] Next step will be:', nextStep);
       
-      // Handle conditional steps
       if (currentStepData.conditional) {
-        // Check if we should skip this step
         if (currentStep === 'times' && !conversationData.wantsSpecificTimes) {
           currentStep = nextStep;
           moveToNextStep();
           return;
         }
-        // For startDateValue, we only skip if wantsStartDate is explicitly false. Default is today.
         if (currentStep === 'startDateValue' && conversationData.wantsStartDate === false) {
           currentStep = nextStep;
           moveToNextStep();
           return;
         }
-        // For endDateValue, we only skip if wantsEndDate is explicitly false.
         if (currentStep === 'endDateValue' && conversationData.wantsEndDate === false) {
           currentStep = nextStep;
           moveToNextStep();
@@ -1325,7 +1267,6 @@
         }
       }
       
-      // Handle clarification steps
       if (currentStepData.isClarification) {
         waitingForClarification = true;
         clarificationType = currentStep;
@@ -1342,7 +1283,6 @@
         return;
       }
       
-      // Move to next step
       if (nextStep) {
         currentStep = nextStep;
         askCurrentQuestion();
@@ -1363,15 +1303,12 @@
         console.log('[Voice] Asking question for step:', currentStep, 'Question:', stepData.question);
         addMessage(stepData.question, 'system');
         speak(stepData.question).then(() => {
-          // If we just spoke the finish message, redirect now
           if (currentStep === 'finish') {
             if (!isPaused) setTimeout(() => { redirectToForm(); }, 300);
             return;
           }
           if (isPaused) return;
-          // Set flag to auto-restart after speech finishes
           shouldAutoRestart = true;
-          // Start listening after speech finishes
           setTimeout(() => {
             if (!isPaused && !isListening && shouldAutoRestart) {
               console.log('[Voice] Starting to listen for step:', currentStep);
@@ -1391,15 +1328,12 @@
 
     function finishConversation() {
       addMessage(steps.finish.question, 'system');
-      // Wait for speech to finish before redirecting — browsers block
-      // navigation while speechSynthesis is active.
       speak(steps.finish.question).then(() => {
         if (!isPaused) setTimeout(() => { redirectToForm(); }, 300);
       });
     }
 
     function redirectToForm() {
-      // Convert conversation data to form format
       const formData = {
         name: conversationData.name || '',
         dosage: conversationData.dosage ? String(conversationData.dosage) : '',
@@ -1412,19 +1346,16 @@
         reminderChannels: Array.isArray(conversationData.reminderChannels) ? conversationData.reminderChannels.slice() : []
       };
       
-      // Store data in localStorage and redirect
       console.log('[Voice] Saving formData to localStorage:', formData);
       const serialized = JSON.stringify(formData);
       try {
         localStorage.setItem('voiceMedicationData', serialized);
-        // Backup in sessionStorage in case localStorage is blocked.
         sessionStorage.setItem('voiceMedicationDataBackup', serialized);
       } catch (e) {
         console.error('[Voice] Failed to save voice data to storage:', e);
       }
       const targetUrl = 'add-medication.html?voice=true';
       window.location.assign(targetUrl);
-      // Fallback: if navigation doesn't happen, try again shortly.
       setTimeout(() => {
         if (window.location.href.includes('add-medication-voice')) {
           window.location.href = targetUrl;
@@ -1432,28 +1363,23 @@
       }, 500);
     }
 
-    // Start the conversation
     if (SpeechRecognition) {
       setTimeout(() => {
         askCurrentQuestion();
       }, 1000);
     }
 
-    // Bottom controls
     document.getElementById('restate-btn').addEventListener('click', () => {
       stopAudioAndTimers();
-      // Re-ask the current step prompt and continue normally
       askCurrentQuestion();
     });
 
     document.getElementById('fix-prev-btn').addEventListener('click', () => {
       stopAudioAndTimers();
-      // Exit clarification mode if we were in it; we're explicitly correcting an answer.
       waitingForClarification = false;
       clarificationType = null;
       wrongField = null;
 
-      // Most recent answered step is the one to fix.
       while (stepHistory.length > 0) {
         const prev = stepHistory.pop();
         if (!isFixableStep(prev)) continue;
@@ -1462,7 +1388,6 @@
         askCurrentQuestion();
         return;
       }
-      // Nothing to go back to; just restate.
       askCurrentQuestion();
     });
 
@@ -1478,12 +1403,10 @@
         isPaused = false;
         btn.textContent = 'Pause';
         btn.setAttribute('aria-pressed', 'false');
-        // On resume, restate the current prompt so the user knows what to answer.
         askCurrentQuestion();
       }
     });
 
-    // Close mobile menu when clicking on nav links
     document.addEventListener('DOMContentLoaded', () => {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');

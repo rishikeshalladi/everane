@@ -13,7 +13,7 @@
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
       --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
       --container:1200px;
-      /* compatibility var */
+      
       --danger-color: var(--danger);
     }
 
@@ -24,7 +24,7 @@
       }
     }
 
-    /* base */
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -40,7 +40,7 @@
     }
     a { color: inherit; text-decoration: none; }
 
-    /* layout */
+    
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
     .sidebar {
@@ -65,7 +65,7 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Stats page styles */
+    
     .time-range-controls {
       display: flex;
       gap: 0.5rem;
@@ -258,7 +258,7 @@
       }
     }
 
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -363,7 +363,7 @@
       }
     }
   
-/* === MOBILE CENTERING FIX (STATS PAGE ONLY) === */
+
 @media (max-width: 768px) {
   .container {
     padding-inline: 0.75rem !important;
@@ -438,7 +438,6 @@
     <div class="container">
       <h1>Stats</h1>
       
-      <!-- Time Range Controls -->
       <div class="time-range-controls">
         <button class="time-range-btn active" data-range="week">Week</button>
         <button class="time-range-btn" data-range="month">Month</button>
@@ -446,9 +445,7 @@
         <button class="time-range-btn" data-range="all">All Time</button>
       </div>
 
-      <!-- Charts Container -->
       <div class="charts-grid">
-        <!-- Chart A: Taken vs Not Taken -->
         <div class="stats-card">
           <h2>Adherence Overview</h2>
           <div class="adherence-numbers">
@@ -470,7 +467,6 @@
           </div>
         </div>
 
-        <!-- Chart B: Daily Adherence Over Time -->
         <div class="stats-card">
           <h2>Daily Adherence Trend</h2>
           <div class="chart-container">
@@ -479,17 +475,14 @@
         </div>
       </div>
 
-      <!-- Empty State -->
       <div class="empty-state" id="empty-state" style="display: none;">
         <p>No dose history yet. Mark doses as Taken/Not Taken to see stats.</p>
       </div>
     </div>
   </div>
 
-  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -511,12 +504,10 @@
     window.auth = auth;
     window.db = db;
 
-    // Chart instances
     let adherenceChart = null;
     let trendChart = null;
     let currentTimeRange = 'week';
 
-    // Time range button handlers
     document.querySelectorAll('.time-range-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
@@ -526,7 +517,6 @@
       });
     });
 
-    // Get date range based on time range selection
     function getDateRange(range) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -534,15 +524,15 @@
       switch(range) {
         case 'week':
           const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - 6); // Last 7 days including today
+          weekStart.setDate(today.getDate() - 6);
           return { start: weekStart, end: today };
         case 'month':
           const monthStart = new Date(today);
-          monthStart.setDate(today.getDate() - 29); // Last 30 days including today
+          monthStart.setDate(today.getDate() - 29);
           return { start: monthStart, end: today };
         case 'year':
           const yearStart = new Date(today);
-          yearStart.setDate(today.getDate() - 364); // Last 365 days including today
+          yearStart.setDate(today.getDate() - 364);
           return { start: yearStart, end: today };
         case 'all':
           return { start: null, end: null };
@@ -551,13 +541,11 @@
       }
     }
 
-    // Load dose logs from Firestore
     async function loadDoseLogs() {
       const user = auth.currentUser;
       if (!user) return [];
 
       try {
-        // Get all medications for the user
         const medicationsRef = collection(db, 'users', user.uid, 'medications');
         const medicationsSnapshot = await getDocs(medicationsRef);
         
@@ -565,21 +553,18 @@
         
         medicationsSnapshot.forEach(medDoc => {
           const medData = medDoc.data();
-          if (medData.deletedStatus) return; // Skip deleted medications
+          if (medData.deletedStatus) return;
           
           const medicationName = medData.name || 'Unknown';
           const doses = medData.doses || {};
           
-          // Convert doses object to array of log entries
           Object.keys(doses).forEach(key => {
             const dose = doses[key];
             if (!dose.date || dose.taken === undefined) return;
             
-            // Parse date from YYYY-MM-DD format
             const [year, month, day] = dose.date.split('-').map(Number);
             const scheduledDate = new Date(year, month - 1, day);
             
-            // Get scheduled time if available
             let scheduledDateTime = new Date(scheduledDate);
             if (medData.times && Array.isArray(medData.times) && medData.times.length > 0) {
               const sortedTimes = [...medData.times].sort();
@@ -590,23 +575,18 @@
               }
             }
             
-            // Only add if taken is explicitly true or false (not undefined)
-            // This includes:
-            // - Manually marked doses (taken: true or false)
-            // - Auto-marked missed doses (taken: false, autoMarked: true)
             if (dose.taken !== undefined) {
               doseLogs.push({
                 medicationName: medicationName,
                 scheduledAt: scheduledDateTime,
-                status: dose.taken === true ? 'taken' : 'not_taken', // Auto-marked doses will be 'not_taken'
+                status: dose.taken === true ? 'taken' : 'not_taken',
                 createdAt: dose.takenAt ? new Date(dose.takenAt) : scheduledDateTime,
-                autoMarked: dose.autoMarked === true // Track if this was auto-marked
+                autoMarked: dose.autoMarked === true
               });
             }
           });
         });
         
-        // Sort by scheduledAt
         doseLogs.sort((a, b) => a.scheduledAt - b.scheduledAt);
         
         return doseLogs;
@@ -616,10 +596,8 @@
       }
     }
 
-    // Filter dose logs by time range
     function filterDoseLogs(doseLogs, range) {
       if (range === 'all') {
-        // For "All Time", only include doses that have already passed (or are happening now)
         const now = new Date();
         return doseLogs.filter(log => {
           return log.scheduledAt <= now;
@@ -633,22 +611,16 @@
         const logDate = new Date(log.scheduledAt);
         logDate.setHours(0, 0, 0, 0);
         
-        // Check if date is in range
         const dateInRange = logDate >= start && logDate <= end;
         
-        // For today, only include doses that have already passed (or are happening now)
-        // For past dates, include all doses
         if (logDate.getTime() === end.getTime()) {
-          // This is today - only include if scheduled time has passed
           return dateInRange && log.scheduledAt <= now;
         } else {
-          // This is a past date - include all doses
           return dateInRange;
         }
       });
     }
 
-    // Calculate daily adherence
     function calculateDailyAdherence(doseLogs) {
       const dailyData = {};
       
@@ -667,7 +639,6 @@
         }
       });
       
-      // Convert to array and sort by date
       return Object.keys(dailyData)
         .sort()
         .map(date => ({
@@ -680,9 +651,7 @@
         }));
     }
 
-    // Update charts with fade transition
     async function updateCharts() {
-      // Fade out
       const chartContainers = document.querySelectorAll('.chart-container, .adherence-numbers, .charts-grid');
       chartContainers.forEach(container => {
         container.style.opacity = '0';
@@ -693,7 +662,6 @@
         const allLogs = await loadDoseLogs();
         const filteredLogs = filterDoseLogs(allLogs, currentTimeRange);
         
-        // Show/hide empty state
         const emptyState = document.getElementById('empty-state');
         const chartsGrid = document.querySelector('.charts-grid');
         if (filteredLogs.length === 0) {
@@ -705,25 +673,20 @@
           if (chartsGrid) chartsGrid.style.display = 'grid';
         }
         
-        // Calculate stats
         const taken = filteredLogs.filter(log => log.status === 'taken').length;
         const notTaken = filteredLogs.filter(log => log.status === 'not_taken').length;
         const total = taken + notTaken;
         const adherencePercent = total > 0 ? ((taken / total) * 100).toFixed(1) : 0;
         
-        // Update numbers
         document.getElementById('taken-count').textContent = taken;
         document.getElementById('not-taken-count').textContent = notTaken;
         document.getElementById('adherence-percent').textContent = adherencePercent + '%';
         
-        // Update adherence chart (donut)
         updateAdherenceChart(taken, notTaken);
         
-        // Update trend chart
         const dailyData = calculateDailyAdherence(filteredLogs);
         updateTrendChart(dailyData);
         
-        // Fade in
         setTimeout(() => {
           chartContainers.forEach(container => {
             container.style.opacity = '1';
@@ -731,7 +694,6 @@
           });
         }, 50);
         
-        // Animate charts if they support it
         if (adherenceChart) {
           adherenceChart.update('active');
         }
@@ -741,7 +703,6 @@
       }, 150);
     }
 
-    // Update adherence donut chart
     function updateAdherenceChart(taken, notTaken) {
       const ctx = document.getElementById('adherence-chart').getContext('2d');
       
@@ -749,7 +710,6 @@
         adherenceChart.destroy();
       }
       
-      // Ensure we have valid numbers
       const takenValue = Number(taken) || 0;
       const notTakenValue = Number(notTaken) || 0;
       
@@ -760,14 +720,14 @@
         data: {
           labels: ['Taken', 'Not Taken'],
           datasets: [{
-            data: [takenValue, notTakenValue], // First value = Taken (green), Second = Not Taken (red)
+            data: [takenValue, notTakenValue],
             backgroundColor: [
-              'rgba(34, 197, 94, 0.8)', // success green for Taken
-              'rgba(255, 107, 107, 0.8)' // danger red for Not Taken
+              'rgba(34, 197, 94, 0.8)',
+              'rgba(255, 107, 107, 0.8)'
             ],
             borderColor: [
-              'rgba(34, 197, 94, 1)', // green border for Taken
-              'rgba(255, 107, 107, 1)' // red border for Not Taken
+              'rgba(34, 197, 94, 1)',
+              'rgba(255, 107, 107, 1)'
             ],
             borderWidth: 3
           }]
@@ -805,7 +765,6 @@
       });
     }
 
-    // Update trend line chart
     function updateTrendChart(dailyData) {
       const ctx = document.getElementById('trend-chart').getContext('2d');
       
@@ -934,21 +893,16 @@
       });
     }
 
-    // Real-time listener for medication changes
     let unsubscribeMedications = null;
 
-    // Initialize on auth state change
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Set up real-time listener for medications
         const medicationsRef = collection(db, 'users', user.uid, 'medications');
         
-        // Unsubscribe from previous listener if it exists
         if (unsubscribeMedications) {
           unsubscribeMedications();
         }
         
-        // Set up new real-time listener
         unsubscribeMedications = onSnapshot(medicationsRef, (snapshot) => {
           console.log('[Stats] Medications data changed, updating charts...');
           updateCharts();
@@ -956,10 +910,8 @@
           console.error('[Stats] Error in medications listener:', error);
         });
         
-        // Initial load
         updateCharts();
       } else {
-        // Clean up listener if user logs out
         if (unsubscribeMedications) {
           unsubscribeMedications();
           unsubscribeMedications = null;
@@ -967,7 +919,6 @@
       }
     });
 
-    // Hamburger menu toggle functionality
     document.addEventListener('DOMContentLoaded', function() {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');

@@ -79,7 +79,7 @@
       transform: translateY(-1px);
       box-shadow: 0 5px 15px rgba(255, 107, 107, .25);
     }
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -314,7 +314,7 @@
     }
     ::-webkit-scrollbar-track { background: transparent; }
 
-/* === Page-specific additions to match auth/welcome/home === */
+
 .form-group input[type="text"],
 .form-group input[type="time"],
 .form-group input[type="date"],
@@ -380,9 +380,9 @@
 
 
 
-/* === Fixes: white dynamic time fields & Back button visibility === */
 
-/* Ensure ANY dynamically created inputs/selects inherit dark theme */
+
+
 input[type="time"],
 input[type="text"],
 input[type="number"],
@@ -404,7 +404,7 @@ select:focus {
   border-color: color-mix(in oklab, var(--brand) 40%, transparent);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
 }
-/* Make native pickers readable in dark mode (Safari/Chrome) */
+
 input[type="time"]::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1) opacity(.85);
@@ -416,7 +416,7 @@ select, option {
 }
 
 
-/* Make "Back" look like the primary "Continue" button */
+
 .btn-secondary,
 button.back, .back-btn, .btn.back, a.back, #back, #back-btn {
   color: #fff !important;
@@ -429,7 +429,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
   background: linear-gradient(180deg, var(--brand-600), var(--brand-700)) !important;
 }
 
-/* Mobile form optimizations */
+
 @media (max-width: 640px) {
   .container { padding-inline: 1rem; }
   .content { padding-block: 1.5rem; padding-top: 4.5rem; }
@@ -546,7 +546,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       <h1 id="form-title">Add Medication</h1>
       <form id="med-form" novalidate>
 
-        <!-- STEP 1: Basic Medication Info -->
         <div id="step-1" class="form-step active">
           <div class="form-group">
             <label>Name of Medication <span style="color: #ff0000; font-weight: bold;">*</span></label>
@@ -575,7 +574,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
         </div>
 
-        <!-- STEP 2: Add Dose Schedules -->
         <div id="step-2" class="form-step">
           <h2>Add Dose Schedules</h2>
           <p class="muted">Create one or more schedules for when this medication should be taken.</p>
@@ -593,7 +591,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               </select>
             </div>
             
-            <!-- WEEKLY Schedule Fields -->
             <div id="weekly-fields" style="display: none;">
               <div class="form-group">
                 <label>Day of Week <span style="color: red;">*</span></label>
@@ -627,7 +624,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
               </div>
             </div>
             
-            <!-- INTERVAL Schedule Fields -->
             <div id="interval-fields" style="display: none;">
               <div class="form-group">
                 <label>Interval <span style="color: red;">*</span></label>
@@ -663,7 +659,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           </div>
         </div>
 
-        <!-- STEP 3: Bottles -->
         <div id="step-3" class="form-step">
           <h2>Add Bottles</h2>
           <div id="bottles-list"></div>
@@ -678,7 +673,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     </div>
   </div>
 
-  <!-- Bottle Popup -->
   <div id="bottle-popup">
     <div class="popup-content">
       <h3>Add Bottle</h3>
@@ -692,12 +686,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     </div>
   </div>
 
-  <!-- Schedule and Dose Logs Utilities -->
   <script src="schedule-utils.js"></script>
   <script src="dose-logs-utils.js"></script>
   
   <script type="module">
-    // Import Firebase SDKs
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, addDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -711,12 +703,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       appId: "1:847799899373:web:170bf9c693a78ec42168e4"
     };
 
-    // Initialize Firebase only if not already initialized
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // Make auth, db, and Firebase functions globally available
     window.auth = auth;
     window.db = db;
     window.doc = doc;
@@ -727,7 +717,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     window.deleteDoc = deleteDoc;
     window.addDoc = addDoc;
     
-    // Set up auth ready promise
     window.authReady = new Promise((resolve) => {
       onAuthStateChanged(auth, (user) => {
         console.log('[Add-Medication] Auth state changed:', user ? user.email : 'No user');
@@ -742,21 +731,17 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     const editIdx = params.has('edit') ? params.get('edit') : null;
     const renewIdx = params.has('renew') ? +params.get('renew') : null;
 
-    // Steps
     const steps = ['step-1','step-2','step-3'].map(id=>document.getElementById(id));
     function showStep(n){ steps.forEach((el,i)=>el.classList.toggle('active', i+1===n)); }
 
-    // Title for edit or renew
     if (editIdx !== null) {
       document.getElementById('form-title').textContent = 'Edit Medication';
     } else if (renewIdx !== null) {
       document.getElementById('form-title').textContent = 'Renew Medication';
     }
 
-    // Schedule management
-    let schedules = []; // Array of schedule objects
+    let schedules = [];
     
-    // Schedule type toggle
     const scheduleTypeSelect = document.getElementById('schedule-type');
     const weeklyFields = document.getElementById('weekly-fields');
     const intervalFields = document.getElementById('interval-fields');
@@ -767,7 +752,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       intervalFields.style.display = type === 'INTERVAL' ? 'block' : 'none';
     });
     
-    // Render schedules list
     function renderSchedulesList() {
       const schedulesList = document.getElementById('schedules-list');
       schedulesList.innerHTML = '';
@@ -814,13 +798,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       });
     }
     
-    // Make removeSchedule available globally
     window.removeSchedule = function(index) {
       schedules.splice(index, 1);
       renderSchedulesList();
     };
     
-    // Add schedule button
     document.getElementById('add-schedule-btn').addEventListener('click', () => {
       const type = scheduleTypeSelect.value;
       if (!type) {
@@ -864,10 +846,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           return;
         }
         
-        // Create anchorDateTime with just date and time (no seconds/milliseconds)
-        const anchorDateTime = new Date(`${anchorDate}T${anchorTime}:00`); // Add :00 for seconds
+        const anchorDateTime = new Date(`${anchorDate}T${anchorTime}:00`);
         schedule.interval = { value: intervalValue, unit: intervalUnit };
-        // Format as YYYY-MM-DDTHH:MM:SS (without milliseconds)
         const year = anchorDateTime.getFullYear();
         const month = String(anchorDateTime.getMonth() + 1).padStart(2, '0');
         const day = String(anchorDateTime.getDate()).padStart(2, '0');
@@ -880,7 +860,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       schedules.push(schedule);
       renderSchedulesList();
       
-      // Reset form
       scheduleTypeSelect.value = '';
       weeklyFields.style.display = 'none';
       intervalFields.style.display = 'none';
@@ -896,11 +875,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       document.getElementById('interval-end-date').value = '';
     });
 
-    // Error helpers
     function clearErr(id){ const el = document.getElementById(id); if (el) el.textContent=''; }
     function showErr(id,msg){ const el = document.getElementById(id); if (el) el.textContent=msg; }
 
-    // Validate Step 1 (Basic Info)
     function valid1(){
       clearErr('name-error');
       clearErr('dosage-error');
@@ -925,7 +902,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       return ok;
     }
 
-    // Validate Step 2 (Schedules)
     function valid2(){
       clearErr('schedule-error');
       if (schedules.length === 0) {
@@ -935,18 +911,15 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       return true;
     }
 
-    // Validate Step 3 (Bottles - no validation needed, optional)
     function valid3(){
-      return true; // Bottles are optional
+      return true;
     }
 
-    // Wizard navigation
     document.getElementById('to-step-2').onclick    = ()=> valid1() && showStep(2);
     document.getElementById('back-to-step-1').onclick= ()=> showStep(1);
     document.getElementById('to-step-3').onclick    = ()=> valid2() && showStep(3);
     document.getElementById('back-to-step-2').onclick= ()=> showStep(2);
 
-    // Bottle popup
     let popupResolve, bottles=[];
     document.getElementById('add-bottle').onclick = async ()=>{
       document.getElementById('bottle-exp').value='';
@@ -973,7 +946,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       popupResolve();
     };
 
-    // Close mobile menu when clicking on nav links
     document.addEventListener('DOMContentLoaded', async ()=>{
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
@@ -989,10 +961,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       if (editIdx !== null) {
         console.log('[Add-Medication] Loading medication for edit, ID:', editIdx);
         
-        // Wait for auth to be ready
         await window.authReady;
         
-        // Load medication directly from Firebase using the ID
         const user = window.currentUser;
         if (!user) {
           console.error('[Add-Medication] No user logged in');
@@ -1020,7 +990,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             id: editIdx,
             name: medData.name,
             dosage: medData.dosage,
-            schedules: medData.schedules || [], // Load schedules array
+            schedules: medData.schedules || [],
             reminder: medData.reminderMethod === 'E' ? 'Email' : 
                      medData.reminderMethod === 'S' ? 'SMS' : 
                      medData.reminderMethod === 'ES' ? 'Email + SMS' : 'None',
@@ -1043,7 +1013,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           return;
         }
       } else if (renewIdx !== null) {
-        // Wait for auth to be ready for renew as well
         await window.authReady;
         
         sourceArray = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
@@ -1059,25 +1028,21 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       
       console.log('[Add-Medication] Populating form with medication:', med);
       
-      // If this is a renew flow, reset the reminder select to the placeholder
       if (renewIdx !== null) {
         const sel = document.getElementById('reminder');
         if (sel) { sel.selectedIndex = 0; sel.value = ''; }
       }
 
-      // Populate form fields
       document.getElementById('med-name').value = med.name || '';
       document.getElementById('dosage').value = med.dosage || '';
       
-      // Set reminder
       const reminderSelect = document.getElementById('reminder');
       if (reminderSelect && med.reminder) {
         reminderSelect.value = med.reminder;
       }
       
-      // Load schedules
       if (med.schedules && Array.isArray(med.schedules) && med.schedules.length > 0) {
-        schedules = med.schedules.map(s => ({ ...s })); // Clone schedules
+        schedules = med.schedules.map(s => ({ ...s }));
         renderSchedulesList();
         console.log('[Add-Medication] Loaded schedules:', schedules);
       } else {
@@ -1085,18 +1050,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         renderSchedulesList();
       }
       
-      // Convert date format from ISO to YYYY-MM-DD for HTML date inputs
       const convertDateForInput = (dateStr) => {
         if (!dateStr || dateStr === 'N/A' || dateStr === '') return '';
-        // If already in YYYY-MM-DD format, return as is
         if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
           return dateStr;
         }
-        // If in ISO format, extract date part
         if (dateStr.includes('T')) {
           return dateStr.split('T')[0];
         }
-        // If in M/d/yyyy format, convert to YYYY-MM-DD
         if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
           const parts = dateStr.split('/');
           const month = parts[0].padStart(2, '0');
@@ -1104,7 +1065,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           const year = parts[2];
           return `${year}-${month}-${day}`;
         }
-        // Try parsing as Date object
         try {
           const date = new Date(dateStr);
           if (!isNaN(date.getTime())) {
@@ -1118,7 +1078,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         }
         return '';
       };
-      // Set bottles
       if (med.bottles && med.bottles.length > 0) {
         console.log('[Add-Medication] Setting bottles:', med.bottles);
       med.bottles.forEach(b=>{
@@ -1136,24 +1095,19 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       console.log('[Add-Medication] Form population complete');
     });
 
-    // Final save
     document.getElementById('med-form').onsubmit = async (e)=>{
       e.preventDefault();
       
-      // No validation needed for step 3 (bottles are optional)
       
-      // Gather form data
       const name = document.getElementById('med-name').value.trim();
       const dosage = +document.getElementById('dosage').value;
       const reminder = document.getElementById('reminder').value;
       
-      // Validate schedules
       if (schedules.length === 0) {
         alert('Please add at least one dose schedule');
         return;
       }
       
-      // Add medId to each schedule
       const medId = editIdx || `med_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       schedules.forEach(schedule => {
         schedule.medId = medId;
@@ -1164,13 +1118,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         return;
       }
       
-      // Format reminder method
       let reminderMethod = 'N';
       if (reminder === 'Email') reminderMethod = 'E';
       else if (reminder === 'SMS') reminderMethod = 'S';
       else if (reminder === 'Email + SMS') reminderMethod = 'ES';
       
-      // Format bottles
       const formatDate = (dateStr) => {
         if (!dateStr) return 'N/A';
         return new Date(dateStr).toLocaleDateString();
@@ -1186,7 +1138,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
       
       if (editIdx !== null) {
-        // Edit existing medication - update directly in Firebase
         const user = window.auth.currentUser;
         if (!user) {
           console.error('No user logged in');
@@ -1195,7 +1146,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         
         const medDocRef = doc(window.db, "users", user.uid, "medications", editIdx);
         
-        // Get existing data to preserve notes, doses, createdAt
         let existingData = {};
         try {
           const existingDoc = await getDoc(medDocRef);
@@ -1209,27 +1159,24 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         const medData = {
           name: name,
           dosage: dosage,
-          schedules: schedules, // NEW: Store schedules array
+          schedules: schedules,
           reminderMethod: reminderMethod,
           stock: formattedBottles.length,
           bottles: formattedBottles,
           id: medId,
           updatedAt: new Date().toISOString(),
           notes: existingData.notes || {},
-          doses: existingData.doses || {} // Preserve existing doses
+          doses: existingData.doses || {}
         };
         
-        // Preserve createdAt if it exists
         if (existingData.createdAt) {
           medData.createdAt = existingData.createdAt;
         }
         
-        // Preserve deletedStatus
         if (existingData.deletedStatus !== undefined) {
           medData.deletedStatus = existingData.deletedStatus;
         }
         
-        // Remove old fields if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -1252,7 +1199,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         alert('Medication updated successfully!');
         window.location.href = 'home.html';
       } else if (renewIdx !== null) {
-        // Renew medication
         const tempRenewMed = JSON.parse(localStorage.getItem('tempRenewMed')||'[]');
         const renewMedId = tempRenewMed[renewIdx]?.id;
         
@@ -1286,7 +1232,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         alert('Medication renewed successfully!');
         window.location.href = 'home.html';
       } else {
-        // New medication
         const medData = {
           name: name,
           dosage: dosage,
@@ -1310,20 +1255,16 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       }
     }
 
-    // Close button logic
     document.getElementById('close-btn').addEventListener('click', () => {
       if (renewIdx !== null) {
-        // If renewing, clean up temporary data and go back to history
         localStorage.removeItem('tempRenewMed');
         window.location.href = 'history.html';
       } else {
-        // Otherwise go back to home
         window.location.href = 'home.html';
       }
     });
 
     
-    // constant
     const weekdaysConst = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   </script>
 
@@ -1357,7 +1298,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       console.log('[Add-Medication] Email verified:', user.emailVerified);
       if (!user.emailVerified) needsVerification = true;
 
-      // Check localStorage first (instant)
       try {
         const localProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
         console.log('[Add-Medication] Local phone:', localProfile.phone, 'Local phone verified:', localProfile.phoneVerified);
@@ -1366,11 +1306,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         console.log('[Add-Medication] Could not check localStorage:', error);
       }
 
-      // Update warning immediately
       console.log('[Add-Medication] Needs verification:', needsVerification);
       warningIcon.style.display = needsVerification ? 'inline' : 'none';
 
-      // Check Firestore in background and update if needed
       try {
         const userDocRef = doc(window.db, "users", user.uid);
         getDoc(userDocRef).then(docSnap => {
@@ -1388,9 +1326,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     }
   });
 
-  // ============ FIRESTORE MEDICATION SYNC HELPERS ============
   
-  // Helper function to save medications to Firestore (NEW STRUCTURE)
   async function saveMedicationsToFirestore(medications) {
     const user = window.auth.currentUser;
     if (!user) {
@@ -1401,13 +1337,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     try {
       console.log('[Add-Medication] Saving medications to Firestore (new structure):', medications.length, 'items');
       
-      // Save each medication as a separate document
       for (let i = 0; i < medications.length; i++) {
         const med = medications[i];
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
         
-        // Collect notes as a Map: {date: {dose: message}}
         const notes = {};
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('note_')) {
@@ -1427,19 +1361,16 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           }
         });
 
-        // Format dates as mm/dd/yyyy
         const formatDate = (dateStr) => {
           if (!dateStr) return 'N/A';
           return new Date(dateStr).toLocaleDateString();
         };
 
-        // Format reminder method
         let reminderMethod = 'N';
         if (med.reminder === 'Email') reminderMethod = 'E';
         else if (med.reminder === 'SMS') reminderMethod = 'S';
         else if (med.reminder === 'Email + SMS') reminderMethod = 'ES';
 
-        // Format bottles as array
         const stock = med.bottles ? med.bottles.length : 0;
         const bottles = [];
         if (med.bottles && med.bottles.length > 0) {
@@ -1450,11 +1381,9 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           });
         }
 
-        // Get existing medication data to preserve doses and remove old fields
         const existingMedDoc = await getDoc(medDocRef);
         const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
         
-        // Sort times chronologically before saving
         const sortedTimes = (med.times || []).slice().sort((a, b) => {
           const [aHour, aMin] = a.split(':').map(Number);
           const [bHour, bMin] = b.split(':').map(Number);
@@ -1475,12 +1404,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           bottles: bottles,
           deletedStatus: med.deletedStatus || false,
           notes: notes,
-          doses: existingData.doses || med.doses || {}, // Preserve existing doses field
+          doses: existingData.doses || med.doses || {},
           id: medId,
           updatedAt: new Date().toISOString()
         };
         
-        // Remove doseStatus and doseHistory if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -1489,7 +1417,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           updateData.doseHistory = deleteField();
         }
         
-        // Log the EXACT hierarchy you specified
         console.log('🔥 FIREBASE HIERARCHY:');
         console.log('name:', medData.name);
         console.log('dosage:', medData.dosage);
@@ -1516,7 +1443,6 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     }
   }
 
-  // Helper function to save history to Firestore
   async function saveHistoryToFirestore(history) {
     const user = window.auth.currentUser;
     if (!user) {

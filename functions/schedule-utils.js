@@ -1,10 +1,3 @@
-/**
- * Everane Schedule Utilities (Server-Side / Node.js)
- *
- * Luxon-based version for Cloud Functions.
- * Same logic as the client-side schedule-utils.js but uses Luxon DateTime
- * for timezone-aware calculations.
- */
 'use strict';
 
 const { DateTime } = require('luxon');
@@ -14,11 +7,7 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 const MS_PER_WEEK = 7 * MS_PER_DAY;
 
-// ========================
-// Date Helpers
-// ========================
 
-/** Convert a Luxon DateTime or JS Date to a plain JS Date at start of day */
 function toJsDate(dt) {
   if (dt instanceof DateTime) {
     return new Date(dt.year, dt.month - 1, dt.day);
@@ -27,21 +16,18 @@ function toJsDate(dt) {
   return new Date(dt);
 }
 
-/** Get start of day (midnight) for a Date */
 function startOfDay(date) {
   const d = new Date(toJsDate(date));
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-/** Get end of day for a Date */
 function endOfDay(date) {
   const d = new Date(toJsDate(date));
   d.setHours(23, 59, 59, 999);
   return d;
 }
 
-/** Get ISO date string YYYY-MM-DD */
 function toISODate(date) {
   if (date instanceof DateTime) return date.toISODate();
   const d = toJsDate(date);
@@ -51,7 +37,6 @@ function toISODate(date) {
   return `${y}-${m}-${day}`;
 }
 
-/** Parse a date string to a JS Date (start of day) */
 function parseDate(dateStr) {
   if (!dateStr || dateStr === 'N/A') return null;
   if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
@@ -66,7 +51,6 @@ function parseDate(dateStr) {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** Parse "HH:MM" to {hours, minutes} */
 function parseTime(timeStr) {
   if (!timeStr) return null;
   const [h, m] = timeStr.split(':').map(Number);
@@ -74,7 +58,6 @@ function parseTime(timeStr) {
   return { hours: h, minutes: m };
 }
 
-/** Create a Date from a date and time string */
 function dateWithTime(date, timeStr) {
   const t = parseTime(timeStr);
   if (!t) return null;
@@ -83,15 +66,11 @@ function dateWithTime(date, timeStr) {
   return d;
 }
 
-/** Normalize date string to YYYY-MM-DD or null */
 function normalizeDate(dateStr) {
   const d = parseDate(dateStr);
   return d ? toISODate(d) : null;
 }
 
-// ========================
-// Migration
-// ========================
 
 function migrateOldFormat(medData) {
   const schedules = [];
@@ -139,9 +118,6 @@ function migrateOldFormat(medData) {
   return { schedules };
 }
 
-// ========================
-// Core Schedule Logic
-// ========================
 
 function weeklyMatchesDate(schedule, date) {
   const d = toJsDate(date);

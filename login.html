@@ -1,4 +1,3 @@
-<!-- File: login.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="logo.svg">
   <title>Everane — Log In</title>
   <style>
-    /* --- Modern CSS Reset (lean) --- */
+    
     *,*::before,*::after{box-sizing:border-box}
     *{margin:0}
     html:focus-within{scroll-behavior:smooth}
@@ -16,7 +15,7 @@
     input,button{font:inherit}
     a{text-decoration:none;color:inherit}
 
-    /* --- Design Tokens — identical to index.html --- */
+    
     :root{
       --bg: #0b1020;
       --bg-elev: rgba(255,255,255,0.04);
@@ -61,7 +60,7 @@
       }
     }
 
-    /* --- Base --- */
+    
     body{
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans";
       color: var(--text);
@@ -71,10 +70,10 @@
         var(--bg);
     }
 
-    /* --- Container utility (identical) --- */
+    
     .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
 
-    /* --- Navbar — identical to index.html --- */
+    
     .navbar{
       position:sticky;top:0;z-index:100;
       backdrop-filter:saturate(180%) blur(16px);
@@ -121,7 +120,7 @@
       .auth-login:hover{color:var(--text)}
     }
 
-    /* Hamburger — identical to index.html */
+    
     .hamburger{
       display:none;align-items:center;justify-content:center;
       background:none;border:1px solid var(--border);border-radius:var(--radius-xs);
@@ -137,7 +136,7 @@
       .hamburger{display:flex}
     }
 
-    /* Mobile Menu — identical to index.html */
+    
     .mobile-menu{
       max-height:0;opacity:0;pointer-events:none;overflow:hidden;
       transition:max-height .4s var(--ease), opacity .3s var(--ease);
@@ -163,19 +162,19 @@
       .mobile-list a{background:var(--surface);color:var(--text)}
     }
 
-    /* --- Buttons (shared) --- */
+    
     .btn{display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.8rem 1rem; border-radius:12px; border:1px solid transparent; cursor:pointer; transition:transform .04s ease, background-color .2s ease, border-color .2s ease}
     .btn:active{transform:translateY(1px)}
     .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; box-shadow: var(--shadow)}
     .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
 
-    /* --- Page layout (login-specific) --- */
+    
     main{max-width:440px;margin:clamp(3rem,8vw,5rem) auto;padding:0 1rem}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.25rem}
     h1{font-size:clamp(1.6rem,3.5vw,2rem);line-height:1.2;margin-bottom:.5rem}
     p.lead{color:var(--muted);margin-bottom:1rem}
 
-    /* --- Form --- */
+    
     .field{margin-top:.95rem}
     label{display:block;margin-bottom:.35rem;color:var(--muted)}
     .input-wrap{position:relative}
@@ -189,7 +188,7 @@
     .actions{margin-top:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
     .foot{margin-top:1rem;color:var(--muted);font-size:.95rem;text-align:center}
 
-    /* Underlined helper links (switch between login/register) */
+    
     .link{
       text-decoration: underline;
       text-underline-offset: 3px;
@@ -200,7 +199,7 @@
     .msg.ok{color:var(--accent)}
     .msg.err{color:var(--danger)}
 
-    /* Modal styles (matching other modals) */
+    
     .modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:1000;padding:1rem}
     .modal.show{display:flex}
     .modal-content{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);max-width:400px;width:100%;max-height:90vh;overflow-y:auto}
@@ -213,7 +212,7 @@
     .modal-actions{padding:1rem 1.5rem 1.5rem;display:flex;gap:1rem;justify-content:flex-end}
     .modal-actions .btn{min-width:80px}
 
-    /* Mobile modal adjustments */
+    
     @media (max-width: 640px) {
       .modal{padding:.5rem}
       .modal-content{max-width:100%;margin:0}
@@ -225,7 +224,6 @@
   </style>
 </head>
 <body>
-  <!-- Navbar — identical to index.html -->
   <header class="navbar">
     <div class="container nav-inner">
       <a class="brand" href="index.html" aria-label="Everane Home">
@@ -299,7 +297,6 @@
     </div>
   </main>
 
-  <!-- Password Reset Modal -->
   <div id="reset-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -316,9 +313,6 @@
   </div>
 
   <script>
-    // Password visibility toggle (UI-only). Login submission is handled
-    // exclusively by the Firebase module script below, which enforces the
-    // email-verified check before any redirect.
     (function(){
       document.querySelectorAll('.toggle').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -331,7 +325,6 @@
       });
     })();
 
-    // Mobile menu toggle — identical to index.html
     var hamburger = document.querySelector('.hamburger');
     var mobileMenu = document.getElementById('mobile-menu');
     var iconOpen = hamburger ? hamburger.querySelector('.icon-open') : null;
@@ -367,32 +360,23 @@
   </script>
 
   <script type="module">
-    /**
-     * Resolve a post-login destination from ?returnUrl= (set when a reminder
-     * email's "Take your dose" link hits a signed-out browser), falling back to
-     * sessionStorage. Only same-origin relative paths are accepted so the
-     * parameter can't be used to bounce a user to an external site.
-     */
     function getSafeReturnUrl() {
       let candidate = '';
       try {
         candidate = new URLSearchParams(window.location.search).get('returnUrl') || '';
         if (!candidate) candidate = sessionStorage.getItem('postLoginRedirect') || '';
         sessionStorage.removeItem('postLoginRedirect');
-      } catch (e) { /* private mode */ }
+      } catch (e) { }
       if (!candidate) return '';
-      // Reject absolute URLs, protocol-relative URLs and anything with a scheme.
       if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(candidate)) return '';
       if (candidate.startsWith('//')) return '';
       return candidate.replace(/^\/+/, '');
     }
 
-    // Import Firebase SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, signOut, reload } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
       authDomain: "medtracker-8c467.firebaseapp.com",
@@ -403,7 +387,6 @@
       measurementId: "G-GGHXPT2Q5L"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -440,10 +423,8 @@
       }
     };
 
-    // Make accessible globally
     window._fb = { app, auth, db };
 
-    // Check if redirected from registration
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('registered') === 'true') {
       const msg = document.getElementById('form-msg');
@@ -455,14 +436,10 @@
       }, 5000);
     }
 
-    // Holds a just-authenticated but unverified user so the resend link can
-    // only ever email that real account, not an arbitrary address.
     let pendingUnverifiedUser = null;
 
-    // Override login form submission to use Firebase
     const form = document.getElementById('login-form');
     
-    // Remove the old inline handler
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
     
@@ -483,48 +460,32 @@
       }
       
       try {
-        // Show loading
         msg.classList.add('ok');
         msg.textContent = 'Logging in...';
         
-        // 1. Sign in with Firebase Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const userId = userCredential.user.uid;
 
-        // 1a. Refresh the user so emailVerified reflects the latest server
-        // state (e.g. they just clicked the link in another tab), not a stale
-        // cached token value.
         try { await reload(userCredential.user); } catch (_) {}
 
-        // 1b. Block unverified accounts. Credentials were correct, but the
-        // email link was never clicked. Keep a reference to this exact user so
-        // the resend link can only target this verified-by-password account,
-        // never an arbitrary email typed into the box.
         if (!userCredential.user.emailVerified) {
-          // Hold the live (still signed-in) user so the resend link works on a
-          // valid token. Navigation is still blocked here, and auth-guard.js
-          // signs out any unverified user who tries to reach a protected page.
           pendingUnverifiedUser = userCredential.user;
           msg.className = 'msg err';
           msg.textContent = 'Please verify your email before logging in. Check your inbox for the verification link.';
           document.getElementById('resend-verify').style.display = '';
           return;
         }
-        // Verified: hide any previously shown resend link.
         pendingUnverifiedUser = null;
         document.getElementById('resend-verify').style.display = 'none';
 
-        // 2. Send timezone-change email if travel detected
         await maybeRequestTimezoneChangeEmail(userCredential.user);
 
-        // 3. Fetch user profile from Firestore
         const userDocRef = doc(db, "users", userId);
         const userDoc = await getDoc(userDocRef);
         
         if (userDoc.exists()) {
           const profileData = userDoc.data();
           
-          // 4. Store locally for offline access - preserve any existing password updates
           const existingProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
           const finalProfile = {...profileData, password: existingProfile.password || password};
           
@@ -533,29 +494,24 @@
           localStorage.setItem('userEmail', profileData.email);
           console.log('Loaded profile from Firestore:', profileData);
           
-          // 5. Redirect based on user type (honouring an email deep-link if present)
           msg.textContent = 'Success! Redirecting...';
-          const userType = profileData.type || 'P'; // Default to Patient if type not set
+          const userType = profileData.type || 'P';
           setTimeout(() => {
             const deepLink = getSafeReturnUrl();
             if (deepLink) {
               window.location.href = deepLink;
             } else if (userType === 'C') {
-              // Caregiver - redirect to caregiver home
               window.location.href = 'caregiver/home.html';
             } else {
-              // Patient - redirect to regular home
               window.location.href = 'home.html';
             }
           }, 500);
         } else {
-          // Profile doesn't exist in Firestore, create basic one
           console.warn('No profile found in Firestore for user:', userId);
           localStorage.setItem('userProfile', JSON.stringify({email, password}));
           localStorage.setItem('userId', userId);
           localStorage.setItem('userEmail', email);
           
-          // Default to Patient home if no profile
           msg.textContent = 'Success! Redirecting...';
           setTimeout(() => {
             window.location.href = getSafeReturnUrl() || 'home.html';
@@ -566,7 +522,6 @@
         console.error('Login error:', error);
         msg.classList.add('err');
         
-        // User-friendly error messages
         if (error.code === 'auth/user-not-found') {
           msg.textContent = 'No account found with this email. Please register first.';
         } else if (error.code === 'auth/wrong-password') {
@@ -581,7 +536,6 @@
       }
     });
     
-    // Re-attach password toggle to new form
     newForm.querySelectorAll('.toggle').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.getAttribute('data-target');
@@ -592,7 +546,6 @@
       });
     });
 
-    // Modal functions
     function showResetModal(title, message, isError = false) {
       const modal = document.getElementById('reset-modal');
       const titleEl = document.getElementById('reset-modal-title');
@@ -609,21 +562,15 @@
       document.getElementById('reset-modal').classList.remove('show');
     }
     
-    // Modal event listeners
     document.getElementById('reset-close-btn').addEventListener('click', hideResetModal);
     document.getElementById('reset-modal-ok').addEventListener('click', hideResetModal);
     
-    // Close modal when clicking outside
     document.getElementById('reset-modal').addEventListener('click', (e) => {
       if (e.target.id === 'reset-modal') {
         hideResetModal();
       }
     });
 
-    // Handle resend verification email. This only works when the user just
-    // signed in with the correct password but is unverified (case 3). It will
-    // not send to an arbitrary email typed into the box, because
-    // pendingUnverifiedUser is only set after a successful sign-in.
     document.getElementById('resend-verify-link').addEventListener('click', async (e) => {
       e.preventDefault();
       const msg = document.getElementById('form-msg');
@@ -648,8 +595,6 @@
         msg.className = 'msg err';
         msg.textContent = 'Could not resend the verification email. Please try again in a moment.';
       } finally {
-        // Sign the unverified user back out so they remain blocked until they
-        // click the link and log in again.
         try { await signOut(auth); } catch (_) {}
         pendingUnverifiedUser = null;
         link.style.pointerEvents = '';
@@ -658,7 +603,6 @@
       }
     });
 
-    // Handle forgot password click
     document.getElementById('forgot-password-link').addEventListener('click', async (e) => {
       e.preventDefault();
       
@@ -670,13 +614,10 @@
       }
       
       try {
-        // Show loading modal
         showResetModal('Sending Email...', 'Sending password reset email to ' + email + '...');
         
-        // Send password reset email
         await sendPasswordResetEmail(auth, email);
         
-        // Success modal
         showResetModal('Email Sent!', 'Password reset email sent! Check your inbox and follow the link to reset your password.');
         
       } catch (error) {

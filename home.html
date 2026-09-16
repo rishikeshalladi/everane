@@ -13,7 +13,7 @@
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
       --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
       --container:1200px;
-      /* compatibility var */
+      
       --danger-color: var(--danger);
     }
 
@@ -21,13 +21,13 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #000000;
         --muted-strong: #1a1a1a;
       }
     }
 
-    /* base */
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -43,7 +43,7 @@
     }
     a { color: inherit; text-decoration: none; }
 
-    /* layout */
+    
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
     .sidebar {
@@ -67,7 +67,7 @@
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -190,14 +190,14 @@
       }
     }
 
-    /* headings */
+    
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0; }
     h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
 
-    /* list */
+    
     #med-list { max-height: 70vh; overflow-y: auto; display: grid; gap: 1rem; }
 
-    /* cards */
+    
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -209,7 +209,7 @@
     .card p { color: var(--muted); margin: 0; }
     .card strong { color: var(--text); }
     
-    /* Flash animations for taken/not taken feedback */
+    
     .card.flash-green {
       animation: flashGreen 1s ease-out;
     }
@@ -229,7 +229,7 @@
       100% { background-color: var(--surface); }
     }
 
-    /* buttons */
+    
     .btn {
       appearance: none; border: 1px solid transparent;
       border-radius: 12px; padding: .7rem 1rem;
@@ -297,7 +297,7 @@
       font-size: 1rem;
     }
 
-    /* modals */
+    
     .modal {
       display: none;
       position: fixed; inset: 0;
@@ -320,7 +320,7 @@
     }
     .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
 
-    /* Agenda modal */
+    
     .agenda-modal .modal-content {
       max-width: 720px;
       width: 95%;
@@ -429,7 +429,7 @@
       color: var(--muted);
     }
 
-    /* Quick Add chips */
+    
     .qa-chip-row {
       display: flex;
       gap: 0.5rem;
@@ -457,7 +457,7 @@
       color: #fff;
     }
 
-    /* stock list items */
+    
     .bottle-item {
       background: color-mix(in oklab, var(--surface) 96%, transparent);
       padding: 1rem;
@@ -479,7 +479,7 @@
     
     .delete-bottle-btn {
       min-width: 80px;
-      min-height: 44px; /* iOS recommended touch target */
+      min-height: 44px; 
       padding: 0.5rem 1rem;
       border-radius: 8px;
       font-weight: 600;
@@ -508,7 +508,7 @@
       font-size: 0.875rem;
     }
 
-    /* forms */
+    
     .form-group { text-align: left; margin-bottom: 1rem; }
     .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
     .form-group input[type="date"], .form-group input[type="number"] {
@@ -528,10 +528,10 @@
     }
     .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
 
-    /* helpful utilities */
+    
     .muted, .lead { color: var(--muted); }
 
-    /* scrollbars */
+    
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-thumb {
       background: color-mix(in oklab, var(--surface) 80%, var(--border));
@@ -539,14 +539,14 @@
     }
     ::-webkit-scrollbar-track { background: transparent; }
     
-    /* Make calendar icons white */
+    
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator {
       filter: invert(1) opacity(.85);
       cursor: pointer;
     }
     
-    /* Mobile optimizations */
+    
     @media (max-width: 640px) {
       .container { padding-inline: 1rem; }
       .content { padding-block: 1.5rem; padding-top: 4.5rem; }
@@ -630,7 +630,7 @@
       
       .delete-bottle-btn {
         width: 100%;
-        min-height: 48px; /* Larger touch target for mobile */
+        min-height: 48px; 
         padding: 0.75rem 1rem;
         font-size: 1rem;
         border-radius: 12px;
@@ -675,7 +675,7 @@
       }
     }
 
-    /* === Medication Groups === */
+    
     #groups-area { margin-bottom: 1.5rem; }
     .group-section {
       background: var(--surface);
@@ -747,7 +747,7 @@
       color: var(--text);
       border-color: color-mix(in oklab, var(--brand) 40%, var(--border));
     }
-    /* Group management modal */
+    
     .group-mgmt-modal .modal-content {
       max-width: 600px;
       width: 95%;
@@ -838,7 +838,7 @@
     }
     .take-all-feedback.show { opacity: 1; }
 
-    /* Lock/unlock states */
+    
     .group-locked {
       opacity: 0.65;
       border-color: color-mix(in oklab, var(--muted) 30%, var(--border));
@@ -865,7 +865,7 @@
       cursor: not-allowed;
     }
 
-    /* Wizard step styles */
+    
     .wizard-step-indicator {
       font-size: 0.85rem;
       color: var(--muted);
@@ -933,8 +933,7 @@
       .group-create-row { flex-direction: column; }
     }
 
-    /* ── Mobile: pin the three Add buttons (Voice / Manual / Picture) to the
-       bottom of the viewport, all on ONE line, so they're always visible. ── */
+    
     @media (max-width: 720px) {
       #add-actions {
         position: fixed !important;
@@ -948,7 +947,7 @@
         -webkit-backdrop-filter: blur(12px);
         border-top: 1px solid rgba(255,255,255,0.08);
         z-index: 30;
-        flex-wrap: nowrap !important;   /* never wrap */
+        flex-wrap: nowrap !important;   
         justify-content: stretch;
         gap: 0.45rem !important;
       }
@@ -960,7 +959,7 @@
       }
       #add-actions .add-action-btn {
         flex: 1 1 0 !important;
-        min-width: 0 !important;         /* allow shrink below the desktop 140px */
+        min-width: 0 !important;         
         max-width: none !important;
         padding: 0.7rem 0.4rem !important;
         font-size: 0.85rem !important;
@@ -968,14 +967,12 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      /* Reserve scroll space so the last med card isn't hidden under the
-         fixed footer. Roughly: button height (44) + padding (12+12) + safe area. */
+      
       .content {
         padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
       }
     }
-    /* On very narrow phones (iPhone SE ~ 320px), strip the emoji label gap so
-       text fits comfortably. */
+    
     @media (max-width: 380px) {
       #add-actions .add-action-btn {
         font-size: 0.78rem !important;
@@ -1039,7 +1036,6 @@
     </div>
   </div>
 
-  <!-- Delete Confirmation Modal -->
   <div id="confirm-modal" class="modal">
     <div class="modal-content">
       <p>Are you sure you want to delete this medication?<br>
@@ -1049,7 +1045,6 @@
     </div>
   </div>
 
-  <!-- Stock Modal -->
   <div id="stock-modal" class="modal">
     <div class="modal-content" style="max-width: 600px; width: 95%;">
       <h3>Stock for <span id="stock-med-name"></span></h3>
@@ -1061,7 +1056,6 @@
     </div>
   </div>
 
-  <!-- Add‑Bottle Modal -->
   <div id="stock-add-modal" class="modal">
     <div class="modal-content" style="max-width: 500px;">
       <h3>Add Bottle for <span id="stock-add-med-name"></span></h3>
@@ -1081,7 +1075,6 @@
     </div>
   </div>
 
-  <!-- Quick Add Modal -->
   <div id="quick-add-modal" class="modal">
     <div class="modal-content" style="max-width: 460px; width: 95%; text-align: left;">
       <h3 style="margin-top:0;">⚡ Quick Add</h3>
@@ -1142,7 +1135,6 @@
     </div>
   </div>
 
-  <!-- Delete Bottle Confirmation Modal -->
   <div id="delete-bottle-modal" class="modal">
     <div class="modal-content">
       <p>Are you sure you want to delete this bottle?<br>
@@ -1152,7 +1144,6 @@
     </div>
   </div>
 
-  <!-- Agenda Modal -->
   <div id="agenda-modal" class="modal agenda-modal">
     <div class="modal-content">
       <div class="agenda-header">
@@ -1169,7 +1160,6 @@
     </div>
   </div>
 
-  <!-- Manage Groups Modal (3-step wizard) -->
   <div id="groups-modal" class="modal group-mgmt-modal">
     <div class="modal-content">
       <div class="group-mgmt-header">
@@ -1177,13 +1167,11 @@
         <button class="agenda-close" id="groups-modal-close" aria-label="Close">&times;</button>
       </div>
 
-      <!-- Step Main: List groups + create button -->
       <div id="groups-step-main">
         <button class="btn btn-primary" id="start-create-group-btn" style="width:100%;margin-bottom:1rem;">+ Create New Group</button>
         <div id="groups-edit-list"></div>
       </div>
 
-      <!-- Step 1: Enter group name -->
       <div id="groups-step-1" style="display:none;">
         <p class="wizard-step-indicator">Step 1 of 3: Name your group</p>
         <div class="group-create-row">
@@ -1195,7 +1183,6 @@
         </div>
       </div>
 
-      <!-- Step 2: Pick anchor med+time -->
       <div id="groups-step-2" style="display:none;">
         <p class="wizard-step-indicator">Step 2 of 3: Choose anchor medication & time</p>
         <p class="wizard-desc">Select one medication + dose time as the anchor. Other medications within 2 hours will be shown next.</p>
@@ -1205,7 +1192,6 @@
         </div>
       </div>
 
-      <!-- Step 3: Pick additional meds within 2hr window -->
       <div id="groups-step-3" style="display:none;">
         <p class="wizard-step-indicator">Step 3 of 3: Add nearby medications</p>
         <div id="anchor-summary"></div>
@@ -1218,10 +1204,8 @@
     </div>
   </div>
 
-  <!-- Take All feedback toast -->
   <div class="take-all-feedback" id="take-all-feedback"></div>
 
-  <!-- Delete Group Confirmation Modal -->
   <div id="delete-group-modal" class="modal" style="z-index:1100;">
     <div class="modal-content" style="max-width:380px;text-align:center;">
       <p style="margin-bottom:0.25rem;font-size:1.05rem;font-weight:600;">Delete group?</p>
@@ -1238,7 +1222,6 @@
 
 <script>
       document.addEventListener('DOMContentLoaded', () => {
-      // Close mobile menu when clicking on nav links
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
       sidebarLinks.forEach(link => {
@@ -1247,7 +1230,6 @@
         });
       });
 
-      // Add Medication buttons (Voice Add / Manual Add / Picture Add)
       const useVoiceBtn = document.getElementById('use-voice-btn');
       const typeManuallyBtn = document.getElementById('type-manually-btn');
       const pictureAddBtn = document.getElementById('picture-add-btn');
@@ -1270,7 +1252,6 @@
         });
       }
 
-      // ---- Quick Add ------------------------------------------------------
       (function wireQuickAdd() {
         const openBtn   = document.getElementById('quick-add-btn');
         const modal     = document.getElementById('quick-add-modal');
@@ -1291,7 +1272,7 @@
         const cancelBtn  = document.getElementById('qa-cancel');
         const saveBtn    = document.getElementById('qa-save');
 
-        let freq = 'once'; // once | twice | interval
+        let freq = 'once';
 
         const resetForm = () => {
           nameEl.value = '';
@@ -1326,7 +1307,6 @@
         cancelBtn.addEventListener('click', close);
         modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
-        // Frequency chips (single-select)
         freqRow.querySelectorAll('.qa-chip').forEach(chip => {
           chip.addEventListener('click', () => {
             freq = chip.dataset.freq;
@@ -1335,7 +1315,6 @@
           });
         });
 
-        // Channel chips (multi-select)
         channelRow.querySelectorAll('.qa-chip').forEach(chip => {
           chip.addEventListener('click', () => chip.classList.toggle('qa-chip--on'));
         });
@@ -1349,7 +1328,6 @@
           return 'N';
         };
 
-        // Build a WEEKLY schedule for all 7 days at the given time (= "every day").
         const dailySchedulesForTime = (time) => {
           const out = [];
           for (let wd = 0; wd < 7; wd++) {
@@ -1384,7 +1362,6 @@
             if (!time1El.value || !time2El.value) return null;
             return [...dailySchedulesForTime(time1El.value), ...dailySchedulesForTime(time2El.value)];
           }
-          // once
           if (!time1El.value) return null;
           return dailySchedulesForTime(time1El.value);
         };
@@ -1400,7 +1377,6 @@
           if (!schedules) { errEl.textContent = 'Please complete the schedule fields'; return; }
 
           const channels = Array.from(channelRow.querySelectorAll('.qa-chip--on')).map(c => c.dataset.channel);
-          // Push is a device-only channel; only email/sms persist in reminderChannels
           const reminderChannels = channels.filter(c => c === 'email' || c === 'sms');
           const reminderMethod = channelsToLegacyMethod(reminderChannels);
 
@@ -1417,7 +1393,6 @@
             reminderChannels: reminderChannels,
             stock: 0,
             bottles: [],
-            // Quick Add never collects bottles — opt out so no add-a-bottle nags.
             skipBottleTracking: true,
             classifications: {},
             groups: [],
@@ -1453,7 +1428,6 @@
       document.getElementById('confirm-modal').classList.add('show');
     }
     
-    // Make confirmDelete globally available
     window.confirmDelete = confirmDelete;
 
     document.getElementById('confirm-yes')
@@ -1464,7 +1438,6 @@
 
         console.log('[Home] Deleting medication with ID:', pendingDeleteIndex);
 
-        // Update the medication in Firebase to set deletedStatus: true
         const medDocRef = doc(window.db, "users", user.uid, "medications", pendingDeleteIndex);
         await setDoc(medDocRef, { deletedStatus: true }, { merge: true });
 
@@ -1490,7 +1463,6 @@
       document.getElementById('confirm-modal').classList.remove('show');
     });
 
-    // Stock Management Functions
     window.openStock = async function(medId) {
       try {
         currentStockMedId = medId;
@@ -1500,7 +1472,6 @@
           return;
         }
 
-        // Get the specific medication from Firebase using the ID
         const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
         const medDoc = await getDoc(medDocRef);
         
@@ -1511,7 +1482,6 @@
         
         const medData = medDoc.data();
         
-        // Convert bottles from Firebase format to object format
         const med = {
           id: medDoc.id,
           name: medData.name,
@@ -1519,7 +1489,6 @@
           bottles: medData.bottles ? medData.bottles.map(bottleStr => {
             const parts = bottleStr.split('/');
             if (parts.length >= 2) {
-              // Format: "12/14/2025/83" or "3/15/2026/30"
               const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
               if (dateMatch) {
                 return {
@@ -1543,7 +1512,6 @@
     async function renderStockList(med) {
       const stockList = document.getElementById('stock-list');
       
-      // If no med parameter provided, reload from Firebase
       if (!med) {
         const user = window.auth.currentUser;
         if (!user || !currentStockMedId) return;
@@ -1570,8 +1538,6 @@
       }
 
       if (!med || !med.bottles || med.bottles.length === 0) {
-        // If the user opted out of bottle tracking, say so plainly (no nagging).
-        // Otherwise prompt them that none have been added yet.
         const msg = (med && med.skipBottleTracking)
           ? 'No bottles added.'
           : 'No bottles added yet.';
@@ -1579,7 +1545,6 @@
         return;
       }
 
-      // Sort bottles by expiration date (earliest first)
       const sortedBottles = [...med.bottles].sort((a, b) => new Date(a.expiration) - new Date(b.expiration));
       
       stockList.innerHTML = '';
@@ -1608,16 +1573,13 @@
       document.getElementById('delete-bottle-modal').classList.add('show');
     }
     
-    // Make confirmDeleteBottle globally available
     window.confirmDeleteBottle = confirmDeleteBottle;
 
-    // Stock Modal Event Listeners
     document.getElementById('stock-add-btn')
             .addEventListener('click', async () => {
       const user = window.auth.currentUser;
       if (!user) return;
       
-      // Get medication from Firebase
       const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
       const medDoc = await getDoc(medDocRef);
       
@@ -1649,10 +1611,8 @@
       const quantity = document.getElementById('stock-add-qty').value;
       const errorEl = document.getElementById('stock-add-exp-error');
       
-      // Clear previous error
       errorEl.textContent = '';
       
-      // Validate required fields
       if (!expDate) {
         errorEl.textContent = 'Expiration date is required';
         return;
@@ -1662,7 +1622,6 @@
         const user = window.auth.currentUser;
         if (!user || !currentStockMedId) return;
         
-        // Get current medication from Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
         const medDoc = await getDoc(medDocRef);
       
@@ -1670,9 +1629,7 @@
         
         const medData = medDoc.data();
         
-        // Add new bottle in Firebase format: "MM/DD/YYYY/quantity"
-        // Convert date from YYYY-MM-DD (date input) to MM/DD/YYYY (Firebase format)
-        const dateObj = new Date(expDate + 'T00:00:00'); // Add time to avoid timezone issues
+        const dateObj = new Date(expDate + 'T00:00:00');
         const month = dateObj.getMonth() + 1;
         const day = dateObj.getDate();
         const year = dateObj.getFullYear();
@@ -1682,7 +1639,6 @@
         const newBottle = `${formattedDate}/${quantity || 'N/A'}`;
         bottles.push(newBottle);
         
-        // Update Firebase
         await setDoc(medDocRef, {
           bottles: bottles,
           stock: bottles.length
@@ -1690,10 +1646,8 @@
         
         console.log('[Home] Added bottle to medication:', currentStockMedId);
       
-        // Reload stock list from Firebase
         await renderStockList();
       
-      // Close add modal and return to stock modal
       document.getElementById('stock-add-modal').classList.remove('show');
       document.getElementById('stock-modal').classList.add('show');
       } catch (error) {
@@ -1702,14 +1656,12 @@
       }
     });
 
-    // Delete Bottle Modal Event Listeners
     document.getElementById('delete-bottle-yes')
             .addEventListener('click', async () => {
       try {
         const user = window.auth.currentUser;
         if (!user || !currentStockMedId) return;
         
-        // Get current medication from Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
         const medDoc = await getDoc(medDocRef);
         
@@ -1718,10 +1670,8 @@
         const medData = medDoc.data();
         const bottles = medData.bottles || [];
         
-        // Remove bottle by index
         bottles.splice(pendingDeleteBottleIndex, 1);
         
-        // Update Firebase
         await setDoc(medDocRef, {
           bottles: bottles,
           stock: bottles.length
@@ -1741,7 +1691,6 @@
       document.getElementById('delete-bottle-modal').classList.remove('show');
     });
 
-    // renderList is now called automatically after Firebase is ready
   });
 </script>
 
@@ -1754,7 +1703,6 @@
 
 <script src="schedule-utils.js"></script>
 <script type="module">
-  // Import Firebase SDKs for verification check
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, addDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, getDocsFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -1768,7 +1716,6 @@
     appId: "1:847799899373:web:170bf9c693a78ec42168e4"
   };
 
-  // Initialize Firebase only if not already initialized
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -1796,8 +1743,6 @@
   const agendaDateEl = document.getElementById('agenda-date');
   const agendaFooterEl = document.getElementById('agenda-footer');
 
-  // Show the user's actual local timezone in the footer, since the server now
-  // sends the daily agenda at 9:00 AM in each user's own timezone.
   if (agendaFooterEl) {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1807,7 +1752,6 @@
       const label = tzAbbr ? `9:00 AM ${tzAbbr}` : (tz ? `9:00 AM (${tz})` : '9:00 AM your local time');
       agendaFooterEl.textContent = `Automatic daily agenda emails are sent at ${label}.`;
     } catch (_) {
-      // Leave the static fallback text in place.
     }
   }
 
@@ -1894,7 +1838,6 @@
     });
   }
 
-  // Make auth, db, and Firebase functions globally available
   window.auth = auth;
   window.db = db;
   window.collection = collection;
@@ -1905,7 +1848,6 @@
   window.addDoc = addDoc;
   window.deleteDoc = deleteDoc;
   
-  // Define renderList function inside the module
   async function renderList() {
     try {
       console.log('[Home] renderList() called');
@@ -1927,7 +1869,6 @@
         return;
       }
 
-      // Load medications directly from Firebase
       const medicationsCollectionRef = collection(window.db, "users", user.uid, "medications");
       const medicationsSnapshot = await getDocs(medicationsCollectionRef);
       const medications = [];
@@ -1935,7 +1876,6 @@
         for (const docSnapshot of medicationsSnapshot.docs) {
           const medData = docSnapshot.data();
 
-          // Only show medications that are not deleted
           if (!medData.deletedStatus) {
             const med = {
               id: docSnapshot.id,
@@ -1945,7 +1885,6 @@
               startDate: medData.startDate === 'N/A' ? null : medData.startDate,
               endDate: medData.endDate === 'N/A' ? null : medData.endDate,
               reminder: (function(){
-                // Prefer new reminderChannels array; fall back to legacy reminderMethod
                 const chans = Array.isArray(medData.reminderChannels) && medData.reminderChannels.length > 0
                   ? medData.reminderChannels
                   : (medData.reminderMethod === 'E' ? ['email']
@@ -1974,11 +1913,9 @@
               imageGenericName: medData.imageGenericName || null
             };
 
-            // Auto-migrate old format
             if ((!med.schedules || med.schedules.length === 0) && (medData.daysOfWeek || medData.times)) {
               const migrated = window.ScheduleUtils.migrateOldFormat(medData);
               med.schedules = migrated.schedules;
-              // Save back to Firestore
               try {
                 const medDocRef = doc(window.db, "users", user.uid, "medications", docSnapshot.id);
                 await setDoc(medDocRef, { schedules: migrated.schedules }, { merge: true });
@@ -2016,38 +1953,26 @@
         return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), medication.doses || {});
       };
 
-      // Looser variant for the "Not Taken" button:
-      // determineCurrentDose() skips doses already marked taken, which makes sense for "Taken"
-      // but blocks the user from un-taking a dose they just marked. This variant ignores
-      // taken-status when picking the closest dose to "now".
       const determineDoseToToggle = (medication) => {
-        // First try the strict version (skips taken doses)
         const strict = ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), medication.doses || {});
         if (strict) return strict;
-        // Fall back: ignore taken-status so the user can flip an already-taken dose
         return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), {});
       };
 
-      // Store current dose for each medication (will be set when "Taken" is clicked)
       const medicationCurrentDoses = new Map();
 
-      // Helper function to update stock based on dose status change (extracted for reuse by Take All)
       const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
           if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
             console.log('[Home] No bottles to update stock for');
             return medData.bottles || [];
           }
 
-          // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
           let stockChange = 0;
           if (previousTaken !== true && newTaken === true) {
-            // Going from not-taken (or null) to taken: subtract dosage
             stockChange = -dosage;
           } else if (previousTaken === true && newTaken === false) {
-            // Going from taken to not-taken: add dosage back
             stockChange = dosage;
           }
-          // If status doesn't change or goes from not-taken to not-taken: no change
 
           if (stockChange === 0) {
             console.log('[Home] No stock change needed (status unchanged or not-taken to not-taken)');
@@ -2056,7 +1981,6 @@
 
           console.log(`[Home] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
 
-          // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
           const now = new Date();
           const parsedBottles = medData.bottles.map((bottleStr, index) => {
             const parts = bottleStr.split('/');
@@ -2074,15 +1998,12 @@
             };
           }).filter(b => b !== null);
 
-          // Sort by expiration date (earliest first)
           parsedBottles.sort((a, b) => a.expiration - b.expiration);
 
-          // Find the first bottle that hasn't expired and has quantity
           let activeBottle = parsedBottles.find(b => 
             b.expiration >= now && (b.quantity === null || b.quantity > 0)
           );
 
-          // If no unexpired bottle, use the earliest one (even if expired)
           if (!activeBottle && parsedBottles.length > 0) {
             activeBottle = parsedBottles[0];
           }
@@ -2094,21 +2015,18 @@
 
           console.log(`[Home] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
 
-          // Update the quantity
           const newBottles = [...medData.bottles];
           const bottleParts = newBottles[activeBottle.index].split('/');
           
           if (bottleParts.length >= 4) {
             let newQuantity = activeBottle.quantity;
             if (newQuantity === null) {
-              // If quantity was N/A, we can't track it, so don't update
               console.log('[Home] Bottle quantity is N/A, cannot update stock');
               return medData.bottles;
             }
             
-            newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+            newQuantity = Math.max(0, newQuantity + stockChange);
             
-            // Rebuild bottle string with updated quantity
             const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
             newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
             
@@ -2118,7 +2036,6 @@
           return newBottles;
         };
 
-        // Returns true if status changed, false if it's the same
         const saveDoseToFirebase = async (medicationId, doseNumber, date, taken) => {
           try {
             const user = window.auth.currentUser;
@@ -2136,10 +2053,8 @@
             }
 
             const medData = medDoc.data();
-            // Convert array to object if it's still an array (for migration)
             let doses = medData.doses || {};
             if (Array.isArray(doses)) {
-              // Migrate old array format to new object format
               const dosesObj = {};
               doses.forEach(dose => {
                 const key = `${String(dose.date || '')}_${Number(dose.doseNumber || 0)}`;
@@ -2153,33 +2068,25 @@
               console.log('[Home] Migrated doses from array to object format');
             }
             
-            // Check if an entry already exists for this dose# and date
             const dy = date.getFullYear();
             const dm = String(date.getMonth() + 1).padStart(2, '0');
             const dday = String(date.getDate()).padStart(2, '0');
-            const dateStr = `${dy}-${dm}-${dday}`; // Format as YYYY-MM-DD (local)
-            // Ensure doseNumber is a number for comparison
+            const dateStr = `${dy}-${dm}-${dday}`;
             const doseNum = Number(doseNumber);
             const doseKey = `${dateStr}_${doseNum}`;
             
             console.log('[Home] Looking for existing entry with key:', doseKey);
             console.log('[Home] Current doses object:', doses);
             
-            // Check if status is changing
             const existingEntry = doses[doseKey];
             const previousTaken = existingEntry ? existingEntry.taken : undefined;
             const statusChanged = !existingEntry || existingEntry.taken !== taken;
             
-            // Use object instead of array (Firestore doesn't support nested arrays)
-            // This structure makes it collapsible in Firebase console
-            // Preserve existing takenAt timestamp if already taken, or set new one if marking as taken
             const newDoseEntry = {
               date: dateStr,
               doseNumber: doseNum,
               taken: taken,
-              // If this dose was previously auto-marked, explicitly clear it when the user manually sets status.
               autoMarked: false,
-              // Add timestamp when marked as taken, preserve existing if already taken
               takenAt: taken 
                 ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
                 : null
@@ -2194,11 +2101,9 @@
               console.log('[Home] Added new dose entry:', newDoseEntry);
             }
 
-            // Update stock based on dose status change
             const dosage = Number(medData.dosage) || 0;
             const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
 
-            // Save to Firebase - remove doseStatus and doseHistory if they exist (cleanup old data)
             const updateData = { 
               doses: doses,
               bottles: updatedBottles
@@ -2222,35 +2127,25 @@
           }
         };
 
-      // Make saveDoseToFirebase globally available for Take All feature
       window.saveDoseToFirebase = saveDoseToFirebase;
 
-      // Function to trigger flash animation
       const triggerFlash = (cardElement, color) => {
-        // Remove any existing flash classes
         cardElement.classList.remove('flash-green', 'flash-red');
-        // Force reflow to restart animation
         void cardElement.offsetWidth;
-        // Add the flash class
         cardElement.classList.add(`flash-${color}`);
-        // Remove the class after animation completes
         setTimeout(() => {
           cardElement.classList.remove(`flash-${color}`);
         }, 1000);
       };
 
       medications.forEach((med) => {
-        // Calculate per week and per day
         const perWeek = ScheduleUtils.getPerWeekCount(med.schedules || []);
         const perDay = ScheduleUtils.getPerDayMax(med.schedules || []);
 
-        // Calculate next dosage
         const nextDosage = computeNextDosage(med);
 
-        // Determine current dose automatically
         const currentDose = determineCurrentDose(med);
 
-        // Build current dose display
         let currentDoseDisplay = '';
         if (currentDose) {
           const timeDisplay = currentDose.time ? formatTime12h(currentDose.time) : 'Any time';
@@ -2283,7 +2178,6 @@
           </div>
         `;
 
-        // Mount the soft-blend medication image (right side of header).
         try {
           if (med.imageUrl && window.MedImage) {
             const slot = card.querySelector('.med-card-image-slot');
@@ -2294,7 +2188,6 @@
           }
         } catch (_) {}
 
-        // Add event listener for "Taken" button
         const takenBtn = card.querySelector('.taken-btn');
         if (takenBtn) {
           takenBtn.addEventListener('click', async (e) => {
@@ -2304,12 +2197,9 @@
             
             const currentDose = determineCurrentDose(med);
             if (currentDose) {
-              // Use the dateTime from currentDose, which contains the correct date for this dose
               const doseDate = new Date(currentDose.dateTime);
-              // Reset time to midnight to get just the date part for the key
               doseDate.setHours(0, 0, 0, 0);
               
-              // Check if already marked as taken before saving
               const user = window.auth.currentUser;
               let alreadyTaken = false;
               if (user) {
@@ -2335,32 +2225,25 @@
                 }
               }
 
-              // Mark as taken in Firebase and flash green
               const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, true);
 
-              // Flash green if status changed
               if (statusChanged) {
                 triggerFlash(card, 'green');
               }
 
-              // Only navigate to notes if it wasn't already taken
               if (!alreadyTaken) {
-                // Get date string in local timezone for URL
                 const year = doseDate.getFullYear();
                 const month = String(doseDate.getMonth() + 1).padStart(2, '0');
                 const day = String(doseDate.getDate()).padStart(2, '0');
                 const dateString = `${year}-${month}-${day}`;
 
-                // Build URL with parameters
                 const timeParam = currentDose.time ? encodeURIComponent(currentDose.time) : 'no-time';
                 const url = `medication-action.html?medication=${encodeURIComponent(med.name)}&dose=${currentDose.doseNumber}&time=${timeParam}&date=${dateString}&medId=${encodeURIComponent(med.id)}`;
 
-                // Wait a moment for the flash to be visible, then navigate
                 setTimeout(() => {
                   window.location.href = url;
                 }, 400);
               } else if (statusChanged) {
-                // If already taken and status changed, re-render to update Next/Current Dosage
                 setTimeout(() => {
                   window.renderList();
                 }, 600);
@@ -2372,7 +2255,6 @@
           });
         }
 
-        // Add event listener for "Not Taken" button
         const notTakenBtn = card.querySelector('.not-taken-btn');
         if (notTakenBtn) {
           notTakenBtn.addEventListener('click', async (e) => {
@@ -2380,17 +2262,12 @@
             e.stopPropagation();
             console.log('[Home] Not Taken button clicked for:', med.name);
 
-            // Use the looser variant: if all of today's doses are already marked taken,
-            // we still want to let the user un-mark the closest one.
             const currentDose = determineDoseToToggle(med);
             if (currentDose) {
-              // Use the dateTime from currentDose, which contains the correct date for this dose
               const doseDate = new Date(currentDose.dateTime);
-              // Reset time to midnight to get just the date part for the key
               doseDate.setHours(0, 0, 0, 0);
               const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, false);
 
-              // Always flash + re-render so the user gets feedback even if it was already not-taken
               triggerFlash(card, 'red');
               setTimeout(() => {
                 window.renderList();
@@ -2414,13 +2291,11 @@
       }
       window.currentMedications = currentMedications;
 
-      // Load groups from Firestore subcollection (always from server to avoid stale cache)
       const groupsCollectionRef = collection(window.db, "users", user.uid, "groups");
       let groupsSnapshot;
       try {
         groupsSnapshot = await getDocsFromServer(groupsCollectionRef);
       } catch (e) {
-        // Fallback to cache if offline
         groupsSnapshot = await getDocs(groupsCollectionRef);
       }
       let groups = [];
@@ -2428,7 +2303,6 @@
         groups.push({ id: docSnap.id, ...docSnap.data() });
       });
 
-      // Lazy migrate old-format groups if needed
       const migrated = await migrateGroupsIfNeeded(user, medications, groups);
       if (migrated) {
         const freshSnapshot = await getDocs(groupsCollectionRef);
@@ -2440,7 +2314,6 @@
 
       window.currentGroups = groups;
 
-      // Render medication groups
       renderGroups(medications, groups);
     } catch (error) {
       console.error('Error in renderList:', error);
@@ -2448,19 +2321,15 @@
     }
   }
   
-  // Make renderList globally available
   window.renderList = renderList;
 
-  // ============ MEDICATION GROUPS (Time-Based) ============
 
-  // Helper: convert "HH:MM" to total minutes since midnight
   function timeToMinutes(timeStr) {
     if (!timeStr) return 0;
     const [h, m] = timeStr.split(':').map(Number);
     return h * 60 + (m || 0);
   }
 
-  // Helper: convert minutes since midnight to "H:MM AM/PM"
   function minutesToTime12h(totalMinutes) {
     let mins = ((totalMinutes % 1440) + 1440) % 1440;
     const hours = Math.floor(mins / 60);
@@ -2470,7 +2339,6 @@
     return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
   }
 
-  // Helper: show toast message
   function showGroupToast(msg) {
     const toast = document.getElementById('take-all-feedback');
     toast.textContent = msg;
@@ -2478,19 +2346,15 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   }
 
-  // Lazy migrate old string-array groups to new subcollection format (runs once only)
   async function migrateGroupsIfNeeded(user, medications, existingGroups) {
-    // Check if migration already ran (stored in localStorage so it never re-runs)
     const migrateKey = `groups_migrated_${user.uid}`;
     if (localStorage.getItem(migrateKey)) return false;
 
-    // If new-format groups already exist, mark as migrated and skip
     if (existingGroups.length > 0) {
       localStorage.setItem(migrateKey, '1');
       return false;
     }
 
-    // Collect old-format groups from medication docs
     const oldGroups = new Map();
     for (const med of medications) {
       for (const groupName of (med.groups || [])) {
@@ -2498,7 +2362,6 @@
         oldGroups.get(groupName).push(med.id);
       }
     }
-    // If no old groups to migrate, mark done and skip
     if (oldGroups.size === 0) {
       localStorage.setItem(migrateKey, '1');
       return false;
@@ -2533,13 +2396,11 @@
     return true;
   }
 
-  // Render groups on the home page with lock/unlock logic
   function renderGroups(medications, groups) {
     const area = document.getElementById('groups-area');
     const header = document.getElementById('groups-header');
     if (!area) return;
 
-    // Always show the header so users can manage/create groups
     if (header) header.style.display = 'flex';
 
     if (!groups || groups.length === 0) {
@@ -2553,7 +2414,6 @@
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
     area.innerHTML = groups.map(group => {
-      // Resolve active members for today
       const activeMembers = [];
       const inactiveMembers = [];
       for (const member of (group.members || [])) {
@@ -2571,7 +2431,6 @@
         }
       }
 
-      // Calculate lock window
       let isLocked = true;
       let lockReason = '';
       if (activeMembers.length === 0) {
@@ -2597,7 +2456,6 @@
       const allTaken = activeMembers.length > 0 && activeMembers.every(m => m.taken);
       const takenCount = activeMembers.filter(m => m.taken).length;
 
-      // Active member rows
       const medRows = activeMembers.length > 0
         ? activeMembers.map(am => {
             const statusClass = am.taken ? 'taken' : 'pending';
@@ -2606,7 +2464,6 @@
           }).join('')
         : '<div style="color:var(--muted);font-size:0.85rem;">No medications due today.</div>';
 
-      // Inactive member rows (muted)
       const inactiveHtml = inactiveMembers.length > 0
         ? `<div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">
              <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.25rem;">Not scheduled today:</div>
@@ -2614,14 +2471,12 @@
            </div>`
         : '';
 
-      // Lock/unlock visuals
       const lockIcon = isLocked ? '&#x1F512;' : '&#x1F513;';
       const lockClass = isLocked ? 'group-locked' : 'group-unlocked';
       const allTakenClass = allTaken ? ' group-all-taken' : '';
       const takeAllDisabled = (isLocked || allTaken) ? 'disabled' : '';
       const takeAllText = allTaken ? 'All Taken' : 'Take All';
 
-      // Time window display
       let windowHtml = '';
       if (activeMembers.length > 0) {
         const times = activeMembers.map(m => timeToMinutes(m.time));
@@ -2648,7 +2503,6 @@
       `;
     }).join('');
 
-    // Wire up Take All buttons
     area.querySelectorAll('.take-all-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const groupId = btn.dataset.groupId;
@@ -2661,7 +2515,6 @@
     });
   }
 
-  // Take All: mark specific doses for active group members today
   async function takeAllForGroup(groupId, medications, groups) {
     const group = groups.find(g => g.id === groupId);
     if (!group) return;
@@ -2671,7 +2524,6 @@
     const todayISO = ScheduleUtils.toISODate(today);
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Resolve active members
     const activeMembers = [];
     for (const member of (group.members || [])) {
       const med = medications.find(m => m.id === member.medId);
@@ -2688,7 +2540,6 @@
       return;
     }
 
-    // Re-verify lock window
     const times = activeMembers.map(m => timeToMinutes(m.time));
     const earliestMin = Math.min(...times);
     const latestMin = Math.max(...times);
@@ -2728,7 +2579,6 @@
     }
   }
 
-  // ============ GROUP MANAGEMENT MODAL (Wizard) ============
 
   const groupsModal = document.getElementById('groups-modal');
   const manageGroupsBtn = document.getElementById('manage-groups-btn');
@@ -2736,7 +2586,6 @@
   const groupsEditList = document.getElementById('groups-edit-list');
   const newGroupInput = document.getElementById('new-group-name');
 
-  // Wizard state
   let wizardState = {
     groupName: '',
     anchorMedId: null,
@@ -2745,7 +2594,6 @@
     editingGroupId: null
   };
 
-  // Delete group confirmation state
   let pendingDeleteGroupId = null;
 
   document.getElementById('delete-group-yes').addEventListener('click', async () => {
@@ -2760,13 +2608,11 @@
       const groupRef = doc(window.db, "users", user.uid, "groups", groupIdToDelete);
       await deleteDoc(groupRef);
 
-      // Remove from local cache immediately so UI updates instantly
       window.currentGroups = (window.currentGroups || []).filter(g => g.id !== groupIdToDelete);
 
       pendingDeleteGroupId = null;
       document.getElementById('delete-group-modal').classList.remove('show');
 
-      // Re-render both the home page groups and the modal edit list from local data
       renderGroups(window.currentMedications || [], window.currentGroups);
       renderGroupsEditList();
       showGroupToast('Group deleted');
@@ -2793,7 +2639,6 @@
     }
   });
 
-  // Show/hide wizard steps
   function showWizardStep(stepId) {
     ['groups-step-main', 'groups-step-1', 'groups-step-2', 'groups-step-3'].forEach(id => {
       document.getElementById(id).style.display = (id === stepId) ? '' : 'none';
@@ -2806,7 +2651,6 @@
     }
   }
 
-  // Open modal
   if (manageGroupsBtn) {
     manageGroupsBtn.addEventListener('click', () => {
       renderGroupsEditList();
@@ -2823,23 +2667,19 @@
     });
   }
 
-  // Start create group
   document.getElementById('start-create-group-btn').addEventListener('click', () => {
     wizardState = { groupName: '', anchorMedId: null, anchorTime: null, allDoseTimes: [], editingGroupId: null };
     newGroupInput.value = '';
     showWizardStep('groups-step-1');
   });
 
-  // Step 1 -> Main (cancel)
   document.getElementById('wizard-back-to-main').addEventListener('click', () => {
     showWizardStep('groups-step-main');
   });
 
-  // Step 1 -> Step 2 (next)
   document.getElementById('wizard-to-step-2').addEventListener('click', () => {
     const name = newGroupInput.value.trim();
     if (!name) { newGroupInput.focus(); return; }
-    // Check for duplicate name (unless editing same group)
     const groups = window.currentGroups || [];
     const dupe = groups.find(g => g.name === name && g.id !== wizardState.editingGroupId);
     if (dupe) { showGroupToast('A group with that name already exists'); return; }
@@ -2848,25 +2688,20 @@
     showWizardStep('groups-step-2');
   });
 
-  // Step 2 -> Step 1 (back)
   document.getElementById('wizard-back-to-step-1').addEventListener('click', () => {
     showWizardStep('groups-step-1');
   });
 
-  // Step 3 -> Step 2 (back)
   document.getElementById('wizard-back-to-step-2').addEventListener('click', () => {
     showWizardStep('groups-step-2');
   });
 
-  // Step 2: Show ALL medication + dose time combos (across all schedules)
   function showStep2_AnchorSelection() {
     const meds = window.currentMedications || [];
     const container = document.getElementById('anchor-med-list');
 
     const allDoseTimes = [];
     for (const med of meds) {
-      // Collect every unique time from all schedules for this medication
-      // Scan a full 7-day window to capture every possible dose time
       const seenTimes = new Set();
       const today = new Date();
       for (let offset = 0; offset < 7; offset++) {
@@ -2886,7 +2721,6 @@
       }
     }
 
-    // Sort by time, then by name
     allDoseTimes.sort((a, b) => {
       const tc = (a.time || '').localeCompare(b.time || '');
       if (tc !== 0) return tc;
@@ -2909,7 +2743,6 @@
       </label>
     `).join('');
 
-    // When user clicks a radio, auto-advance to step 3
     container.querySelectorAll('input[type="radio"]').forEach(radio => {
       radio.addEventListener('change', () => {
         wizardState.anchorMedId = radio.dataset.medId;
@@ -2920,7 +2753,6 @@
     });
   }
 
-  // Step 3: Show medications within 2-hour window of anchor
   function showStep3_NearbySelection() {
     const anchorMinutes = timeToMinutes(wizardState.anchorTime);
     const WINDOW_MINUTES = 120;
@@ -2948,12 +2780,10 @@
       `).join('');
     }
 
-    // Update button text
     const saveBtn = document.getElementById('wizard-save-group');
     saveBtn.textContent = wizardState.editingGroupId ? 'Save Group' : 'Create Group';
   }
 
-  // Save group (create or edit)
   document.getElementById('wizard-save-group').addEventListener('click', async () => {
     const user = window.auth.currentUser;
     if (!user) return;
@@ -2963,17 +2793,14 @@
     saveBtn.textContent = 'Saving...';
 
     try {
-      // Collect selected nearby meds
       const selectedNearby = [...document.querySelectorAll('#nearby-med-list input[type="checkbox"]:checked')]
         .map(cb => ({ medId: cb.dataset.medId, time: cb.dataset.time }));
 
-      // Build members array: anchor + selected nearby
       const members = [
         { medId: wizardState.anchorMedId, time: wizardState.anchorTime },
         ...selectedNearby
       ];
 
-      // Deduplicate
       const seen = new Set();
       const dedupedMembers = members.filter(m => {
         const key = `${m.medId}_${m.time}`;
@@ -3008,7 +2835,6 @@
     }
   });
 
-  // Render the groups editing list in the modal
   function renderGroupsEditList() {
     const groups = window.currentGroups || [];
     const meds = window.currentMedications || [];
@@ -3043,7 +2869,6 @@
       `;
     }).join('');
 
-    // Wire up delete buttons (open confirmation modal)
     container.querySelectorAll('.group-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const groupId = btn.dataset.groupId;
@@ -3056,7 +2881,6 @@
       });
     });
 
-    // Wire up rename buttons
     container.querySelectorAll('.group-rename-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const card = btn.closest('.group-edit-card');
@@ -3081,7 +2905,6 @@
       });
     });
 
-    // Wire up edit members buttons
     container.querySelectorAll('.group-edit-members-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const groupId = btn.dataset.groupId;
@@ -3102,19 +2925,15 @@
 
   console.log('[Home] Verification check initialized');
   
-  // Load medications immediately after Firebase is ready
   window.renderList();
 
-  // Check if user is already signed in
   const currentUser = auth.currentUser;
   console.log('[Home] Current user check:', currentUser ? `User: ${currentUser.email}` : 'No user signed in');
 
-  // Check verification status
   onAuthStateChanged(auth, async (user) => {
     console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
 
     if (user) {
-      // Refresh the display
       console.log('[Home] User authenticated, calling renderList()');
       if (user && user.uid) {
         await window.renderList();
@@ -3122,16 +2941,12 @@
         console.log('[Home] User not properly authenticated, skipping renderList()');
       }
     } else {
-      // No user, clear data
       localStorage.removeItem('medications');
       localStorage.removeItem('historyMeds');
     }
   });
 
-  // ============ FIRESTORE MEDICATION SYNC ============
-  // (Data loading is now handled in the combined onAuthStateChanged listener above)
   
-  // Helper function to save medications to Firestore (NEW STRUCTURE)
   window.saveMedicationsToFirestore = async function(medications) {
     const user = auth.currentUser;
     if (!user) {
@@ -3142,27 +2957,21 @@
     try {
       console.log('[Home] Saving medications to Firestore (new structure):', medications.length, 'items');
       
-      // Save each medication as a separate document
       for (let i = 0; i < medications.length; i++) {
         const med = medications[i];
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(db, "users", user.uid, "medications", medId);
         
-        // Preserve existing notes from Firestore (notes are saved directly to Firestore
-        // by medication-action.html and notes.html, not via localStorage)
 
-        // Format dates as mm/dd/yyyy
         const formatDate = (dateStr) => {
           if (!dateStr) return 'N/A';
           return new Date(dateStr).toLocaleDateString();
         };
 
-        // Format reminder method
         let reminderMethod = 'N';
         if (med.reminder === 'Email') reminderMethod = 'E';
         else if (med.reminder === 'SMS') reminderMethod = 'S';
 
-        // Format bottles as array
         const stock = med.bottles ? med.bottles.length : 0;
         const bottles = [];
         if (med.bottles && med.bottles.length > 0) {
@@ -3173,7 +2982,6 @@
           });
         }
 
-        // Get existing medication data to preserve doses field
         const existingMedDoc = await getDoc(medDocRef);
         const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
         
@@ -3187,13 +2995,12 @@
           stock: stock,
           bottles: bottles,
           deletedStatus: med.deletedStatus || false,
-          notes: existingData.notes || {}, // Preserve existing notes from Firestore
-          doses: existingData.doses || {}, // Preserve existing doses field
+          notes: existingData.notes || {},
+          doses: existingData.doses || {},
           id: medId,
           updatedAt: new Date().toISOString()
         };
         
-        // Remove doseStatus and doseHistory if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -3213,7 +3020,6 @@
     }
   };
 
-  // Helper function to save history to Firestore
   window.saveHistoryToFirestore = async function(history) {
     const user = auth.currentUser;
     if (!user) {
@@ -3233,18 +3039,15 @@
     }
   };
 
-  // ============ MEDICATION DATA LOGGER (EVERY 5 SECONDS) ============
   
   function logAllMedicationData() {
     console.log('='.repeat(80));
     console.log('📊 MEDICATION DATA LOG - ' + new Date().toLocaleTimeString());
     console.log('='.repeat(80));
     
-    // Get medications and history from localStorage
     const meds = JSON.parse(localStorage.getItem('medications') || '[]');
     const history = JSON.parse(localStorage.getItem('historyMeds') || '[]');
     
-    // Combine active medications (deletedStatus: false) with history (deletedStatus: true)
     const allMedications = [
       ...meds.map(med => ({ ...med, deletedStatus: false })),
       ...history.map(med => ({ ...med, deletedStatus: true }))
@@ -3261,19 +3064,16 @@
       console.log(`   dosage: ${med.dosage || 'N/A'}`);
       console.log(`   schedules:`, JSON.stringify(med.schedules || []));
       
-      // Format dates
       const startDate = med.startDate ? new Date(med.startDate).toLocaleDateString() : 'N/A';
       const endDate = med.endDate ? new Date(med.endDate).toLocaleDateString() : 'N/A';
       console.log(`   startdate: ${startDate}`);
       console.log(`   enddate: ${endDate}`);
       
-      // Format reminder method
       let reminderMethod = 'N';
       if (med.reminder === 'Email') reminderMethod = 'E';
       else if (med.reminder === 'SMS') reminderMethod = 'S';
       console.log(`   remindermethod: ${reminderMethod}`);
       
-      // Format stock/bottles
       console.log(`   stock: ${med.bottles ? med.bottles.length : 0}`);
       if (med.bottles && med.bottles.length > 0) {
         med.bottles.forEach((bottle, i) => {
@@ -3283,25 +3083,19 @@
         });
       }
       
-      // Deleted status
       console.log(`   deletedStatus: ${med.deletedStatus ? 'True' : 'False'}`);
       
-      // Format notes (get from localStorage)
       const notes = [];
       if (!med.deletedStatus) {
-        // Only show notes for active medications
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('note_')) {
             const noteValue = localStorage.getItem(key);
             if (noteValue && noteValue.trim()) {
-              // Extract date from key (note_YYYY-MM-DD format)
               const dateStr = key.replace('note_', '');
               const noteDate = new Date(dateStr).toLocaleDateString();
               
-              // Try to extract medication and dose from note content
               const lines = noteValue.split('\n').filter(line => line.trim());
               lines.forEach(line => {
-                // Look for medication name in the note
                 const medName = med.name || 'Unknown';
                 notes.push(`${noteDate}, ${medName}, 1, ${line.trim()}`);
               });
@@ -3322,12 +3116,8 @@
     console.log('='.repeat(80));
   }
   
-  // (Removed) The "MEDICATION LOGGER" debug block that printed the Firebase
-  // hierarchy on Home-link click — it called e.preventDefault() which actually
-  // blocked Home navigation. It was leftover test instrumentation.
 </script>
 
-  <!-- First-time User Help Popup -->
   <div id="first-time-popup" class="first-time-popup" style="display: none;">
     <div class="popup-progress-bar">
       <div class="popup-progress-fill"></div>
@@ -3340,7 +3130,6 @@
     </div>
   </div>
 
-  <!-- Help Modal with Canva Embed -->
   <div id="help-modal" class="help-modal">
     <div class="help-modal-content">
       <button class="help-modal-close" id="close-help-modal">×</button>
@@ -3394,7 +3183,7 @@
   </div>
 
   <style>
-    /* First-time User Popup Styles */
+    
     .first-time-popup {
       position: fixed;
       bottom: 20px;
@@ -3516,7 +3305,7 @@
       transform: translateY(0);
     }
 
-    /* Help Modal Styles */
+    
     .help-modal {
       display: none;
       position: fixed;
@@ -3722,7 +3511,7 @@
       height: 20px;
     }
 
-    /* Mobile Responsive */
+    
     @media (max-width: 768px) {
       .first-time-popup {
         width: calc(100vw - 40px);
@@ -3840,7 +3629,6 @@
   </style>
 
   <script>
-    // First-time user popup logic
     (function() {
       const popup = document.getElementById('first-time-popup');
       const closeBtn = document.getElementById('close-first-time-popup');
@@ -3848,16 +3636,12 @@
       const helpModal = document.getElementById('help-modal');
       const closeModalBtn = document.getElementById('close-help-modal');
       
-      // Check if user has seen the popup before
       const hasSeenPopup = localStorage.getItem('hasSeenFirstTimePopup');
       
-      // Show popup if first time
       if (!hasSeenPopup) {
-        // Wait a bit after page load to show popup
         setTimeout(() => {
           popup.style.display = 'block';
           
-          // Auto-hide after 10 seconds (progress bar handles this visually)
           setTimeout(() => {
             hidePopup();
           }, 10000);
@@ -3872,7 +3656,6 @@
         }, 300);
       }
 
-      // Slideshow navigation - declare variables first
       let currentSlide = 0;
       const totalSlides = 10;
       const slides = document.querySelectorAll('.slide');
@@ -3882,7 +3665,6 @@
 
       function openHelpModal() {
         helpModal.classList.add('show');
-        // Reset to first slide when opening
         currentSlide = 0;
         updateSlideshow();
       }
@@ -3892,7 +3674,6 @@
       }
 
       function updateSlideshow() {
-        // Update slide visibility
         slides.forEach((slide, index) => {
           if (index === currentSlide) {
             slide.classList.add('active');
@@ -3901,7 +3682,6 @@
           }
         });
 
-        // Show/hide navigation buttons
         if (currentSlide === 0) {
           navLeft.style.display = 'none';
         } else {
@@ -3944,7 +3724,6 @@
         });
       }
 
-      // Initialize slideshow and preload images
       const slideImages = document.querySelectorAll('.slide-image');
       slideImages.forEach((img, index) => {
         img.onerror = function() {
@@ -3958,7 +3737,6 @@
       
       updateSlideshow();
 
-      // Event listeners
       if (closeBtn) closeBtn.addEventListener('click', hidePopup);
       if (watchBtn) watchBtn.addEventListener('click', () => {
         hidePopup();
@@ -3966,14 +3744,12 @@
       });
       if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
       
-      // Close modal on background click
       helpModal.addEventListener('click', (e) => {
         if (e.target === helpModal) {
           closeHelpModal();
         }
       });
 
-      // Make functions globally available for profile page
       window.openHelpModal = openHelpModal;
       window.closeHelpModal = closeHelpModal;
     })();

@@ -13,7 +13,7 @@
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
       --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
       --container:1200px;
-      /* compatibility var */
+      
       --danger-color: var(--danger);
     }
 
@@ -21,13 +21,13 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #000000;
         --muted-strong: #1a1a1a;
       }
     }
 
-    /* base */
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -43,7 +43,7 @@
     }
     a { color: inherit; text-decoration: none; }
 
-    /* layout */
+    
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
     .sidebar {
@@ -68,8 +68,8 @@
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
-    /* Hamburger menu */
-    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    
+    
     .menu-toggle {
       position: absolute;
       width: 1px;
@@ -205,14 +205,14 @@
       }
     }
 
-    /* headings */
+    
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0; }
     h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
 
-    /* list */
+    
     #med-list { max-height: 70vh; overflow-y: auto; display: grid; gap: 1rem; }
 
-    /* cards */
+    
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -224,7 +224,7 @@
     .card p { color: var(--muted); margin: 0; }
     .card strong { color: var(--text); }
     
-    /* Flash animations for taken/not taken feedback */
+    
     .card.flash-green {
       animation: flashGreen 1s ease-out;
     }
@@ -244,7 +244,7 @@
       100% { background-color: var(--surface); }
     }
 
-    /* buttons */
+    
     .btn {
       appearance: none; border: 1px solid transparent;
       border-radius: 12px; padding: .7rem 1rem;
@@ -312,7 +312,7 @@
       font-size: 1rem;
     }
 
-    /* modals */
+    
     .modal {
       display: none;
       position: fixed; inset: 0;
@@ -335,7 +335,7 @@
     }
     .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
 
-    /* Agenda modal */
+    
     .agenda-modal .modal-content {
       max-width: 720px;
       width: 95%;
@@ -444,7 +444,7 @@
       color: var(--muted);
     }
 
-    /* stock list items */
+    
     .bottle-item {
       background: color-mix(in oklab, var(--surface) 96%, transparent);
       padding: 1rem;
@@ -466,7 +466,7 @@
     
     .delete-bottle-btn {
       min-width: 80px;
-      min-height: 44px; /* iOS recommended touch target */
+      min-height: 44px; 
       padding: 0.5rem 1rem;
       border-radius: 8px;
       font-weight: 600;
@@ -495,7 +495,7 @@
       font-size: 0.875rem;
     }
 
-    /* forms */
+    
     .form-group { text-align: left; margin-bottom: 1rem; }
     .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
     .form-group input[type="date"], .form-group input[type="number"], .form-group input[type="email"], .form-group input[type="text"], .form-group textarea {
@@ -521,10 +521,10 @@
     }
     .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
 
-    /* helpful utilities */
+    
     .muted, .lead { color: var(--muted); }
 
-    /* scrollbars */
+    
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-thumb {
       background: color-mix(in oklab, var(--surface) 80%, var(--border));
@@ -532,14 +532,14 @@
     }
     ::-webkit-scrollbar-track { background: transparent; }
     
-    /* Make calendar icons white */
+    
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator {
       filter: invert(1) opacity(.85);
       cursor: pointer;
     }
     
-    /* Mobile optimizations */
+    
     @media (max-width: 640px) {
       .container { padding-inline: 1rem; }
       .content { padding-block: 1.5rem; padding-top: 4.5rem; }
@@ -623,7 +623,7 @@
       
       .delete-bottle-btn {
         width: 100%;
-        min-height: 48px; /* Larger touch target for mobile */
+        min-height: 48px; 
         padding: 0.75rem 1rem;
         font-size: 1rem;
         border-radius: 12px;
@@ -716,7 +716,6 @@
     </div>
   </div>
 
-  <!-- Delete Confirmation Modal -->
   <div id="confirm-modal" class="modal">
     <div class="modal-content">
       <p>Are you sure you want to delete this medication?<br>
@@ -726,7 +725,6 @@
     </div>
   </div>
 
-  <!-- Stock Modal -->
   <div id="stock-modal" class="modal">
     <div class="modal-content" style="max-width: 600px; width: 95%;">
       <h3>Stock for <span id="stock-med-name"></span></h3>
@@ -738,7 +736,6 @@
     </div>
   </div>
 
-  <!-- Add‑Bottle Modal -->
   <div id="stock-add-modal" class="modal">
     <div class="modal-content" style="max-width: 500px;">
       <h3>Add Bottle for <span id="stock-add-med-name"></span></h3>
@@ -758,7 +755,6 @@
     </div>
   </div>
 
-  <!-- Delete Bottle Confirmation Modal -->
   <div id="delete-bottle-modal" class="modal">
     <div class="modal-content">
       <p>Are you sure you want to delete this bottle?<br>
@@ -770,7 +766,6 @@
 
 <script>
       document.addEventListener('DOMContentLoaded', () => {
-      // Close mobile menu when clicking on nav links
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
       sidebarLinks.forEach(link => {
@@ -789,7 +784,6 @@
       document.getElementById('confirm-modal').classList.add('show');
     }
     
-    // Make confirmDelete globally available
     window.confirmDelete = confirmDelete;
 
     document.getElementById('confirm-yes')
@@ -800,7 +794,6 @@
 
         console.log('[Home] Deleting medication with ID:', pendingDeleteIndex);
 
-        // Update the medication in Firebase to set deletedStatus: true
         const medDocRef = doc(window.db, "users", user.uid, "medications", pendingDeleteIndex);
         await setDoc(medDocRef, { deletedStatus: true }, { merge: true });
 
@@ -826,7 +819,6 @@
       document.getElementById('confirm-modal').classList.remove('show');
     });
 
-    // Stock Management Functions
     window.openStock = async function(medId) {
       try {
         currentStockMedId = medId;
@@ -836,7 +828,6 @@
           return;
         }
 
-        // Get the specific medication from Firebase using the ID
         const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
         const medDoc = await getDoc(medDocRef);
         
@@ -847,14 +838,12 @@
         
         const medData = medDoc.data();
         
-        // Convert bottles from Firebase format to object format
         const med = {
           id: medDoc.id,
           name: medData.name,
           bottles: medData.bottles ? medData.bottles.map(bottleStr => {
             const parts = bottleStr.split('/');
             if (parts.length >= 2) {
-              // Format: "12/14/2025/83" or "3/15/2026/30"
               const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
               if (dateMatch) {
                 return {
@@ -878,7 +867,6 @@
     async function renderStockList(med) {
       const stockList = document.getElementById('stock-list');
       
-      // If no med parameter provided, reload from Firebase
       if (!med) {
         const user = window.auth.currentUser;
         if (!user || !currentStockMedId) return;
@@ -908,7 +896,6 @@
         return;
       }
 
-      // Sort bottles by expiration date (earliest first)
       const sortedBottles = [...med.bottles].sort((a, b) => new Date(a.expiration) - new Date(b.expiration));
       
       stockList.innerHTML = '';
@@ -937,16 +924,13 @@
       document.getElementById('delete-bottle-modal').classList.add('show');
     }
     
-    // Make confirmDeleteBottle globally available
     window.confirmDeleteBottle = confirmDeleteBottle;
 
-    // Stock Modal Event Listeners
     document.getElementById('stock-add-btn')
             .addEventListener('click', async () => {
       const user = window.auth.currentUser;
       if (!user) return;
       
-      // Get medication from Firebase
       const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
       const medDoc = await getDoc(medDocRef);
       
@@ -978,10 +962,8 @@
       const quantity = document.getElementById('stock-add-qty').value;
       const errorEl = document.getElementById('stock-add-exp-error');
       
-      // Clear previous error
       errorEl.textContent = '';
       
-      // Validate required fields
       if (!expDate) {
         errorEl.textContent = 'Expiration date is required';
         return;
@@ -991,7 +973,6 @@
         const user = window.auth.currentUser;
         if (!user || !currentStockMedId) return;
         
-        // Get current medication from Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
         const medDoc = await getDoc(medDocRef);
       
@@ -999,9 +980,7 @@
         
         const medData = medDoc.data();
         
-        // Add new bottle in Firebase format: "MM/DD/YYYY/quantity"
-        // Convert date from YYYY-MM-DD (date input) to MM/DD/YYYY (Firebase format)
-        const dateObj = new Date(expDate + 'T00:00:00'); // Add time to avoid timezone issues
+        const dateObj = new Date(expDate + 'T00:00:00');
         const month = dateObj.getMonth() + 1;
         const day = dateObj.getDate();
         const year = dateObj.getFullYear();
@@ -1011,7 +990,6 @@
         const newBottle = `${formattedDate}/${quantity || 'N/A'}`;
         bottles.push(newBottle);
         
-        // Update Firebase
         await setDoc(medDocRef, {
           bottles: bottles,
           stock: bottles.length
@@ -1019,10 +997,8 @@
         
         console.log('[Home] Added bottle to medication:', currentStockMedId);
       
-        // Reload stock list from Firebase
         await renderStockList();
         
-        // Close add modal and return to stock modal
         document.getElementById('stock-add-modal').classList.remove('show');
         document.getElementById('stock-modal').classList.add('show');
       } catch (error) {
@@ -1031,14 +1007,12 @@
       }
     });
 
-    // Delete Bottle Modal Event Listeners
     document.getElementById('delete-bottle-yes')
             .addEventListener('click', async () => {
       try {
         const user = window.auth.currentUser;
         if (!user || !currentStockMedId) return;
         
-        // Get current medication from Firebase
         const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
         const medDoc = await getDoc(medDocRef);
         
@@ -1047,10 +1021,8 @@
         const medData = medDoc.data();
         const bottles = medData.bottles || [];
         
-        // Remove bottle by index
         bottles.splice(pendingDeleteBottleIndex, 1);
         
-        // Update Firebase
         await setDoc(medDocRef, {
           bottles: bottles,
           stock: bottles.length
@@ -1070,7 +1042,6 @@
       document.getElementById('delete-bottle-modal').classList.remove('show');
     });
 
-    // renderList is now called automatically after Firebase is ready
   });
 </script>
 
@@ -1082,7 +1053,6 @@
 </style>
 
 <script type="module">
-  // Import Firebase SDKs for verification check
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, query, where } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
@@ -1096,7 +1066,6 @@
     appId: "1:847799899373:web:170bf9c693a78ec42168e4"
   };
 
-  // Initialize Firebase only if not already initialized
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -1116,7 +1085,6 @@
 
   let currentMedications = [];
 
-  // Make auth, db, and Firebase functions globally available
   window.auth = auth;
   window.db = db;
   window.collection = collection;
@@ -1126,25 +1094,19 @@
   window.setDoc = setDoc;
   window.deleteDoc = deleteDoc;
   
-  // Define renderList function inside the module (disabled for caregiver view)
   async function renderList() {
-    // Caregiver view - medications are not displayed here
     return;
   }
   
-  // Make renderList globally available
   window.renderList = renderList;
 
   console.log('[Home] Verification check initialized');
   
-  // Load medications immediately after Firebase is ready
   window.renderList();
 
-  // Check if user is already signed in
   const currentUser = auth.currentUser;
   console.log('[Home] Current user check:', currentUser ? `User: ${currentUser.email}` : 'No user signed in');
 
-  // ============ ADD PATIENT FORM HANDLER ============
   document.addEventListener('DOMContentLoaded', () => {
     const addPatientForm = document.getElementById('add-patient-form');
     const messageElement = document.getElementById('add-patient-message');
@@ -1167,7 +1129,6 @@
           return;
         }
         
-        // Basic email validation
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patientEmail)) {
           messageElement.className = 'msg err';
           messageElement.textContent = 'Please enter a valid email address.';
@@ -1178,7 +1139,6 @@
           messageElement.className = 'msg';
           messageElement.textContent = 'Checking...';
           
-          // Get caregiver's name from logged-in user's profile
           const user = auth.currentUser;
           if (!user) {
             throw new Error('Not signed in');
@@ -1194,12 +1154,7 @@
           const caregiverData = caregiverDoc.data();
           const caregiverName = caregiverData.name || 'A caregiver';
           
-          // Call Cloud Function to send invitation email
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendCaregiverInvitation';
-          // The endpoint is authenticated now — it sends mail to an arbitrary
-          // address, so it must know who is asking. The caregiver's display name
-          // is read server-side from the profile doc and is no longer trusted
-          // from this body.
           const inviteIdToken = await user.getIdToken();
           const response = await fetch(functionUrl, {
             method: 'POST',
@@ -1226,12 +1181,10 @@
             return;
           }
           
-          // Success
           messageElement.className = 'msg ok';
           messageElement.textContent = 'Request sent!';
-          messageElement.style.color = '#22c55e'; // Green color for success (using --success value)
+          messageElement.style.color = '#22c55e';
           
-          // Clear form
           document.getElementById('patient-email').value = '';
           document.getElementById('message').value = '';
           
@@ -1244,12 +1197,10 @@
     }
   });
 
-  // Check verification status
   onAuthStateChanged(auth, async (user) => {
     console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
 
     if (user) {
-      // Refresh the display
       console.log('[Home] User authenticated, calling renderList()');
       if (user && user.uid) {
         await window.renderList();
@@ -1257,16 +1208,12 @@
         console.log('[Home] User not properly authenticated, skipping renderList()');
       }
     } else {
-      // No user, clear data
       localStorage.removeItem('medications');
       localStorage.removeItem('historyMeds');
     }
   });
 
-  // ============ FIRESTORE MEDICATION SYNC ============
-  // (Data loading is now handled in the combined onAuthStateChanged listener above)
   
-  // Helper function to save medications to Firestore (NEW STRUCTURE)
   window.saveMedicationsToFirestore = async function(medications) {
     const user = auth.currentUser;
     if (!user) {
@@ -1277,13 +1224,11 @@
     try {
       console.log('[Home] Saving medications to Firestore (new structure):', medications.length, 'items');
       
-      // Save each medication as a separate document
       for (let i = 0; i < medications.length; i++) {
         const med = medications[i];
         const medId = med.id || `med_${Date.now()}_${i}`;
         const medDocRef = doc(db, "users", user.uid, "medications", medId);
         
-        // Collect notes as a Map: {date: {dose: message}}
         const notes = {};
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('note_')) {
@@ -1303,18 +1248,15 @@
           }
         });
 
-        // Format dates as mm/dd/yyyy
         const formatDate = (dateStr) => {
           if (!dateStr) return 'N/A';
           return new Date(dateStr).toLocaleDateString();
         };
 
-        // Format reminder method
         let reminderMethod = 'N';
         if (med.reminder === 'Email') reminderMethod = 'E';
         else if (med.reminder === 'SMS') reminderMethod = 'S';
 
-        // Format bottles as array
         const stock = med.bottles ? med.bottles.length : 0;
         const bottles = [];
         if (med.bottles && med.bottles.length > 0) {
@@ -1325,7 +1267,6 @@
           });
         }
 
-        // Get existing medication data to preserve doses field
         const existingMedDoc = await getDoc(medDocRef);
         const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
         
@@ -1342,12 +1283,11 @@
           bottles: bottles,
           deletedStatus: med.deletedStatus || false,
           notes: notes,
-          doses: existingData.doses || {}, // Preserve existing doses field
+          doses: existingData.doses || {},
           id: medId,
           updatedAt: new Date().toISOString()
         };
         
-        // Remove doseStatus and doseHistory if they exist
         const updateData = { ...medData };
         if (existingData.doseStatus !== undefined) {
           updateData.doseStatus = deleteField();
@@ -1367,7 +1307,6 @@
     }
   };
 
-  // Helper function to save history to Firestore
   window.saveHistoryToFirestore = async function(history) {
     const user = auth.currentUser;
     if (!user) {
@@ -1387,18 +1326,15 @@
     }
   };
 
-  // ============ MEDICATION DATA LOGGER (EVERY 5 SECONDS) ============
   
   function logAllMedicationData() {
     console.log('='.repeat(80));
     console.log('📊 MEDICATION DATA LOG - ' + new Date().toLocaleTimeString());
     console.log('='.repeat(80));
     
-    // Get medications and history from localStorage
     const meds = JSON.parse(localStorage.getItem('medications') || '[]');
     const history = JSON.parse(localStorage.getItem('historyMeds') || '[]');
     
-    // Combine active medications (deletedStatus: false) with history (deletedStatus: true)
     const allMedications = [
       ...meds.map(med => ({ ...med, deletedStatus: false })),
       ...history.map(med => ({ ...med, deletedStatus: true }))
@@ -1416,26 +1352,22 @@
       console.log(`   days of week: [${(med.days || []).map(day => `"${day}"`).join(', ')}]`);
       console.log(`   timesperday: ${med.timesPerDay || 'N/A'}`);
       
-      // Format times - show all slots up to timesPerDay
       const timesPerDay = med.timesPerDay || 1;
       for (let i = 0; i < timesPerDay; i++) {
         const time = (med.times && med.times[i]) ? med.times[i] : 'N/A';
         console.log(`      time${i + 1}: ${time}`);
       }
       
-      // Format dates
       const startDate = med.startDate ? new Date(med.startDate).toLocaleDateString() : 'N/A';
       const endDate = med.endDate ? new Date(med.endDate).toLocaleDateString() : 'N/A';
       console.log(`   startdate: ${startDate}`);
       console.log(`   enddate: ${endDate}`);
       
-      // Format reminder method
       let reminderMethod = 'N';
       if (med.reminder === 'Email') reminderMethod = 'E';
       else if (med.reminder === 'SMS') reminderMethod = 'S';
       console.log(`   remindermethod: ${reminderMethod}`);
       
-      // Format stock/bottles
       console.log(`   stock: ${med.bottles ? med.bottles.length : 0}`);
       if (med.bottles && med.bottles.length > 0) {
         med.bottles.forEach((bottle, i) => {
@@ -1445,25 +1377,19 @@
         });
       }
       
-      // Deleted status
       console.log(`   deletedStatus: ${med.deletedStatus ? 'True' : 'False'}`);
       
-      // Format notes (get from localStorage)
       const notes = [];
       if (!med.deletedStatus) {
-        // Only show notes for active medications
         Object.keys(localStorage).forEach(key => {
           if (key.startsWith('note_')) {
             const noteValue = localStorage.getItem(key);
             if (noteValue && noteValue.trim()) {
-              // Extract date from key (note_YYYY-MM-DD format)
               const dateStr = key.replace('note_', '');
               const noteDate = new Date(dateStr).toLocaleDateString();
               
-              // Try to extract medication and dose from note content
               const lines = noteValue.split('\n').filter(line => line.trim());
               lines.forEach(line => {
-                // Look for medication name in the note
                 const medName = med.name || 'Unknown';
                 notes.push(`${noteDate}, ${medName}, 1, ${line.trim()}`);
               });
@@ -1484,12 +1410,9 @@
     console.log('='.repeat(80));
   }
   
-  // NOTE: previously, a temporary "medication logger" prevented navigation on the sidebar Home link.
-  // That debug-only code has been removed so the sidebar links work normally.
   
 </script>
 
-  <!-- First-time User Help Popup -->
   <div id="first-time-popup" class="first-time-popup" style="display: none;">
     <div class="popup-progress-bar">
       <div class="popup-progress-fill"></div>
@@ -1502,7 +1425,6 @@
     </div>
   </div>
 
-  <!-- Help Modal with Canva Embed -->
   <div id="help-modal" class="help-modal">
     <div class="help-modal-content">
       <button class="help-modal-close" id="close-help-modal">×</button>
@@ -1556,7 +1478,7 @@
   </div>
 
   <style>
-    /* First-time User Popup Styles */
+    
     .first-time-popup {
       position: fixed;
       bottom: 20px;
@@ -1678,7 +1600,7 @@
       transform: translateY(0);
     }
 
-    /* Help Modal Styles */
+    
     .help-modal {
       display: none;
       position: fixed;
@@ -1884,7 +1806,7 @@
       height: 20px;
     }
 
-    /* Mobile Responsive */
+    
     @media (max-width: 768px) {
       .first-time-popup {
         width: calc(100vw - 40px);
@@ -2002,7 +1924,6 @@
   </style>
 
   <script>
-    // First-time user popup logic
     (function() {
       const popup = document.getElementById('first-time-popup');
       const closeBtn = document.getElementById('close-first-time-popup');
@@ -2010,16 +1931,12 @@
       const helpModal = document.getElementById('help-modal');
       const closeModalBtn = document.getElementById('close-help-modal');
       
-      // Check if user has seen the popup before
       const hasSeenPopup = localStorage.getItem('hasSeenFirstTimePopup');
       
-      // Show popup if first time
       if (!hasSeenPopup) {
-        // Wait a bit after page load to show popup
         setTimeout(() => {
           popup.style.display = 'block';
           
-          // Auto-hide after 10 seconds (progress bar handles this visually)
           setTimeout(() => {
             hidePopup();
           }, 10000);
@@ -2034,7 +1951,6 @@
         }, 300);
       }
 
-      // Slideshow navigation - declare variables first
       let currentSlide = 0;
       const totalSlides = 10;
       const slides = document.querySelectorAll('.slide');
@@ -2044,7 +1960,6 @@
 
       function openHelpModal() {
         helpModal.classList.add('show');
-        // Reset to first slide when opening
         currentSlide = 0;
         updateSlideshow();
       }
@@ -2054,7 +1969,6 @@
       }
 
       function updateSlideshow() {
-        // Update slide visibility
         slides.forEach((slide, index) => {
           if (index === currentSlide) {
             slide.classList.add('active');
@@ -2063,7 +1977,6 @@
           }
         });
 
-        // Show/hide navigation buttons
         if (currentSlide === 0) {
           navLeft.style.display = 'none';
         } else {
@@ -2106,7 +2019,6 @@
         });
       }
 
-      // Initialize slideshow and preload images
       const slideImages = document.querySelectorAll('.slide-image');
       slideImages.forEach((img, index) => {
         img.onerror = function() {
@@ -2120,7 +2032,6 @@
       
       updateSlideshow();
 
-      // Event listeners
       if (closeBtn) closeBtn.addEventListener('click', hidePopup);
       if (watchBtn) watchBtn.addEventListener('click', () => {
         hidePopup();
@@ -2128,14 +2039,12 @@
       });
       if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
       
-      // Close modal on background click
       helpModal.addEventListener('click', (e) => {
         if (e.target === helpModal) {
           closeHelpModal();
         }
       });
 
-      // Make functions globally available for profile page
       window.openHelpModal = openHelpModal;
       window.closeHelpModal = closeHelpModal;
     })();

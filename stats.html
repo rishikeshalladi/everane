@@ -13,7 +13,7 @@
       --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
       --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
       --container:1200px;
-      /* compatibility var */
+      
       --danger-color: var(--danger);
     }
 
@@ -21,13 +21,13 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #000000;
         --muted-strong: #1a1a1a;
       }
     }
 
-    /* base */
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -43,7 +43,7 @@
     }
     a { color: inherit; text-decoration: none; }
 
-    /* layout */
+    
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
     .sidebar {
@@ -68,7 +68,7 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Stats page styles */
+    
     .time-range-controls {
       display: flex;
       gap: 0.5rem;
@@ -238,7 +238,7 @@
         height: 160px;
       }
 
-      /* Med breakdown chart mobile sizing */
+      
       #med-breakdown-card .chart-container {
         height: auto !important;
         min-height: 160px;
@@ -258,7 +258,7 @@
         margin-bottom: 0.25rem;
       }
 
-      /* Compact spacing for med breakdown on mobile */
+      
       #med-breakdown-card h2 {
         margin-bottom: 0.25rem;
       }
@@ -268,7 +268,7 @@
       }
     }
 
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -373,7 +373,7 @@
       }
     }
 
-    /* === MOBILE CENTERING FIX (STATS PAGE ONLY) === */
+    
     @media (max-width: 768px) {
       .container {
         padding-inline: 0.75rem !important;
@@ -448,7 +448,6 @@
     <div class="container" data-tutorial="stats-content">
       <h1>Stats</h1>
       
-      <!-- Time Range Controls -->
       <div class="time-range-controls">
         <button class="time-range-btn active" data-range="week">Week</button>
         <button class="time-range-btn" data-range="month">Month</button>
@@ -456,9 +455,7 @@
         <button class="time-range-btn" data-range="all">All Time</button>
       </div>
 
-      <!-- Charts Container -->
       <div class="charts-grid">
-        <!-- Chart A: Taken vs Not Taken -->
         <div class="stats-card">
           <h2>Adherence Overview</h2>
           <div class="adherence-numbers">
@@ -480,7 +477,6 @@
           </div>
         </div>
 
-        <!-- Chart B: Per-Medication Breakdown -->
         <div class="stats-card" id="med-breakdown-card">
           <h2>Medication Breakdown</h2>
           <div class="chart-container" id="med-breakdown-container">
@@ -489,17 +485,14 @@
         </div>
       </div>
 
-      <!-- Empty State -->
       <div class="empty-state" id="empty-state" style="display: none;">
         <p>No dose history yet. Mark doses as Taken/Not Taken to see stats.</p>
       </div>
     </div>
   </div>
 
-  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-  <!-- Firebase -->
   <script src="schedule-utils.js"></script>
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
@@ -522,12 +515,10 @@
     window.auth = auth;
     window.db = db;
 
-    // Chart instances
     let adherenceChart = null;
     let medBreakdownChart = null;
     let currentTimeRange = 'week';
 
-    // Time range button handlers
     document.querySelectorAll('.time-range-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
@@ -537,7 +528,6 @@
       });
     });
 
-    // Get date range based on time range selection
     function getDateRange(range) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -545,15 +535,15 @@
       switch(range) {
         case 'week':
           const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - 6); // Last 7 days including today
+          weekStart.setDate(today.getDate() - 6);
           return { start: weekStart, end: today };
         case 'month':
           const monthStart = new Date(today);
-          monthStart.setDate(today.getDate() - 29); // Last 30 days including today
+          monthStart.setDate(today.getDate() - 29);
           return { start: monthStart, end: today };
         case 'year':
           const yearStart = new Date(today);
-          yearStart.setDate(today.getDate() - 364); // Last 365 days including today
+          yearStart.setDate(today.getDate() - 364);
           return { start: yearStart, end: today };
         case 'all':
           return { start: null, end: null };
@@ -562,13 +552,11 @@
       }
     }
 
-    // Load dose logs from Firestore
     async function loadDoseLogs() {
       const user = auth.currentUser;
       if (!user) return [];
 
       try {
-        // Get all medications for the user
         const medicationsRef = collection(db, 'users', user.uid, 'medications');
         const medicationsSnapshot = await getDocs(medicationsRef);
         
@@ -576,24 +564,21 @@
         
         medicationsSnapshot.forEach(medDoc => {
           const medData = medDoc.data();
-          if (medData.deletedStatus) return; // Skip deleted medications
+          if (medData.deletedStatus) return;
           
           const medicationName = medData.name || 'Unknown';
           const doses = medData.doses || {};
           
           console.log(`[Stats] Processing medication: ${medicationName}, doses count: ${Object.keys(doses).length}`);
           
-          // Convert doses object to array of log entries
           Object.keys(doses).forEach(key => {
             const dose = doses[key];
             
-            // Handle both boolean and string values for 'taken'
             let takenValue = dose.taken;
             if (typeof takenValue === 'string') {
               takenValue = takenValue === 'true' || takenValue === 'True';
             }
             
-            // Debug logging for all doses
             console.log(`[Stats] Processing dose entry:`, {
               key,
               medication: medicationName,
@@ -605,20 +590,16 @@
               autoMarked: dose.autoMarked
             });
             
-            // Skip if no date
             if (!dose.date) {
               console.log('[Stats] Skipping dose entry (no date):', key);
               return;
             }
             
-            // IMPORTANT: Include doses where taken is false (skipped/not taken)
-            // Only skip if taken is undefined or null (not marked at all)
             if (takenValue === undefined || takenValue === null) {
               console.log('[Stats] Skipping dose entry (taken is undefined/null):', key);
               return;
             }
             
-            // Parse date from YYYY-MM-DD format
             const [year, month, day] = dose.date.split('-').map(Number);
             if (isNaN(year) || isNaN(month) || isNaN(day)) {
               console.warn('[Stats] Invalid date format:', dose.date, 'for dose:', key);
@@ -626,7 +607,6 @@
             }
             const scheduledDate = new Date(year, month - 1, day);
             
-            // Get scheduled time if available
             let scheduledDateTime = new Date(scheduledDate);
             const schedules = medData.schedules || [];
             if (schedules.length > 0 && dose.date) {
@@ -642,19 +622,15 @@
               }
             }
             
-            // Count all doses with taken: false as "not_taken" (including skipped and auto-marked)
-            // Count all doses with taken: true as "taken"
-            // Use the normalized takenValue
             const isTaken = takenValue === true;
             const logEntry = {
               medicationName: medicationName,
               scheduledAt: scheduledDateTime,
-              status: isTaken ? 'taken' : 'not_taken', // All false values (skipped, auto-marked) count as not_taken
+              status: isTaken ? 'taken' : 'not_taken',
               createdAt: dose.takenAt ? new Date(dose.takenAt) : scheduledDateTime,
-              autoMarked: dose.autoMarked === true // Track if this was auto-marked
+              autoMarked: dose.autoMarked === true
             };
             
-            // Additional debug for skipped doses
             if (!isTaken) {
               console.log('[Stats] ✅ Adding not-taken dose to logs:', {
                 medication: medicationName,
@@ -676,7 +652,6 @@
           });
         });
         
-        // Sort by scheduledAt
         doseLogs.sort((a, b) => a.scheduledAt - b.scheduledAt);
         
         return doseLogs;
@@ -686,10 +661,8 @@
       }
     }
 
-    // Filter dose logs by time range
     function filterDoseLogs(doseLogs, range) {
       if (range === 'all') {
-        // For "All Time", only include doses that have already passed (or are happening now)
         const now = new Date();
         return doseLogs.filter(log => {
           return log.scheduledAt <= now;
@@ -703,24 +676,17 @@
         const logDate = new Date(log.scheduledAt);
         logDate.setHours(0, 0, 0, 0);
         
-        // Check if date is in range
         const dateInRange = logDate >= start && logDate <= end;
         
-        // For today, only include doses that have already passed (or are happening now)
-        // For past dates, include all doses
         if (logDate.getTime() === end.getTime()) {
-          // This is today - only include if scheduled time has passed
           return dateInRange && log.scheduledAt <= now;
         } else {
-          // This is a past date - include all doses
           return dateInRange;
         }
       });
     }
 
-    // Update charts with fade transition
     async function updateCharts() {
-      // Fade out
       const chartContainers = document.querySelectorAll('.chart-container, .adherence-numbers, .charts-grid');
       chartContainers.forEach(container => {
         container.style.opacity = '0';
@@ -731,7 +697,6 @@
         const allLogs = await loadDoseLogs();
         const filteredLogs = filterDoseLogs(allLogs, currentTimeRange);
         
-        // Show/hide empty state
         const emptyState = document.getElementById('empty-state');
         const chartsGrid = document.querySelector('.charts-grid');
         if (filteredLogs.length === 0) {
@@ -743,7 +708,6 @@
           if (chartsGrid) chartsGrid.style.display = 'grid';
         }
         
-        // Calculate stats - verify status values
         const statusBreakdown = {};
         filteredLogs.forEach(log => {
           const status = log.status;
@@ -762,7 +726,6 @@
         const notTaken = filteredLogs.filter(log => log.status === 'not_taken').length;
         const total = taken + notTaken;
         
-        // Verify the filter is working correctly
         console.log('[Stats] Filter verification:', {
           totalLogs: filteredLogs.length,
           takenFilter: filteredLogs.filter(log => log.status === 'taken').length,
@@ -771,7 +734,6 @@
         });
         const adherencePercent = total > 0 ? ((taken / total) * 100).toFixed(1) : 0;
         
-        // Debug logging - show all logs with their status
         console.log('[Stats] ========== FINAL STATS ==========');
         console.log('[Stats] Total filtered logs:', filteredLogs.length);
         console.log('[Stats] Taken count:', taken);
@@ -792,22 +754,17 @@
         })));
         console.log('[Stats] ===================================');
         
-        // Update numbers
         document.getElementById('taken-count').textContent = taken;
         document.getElementById('not-taken-count').textContent = notTaken;
         document.getElementById('adherence-percent').textContent = adherencePercent + '%';
         
-        // Verify the counts match
         console.log('[Stats] Updating UI with counts - Taken:', taken, 'Not Taken:', notTaken);
         console.log('[Stats] Verifying DOM elements updated correctly');
         
-        // Update adherence chart (donut)
         updateAdherenceChart(taken, notTaken);
         
-        // Update medication breakdown chart
         updateMedBreakdownChart(filteredLogs);
         
-        // Fade in
         setTimeout(() => {
           chartContainers.forEach(container => {
             container.style.opacity = '1';
@@ -815,7 +772,6 @@
           });
         }, 50);
         
-        // Animate charts if they support it
         if (adherenceChart) {
           adherenceChart.update('active');
         }
@@ -825,7 +781,6 @@
       }, 150);
     }
 
-    // Update adherence donut chart
     function updateAdherenceChart(taken, notTaken) {
       const ctx = document.getElementById('adherence-chart').getContext('2d');
       
@@ -833,7 +788,6 @@
         adherenceChart.destroy();
       }
       
-      // Ensure we have valid numbers
       const takenValue = Number(taken) || 0;
       const notTakenValue = Number(notTaken) || 0;
       
@@ -844,12 +798,10 @@
         notTakenValue: notTakenValue 
       });
       
-      // Double-check: if notTaken is 0 but we expect it to be higher, log a warning
       if (notTakenValue === 0 && takenValue > 0) {
         console.warn('[Stats] ⚠️ WARNING: Not Taken count is 0 but Taken count is', takenValue, '- this might indicate an issue!');
       }
       
-      // Force chart to show both values even if one is 0
       const chartData = [takenValue, notTakenValue];
       console.log('[Stats] Chart data array:', chartData);
       
@@ -858,14 +810,14 @@
         data: {
           labels: ['Taken', 'Not Taken'],
           datasets: [{
-            data: chartData, // First value = Taken (green), Second = Not Taken (red)
+            data: chartData,
             backgroundColor: [
-              'rgba(34, 197, 94, 0.8)', // success green for Taken
-              'rgba(255, 107, 107, 0.8)' // danger red for Not Taken
+              'rgba(34, 197, 94, 0.8)',
+              'rgba(255, 107, 107, 0.8)'
             ],
             borderColor: [
-              'rgba(34, 197, 94, 1)', // green border for Taken
-              'rgba(255, 107, 107, 1)' // red border for Not Taken
+              'rgba(34, 197, 94, 1)',
+              'rgba(255, 107, 107, 1)'
             ],
             borderWidth: 3
           }]
@@ -903,7 +855,6 @@
       });
     }
 
-    // Calculate per-medication adherence
     function calculatePerMedAdherence(filteredLogs) {
       const medData = {};
 
@@ -920,7 +871,6 @@
         }
       });
 
-      // Convert to sorted array (worst adherence first so user sees what needs attention)
       return Object.keys(medData)
         .map(name => ({
           name,
@@ -934,12 +884,10 @@
         .sort((a, b) => a.adherence - b.adherence);
     }
 
-    // Detect light mode
     function isLightMode() {
       return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
     }
 
-    // Update per-medication breakdown chart (horizontal bar)
     function updateMedBreakdownChart(filteredLogs) {
       const ctx = document.getElementById('med-breakdown-chart').getContext('2d');
 
@@ -951,7 +899,6 @@
 
       if (perMed.length === 0) return;
 
-      // Dynamic height based on number of medications
       const barHeight = 48;
       const minHeight = 160;
       const calculatedHeight = Math.max(minHeight, perMed.length * barHeight + 60);
@@ -1074,21 +1021,16 @@
       });
     }
 
-    // Real-time listener for medication changes
     let unsubscribeMedications = null;
 
-    // Initialize on auth state change
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Set up real-time listener for medications
         const medicationsRef = collection(db, 'users', user.uid, 'medications');
         
-        // Unsubscribe from previous listener if it exists
         if (unsubscribeMedications) {
           unsubscribeMedications();
         }
         
-        // Set up new real-time listener
         unsubscribeMedications = onSnapshot(medicationsRef, (snapshot) => {
           console.log('[Stats] Medications data changed, updating charts...');
           updateCharts();
@@ -1096,10 +1038,8 @@
           console.error('[Stats] Error in medications listener:', error);
         });
         
-        // Initial load
         updateCharts();
       } else {
-        // Clean up listener if user logs out
         if (unsubscribeMedications) {
           unsubscribeMedications();
           unsubscribeMedications = null;
@@ -1107,14 +1047,12 @@
       }
     });
 
-    // Re-render charts when color scheme changes (light/dark toggle)
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
         updateCharts();
       });
     }
 
-    // Hamburger menu toggle functionality
     document.addEventListener('DOMContentLoaded', function() {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');

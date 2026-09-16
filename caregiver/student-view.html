@@ -40,7 +40,7 @@
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); padding-bottom: 6.25rem; }
 
-    /* Inline SVG tab icons (Material icons) */
+    
     .tab-icon {
       width: 26px;
       height: 26px;
@@ -56,7 +56,7 @@
     }
     .tab-icon path { fill: currentColor; }
 
-    /* Sidebar */
+    
     .sidebar {
       position: fixed; inset: 0 auto 0 0; width: 240px;
       padding: 1rem;
@@ -87,8 +87,8 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Hamburger menu */
-    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    
+    
     .menu-toggle {
       position: absolute;
       width: 1px;
@@ -140,7 +140,7 @@
         top: 4.2rem !important;
         right: 4rem !important;
         left: auto !important;
-        bottom: auto !important; /* override base `inset: 0 auto 0 0` so menu doesn't stretch full height */
+        bottom: auto !important; 
         width: 165px !important;
         height: auto !important;
         padding: 0.45rem !important;
@@ -183,7 +183,7 @@
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 900; letter-spacing: .2px; margin: 0; }
     p.lead { margin-top: .6rem; color: var(--muted); }
 
-    /* -------- Read-only medication list (like home.html, but no actions) -------- */
+    
     .med-list {
       margin-top: 1.25rem;
       display: grid;
@@ -269,13 +269,13 @@
       background: color-mix(in oklab, var(--surface) 92%, transparent);
     }
 
-    /* -------- Notes (read-only, same format vibe as notes.html) -------- */
+    
     .sv-notes {
       margin-top: 1.25rem;
       max-width: 900px;
     }
 
-    /* Mobile: scrollable content area so it doesn't get clipped by bottom nav */
+    
     @media (max-width: 900px) {
       .sv-notes {
         max-height: calc(100vh - 4.25rem - 6.5rem);
@@ -392,7 +392,7 @@
       cursor: not-allowed;
     }
 
-    /* -------- Stats (copied styling from stats.html) -------- */
+    
     .time-range-controls {
       display: flex;
       gap: 0.5rem;
@@ -530,7 +530,7 @@
       .sv-date-dropdown { position: fixed; left: 50%; transform: translateX(-50%); top: 8rem; width: min(340px, 92vw); }
     }
 
-    /* -------- Calendar (read-only) -------- */
+    
     .sv-calendar {
       margin-top: 1.25rem;
       max-width: 980px;
@@ -654,10 +654,10 @@
     .sv-pill.green { background: color-mix(in oklab, var(--success) 18%, transparent); border-color: color-mix(in oklab, var(--success) 28%, transparent); }
     .sv-pill.red { background: color-mix(in oklab, var(--danger) 18%, transparent); border-color: color-mix(in oklab, var(--danger) 28%, transparent); }
 
-    /* Mobile: make calendar area scrollable so it doesn't get clipped */
+    
     @media (max-width: 900px) {
       .sv-calendar {
-        max-height: calc(100vh - 4.25rem - 6.5rem); /* top padding + bottom nav */
+        max-height: calc(100vh - 4.25rem - 6.5rem); 
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         padding-bottom: 0.75rem;
@@ -665,11 +665,11 @@
       .sv-weekday { padding: 0.55rem 0.2rem; font-size: 0.72rem; }
       .sv-days { grid-auto-rows: minmax(74px, 1fr); }
       .sv-day { padding: 0.45rem 0.45rem; min-height: 74px; }
-      .sv-mini-list { display: none; } /* like calendar.html mobile: keep grid clean */
+      .sv-mini-list { display: none; } 
       .sv-dot { width: 6px; height: 6px; }
     }
 
-    /* Day details modal (read-only) */
+    
     .sv-modal {
       display: none;
       position: fixed;
@@ -744,7 +744,7 @@
     .sv-row-status { font-weight: 900; color: var(--muted); font-size: 0.9rem; }
     .sv-row-sub { color: var(--muted); font-weight: 700; font-size: 0.92rem; }
 
-    /* -------- Bottom nav (tabs) -------- */
+    
     .bottom-nav {
       position: fixed;
       left: 0;
@@ -757,7 +757,7 @@
       box-shadow: 0 -14px 40px rgba(0,0,0,0.25);
     }
 
-    /* On desktop, align with the left sidebar (but still fixed at bottom) */
+    
     @media (min-width: 901px) {
       .bottom-nav {
         left: 240px;
@@ -807,7 +807,7 @@
       white-space: nowrap;
     }
 
-    /* Mobile: icons only */
+    
     @media (max-width: 900px) {
       .bottom-label { display: none; }
       .tab-icon { width: 28px; height: 28px; flex-basis: 28px; }
@@ -837,7 +837,6 @@
     </div>
   </div>
 
-  <!-- Bottom navigation (tabs) -->
   <nav class="bottom-nav" aria-label="Detailed view navigation">
     <div class="bottom-nav-inner">
       <a class="bottom-link" data-tab="home" href="student-view.html?tab=home">
@@ -876,7 +875,6 @@
   </nav>
 
   <script>
-    // Close mobile menu when clicking sidebar links
     document.addEventListener('DOMContentLoaded', () => {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
@@ -885,7 +883,6 @@
   </script>
 
   <script>
-    // Bottom-nav active state (no real content yet; just highlight current tab)
     (function() {
       const params = new URLSearchParams(window.location.search);
       const tab = (params.get('tab') || 'home').toLowerCase();
@@ -897,7 +894,6 @@
         a.setAttribute('aria-current', isActive ? 'page' : 'false');
       });
 
-      // Preserve patientId across tab switches
       document.querySelectorAll('.bottom-link[data-tab]').forEach(a => {
         const t = a.getAttribute('data-tab');
         const next = new URLSearchParams();
@@ -917,10 +913,8 @@
     })();
   </script>
 
-  <!-- Chart.js (used by Stats tab) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-  <!-- Schedule utilities (shared logic for schedules[] format) -->
   <script src="../schedule-utils.js"></script>
 
   <script type="module">
@@ -1013,7 +1007,6 @@
         const stock = (m.stock === 0 || (Array.isArray(m.bottles) && m.bottles.length === 0)) ? 'Out of stock' : 'In stock';
         const chipClass = stock === 'Out of stock' ? 'warn' : 'ok';
 
-        // Build today's dose status using ScheduleUtils
         let doseStatusHtml = '';
         if (window.ScheduleUtils && m.schedules && m.schedules.length > 0) {
           const scheduledDoses = ScheduleUtils.getScheduledDosesForDate(m.schedules, now);
@@ -1032,7 +1025,6 @@
                 statusLabel = 'Not Taken';
                 statusColor = 'var(--danger)';
               } else {
-                // Check if past 45 min window
                 if (dose.time) {
                   const [hh, mm] = dose.time.split(':').map(Number);
                   if (!Number.isNaN(hh) && !Number.isNaN(mm)) {
@@ -1058,7 +1050,6 @@
           }
         }
 
-        // Compute next dose and current dose
         let nextDoseHtml = '';
         let currentDoseHtml = '';
         if (window.ScheduleUtils && m.schedules && m.schedules.length > 0) {
@@ -1075,7 +1066,6 @@
           }
         }
 
-        // Build classifications display
         let classHtml = '';
         const cls = m.classifications || {};
         const classItems = [];
@@ -1088,7 +1078,6 @@
           classHtml = `<div class="med-meta" style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">${classItems.map(i => `<div class="meta-row">${i}</div>`).join('')}</div>`;
         }
 
-        // Build groups display
         const medGroups = m.groups || [];
         let groupsHtml = '';
         if (medGroups.length > 0) {
@@ -1123,7 +1112,6 @@
     }
 
     if (tab !== 'home') {
-      // Keep other tabs blank for now.
       if (root) root.innerHTML = '';
     } else {
       if (!patientId) {
@@ -1137,7 +1125,6 @@
             return;
           }
 
-          // Load patient profile (name) once (caregiver must have access via rules).
           let patientName = 'Patient';
           try {
             const pSnap = await getDoc(doc(db, 'users', patientId));
@@ -1150,12 +1137,10 @@
             return;
           }
 
-          // Live meds
           onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
             const meds = snap.docs.map(d => {
               const medData = { id: d.id, ...d.data() };
               medData.schedules = medData.schedules || [];
-              // Auto-migrate old format if schedules missing but old fields present
               if (medData.schedules.length === 0 && window.ScheduleUtils) {
                 const oldDays = medData.daysOfWeek || medData.days || [];
                 const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
@@ -1176,7 +1161,6 @@
       }
     }
 
-    // -------- Calendar tab (read-only) --------
     function toISODateLocal(d) {
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1198,18 +1182,15 @@
     }
 
     function shouldShowOnDate(med, dateObj) {
-      // Show meds if scheduled OR if any dose exists for that date.
       const dateStr = toISODateLocal(dateObj);
       const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
       const hasDose = Object.keys(dosesObj).some(k => k.split('_')[0] === dateStr);
       if (hasDose) return true;
 
-      // Use ScheduleUtils if schedules are available
       if (med.schedules && med.schedules.length > 0 && window.ScheduleUtils) {
         return ScheduleUtils.isScheduledForDate(med.schedules, dateObj);
       }
 
-      // Fallback for unmigrated data
       const normalizeDate = (dateStrRaw) => {
         if (!dateStrRaw || dateStrRaw === 'N/A') return null;
         if (/^\d{4}-\d{2}-\d{2}/.test(dateStrRaw)) return dateStrRaw.split('T')[0];
@@ -1241,7 +1222,6 @@
       const dateStr = toISODateLocal(dateObj);
       const dosesObj = (med.doses && typeof med.doses === 'object') ? med.doses : {};
 
-      // Use ScheduleUtils if schedules are available
       if (med.schedules && med.schedules.length > 0 && window.ScheduleUtils) {
         const scheduledDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules, dateObj);
         return scheduledDoses.map(dose => {
@@ -1257,7 +1237,6 @@
         });
       }
 
-      // Fallback for unmigrated data
       const times = Array.isArray(med.times) ? med.times.filter(Boolean) : [];
       const timesPerDay = Number(med.timesPerDay || 0);
       const plannedCount = times.length > 0 ? times.length : (timesPerDay || 1);
@@ -1282,7 +1261,6 @@
       if (d.takenBool === true) return 'green';
       if (d.takenBool === false) return 'red';
 
-      // UI-only "auto miss" like calendar.html (do NOT write)
       if (d.time) {
         const now = new Date();
         const [hh, mm] = String(d.time).split(':').map(Number);
@@ -1296,7 +1274,6 @@
     }
 
     function renderCalendarTab(patientName, meds) {
-      // Build skeleton once
       if (!root) return;
       root.innerHTML = `
         <div class="sv-calendar" id="sv-calendar">
@@ -1384,7 +1361,6 @@
         startDate.setDate(startDate.getDate() - firstDay.getDay());
 
         const title = `${months[currentMonth]} ${currentYear}`;
-        // Put month title in the lead line (keeps UI clean)
         const subtitle = document.getElementById('tab-subtitle');
         if (subtitle) subtitle.textContent = `Calendar — ${title}`;
 
@@ -1396,7 +1372,6 @@
           const isCurrentMonth = dateObj.getMonth() === currentMonth;
           const isToday = dateObj.toDateString() === new Date().toDateString();
 
-          // Has any meds/doses
           let hasAny = false;
           let preview = [];
           for (const med of activeMeds) {
@@ -1404,7 +1379,6 @@
             const items = getDoseItemsForDate(med, dateObj);
             if (items.length > 0) {
               hasAny = true;
-              // Small preview (desktop only, hidden on mobile)
               const it0 = items[0];
               preview.push({ med, it: it0 });
               if (preview.length >= 3) break;
@@ -1463,7 +1437,6 @@
       if (!patientId) {
         showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
       } else {
-        // We reuse the same auth gating + live meds subscription pattern.
         root.innerHTML = `<div class="empty-box">Loading calendar…</div>`;
 
         onAuthStateChanged(auth, async (user) => {
@@ -1488,7 +1461,6 @@
             const meds = snap.docs.map(d => {
               const medData = { id: d.id, ...d.data() };
               medData.schedules = medData.schedules || [];
-              // Auto-migrate old format if schedules missing but old fields present
               if (medData.schedules.length === 0 && window.ScheduleUtils) {
                 const oldDays = medData.daysOfWeek || medData.days || [];
                 const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
@@ -1509,7 +1481,6 @@
       }
     }
 
-    // -------- Notes tab (read-only) --------
     function formatDateFull(d) {
       return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
@@ -1537,16 +1508,13 @@
         ? `${med.name || 'Medication'} - Dose ${doseNumber} - ${formatTime12(time)}`
         : `${med.name || 'Medication'} - Dose ${doseNumber}`;
 
-      // Notes stored per med doc: new format notes[YYYY-MM-DD_doseNumber], old format notes[YYYY-MM-DD]
       let noteText = '';
       let feelingRating = 0;
       try {
         const notes = (med.notes && typeof med.notes === 'object') ? med.notes : {};
-        // Try new format first: notes[date_doseNumber]
         const doseKey = `${dateStr}_${doseNumber}`;
         let n = notes[doseKey];
         if (!n && notes[dateStr]) {
-          // Backward compatibility: old format notes[date]
           const oldData = notes[dateStr];
           if (Array.isArray(oldData) && Number(oldData[0]) === Number(doseNumber)) {
             n = oldData;
@@ -1576,7 +1544,6 @@
         <textarea class="sv-textarea" rows="1" readonly placeholder="No notes for this dose yet.">${safeText(noteText)}</textarea>
       `;
 
-      // Auto-resize (up to 4 lines, then scroll)
       const textarea = card.querySelector('textarea');
       const autoResize = () => {
         textarea.style.height = '1px';
@@ -1653,7 +1620,6 @@
         if (titleEl) titleEl.textContent = `Notes (${formatDateFull(currentDate)})`;
         if (dateBtn) dateBtn.textContent = formatDateFull(currentDate);
 
-        // Same behavior as notes.html: build a list of dose "cards" for meds scheduled on this day
         const dayMeds = activeMeds.filter(m => shouldShowOnDate(m, currentDate));
         if (dayMeds.length === 0) {
           content.innerHTML = `
@@ -1666,14 +1632,12 @@
 
         const allDoses = [];
         dayMeds.forEach(m => {
-          // Use ScheduleUtils (same as patient notes.html)
           if (window.ScheduleUtils && m.schedules && m.schedules.length > 0) {
             const doses = ScheduleUtils.getScheduledDosesForDate(m.schedules, currentDate);
             doses.forEach(dose => {
               allDoses.push({ med: m, doseNumber: dose.doseNumber, time: dose.time, sortTime: dose.time ? minutesFromHHMM(dose.time) : 0 });
             });
           } else {
-            // Fallback for unmigrated data
             const times = Array.isArray(m.times) ? m.times.filter(t => t && String(t).trim()) : [];
             if (times.length === 0) {
               const n = Number(m.timesPerDay || 1);
@@ -1792,7 +1756,6 @@
             const meds = snap.docs.map(d => {
               const medData = { id: d.id, ...d.data() };
               medData.schedules = medData.schedules || [];
-              // Auto-migrate old format if schedules missing but old fields present
               if (medData.schedules.length === 0 && window.ScheduleUtils) {
                 const oldDays = medData.daysOfWeek || medData.days || [];
                 const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];
@@ -1813,7 +1776,6 @@
       }
     }
 
-    // -------- Stats tab (same as stats.html, read-only) --------
     if (tab === 'stats') {
       if (!patientId) {
         showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
@@ -1865,11 +1827,10 @@
           </div>
         `;
 
-        // Same variables as stats.html
         let adherenceChart = null;
         let trendChart = null;
         let currentTimeRange = 'week';
-        let latestMedDocs = []; // array of { id, data }
+        let latestMedDocs = [];
 
         function getDateRange(range) {
           const now = new Date();
@@ -1908,7 +1869,6 @@
               Object.keys(doses).forEach(key => {
                 const dose = doses[key];
 
-                // Same normalization as stats.html
                 let takenValue = dose.taken;
                 if (typeof takenValue === 'string') {
                   takenValue = takenValue === 'true' || takenValue === 'True';
@@ -1922,7 +1882,6 @@
                 const scheduledDate = new Date(year, month - 1, day);
 
                 let scheduledDateTime = new Date(scheduledDate);
-                // Use ScheduleUtils to find scheduled time (same as patient stats.html)
                 const schedules = medData.schedules || [];
                 if (schedules.length > 0 && window.ScheduleUtils && dose.date) {
                   const [yr, mo, dy] = dose.date.split('-').map(Number);
@@ -1936,7 +1895,6 @@
                     }
                   }
                 } else if (medData.times && Array.isArray(medData.times) && medData.times.length > 0) {
-                  // Fallback for unmigrated data
                   const sortedTimes = [...medData.times].sort();
                   const timeIndex = (dose.doseNumber || 1) - 1;
                   if (timeIndex >= 0 && timeIndex < sortedTimes.length) {
@@ -2201,7 +2159,6 @@
           }, 150);
         }
 
-        // Time range handlers (same behavior as stats.html)
         document.querySelectorAll('.time-range-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
@@ -2217,7 +2174,6 @@
             return;
           }
 
-          // Verify we can read patient profile (permission gate)
           try {
             await getDoc(doc(db, 'users', patientId));
           } catch (e) {
@@ -2229,7 +2185,6 @@
             latestMedDocs = snapshot.docs.map(d => {
               const medData = { ...d.data() };
               medData.schedules = medData.schedules || [];
-              // Auto-migrate old format if schedules missing but old fields present
               if (medData.schedules.length === 0 && window.ScheduleUtils) {
                 const oldDays = medData.daysOfWeek || medData.days || [];
                 const oldTimes = Array.isArray(medData.times) ? medData.times.filter(Boolean) : [];

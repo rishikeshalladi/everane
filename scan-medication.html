@@ -1,8 +1,3 @@
-<!-- File: scan-medication.html
-     Picture Add flow: user uploads 1–5 photos of pill bottles / Rx labels /
-     doctor notes; we call extractMedicationFromImages (OpenAI gpt-4o-mini Vision)
-     and redirect to add-medication.html with the extracted data + per-field
-     confidence so the form can prefill + highlight uncertain fields. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -141,7 +136,7 @@
     }
     @media (prefers-color-scheme: light) { .privacy { color: #64748b; } }
 
-    /* First-use disclaimer modal */
+    
     .modal-backdrop {
       position: fixed; inset: 0; background: rgba(0,0,0,0.55);
       display: none; align-items: center; justify-content: center;
@@ -202,7 +197,6 @@
     </div>
   </div>
 
-  <!-- First-use privacy disclaimer modal -->
   <div class="modal-backdrop" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
     <div class="modal">
       <h3 id="privacy-title">Before you scan</h3>
@@ -232,7 +226,6 @@
     const auth = getAuth(app);
     window.auth = auth;
 
-    // Require sign-in
     onAuthStateChanged(auth, (u) => {
       if (!u) {
         const next = encodeURIComponent(location.pathname);
@@ -243,7 +236,7 @@
 
   <script>
     const MAX_IMAGES = 5;
-    const MAX_LONG_EDGE = 1024;     // resize before upload (keeps OpenAI cost down)
+    const MAX_LONG_EDGE = 1024;
     const JPEG_QUALITY = 0.85;
     const EXTRACT_URL  = "https://us-central1-medtracker-8c467.cloudfunctions.net/extractMedicationFromImages";
     const PRIVACY_KEY  = "everanePictureAddPrivacyAck";
@@ -258,7 +251,6 @@
     const privacyOk     = document.getElementById('privacy-ok');
     const privacyCancel = document.getElementById('privacy-cancel');
 
-    // State: array of {dataUri, name}
     const images = [];
 
     function setMsg(text, type) {
@@ -351,7 +343,6 @@
     fileCam.addEventListener('change', (e) => ingestFiles(e.target.files));
     filePick.addEventListener('change', (e) => ingestFiles(e.target.files));
 
-    // Drag + drop
     ;['dragenter','dragover'].forEach(ev => dropEl.addEventListener(ev, (e) => {
       e.preventDefault(); e.stopPropagation();
       dropEl.classList.add('is-hover');
@@ -364,7 +355,6 @@
       if (e.dataTransfer && e.dataTransfer.files) ingestFiles(e.dataTransfer.files);
     });
 
-    // Privacy modal
     function showPrivacyIfNeeded() {
       try {
         if (localStorage.getItem(PRIVACY_KEY) === '1') return Promise.resolve(true);
@@ -420,7 +410,6 @@
         }
         const data = await r.json();
 
-        // Sanity: did we get anything?
         const anyField = data.name || data.dosage || (Array.isArray(data.schedules) && data.schedules.length)
           || data.startDate || data.endDate || (Array.isArray(data.bottles) && data.bottles.length);
         if (!anyField) {
@@ -429,7 +418,6 @@
           return;
         }
 
-        // Hand off to add-medication.html via sessionStorage (no URL bloat).
         try {
           sessionStorage.setItem('scanMedicationDraft', JSON.stringify({
             source: 'scan',

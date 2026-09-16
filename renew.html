@@ -75,9 +75,6 @@
       if (window.innerWidth <= 768) sidebar.classList.remove('open');
     }));
 
-  // Mount the saved medication image inline (top-right on desktop, above on
-  // mobile). Pulls from the tempRenewMed payload that the home page sets when
-  // the user taps Renew on a deleted med card.
   try {
     const arr = JSON.parse(localStorage.getItem('tempRenewMed') || '[]');
     const params = new URLSearchParams(location.search);

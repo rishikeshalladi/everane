@@ -1,4 +1,3 @@
-<!-- File: doctor/home.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,7 +66,7 @@
 
     .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
 
-    /* Navbar */
+    
     .navbar{
       position:sticky;top:0;z-index:100;
       backdrop-filter:saturate(180%) blur(16px);
@@ -85,7 +84,7 @@
     .nav-left .info-value{font-size:.92rem;font-weight:600;color:var(--text)}
     .nav-right{display:flex;align-items:center;gap:.75rem;margin-left:auto}
 
-    /* Buttons */
+    
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.65rem 1.2rem;border-radius:12px;border:1px solid transparent;cursor:pointer;font-size:.9rem;font-weight:600;transition:transform .04s ease, background-color .2s ease}
     .btn:active{transform:translateY(1px)}
     .btn-danger{background:var(--danger);color:#fff;box-shadow:0 4px 12px rgba(255,107,107,.25)}
@@ -93,7 +92,7 @@
     .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600));color:#fff;box-shadow:0 10px 20px rgba(79,140,255,.35)}
     .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
 
-    /* Page content — needs bottom padding for sticky button */
+    
     .page-content{
       padding-top: clamp(2rem, 4vw, 3rem);
       padding-bottom: 120px;
@@ -117,7 +116,7 @@
       margin-bottom:1.5rem;
     }
 
-    /* ---- Chat-style edit feed ---- */
+    
     .edit-feed{
       display:flex;
       flex-direction:column;
@@ -142,7 +141,7 @@
     .edit-feed-empty p{font-size:.95rem}
     .edit-feed-empty .empty-sub{font-size:.82rem;margin-top:.25rem;opacity:.7}
 
-    /* Single edit bubble */
+    
     .edit-bubble{
       background:var(--surface);
       border:1px solid var(--border);
@@ -174,7 +173,7 @@
       padding:.25rem .7rem;
       border-radius:999px;
     }
-    /* Color per type */
+    
     .edit-type-badge[data-type="Add Medication"]{background:color-mix(in oklab, var(--success) 15%, transparent);color:var(--success)}
     .edit-type-badge[data-type="Remove Medication"]{background:color-mix(in oklab, var(--danger) 15%, transparent);color:var(--danger)}
     .edit-type-badge[data-type="Change Dosage"]{background:color-mix(in oklab, var(--brand) 15%, transparent);color:var(--brand)}
@@ -184,7 +183,7 @@
     .edit-type-badge[data-type="Add Warning / Precaution"]{background:color-mix(in oklab, #f472b6 15%, transparent);color:#f472b6}
     .edit-type-badge[data-type="Add Follow-Up Requirement"]{background:color-mix(in oklab, #38bdf8 15%, transparent);color:#38bdf8}
     .edit-type-badge[data-type="Other"]{background:color-mix(in oklab, var(--muted) 15%, transparent);color:var(--muted)}
-    /* Patient types */
+    
     .edit-type-badge[data-type="Stopped Medication"]{background:color-mix(in oklab, var(--danger) 15%, transparent);color:var(--danger)}
     .edit-type-badge[data-type="Started New Medication"]{background:color-mix(in oklab, var(--success) 15%, transparent);color:var(--success)}
     .edit-type-badge[data-type="Missed Doses"]{background:color-mix(in oklab, #f59e0b 15%, transparent);color:#f59e0b}
@@ -192,7 +191,7 @@
     .edit-type-badge[data-type="Picked Up / Refilled"]{background:color-mix(in oklab, var(--accent) 15%, transparent);color:var(--accent)}
     .edit-type-badge[data-type="Side Effects"]{background:color-mix(in oklab, #f472b6 15%, transparent);color:#f472b6}
 
-    /* Patient bubble styling */
+    
     .edit-bubble.patient-bubble{
       border-left:3px solid var(--accent);
       background:color-mix(in oklab, var(--accent) 4%, var(--surface));
@@ -280,7 +279,7 @@
     }
     .edit-bubble-reply-btn svg{width:14px;height:14px}
 
-    /* Replies */
+    
     .edit-replies{
       margin-top:.6rem;
       padding-top:.5rem;
@@ -314,7 +313,7 @@
     .edit-reply-doctor{font-size:.75rem;font-weight:600;color:var(--muted)}
     .edit-reply-time{font-size:.7rem;color:var(--muted);opacity:.6;margin-left:auto}
 
-    /* Reply modal */
+    
     .reply-modal-overlay{
       display:none;
       position:fixed;
@@ -394,7 +393,7 @@
     }
     .reply-modal-actions .btn{padding:.7rem 1.2rem;font-size:.9rem}
 
-    /* Date separators */
+    
     .edit-date-sep{
       text-align:center;
       padding:.5rem 0;
@@ -406,7 +405,7 @@
       opacity:.6;
     }
 
-    /* Sticky bottom bar */
+    
     .sticky-bottom{
       position:fixed;
       bottom:0;
@@ -433,7 +432,7 @@
       display:flex;
     }
 
-    /* Panel toggle arrow — sits on right edge */
+    
     .panel-toggle{
       position:fixed;
       top:50%;
@@ -461,7 +460,7 @@
     }
     .panel-toggle.open svg{transform:rotate(180deg)}
 
-    /* Sliding medication panel */
+    
     .med-panel{
       position:fixed;
       top:0;bottom:0;
@@ -573,7 +572,7 @@
       font-size:.95rem;
     }
 
-    /* Mobile overlay */
+    
     .panel-overlay{
       display:none;
       position:fixed;
@@ -630,14 +629,12 @@
         <h1>Update Your Patient</h1>
       </div>
 
-      <!-- Chat-style edit feed -->
       <div class="edit-feed" id="edit-feed">
         <div class="edit-feed-loading" id="feed-loading">Loading updates...</div>
       </div>
     </div>
   </div>
 
-  <!-- Sticky Upload Edit button -->
   <div class="sticky-bottom" id="sticky-bottom">
     <div class="sticky-inner">
       <a href="requestedit.html" class="btn btn-primary">
@@ -647,17 +644,14 @@
     </div>
   </div>
 
-  <!-- Panel toggle arrow -->
   <button class="panel-toggle" id="panel-toggle" aria-label="Toggle medications panel">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="15 18 9 12 15 6"/>
     </svg>
   </button>
 
-  <!-- Mobile overlay -->
   <div class="panel-overlay" id="panel-overlay"></div>
 
-  <!-- Medications panel -->
   <aside class="med-panel" id="med-panel">
     <div class="med-panel-header">
       <h2>Medications</h2>
@@ -668,7 +662,6 @@
     </div>
   </aside>
 
-  <!-- Reply modal -->
   <div class="reply-modal-overlay" id="reply-overlay">
     <div class="reply-modal">
       <h3>Reply</h3>
@@ -684,7 +677,6 @@
   </div>
 
   <script>
-    // Doctor session guard
     const raw = sessionStorage.getItem('doctorSession');
     if (!raw) {
       window.location.href = '../logindoctor.html';
@@ -699,18 +691,15 @@
       window.location.href = '../logindoctor.html';
     }
 
-    // Populate navbar
     document.getElementById('patient-name').textContent = session.name || '—';
     document.getElementById('patient-id').textContent = session.patientId || '—';
     document.getElementById('patient-email').textContent = session.email || '—';
 
-    // Logout
     document.getElementById('logout-btn').addEventListener('click', () => {
       sessionStorage.removeItem('doctorSession');
       window.location.href = '../logindoctor.html';
     });
 
-    // Panel toggle
     const toggleBtn = document.getElementById('panel-toggle');
     const panel = document.getElementById('med-panel');
     const overlay = document.getElementById('panel-overlay');
@@ -744,11 +733,9 @@
 
     overlay.addEventListener('click', closePanel);
 
-    // ---- Edit feed ----
     const feedEl = document.getElementById('edit-feed');
     const feedLoading = document.getElementById('feed-loading');
 
-    // Type → emoji map
     const typeEmoji = {
       'Add Medication': '💊',
       'Remove Medication': '🗑️',
@@ -759,7 +746,6 @@
       'Add Warning / Precaution': '⚠️',
       'Add Follow-Up Requirement': '📋',
       'Other': '✏️',
-      // Patient types
       'Stopped Medication': '🛑',
       'Started New Medication': '💊',
       'Missed Doses': '⚠️',
@@ -813,8 +799,6 @@
         return;
       }
 
-      // edits are already sorted newest first from the API
-      // We want newest at top, oldest at bottom
       let html = '';
       let lastDateStr = '';
 
@@ -831,12 +815,10 @@
         const senderName = isPatient ? (edit.patientName || session.name || 'Patient') : (edit.doctorName || 'Doctor');
         const initials = getInitials(senderName);
 
-        // Source tag
         const sourceTag = isPatient
           ? '<div class="edit-bubble-source patient-src">Patient</div>'
           : '<div class="edit-bubble-source doctor-src">Doctor</div>';
 
-        // Render replies
         const replies = edit.replies || [];
         let repliesHtml = '';
         if (replies.length > 0) {
@@ -856,7 +838,6 @@
           }).join('') + '</div>';
         }
 
-        // Reply button only for doctor messages (not patient messages)
         const replyBtn = isPatient ? '' : `
               <button class="edit-bubble-reply-btn" data-edit-id="${edit.id}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
@@ -883,7 +864,6 @@
 
       feedEl.innerHTML = html;
 
-      // Attach reply button listeners
       feedEl.querySelectorAll('.edit-bubble-reply-btn').forEach(btn => {
         btn.addEventListener('click', () => openReplyModal(btn.dataset.editId));
       });
@@ -894,7 +874,6 @@
       return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // ---- Reply modal ----
     let replyEditId = '';
     const replyOverlay = document.getElementById('reply-overlay');
     const replyText = document.getElementById('reply-text');
@@ -953,7 +932,7 @@
         if (!resp.ok) throw new Error(data.error || 'Failed to send');
 
         closeReplyModal();
-        loadEdits(); // Refresh feed
+        loadEdits();
       } catch (err) {
         replySend.disabled = false;
         replySend.textContent = 'Send';
@@ -961,7 +940,6 @@
       }
     });
 
-    // Fetch edits from Firestore via Cloud Function
     async function loadEdits() {
       try {
         const resp = await fetch('https://us-central1-medtracker-8c467.cloudfunctions.net/getDoctorEdits', {
@@ -983,11 +961,8 @@
       }
     }
 
-    // Load feed on page load
     loadEdits();
 
-    // ---- Medication panel rendering ----
-    // Format time from "HH:MM" to "9:00 AM"
     function fmtTime(t) {
       if (!t) return '';
       const [h, m] = t.split(':').map(Number);
@@ -996,12 +971,10 @@
       return hr + ':' + String(m).padStart(2, '0') + ' ' + ampm;
     }
 
-    // Capitalize first letter
     function cap(s) {
       return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
     }
 
-    // Render medications from session data (loaded at login)
     function renderMedications() {
       const listEl = document.getElementById('med-list');
       const countEl = document.getElementById('med-count');
@@ -1018,24 +991,19 @@
       countEl.textContent = meds.length + ' medication' + (meds.length === 1 ? '' : 's');
 
       listEl.innerHTML = meds.map(med => {
-        // Dosage display
         const dosageStr = med.dosage
           ? `${med.dosage}${med.dosageUnit ? ' ' + med.dosageUnit : ''} per take`
           : '';
 
-        // Times per day
         const tpd = med.timesPerDay || med.times?.length || 0;
         const tpdStr = tpd > 0 ? `${tpd} time${tpd !== 1 ? 's' : ''} per day` : '';
 
-        // Time pills
         const timePills = (med.times || []).map(t =>
           `<span class="med-time-pill">${fmtTime(t)}</span>`
         ).join('');
 
-        // Days display
         const dayOrder = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
         const rawDays = (med.days || []);
-        // Sort days in correct weekday order
         const sortedDays = rawDays.slice().sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
         const dayNames = sortedDays.map(d => cap(d));
 
@@ -1049,10 +1017,8 @@
           }).join('');
         }
 
-        // Interval schedule (e.g. "Every 4 days")
         const intervalStr = med.intervalDesc || '';
 
-        // Date range — handle Invalid Date and null endDate
         let dateRange = '';
         if (med.startDate || med.endDate) {
           let sStr = '—';

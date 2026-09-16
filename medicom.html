@@ -65,7 +65,7 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -162,13 +162,13 @@
       }
     }
 
-    /* Page styles */
+    
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 .25rem; }
 
     .page-header { margin-bottom: 1.5rem; }
     .page-header p { color: var(--muted); font-size: .95rem; margin: 0; }
 
-    /* Message feed */
+    
     .msg-feed {
       display: flex;
       flex-direction: column;
@@ -200,7 +200,7 @@
     .msg-empty p { font-size: .95rem; }
     .msg-empty .msg-empty-sub { font-size: .82rem; margin-top: .25rem; opacity: .65; }
 
-    /* Date separator */
+    
     .msg-date-sep {
       text-align: center;
       padding: .4rem 0;
@@ -212,7 +212,7 @@
       opacity: .55;
     }
 
-    /* Message card — doctor */
+    
     .msg-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -226,7 +226,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Patient message card */
+    
     .msg-card.patient-msg {
       border-left: 3px solid var(--accent);
       background: color-mix(in oklab, var(--accent) 4%, var(--surface));
@@ -265,7 +265,7 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    /* Doctor types */
+    
     .msg-type-dot[data-type="Add Medication"] { background: var(--success); }
     .msg-type-dot[data-type="Remove Medication"] { background: var(--danger); }
     .msg-type-dot[data-type="Change Dosage"] { background: var(--brand); }
@@ -275,7 +275,7 @@
     .msg-type-dot[data-type="Add Warning / Precaution"] { background: #f472b6; }
     .msg-type-dot[data-type="Add Follow-Up Requirement"] { background: #38bdf8; }
     .msg-type-dot[data-type="Other"] { background: var(--muted); }
-    /* Patient types */
+    
     .msg-type-dot[data-type="Stopped Medication"] { background: var(--danger); }
     .msg-type-dot[data-type="Started New Medication"] { background: var(--success); }
     .msg-type-dot[data-type="Missed Doses"] { background: #f59e0b; }
@@ -314,7 +314,7 @@
       opacity: .6;
     }
 
-    /* Replies */
+    
     .msg-replies {
       margin-top: .6rem;
       padding-top: .5rem;
@@ -355,7 +355,7 @@
       margin-left: auto;
     }
 
-    /* Sticky bottom button */
+    
     .sticky-bottom {
       position: fixed;
       bottom: 0;
@@ -433,7 +433,6 @@
     </div>
   </div>
 
-  <!-- Sticky Upload Request button -->
   <div class="sticky-bottom">
     <div class="sticky-inner">
       <a href="patientrequest.html" class="btn">
@@ -518,17 +517,14 @@
         const time = formatTime(edit.createdAt);
         const isPatient = edit.source === 'patient' || !!edit.patientName;
 
-        // Source tag
         const sourceTag = isPatient
           ? '<div class="msg-source-tag patient-tag">You</div>'
           : '<div class="msg-source-tag doctor-tag">Doctor</div>';
 
-        // From line — show doctor name for doctor messages, nothing for patient messages (already tagged "You")
         const fromLine = isPatient
           ? ''
           : `<div class="msg-from">— ${escapeHtml(edit.doctorName || 'Doctor')}</div>`;
 
-        // Render replies
         const replies = edit.replies || [];
         let repliesHtml = '';
         if (replies.length > 0) {
@@ -571,7 +567,6 @@
         const snap = await getDocs(collection(db, 'users', user.uid, 'doctorEdits'));
         const edits = [];
         snap.forEach(d => edits.push({ id: d.id, ...d.data() }));
-        // Sort newest first
         edits.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         renderMessages(edits);
       } catch (err) {

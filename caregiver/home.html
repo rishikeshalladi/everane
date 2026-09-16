@@ -40,7 +40,7 @@
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
 
-    /* Sidebar */
+    
     .sidebar {
       position: fixed; inset: 0 auto 0 0; width: 240px;
       padding: 1rem;
@@ -71,8 +71,8 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Hamburger menu */
-    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    
+    
     .menu-toggle {
       position: absolute;
       width: 1px;
@@ -124,7 +124,7 @@
         top: 4.2rem !important;
         right: 4rem !important;
         left: auto !important;
-        bottom: auto !important; /* override base `inset: 0 auto 0 0` so menu doesn't stretch full height */
+        bottom: auto !important; 
         width: 165px !important;
         height: auto !important;
         padding: 0.45rem !important;
@@ -167,7 +167,7 @@
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0; }
     p.lead { margin-top: .5rem; color: var(--muted); }
 
-    /* -------- Dashboard UI -------- */
+    
     .topbar {
       margin-top: 1.25rem;
       display: flex;
@@ -201,7 +201,7 @@
       white-space: nowrap;
     }
 
-    /* Custom dropdowns */
+    
     .dropdown {
       position: relative;
       display: inline-flex;
@@ -337,7 +337,7 @@
       transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
 
-    /* Hover effect (desktop only) */
+    
     @media (hover: hover) and (pointer: fine) {
       .patient-card:hover {
         transform: translateY(-3px);
@@ -431,7 +431,7 @@
       background: color-mix(in oklab, var(--surface) 92%, transparent);
     }
 
-    /* ---------- Modal (patient detail placeholder) ---------- */
+    
     .modal-overlay {
       display: none;
       position: fixed;
@@ -525,7 +525,7 @@
     .modal-btn:hover { background: linear-gradient(180deg, var(--brand-600), var(--brand-700)); }
     .modal-btn:active { transform: translateY(1px); }
 
-    /* ---------- Tutorial popup + slideshow (kept as-is) ---------- */
+    
     .first-time-popup {
       position: fixed;
       bottom: 20px;
@@ -785,7 +785,7 @@
       .slideshow-container { height: 70vh; min-height: 420px; }
     }
 
-    /* Caregiver reminder opt-in */
+    
     .reminder-opt-in {
       display: flex;
       align-items: center;
@@ -797,7 +797,7 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
     }
-    /* Hide native checkbox, use custom toggle */
+    
     .reminder-opt-in input[type="checkbox"] {
       position: absolute;
       opacity: 0;
@@ -848,7 +848,7 @@
       margin-left: auto;
       letter-spacing: 0.2px;
     }
-    /* Reminder method modal */
+    
     .reminder-method-modal .modal {
       width: min(420px, 90vw);
     }
@@ -921,11 +921,9 @@
       <h1>Caregiver Home</h1>
       <p class="lead">One card per patient so you can quickly answer: “Is this patient doing okay right now?”</p>
 
-      <!-- Filters + Sorting -->
       <div class="topbar" aria-label="Filter and sort patients">
         <div></div>
 
-        <!-- Keep this simple: two dropdown "buttons" on the right -->
         <div class="controls">
           <div class="dropdown" id="filter-dd">
             <button class="dd-btn" id="filter-btn" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -966,7 +964,6 @@
     </div>
   </div>
 
-  <!-- Patient detail modal (placeholder) -->
   <div id="patient-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="patient-modal-title">
     <div class="modal" role="document">
       <div class="modal-header">
@@ -982,7 +979,6 @@
       </div>
       </div>
 
-  <!-- Reminder Method Modal -->
   <div id="reminder-method-overlay" class="modal-overlay reminder-method-modal" role="dialog" aria-modal="true">
     <div class="modal" role="document">
       <div class="modal-header">
@@ -1013,10 +1009,8 @@
     </div>
   </div>
 
-  <!-- Reminder save feedback -->
   <div class="reminder-save-feedback" id="reminder-feedback"></div>
 
-  <!-- First-time User Help Popup -->
   <div id="first-time-popup" class="first-time-popup" style="display: none;">
     <div class="popup-progress-bar">
       <div class="popup-progress-fill"></div>
@@ -1029,14 +1023,12 @@
     </div>
   </div>
 
-  <!-- Help Modal -->
   <div id="help-modal" class="help-modal">
     <div class="help-modal-content">
       <button class="help-modal-close" id="close-help-modal">×</button>
       <h2 class="help-modal-title">How to Use Everane</h2>
       <div class="help-modal-slideshow">
         <div class="slideshow-container">
-          <!-- Note: caregiver pages live under /caregiver/, slideshow assets are in /slideshow/ -->
           <div class="slide active" data-slide="0"><img src="../slideshow/1.png" alt="Slide 1" class="slide-image"></div>
           <div class="slide" data-slide="1"><img src="../slideshow/2.png" alt="Slide 2" class="slide-image"></div>
           <div class="slide" data-slide="2"><img src="../slideshow/3.png" alt="Slide 3" class="slide-image"></div>
@@ -1065,7 +1057,6 @@
   </div>
 
 <script>
-    // Close mobile menu when clicking sidebar links
       document.addEventListener('DOMContentLoaded', () => {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
@@ -1074,20 +1065,6 @@
 </script>
 
 <script type="module">
-    /**
-     * Caregiver Home Dashboard (Read-only)
-     *
-     * Data sources (existing structure):
-     * - Caregiver document: `users/{caregiverId}` has `patients: string[]` (patient emails)
-     * - Patient medications: `users/{patientId}/medications/{medId}`
-     *   - doses object uses keys like "YYYY-MM-DD_doseNumber" with values:
-     *     { date: "YYYY-MM-DD", doseNumber: number, taken: boolean, takenAt?: string|null, autoMarked?: boolean }
-     *
-     * Status rules:
-     * - Urgent (red): missed dose today OR any med out of stock
-     * - Needs Attention (yellow): no missed today, but 7-day adherence < 80% OR missed >= 2 in last 7 days
-     * - On Track (green): otherwise
-     */
 
   import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
@@ -1109,14 +1086,12 @@
     const stateEl = document.getElementById('state');
     const gridEl = document.getElementById('grid');
 
-    // Modal elements (detail view placeholder)
     const modalOverlay = document.getElementById('patient-modal-overlay');
     const modalCloseBtn = document.getElementById('patient-modal-close');
     const modalBody = document.getElementById('patient-modal-body');
     const modalActionBtn = document.getElementById('patient-modal-action');
     let modalOpenForPatientId = null;
 
-    // Dropdown state (custom controls)
     let filterMode = 'all';
     let sortBy = 'name_asc';
 
@@ -1130,7 +1105,6 @@
     const sortMenu = document.getElementById('sort-menu');
     const sortValueEl = document.getElementById('sort-value');
 
-    /** yyyy-mm-dd in local time */
     function toISODateStringLocal(d) {
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1145,8 +1119,6 @@
     }
 
     function parseBottleExpiry(bottleStr) {
-      // bottle string format "M/D/YYYY/qty" (qty optional)
-      // examples: "12/31/2026/30" or "12/31/2026/"
       if (!bottleStr || typeof bottleStr !== 'string') return null;
       const parts = bottleStr.split('/');
       if (parts.length < 3) return null;
@@ -1175,13 +1147,6 @@
       return (s || '').toString().trim().toLowerCase();
     }
 
-    /**
-     * Normalize legacy dose values.
-     * Some older data may store `taken` as strings (e.g. "Taken"/"Not Taken") instead of booleans.
-     * Return:
-     *  - true / false when determinable
-     *  - undefined when unknown
-     */
     function normalizeTakenValue(taken, takenAt) {
       if (taken === true) return true;
       if (taken === false) return false;
@@ -1190,16 +1155,10 @@
         if (v === 'true' || v === 'taken' || v === 'yes' || v === 'y') return true;
         if (v === 'false' || v === 'not taken' || v === 'nottaken' || v === 'no' || v === 'missed') return false;
       }
-      // If takenAt exists, treat as taken (best-effort for legacy writes)
       if (takenAt) return true;
       return undefined;
     }
 
-    /**
-     * Computes patient metrics from medications/doses.
-     * Assumption: scheduled doses are represented by dose entries in the last 7 days
-     * (either taken=true or taken=false/autoMarked=true).
-     */
     function computePatientMetrics({ meds, now }) {
       const todayISO = toISODateStringLocal(now);
       const start7 = toISODateStringLocal(addDays(now, -6));
@@ -1212,18 +1171,15 @@
       let anyOutOfStock = false;
       let anyExpiringSoon = false;
 
-      /** @type {Date|null} */
       let nextDoseAt = null;
 
       for (const med of meds) {
-        // ⚠️ Out of stock: spec says "stock === 0"
         const stockVal = Number(med.stock ?? 0);
         const bottlesArr = Array.isArray(med.bottles) ? med.bottles : [];
         if (stockVal === 0 || bottlesArr.length === 0) {
           anyOutOfStock = true;
         }
 
-        // ⏳ Expiring soon: any bottle within 7 days
         for (const bottleStr of bottlesArr) {
           const exp = parseBottleExpiry(bottleStr);
           if (!exp) continue;
@@ -1243,12 +1199,8 @@
           if (!date || typeof date !== 'string') continue;
           const takenBool = normalizeTakenValue(entry.taken, entry.takenAt);
 
-          // Last 7 days window (inclusive), lexicographic compare works for YYYY-MM-DD
           if (date >= start7 && date <= todayISO) {
             total7 += 1;
-            // IMPORTANT:
-            // - Treat taken=true as taken even if autoMarked is still true (patient corrected it).
-            // - Handle legacy string values for taken.
             const taken = takenBool === true;
             const missed = takenBool === false || (takenBool !== true && entry.autoMarked === true);
 
@@ -1256,14 +1208,10 @@
             if (missed) missed7 += 1;
           }
 
-          // Missed doses today (spec: date===today AND taken===false)
-          // Also treat auto-marked missed doses as missed today when taken isn't explicitly true.
           if (date === todayISO && (takenBool === false || (takenBool !== true && entry.autoMarked === true))) {
             missedToday += 1;
           }
 
-          // Next dose: today, not taken, scheduled time after now
-          // We derive scheduled time using doseNumber -> med.times[doseNumber-1]
           if (date === todayISO && takenBool !== true) {
             const doseNumber = Number(entry.doseNumber);
             const timeStr = (doseNumber && timesArr[doseNumber - 1]) ? timesArr[doseNumber - 1] : null;
@@ -1280,11 +1228,8 @@
         }
       }
 
-      // 7-day adherence % = taken / total scheduled
-      // If total is 0 (no data), default to 100% (neutral)
       const adherencePct = total7 > 0 ? Math.round((taken7 / total7) * 100) : 100;
 
-      // Status rules
       let statusKey = 'on_track';
       if (missedToday > 0 || anyOutOfStock) {
         statusKey = 'urgent';
@@ -1318,7 +1263,6 @@
     function renderCards(patients) {
       const now = new Date();
 
-      // Apply one "Filter" dropdown to keep UI simple.
       const mode = filterMode;
       const filtered = patients.filter(p => {
         const m = p.metrics;
@@ -1334,7 +1278,6 @@
         return true;
       });
 
-      // Sorting
       const sortMode = sortBy;
       filtered.sort((a, b) => {
         if (sortMode === 'name_asc') return (a.name || '').localeCompare(b.name || '');
@@ -1360,7 +1303,6 @@
       gridEl.innerHTML = filtered.map(p => {
         const m = p.metrics;
 
-        // Next dose display
         let nextDoseText = 'No more doses today';
         if (m.nextDoseAt) {
           const h = Math.round(hoursUntil(now, m.nextDoseAt));
@@ -1371,7 +1313,6 @@
           ? `<div class="meta-row"><span class="muted">Missed today:</span> <strong>${m.missedToday}</strong></div>`
           : '';
 
-        // Alerts (icons only)
         const alerts = [
           m.anyOutOfStock ? `<span class="alert-icon" title="Out of stock" aria-label="Out of stock">⚠️</span>` : '',
           m.anyExpiringSoon ? `<span class="alert-icon" title="Expiring soon" aria-label="Expiring soon">⏳</span>` : ''
@@ -1409,7 +1350,6 @@
         `;
       }).join('');
 
-      // Wire up card click -> open modal (but not when clicking reminder opt-in)
       const cards = Array.from(gridEl.querySelectorAll('.patient-card[data-patient-id]'));
       cards.forEach(card => {
         const open = (e) => {
@@ -1429,14 +1369,12 @@
 
     function openPatientModal(patientId) {
       modalOpenForPatientId = patientId;
-      // Simple placeholder content for now
       const p = patientCache.find(x => x.id === patientId);
       const name = p?.name || 'Patient';
       modalBody.innerHTML = `<div style="color: var(--text); font-weight: 800; font-size: 1.05rem;">${String(name).replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
         <div style="margin-top: 0.4rem;">Detailed view</div>`;
 
       modalOverlay.classList.add('show');
-      // focus close for accessibility
       modalCloseBtn.focus();
     }
 
@@ -1446,10 +1384,8 @@
     }
 
     let patientCache = [];
-    // Caregiver's reminder preferences per patient: { [patientId]: { email: bool, sms: bool } }
     let patientReminders = {};
-    // Live data cache for each patient so we can recompute metrics as time passes.
-    const patientLive = new Map(); // patientId -> { profile, meds, unsubProfile, unsubMeds }
+    const patientLive = new Map();
     let caregiverUnsub = null;
     let refreshTimer = null;
 
@@ -1468,7 +1404,6 @@
     function toggleDropdown(dd) {
       if (dd.classList.contains('open')) closeDropdown(dd);
       else {
-        // Only one open at a time
         closeDropdown(filterDd);
         closeDropdown(sortDd);
         openDropdown(dd);
@@ -1482,7 +1417,6 @@
 
     function setFilter(value) {
       filterMode = value;
-      // Update visible label
       const labelMap = {
         all: 'All',
         urgent: 'Urgent',
@@ -1512,11 +1446,9 @@
     }
 
     function wireControls() {
-      // Toggle open/close
       filterBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleDropdown(filterDd); });
       sortBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleDropdown(sortDd); });
 
-      // Pick option
       filterMenu.querySelectorAll('.dd-option').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -1532,13 +1464,11 @@
         });
       });
 
-      // Close on outside click
       document.addEventListener('click', () => {
         closeDropdown(filterDd);
         closeDropdown(sortDd);
       });
 
-      // Close on Esc
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           closeDropdown(filterDd);
@@ -1546,14 +1476,12 @@
         }
       });
 
-      // Initial selection
       setFilter(filterMode);
       setSort(sortBy);
     }
 
     async function loadPatientByEmail(emailLower) {
       try {
-        // Query `users` by email; rules will only allow docs where caregiver is linked in patient.caregivers.
         const q = query(collection(db, 'users'), where('email', '==', emailLower), limit(1));
         const snap = await getDocs(q);
         if (snap.empty) return null;
@@ -1602,7 +1530,6 @@
       patientLive.set(patientId, { profile: null, meds: [], unsubProfile: null, unsubMeds: null });
       upsertPatientRow(patientId, { id: patientId });
 
-      // Profile listener (name/email)
       const unsubProfile = onSnapshot(doc(db, 'users', patientId), (snap) => {
         if (!snap.exists()) return;
         const data = snap.data() || {};
@@ -1615,7 +1542,6 @@
         console.warn('[Caregiver Home] Patient profile live listener error:', patientId, err?.message || err);
       });
 
-      // Medications listener (doses/bottles/stock)
       const unsubMeds = onSnapshot(collection(db, 'users', patientId, 'medications'), (snap) => {
         const meds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const entry = patientLive.get(patientId);
@@ -1651,7 +1577,6 @@
 
     function startRefreshTicker() {
       if (refreshTimer) clearInterval(refreshTimer);
-      // Recompute every minute so "Next dose in Xh" stays accurate even with no Firestore changes.
       refreshTimer = setInterval(() => {
         const now = new Date();
         for (const [pid, entry] of patientLive.entries()) {
@@ -1676,7 +1601,6 @@
         const patientIds = Array.isArray(caregiverData.patientIds) ? caregiverData.patientIds.filter(Boolean) : [];
         const patientEmails = Array.isArray(caregiverData.patients) ? caregiverData.patients.map(safeLower).filter(Boolean) : [];
 
-        // Resolve IDs if only emails exist.
         let resolvedIds = patientIds;
         if (resolvedIds.length === 0 && patientEmails.length > 0) {
           const resolved = [];
@@ -1692,7 +1616,6 @@
           return;
         }
 
-        // Start listeners for any new patients.
         stateEl.style.display = 'none';
         resolvedIds.forEach(startPatientLive);
         startRefreshTicker();
@@ -1713,7 +1636,6 @@
         const caregiverDoc = await getDoc(doc(db, 'users', caregiverUid));
         const caregiverData = caregiverDoc.exists() ? caregiverDoc.data() : {};
 
-        // Preferred: patientIds written by Cloud Function on acceptance (fast + no email query).
         const patientIds = Array.isArray(caregiverData.patientIds) ? caregiverData.patientIds.filter(Boolean) : [];
         const patientEmails = Array.isArray(caregiverData.patients) ? caregiverData.patients.map(safeLower).filter(Boolean) : [];
 
@@ -1725,7 +1647,6 @@
 
         const now = new Date();
 
-        // Resolve patient docs. Use allSettled so one failure doesn't block the whole dashboard.
         const resolved = [];
         if (patientIds.length > 0) {
           const results = await Promise.allSettled(patientIds.map(loadPatientById));
@@ -1736,8 +1657,6 @@
         }
 
         if (resolved.length === 0) {
-          // Auto-repair for older data: caregiver has emails, but patient.caregivers wasn't set yet (rules block reads).
-          // We call a Cloud Function to sync links, then retry once.
           if (patientIds.length === 0 && patientEmails.length > 0) {
             stateEl.className = 'loading';
             stateEl.textContent = 'Syncing patient links…';
@@ -1754,7 +1673,6 @@
               });
 
               if (resp.ok) {
-                // Retry dashboard load (will now use patientIds or allow read by rules)
                 await loadDashboard(caregiverUid);
                 return;
               }
@@ -1768,7 +1686,6 @@
           return;
         }
 
-        // Load meds in parallel and compute metrics; update UI progressively.
         const patientsWithMetrics = [];
         let done = 0;
         const total = resolved.length;
@@ -1807,10 +1724,8 @@
 
     wireControls();
 
-    // Modal wiring (no-op action button for now)
     if (modalActionBtn) {
       modalActionBtn.addEventListener('click', () => {
-        // Navigate to the (blank for now) detailed view page.
         const pid = modalOpenForPatientId ? encodeURIComponent(modalOpenForPatientId) : '';
         window.location.href = pid ? `student-view.html?patientId=${pid}` : 'student-view.html';
       });
@@ -1827,7 +1742,6 @@
       }
     });
 
-    // ============ CAREGIVER REMINDER OPT-IN ============
     const reminderOverlay = document.getElementById('reminder-method-overlay');
     const reminderCloseBtn = document.getElementById('reminder-method-close');
     const reminderSaveBtn = document.getElementById('reminder-method-save');
@@ -1880,7 +1794,6 @@
         const sms = reminderSmsCb.checked;
         let push = reminderPushCb ? reminderPushCb.checked : false;
 
-        // If the caregiver just turned Push on, actually subscribe this device
         if (push) {
           const P = window.Everane && window.Everane.Push;
           if (!P || !P.isSupported()) {
@@ -1903,7 +1816,6 @@
           }
         }
 
-        // Save to Firestore on caregiver doc
         const newPrefs = { ...patientReminders };
         if (!email && !sms && !push) {
           delete newPrefs[pid];
@@ -1919,7 +1831,6 @@
           closeReminderModal();
           renderCards(patientCache);
 
-          // Show feedback
           const label = (!email && !sms && !push) ? 'Reminders turned off' : `Reminders: ${[email ? 'Email' : '', sms ? 'SMS' : '', push ? 'Push' : ''].filter(Boolean).join(' + ')}`;
           reminderFeedback.textContent = label;
           reminderFeedback.classList.add('show');
@@ -1934,11 +1845,10 @@
       });
     }
 
-    // Wire up reminder checkboxes on cards (delegate via grid)
     gridEl.addEventListener('click', (e) => {
       const optIn = e.target.closest('.reminder-opt-in');
       if (!optIn) return;
-      e.stopPropagation(); // Don't open patient modal
+      e.stopPropagation();
       const pid = optIn.dataset.patientId;
       if (!pid) return;
 
@@ -1947,7 +1857,6 @@
       const isCurrentlyOn = prefs && (prefs.email || prefs.sms);
 
       if (isCurrentlyOn) {
-        // If turning off, uncheck and save immediately
         cb.checked = false;
         (async () => {
           const user = auth.currentUser;
@@ -1966,13 +1875,11 @@
           }
         })();
       } else {
-        // If turning on, open modal to choose method
-        cb.checked = false; // Don't check yet, wait for modal save
+        cb.checked = false;
         openReminderModal(pid);
       }
     });
 
-    // Load caregiver's existing reminder preferences
     async function loadCaregiverReminders(caregiverUid) {
       try {
         const snap = await getDoc(doc(db, 'users', caregiverUid));
@@ -1990,15 +1897,12 @@
         window.location.href = '../login.html';
         return;
       }
-      // Load reminder preferences before rendering
       await loadCaregiverReminders(user.uid);
-      // Live-updating dashboard (so adherence/status updates when patients mark doses taken)
       await startLiveDashboard(user.uid);
     });
   </script>
 
   <script>
-    // First-time user popup logic (tutorial)
     (function() {
       const popup = document.getElementById('first-time-popup');
       const closeBtn = document.getElementById('close-first-time-popup');

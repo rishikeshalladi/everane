@@ -66,7 +66,7 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -163,7 +163,7 @@
       }
     }
 
-    /* Form card */
+    
     .form-card {
       max-width: 560px;
       margin-inline: auto;
@@ -190,7 +190,7 @@
       margin: 0;
     }
 
-    /* Step indicators */
+    
     .step-indicator {
       display: flex;
       align-items: center;
@@ -212,7 +212,7 @@
     }
     .step-line.active { background: var(--brand); }
 
-    /* Topic grid */
+    
     .topic-grid {
       display: flex;
       flex-direction: column;
@@ -285,7 +285,7 @@
     }
     .topic-option.selected .topic-radio::after { transform: scale(1); }
 
-    /* Step 2 — Details */
+    
     .type-badge {
       display: inline-flex;
       align-items: center;
@@ -330,7 +330,7 @@
       box-shadow: 0 0 0 3px rgba(79,140,255,.2);
     }
 
-    /* Buttons */
+    
     .btn {
       display: inline-flex;
       align-items: center;
@@ -367,7 +367,7 @@
     }
     .form-actions .btn { flex: 1; padding: .95rem 1rem; }
 
-    /* Success state */
+    
     .success-view {
       display: none;
       flex-direction: column;
@@ -390,11 +390,11 @@
     .success-view h2 { font-size: 1.4rem; font-weight: 800; margin: 0; }
     .success-view p { color: var(--muted); font-size: .95rem; margin: 0; max-width: 320px; }
 
-    /* Steps visibility */
+    
     .step { display: none; flex-direction: column; flex: 1; }
     .step.active { display: flex; }
 
-    /* Mobile */
+    
     @media (max-width: 600px) {
       .form-card { padding: 1.25rem; }
       .topic-option { padding: .8rem .9rem; }
@@ -428,14 +428,12 @@
   <div class="content">
     <div class="container">
       <div class="form-card">
-        <!-- Step indicators -->
         <div class="step-indicator">
           <div class="step-dot active" id="dot-1"></div>
           <div class="step-line" id="line-1"></div>
           <div class="step-dot" id="dot-2"></div>
         </div>
 
-        <!-- STEP 1: Choose topic -->
         <div class="step active" id="step-1">
           <div class="form-header">
             <h1>Send Update</h1>
@@ -515,7 +513,6 @@
           </div>
         </div>
 
-        <!-- STEP 2: Details -->
         <div class="step" id="step-2">
           <div class="form-header">
             <h1>Send Update</h1>
@@ -538,7 +535,6 @@
           </div>
         </div>
 
-        <!-- SUCCESS -->
         <div class="success-view" id="success-view">
           <div class="success-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -572,12 +568,10 @@
     let currentUser = null;
     let patientName = '';
 
-    // Wait for auth
     onAuthStateChanged(auth, async (user) => {
       if (!user) return;
       currentUser = user;
 
-      // Fetch patient name from profile
       try {
         const profileDoc = await getDoc(doc(db, 'users', user.uid));
         if (profileDoc.exists()) {
@@ -590,10 +584,8 @@
       }
     });
 
-    // State
     let selectedType = '';
 
-    // Elements
     const step1 = document.getElementById('step-1');
     const step2 = document.getElementById('step-2');
     const successView = document.getElementById('success-view');
@@ -607,7 +599,6 @@
     const detailsLabel = document.getElementById('details-label');
     const detailsInput = document.getElementById('details-input');
 
-    // Placeholders per type
     const placeholders = {
       'Stopped Medication': 'e.g., I stopped taking Lisinopril two days ago because of dizziness...',
       'Started New Medication': 'e.g., I started taking Vitamin D 2000 IU daily, prescribed by my primary care doctor...',
@@ -618,7 +609,6 @@
       'Other': 'Tell your doctor what\'s on your mind...'
     };
 
-    // Topic selection
     const topicOptions = document.querySelectorAll('.topic-option');
     topicOptions.forEach(opt => {
       opt.addEventListener('click', () => {
@@ -629,7 +619,6 @@
       });
     });
 
-    // Next → Step 2
     nextBtn.addEventListener('click', () => {
       if (!selectedType) return;
 
@@ -649,7 +638,6 @@
       detailsInput.focus();
     });
 
-    // Back → Step 1
     backBtn.addEventListener('click', () => {
       step2.classList.remove('active');
       step1.classList.add('active');
@@ -660,12 +648,10 @@
       dot1.classList.add('active');
     });
 
-    // Enable submit when textarea has content
     detailsInput.addEventListener('input', () => {
       submitBtn.disabled = detailsInput.value.trim().length === 0;
     });
 
-    // Submit
     submitBtn.addEventListener('click', async () => {
       const details = detailsInput.value.trim();
       if (!details || !selectedType || !currentUser) return;

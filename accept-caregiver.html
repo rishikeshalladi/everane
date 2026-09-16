@@ -140,7 +140,6 @@
 
     const contentDiv = document.getElementById('content');
 
-    // Get invitation ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     const invitationId = urlParams.get('invitationId');
 
@@ -150,7 +149,6 @@
         <p class="error">No invitation ID provided. Please use the link from your email.</p>
       `;
     } else {
-      // Check authentication and load invitation
       onAuthStateChanged(auth, async (user) => {
         console.log('[Accept Caregiver] Auth state changed, user:', user ? user.email : 'null');
       
@@ -165,7 +163,6 @@
           return;
         }
 
-        // Verify user has an email
         if (!user.email) {
           console.log('[Accept Caregiver] User has no email');
           contentDiv.innerHTML = `
@@ -178,7 +175,6 @@
         console.log('[Accept Caregiver] User email:', user.email);
         console.log('[Accept Caregiver] Loading invitation:', invitationId);
 
-        // Get invitation from Firestore first (before checking user profile)
         const invitationRef = doc(db, 'invitations', invitationId);
         const invitationDoc = await getDoc(invitationRef);
 
@@ -194,7 +190,6 @@
         const invitationData = invitationDoc.data();
         console.log('[Accept Caregiver] Invitation data:', invitationData);
 
-        // Verify invitation data is valid
         if (!invitationData || !invitationData.patientEmail || !invitationData.caregiverId || !invitationData.caregiverName) {
           console.log('[Accept Caregiver] Invalid invitation data');
           contentDiv.innerHTML = `
@@ -204,7 +199,6 @@
           return;
         }
 
-        // Get user's profile from Firestore
         console.log('[Accept Caregiver] Loading user profile:', user.uid);
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
@@ -230,7 +224,6 @@
         console.log('  Firestore email:', firestoreEmail);
         console.log('  Invitation patient email:', invitationPatientEmail);
 
-        // Verify that the logged-in user's email matches the patient email
         const emailMatches = authEmail === invitationPatientEmail || firestoreEmail === invitationPatientEmail;
 
         if (!emailMatches) {
@@ -246,7 +239,6 @@
           return;
         }
 
-        // Verify user is a patient (not a caregiver)
         if (userData.type === 'C') {
           console.log('[Accept Caregiver] User is a caregiver, not a patient');
           contentDiv.innerHTML = `
@@ -257,7 +249,6 @@
           return;
         }
 
-        // Check if invitation is already accepted/declined
         if (invitationData.status !== 'pending') {
           console.log('[Accept Caregiver] Invitation already processed:', invitationData.status);
           const statusText = invitationData.status === 'accepted' ? 'already accepted' : invitationData.status === 'declined' ? 'already declined' : invitationData.status;
@@ -271,7 +262,6 @@
 
         console.log('[Accept Caregiver] All checks passed, showing invitation');
         
-        // Show invitation details and accept button
         const messageHtml = invitationData.customMessage 
           ? `<div class="message"><strong>Message from ${invitationData.caregiverName}:</strong><br><br>"${invitationData.customMessage.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</div>`
           : '';
@@ -284,7 +274,6 @@
           <button id="accept-btn" class="btn">Accept Caregiver</button>
         `;
 
-        // Add click handler for accept button
         const acceptBtn = document.getElementById('accept-btn');
         if (acceptBtn) {
           acceptBtn.addEventListener('click', async () => {
@@ -294,7 +283,6 @@
               
               console.log('[Accept Caregiver] Accept button clicked');
               
-              // First, verify user is logged in as the patient (double-check)
               if (!user || !user.email) {
                 throw new Error('You must be logged in to accept this invitation');
               }
@@ -308,11 +296,7 @@
               
               console.log('[Accept Caregiver] Verified user is logged in as patient:', loggedInEmail);
               
-              // Call Cloud Function to handle everything server-side (has admin privileges)
-              // We still attach the Firebase Auth ID token so the function can verify the caller is the patient.
               const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/acceptCaregiverInvitation';
-              // NOTE: Some browsers / in-app webviews can drop Authorization headers on redirects.
-              // Send token in BOTH header + body to make this robust.
               const idToken = await user.getIdToken(true);
               const response = await fetch(functionUrl, {
                 method: 'POST',
@@ -338,7 +322,6 @@
               const result = await response.json();
               console.log('[Accept Caregiver] Invitation accepted successfully:', result);
               
-              // Redirect to home
               window.location.href = 'home.html';
               
             } catch (error) {
@@ -348,7 +331,6 @@
               
               let errorMessage = error.message || 'Unknown error';
               
-              // Provide more helpful error messages
               if (errorMessage.includes('permission') || errorMessage.includes('Permission')) {
                 errorMessage = 'Permission denied. Please make sure you are logged in with the correct account and try again.';
               } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {

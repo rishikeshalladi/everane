@@ -41,7 +41,7 @@
     a { color: inherit; }
     ::selection { background: var(--amber); color: #fff; }
 
-    /* ===== TICKER ===== */
+    
     .ticker {
       background: var(--ink); color: var(--paper);
       font-family: var(--mono); font-size: 0.72rem;
@@ -56,7 +56,7 @@
     .ticker-track span b { color: var(--amber); font-weight: 600; }
     @keyframes scrollX { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-    /* ===== NAV ===== */
+    
     nav {
       position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
@@ -88,7 +88,7 @@
     .mobile-toggle { display: none; background: none; border: 2px solid var(--line); border-radius: 3px; cursor: pointer; padding: 8px 10px; }
     .mobile-toggle span { display: block; width: 20px; height: 2px; background: var(--ink); margin: 4px 0; }
 
-    /* ===== LAYOUT WRAP ===== */
+    
     .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
     .eyebrow {
       font-family: var(--mono); font-size: 0.74rem;
@@ -104,7 +104,7 @@
     }
     .lede { font-size: 1.05rem; color: var(--ink-soft); max-width: 560px; }
 
-    /* ===== HERO ===== */
+    
     .hero { padding: 72px 0 56px; position: relative; }
     .hero-grid {
       display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center;
@@ -148,7 +148,7 @@
     }
     .hero-meta b { color: var(--ink); font-weight: 600; font-size: 1.3rem; display: block; font-family: var(--display); }
 
-    /* ===== PHONE FRAME ===== */
+    
     .device {
       background: var(--card); border: 2px solid var(--line);
       border-radius: 26px; padding: 16px; max-width: 330px; margin: 0 auto;
@@ -198,14 +198,14 @@
     .float.cam { bottom: 38px; left: -30px; background: var(--amber); display: flex; gap: 8px; align-items: center; }
     @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
-    /* ===== SECTION SHELL ===== */
+    
     section.block { padding: 78px 0; border-top: 2px solid var(--line); }
     .block.dark { background: var(--ink); color: var(--paper); }
     .block.dark .eyebrow { color: var(--amber); }
     .block.dark .lede, .block.dark .muted-txt { color: rgba(244,241,234,0.66); }
     .index-no { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.16em; }
 
-    /* ===== WHY: split compare ===== */
+    
     .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 44px; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
     .compare > div { padding: 30px; }
     .compare .col-bad { border-right: 2px solid var(--line); }
@@ -219,7 +219,7 @@
     .pt strong { display: block; font-size: 0.94rem; margin-bottom: 3px; }
     .pt span { font-size: 0.86rem; color: var(--muted); }
 
-    /* ===== FEATURES ===== */
+    
     .feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 44px; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
     .feat {
       padding: 30px 26px; background: var(--card);
@@ -234,7 +234,7 @@
     .feat h3 { font-family: var(--display); font-weight: 600; font-size: 1.12rem; margin-bottom: 8px; letter-spacing: -0.01em; }
     .feat p { font-size: 0.88rem; color: var(--muted); }
 
-    /* ===== CAMERA / CAPTURE ===== */
+    
     .capture-grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 52px; align-items: center; margin-top: 10px; }
     .capture-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .snap {
@@ -260,7 +260,7 @@
     .capture-steps strong { display: block; font-size: 0.95rem; }
     .capture-steps span { font-size: 0.87rem; color: var(--muted); }
 
-    /* ===== HOW ===== */
+    
     .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
     .stp { border: 2px solid var(--line); border-radius: 12px; padding: 26px; background: var(--card); position: relative; }
     .stp .big { font-family: var(--display); font-weight: 700; font-size: 3rem; line-height: 1; color: var(--line-soft); letter-spacing: -0.04em; }
@@ -268,7 +268,7 @@
     .stp p { font-size: 0.88rem; color: var(--muted); }
     .stp .tag { display: inline-block; margin-top: 16px; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; background: var(--clinic-light); color: var(--clinic); border: 2px solid var(--line); border-radius: 40px; padding: 4px 11px; }
 
-    /* ===== VOICE (dark) ===== */
+    
     .voice-grid { display: grid; grid-template-columns: 1fr 0.85fr; gap: 52px; align-items: center; }
     .vfeat { display: flex; gap: 15px; padding: 16px; border: 2px solid rgba(244,241,234,0.18); border-radius: 10px; margin-bottom: 12px; background: rgba(244,241,234,0.04); }
     .vfeat .vi { width: 38px; height: 38px; flex-shrink: 0; border: 2px solid rgba(244,241,234,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; }
@@ -282,7 +282,7 @@
     .vdemo .quote { font-family: var(--display); font-weight: 600; font-size: 1.2rem; letter-spacing: -0.01em; }
     .vdemo .sub { font-family: var(--mono); font-size: 0.72rem; color: rgba(244,241,234,0.55); margin-top: 8px; }
 
-    /* ===== CAREGIVER ===== */
+    
     .cg-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 52px; align-items: center; margin-top: 10px; }
     .cg-panel { border: 2px solid var(--line); border-radius: 14px; padding: 26px; background: var(--card); box-shadow: 6px 6px 0 var(--line); }
     .cg-top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
@@ -304,7 +304,7 @@
     .cg-list strong { font-size: 0.95rem; }
     .cg-list span { font-size: 0.87rem; color: var(--muted); }
 
-    /* ===== PRICING ===== */
+    
     .price-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; margin-top: 10px; }
     .price-card { border: 2px solid var(--line); border-radius: 16px; padding: 38px; background: var(--card); box-shadow: 8px 8px 0 var(--line); position: relative; }
     .price-card .free { position: absolute; top: -16px; left: 30px; background: var(--amber); color: #fff; border: 2px solid var(--line); border-radius: 40px; padding: 5px 18px; font-family: var(--mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; }
@@ -316,12 +316,12 @@
     .price-list li:first-child { border-top: none; }
     .price-list .pc { color: var(--amber-deep); font-weight: 700; }
 
-    /* ===== CTA ===== */
+    
     .cta { text-align: center; }
     .cta h2 { font-family: var(--display); font-weight: 700; font-size: clamp(2.2rem,5vw,3.4rem); letter-spacing: -0.04em; line-height: 1; margin-bottom: 18px; }
     .cta p { color: rgba(244,241,234,0.7); max-width: 460px; margin: 0 auto 32px; }
 
-    /* ===== FOOTER ===== */
+    
     footer { background: var(--ink); color: rgba(244,241,234,0.6); padding: 56px 0 28px; border-top: 2px solid var(--amber); }
     .foot-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 36px; }
     .foot-brand .fl { display: flex; align-items: center; gap: 9px; font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--paper); margin-bottom: 12px; }
@@ -332,11 +332,11 @@
     .foot-col a:hover { color: var(--amber); }
     .foot-bot { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(244,241,234,0.12); font-family: var(--mono); font-size: 0.72rem; }
 
-    /* ===== REVEAL ===== */
+    
     .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s cubic-bezier(.16,1,.3,1), transform 0.7s cubic-bezier(.16,1,.3,1); }
     .reveal.in { opacity: 1; transform: none; }
 
-    /* ===== RESPONSIVE ===== */
+    
     @media (max-width: 920px) {
       .nav-links { display: none; }
       .mobile-toggle { display: block; }
@@ -367,7 +367,6 @@
 </head>
 <body>
 
-  <!-- TICKER -->
   <div class="ticker" aria-hidden="true">
     <div class="ticker-track">
       <span>Reminders on time</span><span><b>/</b></span>
@@ -383,7 +382,6 @@
     </div>
   </div>
 
-  <!-- NAV -->
   <nav>
     <a href="index.html" class="nav-logo">
       <img src="logo.svg" alt="Everane">
@@ -402,7 +400,6 @@
     </button>
   </nav>
 
-  <!-- HERO -->
   <section class="hero">
     <div class="wrap hero-grid">
       <div class="hero-text">
@@ -461,7 +458,6 @@
     </div>
   </section>
 
-  <!-- WHY -->
   <section class="block">
     <div class="wrap reveal">
       <span class="eyebrow">Why Everane</span>
@@ -483,7 +479,6 @@
     </div>
   </section>
 
-  <!-- FEATURES -->
   <section class="block" id="features">
     <div class="wrap reveal">
       <span class="eyebrow">Features</span>
@@ -503,7 +498,6 @@
     </div>
   </section>
 
-  <!-- CAPTURE / SNAP A PHOTO -->
   <section class="block" id="capture">
     <div class="wrap reveal">
       <span class="eyebrow">Snap a Photo</span>
@@ -532,7 +526,6 @@
     </div>
   </section>
 
-  <!-- HOW -->
   <section class="block" id="how">
     <div class="wrap reveal">
       <span class="eyebrow">How It Works</span>
@@ -546,7 +539,6 @@
     </div>
   </section>
 
-  <!-- VOICE (dark) -->
   <section class="block dark" id="voice">
     <div class="wrap reveal">
       <span class="eyebrow">Voice Add</span>
@@ -567,7 +559,6 @@
     </div>
   </section>
 
-  <!-- CAREGIVERS -->
   <section class="block" id="caregivers">
     <div class="wrap reveal">
       <span class="eyebrow">For Caregivers</span>
@@ -601,7 +592,6 @@
     </div>
   </section>
 
-  <!-- PRICING -->
   <section class="block" id="pricing">
     <div class="wrap reveal">
       <span class="eyebrow">Pricing</span>
@@ -630,7 +620,6 @@
     </div>
   </section>
 
-  <!-- CTA -->
   <section class="block dark cta">
     <div class="wrap reveal">
       <span class="eyebrow" style="justify-content:center">Get Started</span>
@@ -640,7 +629,6 @@
     </div>
   </section>
 
-  <!-- FOOTER -->
   <footer>
     <div class="wrap foot-grid">
       <div class="foot-brand">

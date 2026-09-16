@@ -1,28 +1,3 @@
-/**
- * Everane Interactive Tutorial — v3 (SVG-mask spotlight)
- *
- * 10-step guided tour with a TRUE spotlight cutout drawn as an SVG mask.
- * The highlighted element receives zero overlay paint on top of it, so there
- * is no blur, no dimming, no GPU-compositing artifact.
- *
- * Why v3?
- *   v1 used backdrop-filter + a clear rect on top of the highlight (blurred
- *   the element through the overlay).
- *   v2 used four DOM rectangles around the cutout (still produced subpixel
- *   re-rasterization artifacts on some browsers + retina displays).
- *   v3 uses an <svg> covering the viewport with a <mask>: the background of
- *   the overlay is a dark rect, the cutout is a transparent rect at the
- *   highlight position. SVG masking composites at the pixel level — no
- *   layer-promotion side effects.
- *
- * Other behaviour:
- *   - MutationObserver-backed waitForElement (up to 5s) so async-mounted
- *     elements are still found after page navigation.
- *   - sessionStorage is the source of truth for "tour is in-flight";
- *     Firestore flag is only used to detect first-ever visit for auto-start.
- *   - rAF loop keeps the cutout pinned to the element through any
- *     resize / scroll / DOM reflow.
- */
 (function () {
   if (window.Everane && window.Everane.Tutorial && window.Everane.Tutorial._loaded) {
     return;
@@ -49,12 +24,9 @@
     {
       id: 'home-med-list',
       page: 'home.html',
-      // Prefer the demo card first (we inject it in setup if list is empty),
-      // then a real card if one exists, then fall back to the list container.
       selector: '[data-tutorial="demo-med-card"], #med-list .card, [data-tutorial="med-list"] .card, #med-list > div',
       title: "Today's medications",
       body: "Each card is one of your medications. Tap Taken or Not Taken when you take a dose — adherence tracking happens automatically.",
-      // setup runs before we measure / highlight; teardown runs when leaving this step
       setup: () => injectDemoMedCardIfEmpty(),
       teardown: () => removeDemoMedCard()
     },
@@ -116,24 +88,16 @@
     }
   ];
 
-  // ---------- Demo card injection ----------
-  // When the user has no real medications yet, the med-list step has nothing
-  // to spotlight. We inject a fake demo card so the user sees what a real one
-  // will look like, then tear it down when the step ends.
   function injectDemoMedCardIfEmpty() {
     const list = document.querySelector('#med-list, [data-tutorial="med-list"]');
     if (!list) return;
-    // Real cards on home.html use class="card". Skip if any real card exists.
     if (list.querySelector('.card')) return;
-    // Already injected — don't double-add
     if (list.querySelector('[data-tutorial="demo-med-card"]')) return;
 
     const demo = document.createElement('div');
     demo.className = 'card';
     demo.setAttribute('data-tutorial', 'demo-med-card');
     demo.setAttribute('data-everane-demo', '1');
-    // Inline the layout so we don't depend on host stylesheets being a
-    // specific version. Matches the visual style of real cards.
     demo.style.cssText = [
       'background: var(--surface, #ffffff)',
       'border: 1px solid var(--border, #e5e7eb)',
@@ -169,16 +133,12 @@
     if (demo && demo.parentNode) demo.parentNode.removeChild(demo);
   }
 
-  // ---------- State ----------
   function readState() {
     try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null'); } catch (_) { return null; }
   }
   function writeState(s) { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (_) {} }
   function clearState() { try { sessionStorage.removeItem(STORAGE_KEY); } catch (_) {} }
 
-  // ---------- DOM ----------
-  // SVG overlay with mask cutout. Highlighted region is mathematically
-  // transparent — no paint, no blur, no GPU layer side effects.
   let overlaySvg = null;
   let overlayRect = null;
   let overlayCutout = null;
@@ -307,13 +267,11 @@
       const defs = document.createElementNS(NS, 'defs');
       const mask = document.createElementNS(NS, 'mask');
       mask.setAttribute('id', 'everane-tut-mask');
-      // In a mask, white = show this region, black = hide it.
       const fullWhite = document.createElementNS(NS, 'rect');
       fullWhite.setAttribute('width', '100%');
       fullWhite.setAttribute('height', '100%');
       fullWhite.setAttribute('fill', 'white');
       mask.appendChild(fullWhite);
-      // Black rectangle for the cutout — this becomes the transparent hole.
       overlayCutout = document.createElementNS(NS, 'rect');
       overlayCutout.setAttribute('fill', 'black');
       overlayCutout.setAttribute('rx', '14');
@@ -326,7 +284,6 @@
       defs.appendChild(mask);
       overlaySvg.appendChild(defs);
 
-      // The dim rect, masked.
       overlayRect = document.createElementNS(NS, 'rect');
       overlayRect.setAttribute('x', '0');
       overlayRect.setAttribute('y', '0');
@@ -376,7 +333,7 @@
           const r = el.getBoundingClientRect();
           if (r.width > 0 && r.height > 0) return el;
         }
-      } catch (_) { /* skip invalid selector */ }
+      } catch (_) { }
     }
     return null;
   }
@@ -405,7 +362,6 @@
     });
   }
 
-  // ---------- Layout ----------
   function setSvgViewBox() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -514,18 +470,15 @@
     currentTargetSel = null;
   }
 
-  // Tracks the currently-rendered step so we can tear it down when moving on.
   let activeStepIndex = -1;
   function teardownStep(stepIndex) {
     const s = STEPS[stepIndex];
     if (s && typeof s.teardown === 'function') {
-      try { s.teardown(); } catch (e) { /* ignore */ }
+      try { s.teardown(); } catch (e) { }
     }
   }
 
-  // ---------- Render a step ----------
   async function renderStep(stepIndex) {
-    // Tear down the previously-active step (e.g. remove the demo med card)
     if (activeStepIndex !== -1 && activeStepIndex !== stepIndex) {
       teardownStep(activeStepIndex);
     }
@@ -535,10 +488,8 @@
     if (!step) { finish(true); return; }
     ensureNodes();
 
-    // Run this step's setup hook BEFORE we measure / wait for the selector,
-    // so injected elements (like a demo med card) are findable.
     if (typeof step.setup === 'function') {
-      try { step.setup(); } catch (e) { /* ignore */ }
+      try { step.setup(); } catch (e) { }
     }
 
     document.documentElement.classList.add('everane-tut-lock-scroll');
@@ -612,8 +563,6 @@
     const want = pageOf(step);
     if (!want) return false;
     if (currentPathBasename() === want) return false;
-    // Tear down the currently-active step's DOM injections (e.g. demo med card)
-    // before navigating, so we don't leave artifacts behind on the page we leave.
     if (activeStepIndex !== -1) {
       teardownStep(activeStepIndex);
       activeStepIndex = -1;
@@ -632,8 +581,6 @@
   }
 
   async function finish(persistFlag) {
-    // Run the active step's teardown (e.g. remove demo med card) before tearing
-    // down the overlay nodes.
     if (activeStepIndex !== -1) {
       teardownStep(activeStepIndex);
       activeStepIndex = -1;
@@ -650,7 +597,6 @@
     }
   }
 
-  // ---------- Public API ----------
   function start() {
     writeState({ active: true, stepIndex: 0 });
     if (navigateIfNeeded(0)) return;
@@ -663,7 +609,6 @@
   function resumeIfActive() {
     const state = readState();
     if (!state || !state.active) return;
-    // Idempotent: if an overlay is already on screen, don't double-render.
     if (overlaySvg && overlaySvg.parentNode) return;
     const stepIndex = Math.max(0, Math.min(STEPS.length - 1, state.stepIndex || 0));
     const step = STEPS[stepIndex];
@@ -676,7 +621,6 @@
       return;
     }
     setTimeout(() => {
-      // Recheck state at fire-time — it might have been cleared
       const s2 = readState();
       if (!s2 || !s2.active) return;
       if (overlaySvg && overlaySvg.parentNode) return;
@@ -729,12 +673,6 @@
     }
   };
 
-  // Boot logic: handle every realistic scenario the browser can throw at us.
-  //   - Initial document parse (readyState === 'loading')   → wait for DOMContentLoaded
-  //   - Fresh script execution after parsing                → run immediately
-  //   - Back/forward bfcache restore                        → pageshow
-  //   - Tab focus / visibility resume                       → visibilitychange
-  // In every case we re-check sessionStorage and resume if a tour is in flight.
   let _bootAttempted = false;
   function boot(reason) {
     try { console.info('[Tutorial] boot:', reason, 'state=', readState(), 'path=', currentPathBasename()); } catch (_) {}
@@ -753,18 +691,12 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => boot('DOMContentLoaded'));
   } else {
-    // Defer-loaded scripts hit this branch — DOM is already parsed.
     boot('immediate');
   }
-  // bfcache restore: pageshow fires with persisted=true when the page is
-  // restored from the browser's back/forward cache. Module init may not re-run
-  // in that case, so we must re-resume manually.
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) tryResume('pageshow-bfcache');
     else if (!_bootAttempted) boot('pageshow-fresh');
   });
-  // Visibility / focus retries — covers edge cases where the SW or auth flow
-  // delays the tour render until the tab becomes visible.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') tryResume('visibilitychange');
   });

@@ -1,9 +1,3 @@
-/**
- * Firebase Cloud Functions for Everane Email Reminders
- * 
- * This function runs on a schedule (every hour) and checks which medications
- * need reminders sent based on the user's settings.
- */
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
@@ -17,7 +11,6 @@ const ScheduleUtils = require('./schedule-utils');
 
 admin.initializeApp();
 
-// ---- Web Push (VAPID) configuration ----------------------------------------
 const vapidPublic = functions.config().vapid?.public || process.env.VAPID_PUBLIC_KEY;
 const vapidPrivate = functions.config().vapid?.private || process.env.VAPID_PRIVATE_KEY;
 const vapidSubject = functions.config().vapid?.subject || process.env.VAPID_SUBJECT || 'mailto:support@everane.app';
@@ -32,8 +25,6 @@ if (vapidPublic && vapidPrivate) {
   console.warn('⚠️ Web Push VAPID keys missing — push notifications will not be sent');
 }
 
-// Convert a medication's stored reminder setting into a channel Set.
-// Supports both new `reminderChannels` array and legacy `reminderMethod` single-char codes.
 function getMedChannels(med) {
   const out = new Set();
   if (med && Array.isArray(med.reminderChannels)) {
@@ -50,22 +41,14 @@ function getMedChannels(med) {
   return out;
 }
 
-// Configure your email service (Gmail example)
-// For production, use environment config: firebase functions:config:set gmail.email="your@gmail.com" gmail.password="your-app-password"
 const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
 
-// Base URL for the app (for email links)
-// For production, set: firebase functions:config:set app.baseurl="https://everane.live"
-// Or use environment variable: APP_BASE_URL
 const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://everane.live';
 
-// Twilio configuration
-// firebase functions:config:set twilio.account_sid="AC..." twilio.auth_token="..." twilio.from_number="+1..."
 const twilioAccountSid = functions.config().twilio?.account_sid || process.env.TWILIO_ACCOUNT_SID;
 const twilioAuthToken = functions.config().twilio?.auth_token || process.env.TWILIO_AUTH_TOKEN;
 const twilioFromNumber = functions.config().twilio?.from_number || process.env.TWILIO_FROM_NUMBER;
-// Initialize Twilio client for SMS
 let twilioClient = null;
 if (twilioAccountSid && twilioAuthToken) {
   try {
@@ -81,7 +64,6 @@ if (twilioAccountSid && twilioAuthToken) {
 }
 
 
-// Verify email configuration
 if (!gmailEmail || !gmailPassword) {
   console.error('⚠️ EMAIL CONFIGURATION MISSING:');
   console.error(`  gmailEmail: ${gmailEmail ? 'SET' : 'MISSING'}`);
@@ -93,15 +75,10 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: gmailEmail,
-    pass: gmailPassword // Use App Password, not regular password
+    pass: gmailPassword
   }
 });
 
-// ---- Doctor portal session tokens -------------------------------------------
-// The doctor portal previously passed a bare Firebase `uid` as its credential:
-// any endpoint that received a uid returned that patient's data. A uid is not a
-// secret, so that was an unauthenticated PHI read. doctorLogin now mints a
-// short-lived HMAC-signed token, and every doctor endpoint verifies it.
 const doctorSessionSecret =
   functions.config().doctor?.session_secret ||
   process.env.DOCTOR_SESSION_SECRET ||
@@ -113,7 +90,7 @@ if (!functions.config().doctor?.session_secret && !process.env.DOCTOR_SESSION_SE
   console.warn('⚠️ doctor.session_secret not configured — falling back to a derived key. Set it with: firebase functions:config:set doctor.session_secret="<random 32+ chars>"');
 }
 
-const DOCTOR_SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
+const DOCTOR_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
 function b64url(buf) {
   return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -126,10 +103,6 @@ function issueDoctorToken(uid) {
   return `${payload}.${sig}`;
 }
 
-/**
- * Verify a doctor session token and return its uid, or null if invalid/expired.
- * Uses a timing-safe comparison so the signature can't be probed byte by byte.
- */
 function verifyDoctorToken(token) {
   if (!doctorSessionSecret || typeof token !== 'string' || !token.includes('.')) return null;
   const [payload, sig] = token.split('.');
@@ -148,11 +121,6 @@ function verifyDoctorToken(token) {
   }
 }
 
-/**
- * Extract and verify the doctor session token from a request.
- * Accepts `Authorization: Bearer <token>` or `{ doctorToken }` in the body.
- * Returns the uid, or null.
- */
 function requireDoctorSession(req) {
   const authHeader = req.headers.authorization || '';
   const token =
@@ -161,13 +129,6 @@ function requireDoctorSession(req) {
   return verifyDoctorToken(token);
 }
 
-/**
- * Escape a value for safe interpolation into an HTML email body.
- * Every user- or patient-supplied string (names, medication names, free-text
- * messages) MUST go through this before being placed in an email template —
- * otherwise a medication named `<img src=x onerror=...>` becomes live markup
- * in someone else's inbox.
- */
 function escapeHtml(value) {
   if (value === null || value === undefined) return '';
   return String(value)
@@ -178,10 +139,6 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-/**
- * Strip CR/LF from a string destined for an email header (subject, display
- * name). Prevents header injection via user-supplied values.
- */
 function sanitizeHeader(value) {
   return String(value === null || value === undefined ? '' : value)
     .replace(/[\r\n]+/g, ' ')
@@ -189,7 +146,6 @@ function sanitizeHeader(value) {
     .slice(0, 200);
 }
 
-// Verify transporter is configured
 transporter.verify(function(error, success) {
   if (error) {
     console.error('❌ EMAIL TRANSPORTER VERIFICATION FAILED:', error);
@@ -198,30 +154,15 @@ transporter.verify(function(error, success) {
   }
 });
 
-/**
- * Generate a unique 7-digit patient ID.
- * Checks Firestore to ensure no collision.
- */
 async function generateUniquePatientId(db) {
   for (let attempt = 0; attempt < 20; attempt++) {
     const id = String(Math.floor(1000000 + Math.random() * 9000000));
     const snap = await db.collection('users').where('patientId', '==', id).limit(1).get();
     if (snap.empty) return id;
   }
-  // Fallback: timestamp-based
   return String(Date.now()).slice(-7);
 }
 
-/**
- * Helper function to send SMS via Twilio
- * @param {string} phoneNumber - Recipient phone number (E.164 format)
- * @param {string} message - SMS message text
- * @returns {Promise} - Twilio message resource (with .id alias for .sid)
- */
-/**
- * Retry a promise-returning function with exponential backoff.
- * Retries on any thrown error up to `attempts` times total (including the first try).
- */
 async function withRetry(label, fn, attempts = 3, baseDelayMs = 500) {
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
@@ -261,7 +202,6 @@ async function sendSMS(phoneNumber, message) {
         errorMessage: msg.errorMessage,
       }));
     }
-    // Preserve legacy callers that read result.id (Sinch shape) by aliasing sid.
     if (msg && !msg.id) {
       try { msg.id = msg.sid; } catch (_) {}
     }
@@ -269,24 +209,13 @@ async function sendSMS(phoneNumber, message) {
   }, 3, 750);
 }
 
-/**
- * Query Twilio for the delivery status of a previously-sent message.
- * Returns null if Twilio is not configured. Otherwise returns a normalized
- * shape compatible with the old Sinch payload: { status, code, ... } where
- *   - status: 'queued' | 'sent' | 'delivered' | 'failed' | 'undelivered' | etc.
- *   - code: Twilio errorCode (e.g. 30007 carrier filtered) or null
- *
- * Note: SMS delivery reports can take 5-60+ seconds to populate. Polling
- * immediately after sending often returns "queued"/"sent" — wait before
- * "delivered"/"failed" appear.
- */
 async function getSmsDeliveryStatus(messageSid, recipient) {
   if (!twilioClient || !messageSid) return null;
   try {
     const m = await twilioClient.messages(messageSid).fetch();
     return {
-      status: m.status,           // queued | sending | sent | delivered | undelivered | failed
-      code: m.errorCode || null,  // numeric Twilio error code (30003/30005/30007 = carrier issues)
+      status: m.status,
+      code: m.errorCode || null,
       errorMessage: m.errorMessage || null,
       sid: m.sid,
       to: m.to,
@@ -299,35 +228,21 @@ async function getSmsDeliveryStatus(messageSid, recipient) {
   }
 }
 
-/**
- * Send a Web Push notification to every subscription on record for a user.
- * Automatically prunes subscriptions that come back 404/410 (gone).
- * @param {FirebaseFirestore.Firestore} db
- * @param {string} userId
- * @param {Array} subscriptions  Array of {endpoint, keys:{p256dh,auth}, userAgent, createdAt}
- * @param {Object} payload       {title, body, tag?, data?, icon?, badge?, actions?}
- */
 
-/**
- * Persist a per-attempt audit record to Firestore so we can debug delivery
- * failures without depending on the rate-limited Cloud Logging API.
- * Writes one tiny doc per (channel, medId, time, offset, date) attempt.
- * Auto-trims to the most recent 200 entries to keep doc count bounded.
- */
 async function recordSendAttempt(db, userId, attempt) {
   try {
     const now = Date.now();
     const id = `${now}_${Math.random().toString(36).slice(2, 8)}`;
     const entry = {
       ts: new Date(now).toISOString(),
-      channel: attempt.channel || 'unknown',         // 'email' | 'sms' | 'push'
+      channel: attempt.channel || 'unknown',
       medId: attempt.medId || null,
       medName: attempt.medName || null,
       doseNumber: attempt.doseNumber || null,
       doseTime: attempt.doseTime || null,
       offsetKey: attempt.offsetKey || null,
       date: attempt.date || null,
-      status: attempt.status || 'unknown',           // 'sent' | 'failed' | 'skipped'
+      status: attempt.status || 'unknown',
       reason: attempt.reason || null,
       error: attempt.error ? String(attempt.error).slice(0, 500) : null
     };
@@ -358,16 +273,9 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
         { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
         body,
         {
-          // urgency:'high' tells the push service to deliver immediately even
-          // when the device is idle / in Doze mode. Critical for medication
-          // reminders that must arrive on time.
           urgency: 'high',
-          // TTL = how long the push service holds the message if the device is
-          // unreachable. 1 hour is plenty for a med reminder.
           TTL: 60 * 60,
           headers: {
-            // FCM-specific: also set the priority header so Chrome on Android
-            // wakes the device. Ignored by other push services.
             Urgency: 'high'
           }
         }
@@ -381,7 +289,6 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
         dead.push(sub.endpoint);
       } else {
         console.warn(`[Push] sendNotification failed (${status || '?'}):`, err.message || err);
-        // Keep the subscription around — could be transient
         stillValid.push(sub);
       }
     }
@@ -398,11 +305,6 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
   return { sent, pruned: dead.length };
 }
 
-/**
- * Build a push payload for a SINGLE medication dose reminder.
- * Each medication/dose gets its own individual notification rather than
- * being bundled — users asked for one per event at the same time.
- */
 function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, todayIso) {
   const time12 = format12Hour(reminderTime);
   const isAtTime = offsetKey === 'at_time';
@@ -423,22 +325,13 @@ function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, t
 
   const url = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(name)}&dose=${doseNumber}&time=${encodeURIComponent(reminderTime || '')}&date=${todayIso}&medId=${encodeURIComponent(med.id || '')}`;
 
-  // Only show Taken / Not Taken action buttons at the actual dose time,
-  // and only if the dose isn't already marked taken.
   const showActions = isAtTime && !med._isAlreadyTaken;
 
   return {
     title,
     body: bodyLines.join('\n'),
-    // Unique tag per medication+dose+offset so multiple same-time meds each show
-    // as their own notification in the OS tray (not coalesced).
     tag: `rem-${todayIso}-${reminderTime}-${offsetKey}-${med.id || name}-d${doseNumber}`,
-    // Keep at-time reminders on screen until the user dismisses them, so a
-    // medication reminder isn't missed because the notification auto-disappeared
-    // after a few seconds while the phone was face-down.
     requireInteraction: showActions,
-    // If a follow-up notification with the same tag arrives, re-alert (sound/vibrate)
-    // instead of silently replacing.
     renotify: true,
     data: {
       url,
@@ -457,13 +350,7 @@ function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, t
   };
 }
 
-/**
- * Determines reminder times based on medication settings
- * @param {Object} med - Medication object
- * @returns {Array} - Array of time strings in HH:MM format
- */
 function getReminderTimes(med, nowDateTime) {
-  // New: Use schedules if available
   if (med.schedules && med.schedules.length > 0) {
     const now = nowDateTime || getNowInZone();
     const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules, now);
@@ -471,13 +358,10 @@ function getReminderTimes(med, nowDateTime) {
     return times.length > 0 ? times : ['09:00'];
   }
 
-  // Existing fallback logic
-  // If user provided specific times, use those
   if (med.times && med.times.length > 0) {
     return med.times;
   }
 
-  // Otherwise, use defaults based on timesPerDay
   const timesPerDay = med.timesPerDay || 1;
 
   if (timesPerDay === 1) {
@@ -487,38 +371,17 @@ function getReminderTimes(med, nowDateTime) {
   } else if (timesPerDay === 3) {
     return ['09:00', '15:00', '21:00'];
   } else if (timesPerDay > 3) {
-    // For more than 3/day, use the 3-time schedule
     return ['09:00', '15:00', '21:00'];
   }
 
-  return ['09:00']; // Default fallback
+  return ['09:00'];
 }
 
-/**
- * Checks if medication should send reminder today
- * @param {Object} med - Medication object
- * @returns {boolean}
- */
-const DEFAULT_TIME_ZONE = 'America/Los_Angeles'; // Fallback if user timezone not set
-const LOW_STOCK_DOSE_THRESHOLD = 10; // Warn when fewer than this many doses remain
-const EXPIRING_SOON_DAYS = 30; // Warn when a bottle expires within this many days
-// Once the target time has passed, we send the reminder the very next time the function runs
-// (as long as we haven't already sent it — tracked via lastSentReminders).
-// WINDOW_MINUTES is now only used as a *cap* on how far in the future we look ahead for advance
-// reminders on the "tomorrow" branch. It no longer acts as a narrow send window, which was
-// causing reminders to be dropped whenever Cloud Scheduler had jitter > 2 minutes.
-const WINDOW_MINUTES = 10;
-// Safety cap: don't send reminders more than this many minutes late (prevents a backlog of
-// old reminders blasting out if the function was down for hours).
+const DEFAULT_TIME_ZONE = 'America/Los_Angeles';
+const LOW_STOCK_DOSE_THRESHOLD = 10;
+const EXPIRING_SOON_DAYS = 30;
 const MAX_SEND_LATENESS_MINUTES = 180;
-// Safety cap for the missed-dose sweep: a dose more than this many minutes old
-// is never newly reported as missed (prevents a backlog after an outage, and
-// bounds the overnight yesterday sweep).
 const MAX_MISSED_LOOKBACK_MINUTES = 12 * 60;
-// NOTE: the caregiver digest reports every alert getBottleAlertsForUser
-// produces (expired / out-of-stock / low-stock / expiring within
-// EXPIRING_SOON_DAYS). It has never filtered to a 7-day expiry window, so the
-// old EXPIRATION_ALERT_DAYS constant only ever produced misleading copy.
 
 function getNowInZone(userTimezone = null) {
   const tz = userTimezone || DEFAULT_TIME_ZONE;
@@ -571,28 +434,20 @@ function parseBottleRecord(bottleStr, zone = DEFAULT_TIME_ZONE) {
 
   const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
 
-  // Parse in the USER's timezone, not a hardcoded one — otherwise a bottle
-  // flips to "expired" at the wrong local moment for anyone outside Pacific.
   const tz = zone || DEFAULT_TIME_ZONE;
 
-  // Try M/d/yyyy format first (e.g., "12/14/2025")
   let expiration = DateTime.fromFormat(expirationStr, 'M/d/yyyy', { zone: tz });
 
-  // If that fails, try MM/dd/yyyy format (e.g., "12/14/2025" with padding)
   if (!expiration.isValid) {
     expiration = DateTime.fromFormat(expirationStr, 'MM/dd/yyyy', { zone: tz });
   }
 
-  // If that fails, try ISO format (YYYY-MM-DD)
   if (!expiration.isValid) {
     expiration = DateTime.fromISO(expirationStr, { zone: tz });
   }
 
   if (!expiration.isValid) return null;
 
-  // A bottle stamped "12/14/2025" is good THROUGH the 14th. Parsing to 00:00
-  // marked it expired for the whole of its final valid day. Match parseEndDate,
-  // which already uses endOf('day') for medication end dates.
   expiration = expiration.endOf('day');
 
   const quantityPart = parts[3];
@@ -601,18 +456,11 @@ function parseBottleRecord(bottleStr, zone = DEFAULT_TIME_ZONE) {
   return { expiration, quantity };
 }
 
-/**
- * Analyze a single medication's current bottle situation.
- * Returns an array of alert objects with severity and type.
- * Types: 'expired', 'out_of_stock', 'low_stock', 'expiring_soon'
- */
 function analyzeMedicationStock(med, nowDateTime) {
   const alerts = [];
   const medName = med.name || 'Medication';
   const dosage = Number(med.dosage) || 1;
 
-  // User explicitly opted out of bottle tracking for this med
-  // ("Proceed with no bottles"). Never generate stock/expiration alerts.
   if (med.skipBottleTracking === true) {
     return alerts;
   }
@@ -621,7 +469,6 @@ function analyzeMedicationStock(med, nowDateTime) {
     ? med.bottles.map(b => parseBottleRecord(b, nowDateTime && nowDateTime.zoneName)).filter(Boolean)
     : [];
 
-  // Case: no bottles entered at all
   if (bottles.length === 0) {
     alerts.push({
       medName,
@@ -632,22 +479,18 @@ function analyzeMedicationStock(med, nowDateTime) {
     return alerts;
   }
 
-  // Sort by expiration date (earliest first)
   const sorted = [...bottles].sort((a, b) => a.expiration.toMillis() - b.expiration.toMillis());
 
-  // The "current/active" bottle is the earliest one that isn't expired AND has stock left.
-  // Fall back to earliest if none match.
   const activeBottle = sorted.find(b => b.expiration > nowDateTime && (b.quantity === null || b.quantity > 0))
     || sorted[0];
 
   const allExpired = sorted.every(b => b.expiration <= nowDateTime);
   const totalRemaining = sorted.reduce((sum, b) => {
-    if (b.expiration <= nowDateTime) return sum; // skip expired
-    if (b.quantity === null) return sum + Infinity; // N/A quantity = treat as unlimited
+    if (b.expiration <= nowDateTime) return sum;
+    if (b.quantity === null) return sum + Infinity;
     return sum + b.quantity;
   }, 0);
 
-  // Case 1: EXPIRED — active bottle is already past expiration
   if (activeBottle.expiration <= nowDateTime) {
     const dateLabel = activeBottle.expiration.toFormat('MMM d, yyyy');
     alerts.push({
@@ -658,10 +501,8 @@ function analyzeMedicationStock(med, nowDateTime) {
         ? `${medName} expired on ${dateLabel}. Order new ones.`
         : `${medName} had a bottle expire on ${dateLabel}. Switch to one of your other bottles.`
     });
-    // Don't return yet — still check low stock / expiring soon on other bottles
   }
 
-  // Case 2: OUT OF STOCK — all non-expired bottles have quantity 0
   if (totalRemaining === 0 && !allExpired) {
     alerts.push({
       medName,
@@ -672,12 +513,10 @@ function analyzeMedicationStock(med, nowDateTime) {
     return alerts;
   }
 
-  // Only run the remaining checks against the active (non-expired) bottle
   if (activeBottle.expiration <= nowDateTime) {
-    return alerts; // already flagged as expired
+    return alerts;
   }
 
-  // Case 3: LOW STOCK — current bottle has fewer than threshold doses left
   if (activeBottle.quantity !== null && activeBottle.quantity > 0 && dosage > 0) {
     const dosesRemaining = Math.floor(activeBottle.quantity / dosage);
     if (dosesRemaining <= LOW_STOCK_DOSE_THRESHOLD) {
@@ -693,7 +532,6 @@ function analyzeMedicationStock(med, nowDateTime) {
     }
   }
 
-  // Case 4: EXPIRING SOON — current bottle expires within 30 days
   const daysUntilExpiration = activeBottle.expiration.diff(nowDateTime, 'days').days;
   if (daysUntilExpiration > 0 && daysUntilExpiration <= EXPIRING_SOON_DAYS) {
     const dateLabel = activeBottle.expiration.toFormat('MMM d, yyyy');
@@ -721,14 +559,12 @@ async function getBottleAlertsForUser(uid, nowDateTime = getNowInZone()) {
   medsSnapshot.forEach(doc => {
     const med = { id: doc.id, ...doc.data() };
 
-    // Skip deleted medications
     if (med.deletedStatus === true) return;
 
     const medAlerts = analyzeMedicationStock(med, nowDateTime);
     alerts.push(...medAlerts);
   });
 
-  // Sort critical first, then warnings
   alerts.sort((a, b) => {
     if (a.severity === b.severity) return 0;
     return a.severity === 'critical' ? -1 : 1;
@@ -737,11 +573,6 @@ async function getBottleAlertsForUser(uid, nowDateTime = getNowInZone()) {
   return alerts;
 }
 
-/**
- * Formats time from 24h to 12h format
- * @param {string} time24 - Time in HH:MM format
- * @returns {string} - Time in 12h format with AM/PM
- */
 function format12Hour(time24) {
   const [hours, minutes] = time24.split(':').map(Number);
   const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -826,127 +657,6 @@ function getReminderOption(key) {
   return REMINDER_OPTIONS[key] || REMINDER_OPTIONS.at_time;
 }
 
-/**
- * Determines the current dose for a medication (same logic as home screen)
- * Only sends reminders for the current dose, not future doses
- * @param {Object} med - Medication object
- * @param {DateTime} nowDateTime - Current date/time
- * @returns {Object|null} - Current dose object with {timeStr, doseNumber} or null
- */
-function determineCurrentDoseForEmail(med, nowDateTime = getNowInZone()) {
-  // New: Use schedules if available
-  if (med.schedules && med.schedules.length > 0) {
-    return ScheduleUtils.determineCurrentDose(med.schedules, nowDateTime);
-  }
-
-  // Existing fallback logic below...
-  const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const weekdayIndex = nowDateTime.weekday % 7; // Luxon weekday: Monday=1 ... Sunday=7 -> convert to 0-based Sunday
-  const todayName = weekdaysConst[weekdayIndex];
-  
-  // Get allowed days - handle both string and number formats
-  let allowedDays = weekdaysConst; // Default to all days
-  const daysOfWeek = med.daysOfWeek || med.days || [];
-  if (daysOfWeek.length > 0) {
-    allowedDays = daysOfWeek.map(d => {
-      if (typeof d === 'number') {
-        // Convert number (0-6) to day name
-        return weekdaysConst[d % 7];
-      }
-      return String(d).toLowerCase();
-    });
-  }
-  
-  // Get times
-  const times = Array.isArray(med.times) && med.times.length > 0 
-    ? med.times.filter(Boolean).sort()
-    : [];
-  
-  // Build all dose candidates for today and yesterday
-  const candidates = [];
-  for (let offset = -1; offset < 7; offset++) {
-    const candidateDate = nowDateTime.plus({ days: offset });
-    const candidateWeekdayIndex = candidateDate.weekday % 7;
-    const weekdayName = weekdaysConst[candidateWeekdayIndex];
-    
-    if (!allowedDays.includes(weekdayName)) continue;
-    
-    if (times.length > 0) {
-      times.forEach((timeStr, index) => {
-        const [h, m] = timeStr.split(':').map(Number);
-        if (Number.isNaN(h) || Number.isNaN(m)) return;
-        
-        const candidateDateTime = candidateDate.set({
-          hour: h,
-          minute: m,
-          second: 0,
-          millisecond: 0
-        });
-        
-        candidates.push({
-          dateTime: candidateDateTime,
-          timeStr: timeStr,
-          weekday: weekdayName,
-          doseNumber: index + 1,
-          totalDoses: times.length
-        });
-      });
-    } else {
-      // No times specified - use start of day
-      candidates.push({
-        dateTime: candidateDate.startOf('day'),
-        timeStr: null,
-        weekday: weekdayName,
-        doseNumber: 1,
-        totalDoses: 1
-      });
-    }
-  }
-  
-  if (candidates.length === 0) {
-    return null;
-  }
-  
-  // Sort by dateTime
-  candidates.sort((a, b) => a.dateTime.toMillis() - b.dateTime.toMillis());
-  
-  // Find next dose (first dose >= now)
-  const nextDose = candidates.find(c => c.dateTime >= nowDateTime);
-  
-  // Find previous dose (last dose < now)
-  const previousDoses = candidates.filter(c => c.dateTime < nowDateTime);
-  const previousDose = previousDoses.length > 0 ? previousDoses[previousDoses.length - 1] : null;
-  
-  // If no next dose, use the first candidate (wraps around)
-  if (!nextDose) {
-    return candidates[0];
-  }
-  
-  // If no previous dose, use next dose
-  if (!previousDose) {
-    return nextDose;
-  }
-  
-  // Calculate time differences in minutes
-  const timeToNext = nextDose.dateTime.diff(nowDateTime, 'minutes').minutes;
-  const timeSincePrevious = nowDateTime.diff(previousDose.dateTime, 'minutes').minutes;
-  const timeBetweenDoses = nextDose.dateTime.diff(previousDose.dateTime, 'minutes').minutes;
-  
-  // Rule 1: If within 45 minutes of previous dose, use previous dose
-  if (timeSincePrevious <= 45) {
-    return previousDose;
-  }
-  
-  // Rule 2: If next and previous doses are less than 1.5 hours (90 minutes) apart,
-  // use whichever is closer to current time
-  if (timeBetweenDoses < 90) {
-    return timeToNext < timeSincePrevious ? nextDose : previousDose;
-  }
-  
-  // Default: use next dose
-  return nextDose;
-}
-
 function shouldSendOffsetReminder(reminderTime, offsetMinutes, nowDateTime = getNowInZone()) {
   if (!reminderTime) return false;
   const targetDateTime = computeTargetDateTime(reminderTime, offsetMinutes, nowDateTime);
@@ -955,22 +665,13 @@ function shouldSendOffsetReminder(reminderTime, offsetMinutes, nowDateTime = get
     return false;
   }
 
-  // Send iff: now >= target AND we're not absurdly late (>3h), AND still within the same calendar day.
-  // Deduplication is handled by lastSentReminders, so sending "at or after target" will still
-  // only send ONCE per reminder per day — it just won't be dropped due to Cloud Function jitter.
   if (nowDateTime < targetDateTime) {
-    return false; // haven't reached target yet
+    return false;
   }
   const diffMinutes = nowDateTime.diff(targetDateTime, 'minutes').minutes;
   if (diffMinutes > MAX_SEND_LATENESS_MINUTES) {
-    // Too stale — don't send a dose reminder hours after the fact.
     return false;
   }
-  // NOTE: we deliberately do NOT require target and now to share a calendar
-  // date. For an early-morning dose (e.g. 00:15) an advance offset puts the
-  // target on the *previous* day (23:45), and a date-equality guard silently
-  // dropped every such reminder. MAX_SEND_LATENESS_MINUTES above already caps
-  // how stale a reminder may be, and lastSentReminders still dedups per day.
   console.log(`  -> shouldSendOffsetReminder: ${reminderTime} [offset=${offsetMinutes}], diff=${diffMinutes.toFixed(1)}min, shouldSend=true, now=${nowDateTime.toFormat('HH:mm')}, target=${targetDateTime.toFormat('HH:mm')}`);
   return true;
 }
@@ -990,16 +691,9 @@ function computeTargetDateTime(reminderTime, offsetMinutes, nowDateTime = getNow
     millisecond: 0
   });
 
-  // Always return today's date — the caller (shouldSendOffsetReminder) handles
-  // whether now is within the send window. No bumping to tomorrow.
   return reminderDateTime.plus({ minutes: offsetMinutes });
 }
 
-/**
- * Variant of computeTargetDateTime for tomorrow's doses.
- * Used for large advance reminders like 1_day_before where we need to
- * check tomorrow's dose and see if the reminder fires today.
- */
 function computeTargetDateTimeTomorrow(reminderTime, offsetMinutes, nowDateTime = getNowInZone()) {
   if (!reminderTime) return null;
   const [reminderHour, reminderMinute] = reminderTime.split(':').map(Number);
@@ -1037,7 +731,6 @@ async function buildTodaysSchedule(uid, nowDateTime = getNowInZone()) {
         });
       });
     } else {
-      // Existing fallback logic
       const times = Array.isArray(med.times) && med.times.length > 0 ? [...med.times].filter(Boolean).sort() : [null];
       times.forEach((timeStr, index) => {
         scheduleEntries.push({
@@ -1068,9 +761,6 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
   const now = getNowInZone(userTimezone);
   const formattedDate = now.toFormat('EEEE, MMMM d');
 
-  // Build a "missed yesterday" section if applicable. This is the safety net:
-  // even if individual missed-dose emails got spam-filtered, the daily agenda
-  // surfaces every dose that wasn't taken yesterday.
   const missedYesterdayHtml = (Array.isArray(missedYesterday) && missedYesterday.length > 0)
     ? `
       <div style="margin-top:24px; padding:20px; background:#fef2f2; border:1px solid #ef4444; border-radius:16px;">
@@ -1226,27 +916,11 @@ async function sendAgendaSummaryEmail(userEmail, scheduleEntries, bottleAlerts =
   console.log(`Agenda email sent to ${userEmail} with ${scheduleEntries.length} entries`);
 }
 
-/**
- * Sends combined reminder email for multiple medications at the same time
- * @param {string} userEmail - User's email address
- * @param {Array} meds - Array of medication objects
- * @param {string} reminderTime - Time of reminder
- * @param {string} offsetKey - Which reminder preference triggered this email
- * @param {Array} alerts - Array of {med, alertType} objects for alerts
- */
-/**
- * Sends email notification for missed doses
- * @param {string} userEmail - User's email address
- * @param {Array} missedDoses - Array of {med, reminderTime, doseNumber, scheduledDateTime} objects
- */
 async function sendMissedDoseEmail(userEmail, missedDoses) {
   if (missedDoses.length === 0) return;
 
   const nowDateTime = getNowInZone();
   const time12 = format12Hour(missedDoses[0].reminderTime);
-  // Include the specific dose time + medication name in the subject so each
-  // missed-dose email has a unique subject. Gmail aggressively clusters /
-  // spam-filters emails with identical subjects sent from the same sender.
   const subject = missedDoses.length === 1
     ? `Missed dose at ${time12}: ${missedDoses[0].med.name}`
     : `${missedDoses.length} missed doses at ${time12}`;
@@ -1347,10 +1021,6 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
   
   const textBody = textLines.join('\n');
   
-  // Anti-spam hardening: same headers as the main reminder email so Gmail
-  // recognises this as transactional (and not as bulk identical messages).
-  // Each call gets a unique X-Entity-Ref-ID so identical-looking missed-dose
-  // emails are never bucketed by Gmail's "similar messages" heuristic.
   const refId = `MISSED-${nowDateTime.toFormat('yyyyLLdd-HHmm')}-${Math.random().toString(36).slice(2, 8)}`;
   const unsubMailto = `mailto:${gmailEmail}?subject=${encodeURIComponent('Unsubscribe ' + (userEmail || ''))}`;
   const unsubLink   = `${APP_BASE_URL}/profile.html`;
@@ -1366,17 +1036,12 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
       'X-Priority': '1',
       'X-Mailer': 'Everane/1.0',
       'X-Entity-Ref-ID': refId,
-      // List-Unsubscribe-Post=One-Click requires the https URL to accept a POST.
-      // unsubLink is a static page, so advertising One-Click made every attempt
-      // fail — worse for reputation than not advertising it. Mailto-only until
-      // a real one-click endpoint exists.
       'List-Unsubscribe': `<${unsubMailto}>, <${unsubLink}>`,
       'Precedence': 'transactional'
     }
   };
 
   try {
-    // Use the existing retry wrapper so transient SMTP errors don't kill the alert.
     const result = await withRetry(
       `sendMissedDoseEmail->${userEmail}`,
       () => transporter.sendMail(mailOptions),
@@ -1390,30 +1055,16 @@ async function sendMissedDoseEmail(userEmail, missedDoses) {
   }
 }
 
-/**
- * Checks for missed doses and automatically marks them as "not taken"
- * @param {string} userId - User ID
- * @param {string} userEmail - User email
- * @param {QuerySnapshot} medicationsSnapshot - Medications snapshot
- * @param {DateTime} nowDateTime - Current date/time
- * @param {Firestore} db - Firestore database instance
- */
 async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, nowDateTime, db, userPhoneNumber = null, phoneVerified = false, pushSubscriptions = [], lastSentReminders = null) {
-  // Per-dose dedup keys for missed-dose alerts live in lastSentReminders under
-  // a distinct prefix so they can't collide with at-time keys:
-  //   MISSED|<medId>|d<doseNumber>|<date>|<channel>
-  // If a previous cycle failed to send the email, the key stays unset and the
-  // next cycle retries automatically.
   const externalDedup = lastSentReminders && typeof lastSentReminders === 'object';
   const missedDedup = externalDedup ? lastSentReminders : {};
 
   const missedDoses = [];
-  const updates = {}; // Track which medications need auto-mark writes
+  const updates = {};
   
   for (const medDoc of medicationsSnapshot.docs) {
     const rawData = medDoc.data();
     
-    // Normalize medication data
     const med = {
       id: medDoc.id,
       name: rawData.name || '',
@@ -1427,14 +1078,11 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
       doses: rawData.doses || {}
     };
 
-    // Skip if deleted or no channels selected at all
     const channels = getMedChannels(med);
     if (med.deletedStatus || channels.size === 0) {
       continue;
     }
     
-    // Check if medication should send reminder today
-    // Normalise schedules once (needed by getScheduledDosesForDate below).
     const medSchedules = rawData.schedules || null;
     if (!medSchedules && (med.daysOfWeek.length > 0 || med.times.length > 0)) {
       const migrated = ScheduleUtils.migrateOldFormat(med);
@@ -1443,14 +1091,6 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
       med.schedules = medSchedules;
     }
 
-    // Evaluate BOTH yesterday and today.
-    //
-    // A dose scheduled late in the evening (e.g. 23:30) only becomes "missed"
-    // 45 minutes later — which is 00:15 the *next* calendar day. Checking only
-    // today's date meant that dose read as "in the future" forever and was
-    // never flagged. We therefore sweep yesterday as well during the early
-    // hours, which is the only window where a yesterday dose can newly cross
-    // the 45-minute threshold.
     const dateContexts = [{ dt: nowDateTime, iso: nowDateTime.toISODate() }];
     if (nowDateTime.hour < 6) {
       const y = nowDateTime.minus({ days: 1 });
@@ -1483,31 +1123,18 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
         millisecond: 0
       });
 
-      // Skip doses that genuinely haven't happened yet.
-      // A late-evening dose (e.g. 23:30) becomes "missed" at 00:15 the NEXT
-      // day, when scheduledDateTime still points at today and reads as future.
-      // Those are handled by the yesterday sweep below, not here.
       if (scheduledDateTime > nowDateTime) continue;
 
-      // Check if 45+ minutes have passed. Cap the look-back so the yesterday
-      // sweep can only surface doses that just crossed the threshold overnight
-      // — never a backlog of old ones.
       const minutesPast = nowDateTime.diff(scheduledDateTime, 'minutes').minutes;
       if (minutesPast < 45) continue;
       if (minutesPast > MAX_MISSED_LOOKBACK_MINUTES) continue;
 
-      // Look up the dose entry. If the user manually marked it taken, this is
-      // NOT a missed dose — skip entirely.
       const doseKey = `${ctx.iso}_${dose.doseNumber}`;
       const doseEntry = med.doses[doseKey];
       if (doseEntry && doseEntry.taken === true) continue;
 
-      // Any other state (no entry, or already auto-marked missed but we never
-      // successfully sent the email) → this is a missed dose we still owe an
-      // alert for. Per-channel dedup at the send stage prevents duplicates.
       console.log(`[Missed Dose] ${med.name} dose #${dose.doseNumber} at ${doseTime} (${Math.floor(minutesPast)} min late)`);
 
-      // Queue an auto-mark write only if not already marked.
       if (!doseEntry) {
         if (!updates[med.id]) {
           updates[med.id] = {
@@ -1518,7 +1145,7 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
         updates[med.id].doseUpdates[`doses.${doseKey}`] = {
           date: ctx.iso,
           doseNumber: dose.doseNumber,
-          time: doseTime,           // store so daily-agenda safety-net can display it
+          time: doseTime,
           taken: false,
           takenAt: null,
           autoMarked: true
@@ -1533,10 +1160,9 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
         dateIso: ctx.iso
       });
     }
-    } // end dateContexts loop
+    }
   }
 
-  // Save all updates to Firebase using dot-notation updates (won't overwrite other dose keys)
   for (const [medId, update] of Object.entries(updates)) {
     try {
       await update.medDocRef.update(update.doseUpdates);
@@ -1546,19 +1172,10 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
     }
   }
   
-  // Build per-dose dedup keys. Filter out doses we've already emailed/SMSed
-  // successfully on a previous cycle today.
   const todayIso = nowDateTime.toISODate();
-  // Keyed by the DOSE's date (not the current date) so a 23:30 dose flagged at
-  // 00:15 the next morning dedups against its own day, not the new one.
   const missedKey = (medId, doseNumber, channel, dateIso) =>
     `MISSED|${medId}|d${doseNumber}|${dateIso || todayIso}|${channel}`;
 
-  // EMAIL: only doses with email channel AND no successful send yet.
-  // SEND ONE EMAIL PER DOSE so Gmail can't bundle/spam-filter "similar"
-  // missed-dose emails. Each call goes through sendMissedDoseEmail which
-  // gives it a unique subject (with dose time + med name) and a unique
-  // X-Entity-Ref-ID.
   const emailMissedDoses = missedDoses.filter(({ med, doseNumber, dateIso }) => {
     if (!getMedChannels(med).has('email')) return false;
     return !missedDedup[missedKey(med.id, doseNumber, 'email', dateIso)];
@@ -1566,7 +1183,6 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
   if (emailMissedDoses.length > 0 && userEmail) {
     for (const m of emailMissedDoses) {
       try {
-        // Pass a single-element array so the email is specifically about this dose
         await sendMissedDoseEmail(userEmail, [m]);
         missedDedup[missedKey(m.med.id, m.doseNumber, 'email', m.dateIso)] = nowDateTime.toISO();
         await recordSendAttempt(db, userId, {
@@ -1585,12 +1201,10 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
           status: 'failed', error: (error && error.message) || String(error),
           reason: 'missed-dose alert (per-dose)'
         });
-        // Key stays unmarked → next minute retries automatically.
       }
     }
   }
 
-  // SMS: only doses with sms channel AND phone verified AND not yet sent
   const smsMissedDoses = missedDoses.filter(({ med, doseNumber, dateIso }) => {
     if (!getMedChannels(med).has('sms')) return false;
     return !missedDedup[missedKey(med.id, doseNumber, 'sms', dateIso)];
@@ -1619,13 +1233,10 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
             status: 'failed', error: (error && error.message) || String(error),
             reason: 'missed-dose alert'
           });
-          // SMS frequently fails carrier-side (A2P 10DLC). Mark dedup anyway
-          // so we don't burn cycles re-trying against a permanent block.
           missedDedup[missedKey(m.med.id, m.doseNumber, 'sms', m.dateIso)] = nowDateTime.toISO();
         }
       }
     } else {
-      // Phone unverified — record skipped, mark dedup so we don't retry forever
       for (const m of smsMissedDoses) {
         missedDedup[missedKey(m.med.id, m.doseNumber, 'sms', m.dateIso)] = nowDateTime.toISO();
         await recordSendAttempt(db, userId, {
@@ -1639,10 +1250,7 @@ async function checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, n
     }
   }
 
-  // SPEC v2: PUSH is NOT fired for missed doses.
 
-  // Persist updated dedup map. If caller passed `lastSentReminders`, they will
-  // persist it themselves at the end of their cycle (avoids double-writes).
   if (!externalDedup) {
     try {
       await db.collection('users').doc(userId).set({
@@ -1658,16 +1266,13 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
   const time12 = format12Hour(reminderTime);
   const option = getReminderOption(offsetKey);
   const isAtTime = offsetKey === 'at_time';
-  // Get user's timezone for display (default to system timezone if not provided)
   const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
   const nowDateTime = getNowInZone(displayTimezone);
   const todayIndex = nowDateTime.weekday % 7;
   const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   
-  // Format timezone abbreviation for display (e.g., "PST", "EST")
-  const timezoneAbbr = nowDateTime.toFormat('ZZZZ'); // e.g., "PST", "EST"
+  const timezoneAbbr = nowDateTime.toFormat('ZZZZ');
 
-  // Build subject line
   let subject;
   const todaysMedListText = [];
   const todaysMedSet = new Set();
@@ -1714,9 +1319,6 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
     .section-divider { border-top:1px solid #d8e2ff; margin:28px 0; }
   `;
 
-  // Include the actual dose time in the subject so every reminder email has a
-  // unique subject across the day. Gmail's "looks like a duplicate" heuristic
-  // collapses or spam-flags emails with identical subjects in a short window.
   const totalItems = meds.length + alerts.length;
   if (isAtTime) {
     if (totalItems === 1 && meds.length === 1) {
@@ -1736,7 +1338,6 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
       : `Upcoming ${snippet} reminders (${meds.length} meds) at ${time12}`;
   }
 
-  // Prepend caregiver prefix if forwarding to a caregiver
   if (subjectPrefix) {
     subject = subjectPrefix + subject;
   }
@@ -1744,7 +1345,6 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
   const headerTitle = isAtTime
     ? `Medication ${totalItems > 1 ? 'Reminders' : 'Reminder'}${alerts.length > 0 ? ' & Alerts' : ''}`
     : `Upcoming Medication Reminder${meds.length > 1 ? 's' : ''}`;
-  // Check if any medications are already taken
   const hasTakenMeds = meds.some(med => med._isAlreadyTaken === true);
   const hasUntakenMeds = meds.some(med => med._isAlreadyTaken !== true);
   
@@ -1758,7 +1358,6 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
       headerSubtitle = meds.length > 0 ? `It's time to take your medication${meds.length > 1 ? 's' : ''} at ${time12} ${timezoneAbbr}.` : 'Please review the following alerts.';
     }
   } else {
-    // For advance reminders, show when the medication is scheduled
     const scheduledTimeText = meds.length > 0 && reminderTime ? ` (scheduled for ${time12} ${timezoneAbbr})` : '';
     headerSubtitle = (option.headerLine || 'Here\'s your upcoming medication schedule.') + scheduledTimeText;
   }
@@ -1779,14 +1378,11 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
       : reminderTime;
     const isAlreadyTaken = med._isAlreadyTaken === true;
     
-    // Build URL for email-action.html when isAtTime is true
     const todayIso = nowDateTime.toISODate();
-    // Always show link for "take now" emails unless already taken
     const emailActionUrl = isAtTime && !isAlreadyTaken
       ? `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(med.name)}&dose=${doseNumber}&time=${encodeURIComponent(scheduledTimeRaw || 'no-time')}&date=${todayIso}&medId=${med.id}`
       : null;
     
-    // Debug logging for troubleshooting
     console.log(`[Email Template] med: ${med.name}, offsetKey: ${offsetKey}, isAtTime: ${isAtTime}, isAlreadyTaken: ${isAlreadyTaken}, emailActionUrl exists: ${!!emailActionUrl}`);
 
     if (isAtTime) {
@@ -1986,32 +1582,22 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
 
   const textBody = textLines.join('\n');
 
-  // Anti-spam hardening: make each reminder email look transactional, not bulk.
-  // Without these headers, Gmail flags repeating reminders as Promotions/Spam.
   const reminderRef = `${nowDateTime.toFormat('yyyyLLdd-HHmm')}-${Math.random().toString(36).slice(2, 8)}`;
   const unsubMailto = `mailto:${gmailEmail}?subject=${encodeURIComponent('Unsubscribe ' + (userEmail || ''))}`;
-  const unsubLink = `${APP_BASE_URL}/profile.html`; // user manages reminders in profile
+  const unsubLink = `${APP_BASE_URL}/profile.html`;
 
   const mailOptions = {
     from: `Everane Reminders <${gmailEmail}>`,
     to: userEmail,
-    replyTo: userEmail || gmailEmail, // makes thread look like a conversation, not bulk
+    replyTo: userEmail || gmailEmail,
     subject,
     text: textBody,
     html: htmlBody,
     headers: {
-      // Tell Gmail this is a transactional message
       'X-Priority': '1',
       'X-Mailer': 'Everane/1.0',
       'X-Entity-Ref-ID': reminderRef,
-      // RFC 8058 / RFC 2369 — Gmail strongly prefers transactional senders that
-      // include unsubscribe headers. They also dedupe identical messages without it.
-      // List-Unsubscribe-Post=One-Click requires the https URL to accept a POST.
-      // unsubLink is a static page, so advertising One-Click made every attempt
-      // fail — worse for reputation than not advertising it. Mailto-only until
-      // a real one-click endpoint exists.
       'List-Unsubscribe': `<${unsubMailto}>, <${unsubLink}>`,
-      // Gmail-specific: hints this is a personal/transactional message
       'Precedence': 'transactional'
     }
   };
@@ -2047,19 +1633,6 @@ async function sendCombinedReminderEmail(userEmail, meds, reminderTime, offsetKe
   }
 }
 
-/**
- * Sends combined reminder SMS for multiple medications at the same time.
- * Stock / bottle alerts are intentionally email-only and are NOT included in SMS,
- * even when `alerts` or `bottleAlerts` are passed in (they are ignored).
- * @param {string} phoneNumber - User's phone number (E.164 format)
- * @param {Array} meds - Array of medication objects
- * @param {string} reminderTime - Time of reminder
- * @param {string} offsetKey - Which reminder preference triggered this SMS
- * @param {Array} alerts - IGNORED for SMS (email-only)
- * @param {Array} todaysSchedule - Array of schedule entries for dose number lookup
- * @param {Array} bottleAlerts - IGNORED for SMS (email-only)
- * @param {string} userTimezone - User's timezone
- */
 async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKey = 'at_time', alerts = [], todaysSchedule = [], bottleAlerts = [], userTimezone = null) {
   if (!twilioClient || !twilioFromNumber) {
     throw new Error('Twilio not configured - cannot send SMS');
@@ -2079,7 +1652,6 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
 
   let messageParts = [];
 
-  // Build medication reminders
   if (meds.length > 0) {
     const untakenMeds = meds.filter(m => !m._isAlreadyTaken);
     const takenMeds = meds.filter(m => m._isAlreadyTaken);
@@ -2134,9 +1706,6 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
     }
   }
 
-  // Stock / bottle alerts are intentionally NOT sent over SMS — they are an
-  // email-only feature. The `alerts` and `bottleAlerts` arguments are ignored
-  // for SMS to keep messages short and focused on dose timing.
 
   const fullMessage = messageParts.join('\n');
 
@@ -2144,22 +1713,13 @@ async function sendCombinedReminderSMS(phoneNumber, meds, reminderTime, offsetKe
     const result = await sendSMS(phoneNumber, fullMessage);
     console.log(`✅ Combined reminder SMS sent successfully to ${phoneNumber}`);
     console.log(`  Medications: ${meds.length}`);
-    return result; // includes batch id, useful for delivery status polling
+    return result;
   } catch (error) {
     console.error('❌ Error sending combined SMS:', error);
     throw error;
   }
 }
 
-/**
- * Sends daily agenda SMS.
- * Stock / bottle alerts are intentionally email-only and are NOT included in SMS,
- * even when `bottleAlerts` is passed in (it is ignored).
- * @param {string} phoneNumber - User's phone number
- * @param {Array} scheduleEntries - Array of schedule entry objects
- * @param {Array} bottleAlerts - IGNORED for SMS (email-only)
- * @param {string} userTimezone - User's timezone
- */
 async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [], userTimezone = null) {
   if (!twilioClient || !twilioFromNumber) {
     throw new Error('Twilio not configured - cannot send SMS');
@@ -2171,14 +1731,11 @@ async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [
 
   let messageParts = [`Today's Medication Agenda - ${formattedDate}`, ''];
 
-  // Add schedule
   scheduleEntries.forEach(entry => {
     const timeLabel = entry.time ? format12Hour(entry.time) : 'Any time';
     messageParts.push(`${timeLabel} - ${entry.name}${entry.dosage ? ` (${entry.dosage})` : ''}`);
   });
 
-  // Stock / bottle alerts are intentionally NOT sent over SMS — they are an
-  // email-only feature. The `bottleAlerts` argument is ignored for SMS.
 
   messageParts.push('');
   messageParts.push(`Open Everane: ${APP_BASE_URL}/home.html`);
@@ -2194,11 +1751,6 @@ async function sendDailyAgendaSMS(phoneNumber, scheduleEntries, bottleAlerts = [
   }
 }
 
-/**
- * Sends missed dose SMS
- * @param {string} phoneNumber - User's phone number
- * @param {Array} missedDoses - Array of {med, reminderTime, doseNumber, scheduledDateTime} objects
- */
 async function sendMissedDoseSMS(phoneNumber, missedDoses, nowDateTime = null) {
   if (missedDoses.length === 0) return;
 
@@ -2232,105 +1784,6 @@ async function sendMissedDoseSMS(phoneNumber, missedDoses, nowDateTime = null) {
   }
 }
 
-/**
- * Sends medication reminder email (DEPRECATED - use sendCombinedReminderEmail)
- * @param {string} userEmail - User's email address
- * @param {Object} med - Medication object
- * @param {string} reminderTime - Time of reminder
- * @param {boolean} isAdvance - Whether this is a 30-min advance reminder
- */
-async function sendReminderEmail(userEmail, med, reminderTime, isAdvance = false) {
-  const time12 = format12Hour(reminderTime);
-  const subject = isAdvance 
-    ? `Upcoming: ${med.name} reminder in 30 minutes`
-    : `Medication Reminder: ${med.name}`;
-  
-  const htmlBody = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; text-align: center; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-        .med-info { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
-        .med-name { font-size: 24px; font-weight: bold; color: #667eea; margin: 0 0 10px 0; }
-        .detail { margin: 8px 0; }
-        .label { font-weight: bold; color: #555; }
-        .footer { text-align: center; color: #777; font-size: 12px; margin-top: 20px; }
-        .time-badge { display: inline-block; background: #667eea; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin: 10px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>💊 ${isAdvance ? 'Upcoming' : ''} Medication Reminder</h1>
-          ${isAdvance ? '<p>You have a medication to take in 30 minutes</p>' : '<p>Time to take your medication</p>'}
-        </div>
-        <div class="content">
-          <div class="med-info">
-            <p class="med-name">${escapeHtml(med.name)}</p>
-            <div class="detail"><span class="label">Dosage:</span> ${med.dosage || 'N/A'}</div>
-            <div class="detail"><span class="label">Time:</span> <span class="time-badge">${time12}</span></div>
-            ${med.stock ? `<div class="detail"><span class="label">Bottles in stock:</span> ${med.stock}</div>` : ''}
-          </div>
-          
-          ${isAdvance ? '<p>⏰ This is a 30-minute advance reminder. You\'ll receive another reminder at the scheduled time.</p>' : '<p>✅ Remember to mark this dose as taken in your Everane app!</p>'}
-          
-          <p style="text-align: center; margin-top: 30px;">
-            <a href="${APP_BASE_URL}/home.html" style="background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Open Everane</a>
-          </p>
-        </div>
-        <div class="footer">
-          <p>This is an automated reminder from Everane</p>
-          <p>To change your reminder settings, visit your profile</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  const textBody = `
-Medication Reminder ${isAdvance ? '(30 minutes advance)' : ''}
-
-${med.name}
-Dosage: ${med.dosage || 'N/A'}
-Time: ${time12}
-${med.stock ? `Bottles in stock: ${med.stock}` : ''}
-
-${isAdvance ? 'This is a 30-minute advance reminder.' : 'Remember to mark this dose as taken!'}
-
-Everane
-  `;
-  
-  const mailOptions = {
-    from: `Everane <${gmailEmail}>`,
-    to: userEmail,
-    subject: subject,
-    text: textBody,
-    html: htmlBody
-  };
-  
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Reminder email sent to ${userEmail} for ${med.name} at ${reminderTime}`);
-  } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
-  }
-}
-
-/**
- * Sends a "group has opened up" email. Fired once per day per group when the
- * group's unlock window begins (earliest member dose time minus 60 minutes).
- * Reminds the user to take everything in the group and tap "Take All".
- * @param {string} userEmail - Recipient email
- * @param {Object} group - Group object { id, name, ... }
- * @param {Array} activeMembers - [{ name, time }] members scheduled today
- * @param {string|null} userTimezone - IANA timezone for display
- * @returns {Promise}
- */
 async function sendGroupOpenedEmail(userEmail, group, activeMembers, userTimezone = null) {
   const displayTimezone = userTimezone || DEFAULT_TIME_ZONE;
   const nowDateTime = getNowInZone(displayTimezone);
@@ -2426,10 +1879,6 @@ async function sendGroupOpenedEmail(userEmail, group, activeMembers, userTimezon
       'X-Priority': '1',
       'X-Mailer': 'Everane/1.0',
       'X-Entity-Ref-ID': reminderRef,
-      // List-Unsubscribe-Post=One-Click requires the https URL to accept a POST.
-      // unsubLink is a static page, so advertising One-Click made every attempt
-      // fail — worse for reputation than not advertising it. Mailto-only until
-      // a real one-click endpoint exists.
       'List-Unsubscribe': `<${unsubMailto}>, <${unsubLink}>`,
       'Precedence': 'transactional'
     }
@@ -2449,19 +1898,11 @@ async function sendGroupOpenedEmail(userEmail, group, activeMembers, userTimezon
   return result;
 }
 
-/**
- * Main scheduled function - runs every 5 minutes
- * Checks all users and sends medication reminders as needed
- * Combines multiple reminders at the same time into ONE email
- */
 exports.sendMedicationReminders = functions
-  // maxInstances:1 — with a 540s timeout a slow cycle can still be running when
-  // the next minute fires. Two concurrent runs both read lastSentReminders
-  // before either writes it, so both would send the same reminder.
   .runWith({ timeoutSeconds: 540, memory: '512MB', maxInstances: 1 })
   .pubsub
-  .schedule('every 1 minutes') // Run every minute for tighter timing
-  .timeZone('UTC') // Use UTC for schedule, then convert to each user's timezone
+  .schedule('every 1 minutes')
+  .timeZone('UTC')
   .onRun(async (context) => {
     console.log('Starting medication reminder check...');
     console.log('Current UTC time:', new Date().toISOString());
@@ -2469,7 +1910,6 @@ exports.sendMedicationReminders = functions
     const db = admin.firestore();
     
     try {
-      // Get all users
       const usersSnapshot = await db.collection('users').get();
       console.log(`Found ${usersSnapshot.size} users`);
       
@@ -2480,7 +1920,6 @@ exports.sendMedicationReminders = functions
 
         console.log(`Checking user: ${userId}, email: ${userEmail}`);
 
-        // Auto-backfill patientId if missing
         if (!userData.patientId) {
           try {
             const newId = await generateUniquePatientId(db);
@@ -2496,14 +1935,11 @@ exports.sendMedicationReminders = functions
           continue;
         }
 
-        // Wrap each user in try/catch like daily agenda does
         try {
-          // Get user's timezone (default to Pacific if not set)
           const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
           const userNowDateTime = getNowInZone(userTimezone);
           console.log(`User timezone: ${userTimezone}, current time: ${userNowDateTime.toISO()}`);
         
-        // Get all medications for this user (we'll filter deleted ones in code)
         const medicationsSnapshot = await db
           .collection('users')
           .doc(userId)
@@ -2517,7 +1953,6 @@ exports.sendMedicationReminders = functions
           continue;
         }
         
-        // Determine reminder preferences from profile with defaults
         const rawPreferences = Array.isArray(userData.notification_reminders) ? userData.notification_reminders : [];
         let reminderPreferences = Array.from(new Set(rawPreferences.filter(pref => REMINDER_OPTIONS[pref])));
         if (reminderPreferences.length === 0) {
@@ -2525,31 +1960,26 @@ exports.sendMedicationReminders = functions
         }
         console.log(`Reminder preferences for ${userId}: ${JSON.stringify(reminderPreferences)}`);
         
-        // Get last sent reminders to prevent duplicates
         const lastSentReminders = userData.lastSentReminders || {};
         const todayIso = userNowDateTime.toISODate();
 
-        // Group medications by actual send window (preference + time)
-        const sendGroups = {}; // key => { meds: [], reminderTime, offsetKey, emailMeds: [], smsMeds: [] }
-        const alertMeds = []; // Medications with alerts (no bottles, out of stock, etc.)
+        const sendGroups = {};
+        const alertMeds = [];
         
-        // Get user's phone number and verification status
         const userPhoneNumber = userData.phone || null;
         const phoneVerified = userData.phoneVerified === true;
         const userPushSubscriptions = Array.isArray(userData.pushSubscriptions) ? userData.pushSubscriptions : [];
         const todaysSchedule = [];
         const scheduleKeys = new Set();
-        const _diagMeds = []; // Collect per-med status for a single summary log
+        const _diagMeds = [];
 
         for (const medDoc of medicationsSnapshot.docs) {
           const rawData = medDoc.data();
           
-          // Normalize medication data to handle different formats
           const med = {
             id: medDoc.id,
             name: rawData.name || '',
             dosage: rawData.dosage || '',
-            // Handle both daysOfWeek and days fields (daysOfWeek is preferred)
             daysOfWeek: rawData.daysOfWeek || rawData.days || [],
             times: Array.isArray(rawData.times) ? rawData.times.filter(Boolean) : [],
             timesPerDay: rawData.timesPerDay || 0,
@@ -2564,20 +1994,17 @@ exports.sendMedicationReminders = functions
             schedules: rawData.schedules || null
           };
 
-          // Auto-migrate old format to schedules if needed
           if (!med.schedules && (med.daysOfWeek.length > 0 || med.times.length > 0)) {
             const migrated = ScheduleUtils.migrateOldFormat(med);
             med.schedules = migrated.schedules;
             console.log(`  -> Auto-migrated ${med.name} to schedules format (${migrated.schedules.length} entries)`);
           }
 
-          // Skip if medication is deleted
           if (med.deletedStatus === true) {
             _diagMeds.push(`${med.name}:DEL`);
             continue;
           }
 
-          // Determine enabled channels (email / sms / push) from new reminderChannels or legacy reminderMethod
           const channels = getMedChannels(med);
           const isEmailReminder = channels.has('email');
           const isSMSReminder = channels.has('sms');
@@ -2588,10 +2015,7 @@ exports.sendMedicationReminders = functions
             continue;
           }
           
-          // Stock/expiration alerts are now handled centrally by getBottleAlertsForUser()
-          // which is called below and passed into sendCombinedReminderEmail as bottleAlerts.
           
-          // Check if medication should send reminder today (using user's timezone)
           const shouldSendToday = shouldSendReminderToday(med, userNowDateTime);
           
           if (!shouldSendToday) {
@@ -2599,14 +2023,12 @@ exports.sendMedicationReminders = functions
             continue;
           }
 
-          // === NEW: Get ALL doses for today, not just "current" dose ===
           const todayIsoDate = userNowDateTime.toISODate();
           let allTodayDoses = [];
 
           if (med.schedules && med.schedules.length > 0) {
             allTodayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules, userNowDateTime);
           } else {
-            // Fallback for old format
             const reminderTimes = getReminderTimes(med);
             const sortedTimes = [...reminderTimes].filter(Boolean).sort();
             if (sortedTimes.length > 0) {
@@ -2621,7 +2043,6 @@ exports.sendMedicationReminders = functions
             continue;
           }
 
-          // Build today's schedule for display (used in emails)
           allTodayDoses.forEach(dose => {
             const key = `${med.id}|${dose.time || 'any'}`;
             if (!scheduleKeys.has(key)) {
@@ -2639,7 +2060,6 @@ exports.sendMedicationReminders = functions
 
           const doseDiagParts = [];
 
-          // === Loop through EACH dose independently ===
           for (const dose of allTodayDoses) {
             const doseTime = dose.time;
             const doseNumber = dose.doseNumber;
@@ -2648,7 +2068,6 @@ exports.sendMedicationReminders = functions
             const isAlreadyTaken = doseEntry && doseEntry.taken === true;
 
             if (!doseTime) {
-              // No time specified - only send at_time using 9 AM default
               for (const preference of reminderPreferences) {
                 if (preference !== 'at_time') continue;
                 const option = getReminderOption(preference);
@@ -2678,11 +2097,9 @@ exports.sendMedicationReminders = functions
               continue;
             }
 
-            // Validate dose time
             const [doseHour, doseMinute] = doseTime.split(':').map(Number);
             if (Number.isNaN(doseHour) || Number.isNaN(doseMinute)) continue;
 
-            // Check each reminder preference for this dose
             for (const preference of reminderPreferences) {
               if (isAlreadyTaken && preference !== 'at_time') continue;
 
@@ -2693,12 +2110,8 @@ exports.sendMedicationReminders = functions
               const shouldSend = shouldSendOffsetReminder(doseTime, option.minutes, userNowDateTime);
 
               if (shouldSend) {
-                // SPEC v2 — strict channel routing per preference type:
-                //   - "at_time" preference: email + SMS + push allowed (per med's channel selection)
-                //   - any "before" preference: EMAIL ONLY (no SMS, no push)
                 const isAtTimePref = preference === 'at_time';
 
-                // Per-channel dedup keys — partial failures retry only the failed channel.
                 const baseKey = `${med.id}|${doseTime}|d${doseNumber}|${preference}|${todayIso}`;
                 const emailKey = `${baseKey}|email`;
                 const smsKey   = `${baseKey}|sms`;
@@ -2708,7 +2121,7 @@ exports.sendMedicationReminders = functions
                 const needSMS   = isAtTimePref && isSMSReminder  && !lastSentReminders[smsKey];
                 const needPush  = isAtTimePref && isPushReminder && !lastSentReminders[pushKey];
 
-                if (!needEmail && !needSMS && !needPush) continue; // all channels already delivered for this dose+offset
+                if (!needEmail && !needSMS && !needPush) continue;
 
                 const medWithStatus = { ...med, _isAlreadyTaken: isAlreadyTaken, _doseNumber: doseNumber, _doseTime: doseTime };
                 const groupKey = `${preference}|${doseTime}`;
@@ -2716,7 +2129,6 @@ exports.sendMedicationReminders = functions
                   sendGroups[groupKey] = {
                     meds: [], emailMeds: [], smsMeds: [], pushMeds: [],
                     reminderTime: doseTime, offsetKey: preference,
-                    // Map medId -> per-channel keys so we can mark exactly what succeeded later
                     channelKeysByMed: {}
                   };
                 }
@@ -2731,12 +2143,6 @@ exports.sendMedicationReminders = functions
             doseDiagParts.push(`d${doseNumber}@${doseTime}`);
           }
 
-          // === Check TOMORROW's doses for large advance reminders (e.g., 1_day_before) ===
-          // Only needed if user has preferences with offset <= -720 minutes (12+ hours)
-          // Any negative offset can need the "tomorrow" branch: an offset of
-          // -30 on a 00:15 dose fires at 23:45 the day before. Previously this
-          // was gated at <= -720 (12h), so only 1_day_before was ever rescued
-          // and every other advance reminder for an early-morning dose was lost.
           const largeAdvancePrefs = reminderPreferences.filter(p => {
             const opt = getReminderOption(p);
             return opt && opt.minutes < 0;
@@ -2758,16 +2164,11 @@ exports.sendMedicationReminders = functions
               if (!dose.time) continue;
               for (const preference of largeAdvancePrefs) {
                 const option = getReminderOption(preference);
-                // Use tomorrow's variant to compute target
                 const targetDateTime = computeTargetDateTimeTomorrow(dose.time, option.minutes, userNowDateTime);
                 if (!targetDateTime) continue;
-                // Send once now has reached the target (dedup by lastSentReminders),
-                // but don't send if we're absurdly late.
                 const diffMinutes = userNowDateTime.diff(targetDateTime, 'minutes').minutes;
                 const shouldSend = diffMinutes >= 0 && diffMinutes <= MAX_SEND_LATENESS_MINUTES;
                 if (shouldSend) {
-                  // SPEC v2: "before" reminders (1_day_before etc.) are EMAIL ONLY.
-                  // SMS and push are never fired for advance reminders.
                   const baseKey = `${med.id}|${dose.time}|d${dose.doseNumber}|${preference}|${tomorrowIso}`;
                   const emailKey = `${baseKey}|email`;
                   const needEmail = isEmailReminder && !lastSentReminders[emailKey];
@@ -2779,7 +2180,6 @@ exports.sendMedicationReminders = functions
                     sendGroups[groupKey] = { meds: [], emailMeds: [], smsMeds: [], pushMeds: [], reminderTime: dose.time, offsetKey: preference, channelKeysByMed: {} };
                   }
                   sendGroups[groupKey].meds.push(medWithStatus);
-                  // Only email key — sms/push intentionally null so nothing tries to mark them.
                   sendGroups[groupKey].channelKeysByMed[med.id] = { email: emailKey, sms: null, push: null };
                   sendGroups[groupKey].emailMeds.push(medWithStatus);
                 }
@@ -2790,16 +2190,13 @@ exports.sendMedicationReminders = functions
           _diagMeds.push(`${med.name}:[${doseDiagParts.join(',')}](${med.reminderMethod})`);
         }
         
-        // === COMPACT DIAGNOSTIC: single log line with all med statuses ===
         console.log(`[DIAG] ${userEmail} now=${userNowDateTime.toFormat('HH:mm')} prefs=${JSON.stringify(reminderPreferences)} groups=${Object.keys(sendGroups).length} | ${_diagMeds.join(', ')}`);
 
-        // Send grouped emails and SMS (include alerts if offset is at_time at 09:00)
         let sentAtTimeNineAM = false;
         console.log(`\n=== EMAIL & SMS SENDING PHASE ===`);
         console.log(`Total send groups: ${Object.keys(sendGroups).length}`);
         console.log(`User phone: ${userPhoneNumber}, Verified: ${phoneVerified}`);
 
-        // Get bottle alerts once per user (used by all groups + standalone 9 AM alert email)
         const bottleAlerts = await getBottleAlertsForUser(userId, userNowDateTime);
 
         for (const [groupKey, group] of Object.entries(sendGroups)) {
@@ -2808,21 +2205,15 @@ exports.sendMedicationReminders = functions
             continue;
           }
 
-          // Mark 9 AM "at time" group so we don't double-send the standalone alerts email
           if (group.offsetKey === 'at_time' && group.reminderTime === '09:00') {
             sentAtTimeNineAM = true;
           }
-          const includeAlerts = []; // old alertMeds system — no longer used
+          const includeAlerts = [];
 
-          // Track per-channel success per medication so we can dedup independently:
-          //  - emailDelivered[medId] / smsDelivered[medId] / pushDelivered[medId]
-          // Each channel only marks its OWN dedup key; a Twilio outage no longer
-          // blocks the email-channel retry, and vice-versa.
           const emailDelivered = {};
           const smsDelivered = {};
           const pushDelivered = {};
 
-          // Send EMAIL reminders
           if (group.emailMeds && group.emailMeds.length > 0) {
             try {
               console.log(`\n>>> ATTEMPTING TO SEND EMAIL <<<`);
@@ -2835,7 +2226,6 @@ exports.sendMedicationReminders = functions
 
               await sendCombinedReminderEmail(userEmail, group.emailMeds, group.reminderTime, group.offsetKey, includeAlerts, todaysSchedule, bottleAlerts, userTimezone);
 
-              // All meds in this email send succeeded
               for (const m of group.emailMeds) {
                 emailDelivered[m.id] = true;
                 await recordSendAttempt(db, userId, {
@@ -2856,15 +2246,9 @@ exports.sendMedicationReminders = functions
                   status: 'failed', error: error && error.message || String(error)
                 });
               }
-              // Continue with SMS even if email fails. emailDelivered stays empty for these meds, so they will retry next minute.
             }
           }
 
-          // Send SMS reminders
-          // SPEC v2: no email fallback when SMS fails. If user picked email too,
-          // it's already firing in the email block above. If user didn't pick email,
-          // they explicitly chose SMS-only and we respect that — SMS will retry
-          // next minute (smsDelivered stays empty for failed meds).
           if (group.smsMeds && group.smsMeds.length > 0) {
             if (!userPhoneNumber || !phoneVerified) {
               console.log(`  -> SMS unavailable (${userPhoneNumber ? 'not verified' : 'no phone'}). Skipping SMS for this group.`);
@@ -2877,8 +2261,6 @@ exports.sendMedicationReminders = functions
                   reason: userPhoneNumber ? 'phone-not-verified' : 'no-phone-on-account'
                 });
               }
-              // Mark SMS dedup keys as "done" so we don't retry SMS every minute
-              // until phone is added/verified — that would log-spam forever.
               for (const m of group.smsMeds) smsDelivered[m.id] = true;
             } else {
               let smsResult = null;
@@ -2899,8 +2281,6 @@ exports.sendMedicationReminders = functions
               }
 
               if (smsThrew) {
-                // Hard failure — Twilio credential/network issue.
-                // No fallback email per spec. Just record and let SMS retry next minute.
                 for (const m of group.smsMeds) {
                   await recordSendAttempt(db, userId, {
                     channel: 'sms', medId: m.id, medName: m.name,
@@ -2910,21 +2290,10 @@ exports.sendMedicationReminders = functions
                   });
                 }
               } else {
-                // Twilio accepted. Briefly poll for the actual delivery status
-                // (catches carrier blocks like 30007 = message filtered, 30003 =
-                // unreachable handset, 30005 = unknown destination). No fallback
-                // email per spec — if carrier rejected, mark SMS done anyway
-                // (so we don't retry SMS every minute against the same carrier
-                // block), and email (if user selected it) is already going through
-                // the email block.
                 const sid = smsResult && (smsResult.sid || smsResult.id);
                 let carrierFailed = false;
                 let dlrInfo = null;
                 if (sid) {
-                  // Single short poll. This runs inside the every-minute loop and
-                  // blocks every remaining user, so a long wait here starves the
-                  // whole cycle. One check still catches the common carrier
-                  // rejections (30003/30005/30007).
                   for (const waitMs of [2500]) {
                     await new Promise(r => setTimeout(r, waitMs));
                     const report = await getSmsDeliveryStatus(sid, userPhoneNumber);
@@ -2940,8 +2309,6 @@ exports.sendMedicationReminders = functions
                 }
 
                 for (const m of group.smsMeds) {
-                  // Mark SMS done in all non-throw paths to avoid retry-loops against
-                  // a carrier block. User picked SMS; the carrier said no; we tried.
                   smsDelivered[m.id] = true;
                   await recordSendAttempt(db, userId, {
                     channel: 'sms', medId: m.id, medName: m.name,
@@ -2962,9 +2329,6 @@ exports.sendMedicationReminders = functions
             }
           }
 
-          // Send PUSH reminders — one notification PER medication (not bundled)
-          // SPEC v2: push only fires at_time. No email fallback if push has no subs;
-          // user picked push, if they have no subscribed device, that's on them.
           if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length > 0) {
             console.log(`\n>>> ATTEMPTING TO SEND PUSH (one per med) <<<`);
             console.log(`  Group key: ${groupKey}`);
@@ -2977,7 +2341,6 @@ exports.sendMedicationReminders = functions
                 const pushResult = await sendPushToSubscriptions(db, userId, userPushSubscriptions, payload);
                 anyPruned += pushResult.pruned;
                 if (pushResult.sent > 0) {
-                  // At least one device received it — mark this med's push channel done
                   pushDelivered[pm.id] = true;
                   await recordSendAttempt(db, userId, {
                     channel: 'push', medId: pm.id, medName: pm.name,
@@ -3010,9 +2373,6 @@ exports.sendMedicationReminders = functions
               console.log(`  (no push delivered; pruned ${anyPruned})`);
             }
           } else if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length === 0) {
-            // SPEC v2: no email fallback when push has no subscribed devices.
-            // User picked push; if they have no subscribed device, the notification
-            // just doesn't fire. Mark push dedup done to avoid retry-loops.
             for (const m of group.pushMeds) {
               pushDelivered[m.id] = true;
               await recordSendAttempt(db, userId, {
@@ -3024,8 +2384,6 @@ exports.sendMedicationReminders = functions
             }
           }
 
-          // Mark per-channel dedup keys based on what actually delivered.
-          // A failed channel does NOT get marked, so it will retry on the next minute.
           let anyChannelSucceeded = false;
           const channelMap = group.channelKeysByMed || {};
           for (const med of group.meds) {
@@ -3049,13 +2407,6 @@ exports.sendMedicationReminders = functions
           }
 
           if (anyChannelSucceeded) {
-            // Forward reminders to opted-in caregivers.
-            //
-            // This must be deduped independently of the per-channel keys above.
-            // anyChannelSucceeded flips true again whenever a *previously failed*
-            // channel later succeeds (e.g. email delivers this minute, SMS retries
-            // and delivers the next) — which forwarded a second, identical copy to
-            // the caregiver. Key on the group + day instead.
             const cgKey = `CGFWD|${group.offsetKey}|${group.reminderTime}|${todayIso}|email`;
             if (!lastSentReminders[cgKey]) {
               try {
@@ -3075,12 +2426,8 @@ exports.sendMedicationReminders = functions
           console.log(`No emails to send - no send groups created`);
         }
         
-        // Update lastSentReminders in user document
         if (Object.keys(lastSentReminders).length > 0) {
           try {
-            // Clean up old entries (older than 2 days).
-            // New per-channel format: ".....|date|channel" (channel = email/sms/push).
-            // Old format (pre-channel-split): ".....|date" (date is last segment).
             const twoDaysAgo = userNowDateTime.minus({ days: 2 }).toISODate();
             const isoDate = /^\d{4}-\d{2}-\d{2}$/;
             Object.keys(lastSentReminders).forEach(key => {
@@ -3089,18 +2436,11 @@ exports.sendMedicationReminders = functions
               const isChannelKey = last === 'email' || last === 'sms' || last === 'push';
               let keyDate = null;
               if (isChannelKey) {
-                // New per-channel formats:
-                //   "medId|time|dN|pref|date|channel" (at-time)
-                //   "MISSED|medId|dN|date|channel"   (missed-dose)
-                // In both, the date sits second-to-last.
                 if (parts.length >= 2 && isoDate.test(parts[parts.length - 2])) {
                   keyDate = parts[parts.length - 2];
                 }
               } else if (isoDate.test(last)) {
-                // Old format: date is last segment.
                 keyDate = last;
-                // Migrate to new per-channel format so we don't re-fire reminders
-                // already delivered today under the old key.
                 lastSentReminders[`${key}|email`] = lastSentReminders[key];
                 lastSentReminders[`${key}|sms`]   = lastSentReminders[key];
                 lastSentReminders[`${key}|push`]  = lastSentReminders[key];
@@ -3119,11 +2459,6 @@ exports.sendMedicationReminders = functions
           }
         }
         
-        // ---- Group "opened up" reminder emails -------------------------------
-        // For every group, on top of the per-medication reminders above, send a
-        // single email when the group's window opens (earliest member dose time
-        // minus 60 minutes — matching the unlock math in home.html). Deduped once
-        // per group per day via a GROUP_OPENED|<groupId>|<date>|email key.
         try {
           const groupsSnapshot = await db
             .collection('users')
@@ -3132,8 +2467,6 @@ exports.sendMedicationReminders = functions
             .get();
 
           if (!groupsSnapshot.empty) {
-            // Build a lookup of this user's (non-deleted) medications by id,
-            // including schedules, so we can resolve each group member's doses.
             const medsById = {};
             for (const medDoc of medicationsSnapshot.docs) {
               const raw = medDoc.data();
@@ -3159,7 +2492,6 @@ exports.sendMedicationReminders = functions
               const members = Array.isArray(group.members) ? group.members : [];
               if (members.length === 0) continue;
 
-              // Resolve members scheduled for a dose today at their group time.
               const activeMembers = [];
               for (const member of members) {
                 const med = medsById[member.medId];
@@ -3173,7 +2505,6 @@ exports.sendMedicationReminders = functions
 
               if (activeMembers.length === 0) continue;
 
-              // Unlock window = earliest member time minus 60 minutes.
               const memberMinutes = activeMembers
                 .map(m => {
                   const [hh, mm] = String(m.time).split(':').map(Number);
@@ -3187,8 +2518,6 @@ exports.sendMedicationReminders = functions
               const latestMin = Math.max(...memberMinutes);
               const lockAt = latestMin + 60;
 
-              // Only fire once we've reached the unlock time and the window is
-              // still open. The daily dedup key guarantees a single send/day.
               if (nowMinutes < unlockAt || nowMinutes > lockAt) continue;
 
               const dedupKey = `GROUP_OPENED|${group.id}|${todayIso}|email`;
@@ -3204,7 +2533,6 @@ exports.sendMedicationReminders = functions
               }
             }
 
-            // Persist any GROUP_OPENED keys we just added.
             if (groupEmailSent) {
               await db.collection('users').doc(userId).set({
                 lastSentReminders: lastSentReminders
@@ -3215,19 +2543,10 @@ exports.sendMedicationReminders = functions
           console.error(`Failed to process group-opened reminders for ${userId}:`, groupErr.message);
         }
 
-        // SPEC v2: standalone 9 AM bottle/stock alerts email REMOVED.
-        // Stock and expiration alerts are now included only in the daily agenda email
-        // (see sendDailyAgenda).
 
-        // Check for missed doses (45+ minutes past scheduled time, not marked)
         try {
-          // Pass lastSentReminders so missed-dose dedup keys ('MISSED|…') live
-          // alongside at-time dedup keys (single source of truth).
           await checkAndMarkMissedDoses(userId, userEmail, medicationsSnapshot, userNowDateTime, db, userPhoneNumber, phoneVerified, userPushSubscriptions, lastSentReminders);
 
-          // Persist any MISSED keys added by checkAndMarkMissedDoses. Cheap
-          // best-effort write — if it fails we'll re-send next cycle, which
-          // is the correct retry behaviour.
           await db.collection('users').doc(userId).set({
             lastSentReminders: lastSentReminders
           }, { merge: true });
@@ -3235,7 +2554,6 @@ exports.sendMedicationReminders = functions
           console.error(`Failed to check missed doses for ${userId}:`, error);
         }
         
-        // Summary log
         console.log(`\n=== SUMMARY FOR USER ${userId} ===`);
         console.log(`  Email: ${userEmail}`);
         console.log(`  Timezone: ${userTimezone}`);
@@ -3246,12 +2564,8 @@ exports.sendMedicationReminders = functions
         console.log(`  Emails queued: ${Object.values(sendGroups).reduce((sum, g) => sum + (g.meds ? g.meds.length : 0), 0)}`);
         console.log(`===================================\n`);
 
-        // Persist a per-cycle summary so we can debug "nothing fired" cases.
-        // Only write when something interesting happened OR within 5 min of a dose
-        // time, to avoid filling the audit log with idle minutes.
         try {
           const groupCount = Object.keys(sendGroups).length;
-          // Determine if we're within 5min of any dose target (any preference) for any med today
           const minutesSinceMidnight = userNowDateTime.hour * 60 + userNowDateTime.minute;
           let nearAnyDoseTime = false;
           for (const ts of Array.from(scheduleKeys)) {
@@ -3276,7 +2590,6 @@ exports.sendMedicationReminders = functions
       } catch (error) {
         console.error(`❌ Error processing reminders for user ${userId} (${userEmail}):`, error);
         console.error(`  Error stack:`, error.stack);
-        // Persist the user-level error so we don't lose it to log rate-limiting
         try {
           await db.collection('users').doc(userId).collection('sendAuditLog').doc(`err_${Date.now()}_${Math.random().toString(36).slice(2,6)}`).set({
             ts: new Date().toISOString(),
@@ -3286,7 +2599,6 @@ exports.sendMedicationReminders = functions
             reason: 'user-loop-uncaught'
           });
         } catch (_) {}
-        // Continue with next user even if this one fails
       }
     }
       
@@ -3298,23 +2610,11 @@ exports.sendMedicationReminders = functions
     }
   });
 
-/**
- * DEPRECATED: Stock alerts are now included in sendMedicationReminders at 9 AM
- * Keeping this function for backwards compatibility but it does nothing
- */
-exports.sendLowStockAlerts = functions.pubsub
-  .schedule('0 9 * * *') // Daily at 9 AM
-  .timeZone('America/Los_Angeles') // Seattle - Pacific Time
-  .onRun(async (context) => {
-    console.log('sendLowStockAlerts called - alerts are now handled by sendMedicationReminders');
-    return null;
-  });
-
 exports.sendDailyAgenda = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB', maxInstances: 1 })
   .pubsub
-  .schedule('every 1 minutes') // Run every minute to check each user's 9 AM in their timezone
-  .timeZone('UTC') // Use UTC for the schedule, then convert to user timezone
+  .schedule('every 1 minutes')
+  .timeZone('UTC')
   .onRun(async (context) => {
     console.log('sendDailyAgenda: Function started');
     const usersSnapshot = await admin.firestore().collection('users').get();
@@ -3327,15 +2627,10 @@ exports.sendDailyAgenda = functions
         continue;
       }
 
-      // Get user's timezone (default to Pacific if not set)
       const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
       const userNow = getNowInZone(userTimezone);
       const todayIso = userNow.toISODate();
       
-      // Send agenda once it's 9:00 AM or later in the user's timezone.
-      // Duplicates are prevented by the lastAgendaSentDate check below, so we no longer need
-      // a narrow 5-minute window (which was causing missed agendas when the function's invocation
-      // happened to fall outside 9:00-9:04).
       const currentHour = userNow.hour;
       if (currentHour < 9) {
         continue;
@@ -3352,8 +2647,6 @@ exports.sendDailyAgenda = functions
         const scheduleEntries = await buildTodaysSchedule(userDoc.id, userNow);
         if (!scheduleEntries.length) {
           console.log(`No schedule entries for ${userEmail} today, skipping`);
-          // Record the day so we don't rebuild this user's schedule every
-          // minute until midnight just to reach the same conclusion.
           await userDoc.ref.set({ lastAgendaSentDate: todayIso }, { merge: true });
           continue;
         }
@@ -3362,9 +2655,6 @@ exports.sendDailyAgenda = functions
         const userPhoneNumber = userData.phone || null;
         const phoneVerified = userData.phoneVerified === true;
 
-        // SPEC v2: only send agenda on channels the user actually uses.
-        // Look across all the user's non-deleted meds — if any med has `email`
-        // channel selected, send email agenda. Same for `sms`. No push agenda.
         const medsSnap = await admin.firestore().collection('users').doc(userDoc.id).collection('medications').get();
         let hasEmailMed = false;
         let hasSmsMed = false;
@@ -3376,8 +2666,6 @@ exports.sendDailyAgenda = functions
           if (ch.has('sms'))   hasSmsMed = true;
         });
 
-        // Compute yesterday's missed doses (safety net so spam-filtered missed-
-        // dose emails are still surfaced in the daily agenda).
         const yesterdayIso = userNow.minus({ days: 1 }).toISODate();
         const missedYesterday = [];
         medsSnap.forEach(d => {
@@ -3385,7 +2673,6 @@ exports.sendDailyAgenda = functions
           if (data.deletedStatus === true) return;
           const doses = data.doses || {};
           Object.keys(doses).forEach(key => {
-            // Dose key format: "YYYY-MM-DD_<doseNumber>"
             if (!key.startsWith(yesterdayIso + '_')) return;
             const entry = doses[key];
             if (!entry || entry.taken !== false) return;
@@ -3397,7 +2684,6 @@ exports.sendDailyAgenda = functions
             });
           });
         });
-        // Sort by dose time for readability
         missedYesterday.sort((a, b) => String(a.doseTime).localeCompare(String(b.doseTime)));
 
         let sentAny = false;
@@ -3426,12 +2712,6 @@ exports.sendDailyAgenda = functions
           }
         }
 
-        // Mark the day done if a channel delivered, OR if there was nothing to
-        // attempt at all (no email-channel meds and no verified phone). Without
-        // the second case those users were re-evaluated every single minute from
-        // 9am to midnight — three full medication-collection reads each time —
-        // and the flag never advanced. A genuine send FAILURE still leaves the
-        // flag unset so the next cycle retries.
         if (sentAny || !attemptedAny) {
           await userDoc.ref.set({ lastAgendaSentDate: todayIso }, { merge: true });
         }
@@ -3462,7 +2742,6 @@ exports.sendAgendaEmail = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'Please add an email address to your profile before sending your agenda.');
   }
 
-  // Get user's timezone (default to Pacific if not set)
   const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
   const now = getNowInZone(userTimezone);
   const scheduleEntries = await buildTodaysSchedule(uid, now);
@@ -3476,14 +2755,6 @@ exports.sendAgendaEmail = functions.https.onCall(async (data, context) => {
 
   return { status: 'success' };
 });
-/**
- * Helper function to send caregiver invitation email
- * @param {string} patientEmail - Patient's email address
- * @param {string} patientFirstName - Patient's first name
- * @param {string} caregiverName - Caregiver's name
- * @param {string} customMessage - Optional custom message from caregiver
- * @param {string} invitationId - Unique invitation ID for the custom link
- */
 async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, caregiverName, customMessage = null, invitationId) {
   const styles = `
     body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
@@ -3496,7 +2767,6 @@ async function sendCaregiverInvitationEmail(patientEmail, patientFirstName, care
     .footer { text-align:center; font-size:15px; color:#61718f; padding:24px 28px 32px; background:#f8faff; line-height:1.6; }
   `;
 
-  // Everything below is rendered as HTML in someone else's inbox — escape it.
   const safeCaregiverName = escapeHtml(caregiverName);
   const safePatientFirstName = escapeHtml(patientFirstName);
   const messageBoxHtml = customMessage
@@ -3572,13 +2842,7 @@ Supporting safer, clearer medication management
   console.log(`Caregiver invitation email sent to ${patientEmail}`);
 }
 
-/**
- * Cloud Function to send caregiver invitation email
- * POST /sendCaregiverInvitation
- * Body: { patientEmail: string, caregiverId: string, caregiverName: string, customMessage?: string }
- */
 exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -3594,10 +2858,6 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
   }
 
   try {
-    // AUTH: this endpoint sends mail to an arbitrary address with caller-supplied
-    // content. Unauthenticated, it was an open relay usable to send convincing
-    // phishing from our own domain. The caller must be signed in, and may only
-    // invite on their own behalf.
     const authHeader = req.headers.authorization || '';
     const idToken =
       (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '') ||
@@ -3630,9 +2890,6 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
       return;
     }
 
-    // Take the caregiver's display name from their own profile document, never
-    // from the request body — the body is attacker-controlled and this string is
-    // rendered inside the email.
     const callerSnap = await admin.firestore().collection('users').doc(decodedCaller.uid).get();
     if (!callerSnap.exists) {
       res.status(403).json({ error: 'Caregiver profile not found' });
@@ -3646,7 +2903,6 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
       return;
     }
 
-    // Find patient by email in Firestore
     const db = admin.firestore();
     const usersSnapshot = await db.collection('users')
       .where('email', '==', patientEmail.toLowerCase())
@@ -3661,12 +2917,10 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
     const patientDoc = usersSnapshot.docs[0];
     const patientData = patientDoc.data();
     const patientName = patientData.name || 'User';
-    const patientFirstName = patientName.split(' ')[0]; // Get first name
+    const patientFirstName = patientName.split(' ')[0];
 
-    // Generate unique invitation ID
     const invitationId = db.collection('invitations').doc().id;
 
-    // Store invitation in Firestore
     await db.collection('invitations').doc(invitationId).set({
       caregiverId: decodedCaller.uid,
       caregiverName: caregiverName,
@@ -3677,7 +2931,6 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // Send email with invitation link
     await sendCaregiverInvitationEmail(patientEmail, patientFirstName, caregiverName, customMessage || null, invitationId);
 
     res.status(200).json({ 
@@ -3691,12 +2944,6 @@ exports.sendCaregiverInvitation = functions.https.onRequest(async (req, res) => 
   }
 });
 
-/**
- * Helper function to send caregiver acceptance confirmation email
- * @param {string} caregiverEmail - Caregiver's email address
- * @param {string} caregiverName - Caregiver's name
- * @param {string} patientName - Patient's name
- */
 async function sendCaregiverAcceptanceEmail(caregiverEmail, caregiverName, patientName) {
   const styles = `
     body { margin:0; padding:0; background:#f4f7fb; font-family:"Segoe UI", Arial, sans-serif; color:#1f2933; }
@@ -3768,13 +3015,7 @@ Supporting safer, clearer medication management
   console.log(`Caregiver acceptance email sent to ${caregiverEmail}`);
 }
 
-/**
- * Cloud Function to accept caregiver invitation and send confirmation email
- * POST /acceptCaregiverInvitation
- * Body: { invitationId: string, caregiverId: string, patientId: string, patientEmail: string, patientName: string }
- */
 exports.acceptCaregiverInvitation = functions.https.onRequest(async (req, res) => {
-  // Enable CORS
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -3800,11 +3041,7 @@ exports.acceptCaregiverInvitation = functions.https.onRequest(async (req, res) =
     const db = admin.firestore();
     const patientEmailLower = patientEmail.toLowerCase();
 
-    // --- AUTH CHECK (require patient to be signed in) ---
     const authHeader = req.headers.authorization || '';
-    // Support both:
-    //  - Authorization: Bearer <token> (preferred)
-    //  - { idToken: "<token>" } in body (fallback for older clients / cached builds)
     const idToken =
       (authHeader.startsWith('Bearer ') ? authHeader.substring('Bearer '.length) : '') ||
       (typeof bodyIdToken === 'string' ? bodyIdToken : '');
@@ -3824,7 +3061,6 @@ exports.acceptCaregiverInvitation = functions.https.onRequest(async (req, res) =
       return;
     }
 
-    // --- INVITATION VALIDATION ---
     const invitationRef = db.collection('invitations').doc(invitationId);
     const invitationSnap = await invitationRef.get();
     if (!invitationSnap.exists) {
@@ -3845,27 +3081,23 @@ exports.acceptCaregiverInvitation = functions.https.onRequest(async (req, res) =
       return;
     }
 
-    // 1) Add patient email + patientId to caregiver doc (server-side)
     const caregiverDocRef = db.collection('users').doc(caregiverId);
     await caregiverDocRef.set({
       patients: admin.firestore.FieldValue.arrayUnion(patientEmailLower),
       patientIds: admin.firestore.FieldValue.arrayUnion(patientId)
     }, { merge: true });
 
-    // 2) Link patient -> caregiver (so caregiver can read patient data via rules)
     const patientDocRef = db.collection('users').doc(patientId);
     await patientDocRef.set({
       caregivers: admin.firestore.FieldValue.arrayUnion(caregiverId)
     }, { merge: true });
 
-    // 3) Update invitation status
     await invitationRef.set({
       status: 'accepted',
       acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
       patientId: patientId
     }, { merge: true });
 
-    // 4) Email caregiver (best-effort)
     const caregiverSnap = await caregiverDocRef.get();
     const caregiverData = caregiverSnap.exists ? (caregiverSnap.data() || {}) : {};
     const caregiverEmail = caregiverData.email;
@@ -3886,17 +3118,6 @@ exports.acceptCaregiverInvitation = functions.https.onRequest(async (req, res) =
   }
 });
 
-/**
- * Cloud Function to sync caregiver<->patient links from caregiver's stored patient emails.
- * This is a repair path for older data where caregiver.users/{caregiverId}.patients existed
- * but patient.users/{patientId}.caregivers was not yet set (rules would block caregiver reads).
- *
- * POST /syncCaregiverPatients
- * Headers: Authorization: Bearer <Firebase ID token for caregiver>
- * Body: {}
- *
- * Returns: { patientIds: string[], linked: number, skipped: number }
- */
 exports.syncCaregiverPatients = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -3962,7 +3183,6 @@ exports.syncCaregiverPatients = functions.https.onRequest(async (req, res) => {
       const patientId = patientDoc.id;
       patientIds.push(patientId);
 
-      // Link patient -> caregiver for rules-based read access
       await db.collection('users').doc(patientId).set({
         caregivers: admin.firestore.FieldValue.arrayUnion(caregiverId)
       }, { merge: true });
@@ -3970,7 +3190,6 @@ exports.syncCaregiverPatients = functions.https.onRequest(async (req, res) => {
       linked += 1;
     }
 
-    // Also store the fast path ids on caregiver doc
     if (patientIds.length > 0) {
       await caregiverRef.set({
         patientIds: admin.firestore.FieldValue.arrayUnion(...patientIds)
@@ -3984,18 +3203,6 @@ exports.syncCaregiverPatients = functions.https.onRequest(async (req, res) => {
   }
 });
 
-/**
- * =========================
- * Caregiver Email Reports (4 total)
- * =========================
- * These are the ONLY caregiver-email jobs we support:
- * 1) patient_expiration_dates  -> daily digest of patient bottle expirations (next 7 days)
- * 2) patient_weekly_reports    -> weekly digest (last 7 days adherence)
- * 3) patient_monthly_reports   -> monthly digest (last 30 days adherence)
- * 4) adherence_below_80        -> daily alert if any patient 7-day adherence < 80%
- *
- * IMPORTANT: This section is intentionally isolated to avoid impacting existing patient reminders.
- */
 
 const CAREGIVER_EMAIL_KEYS = {
   PATIENT_EXPIRATION_DATES: 'patient_expiration_dates',
@@ -4018,7 +3225,6 @@ async function resolveCaregiverPatientIds(db, caregiverData) {
   if (emails.length === 0) return [];
 
   const ids = [];
-  // Small N expected; keep it simple (admin privileges bypass rules).
   for (const email of emails) {
     const qs = await db.collection('users').where('email', '==', email).limit(1).get();
     if (!qs.empty) ids.push(qs.docs[0].id);
@@ -4026,14 +3232,9 @@ async function resolveCaregiverPatientIds(db, caregiverData) {
   return ids;
 }
 
-/**
- * Find all caregivers who opted in to receive reminders for a given patient.
- * Returns array of { email, phone, phoneVerified, prefs: { email: bool, sms: bool } }
- */
 async function findCaregiverReminderRecipients(db, patientId) {
   const recipients = [];
   try {
-    // Get the patient doc to find their caregivers array
     const patientSnap = await db.collection('users').doc(patientId).get();
     if (!patientSnap.exists) return recipients;
     const patientData = patientSnap.data() || {};
@@ -4066,26 +3267,19 @@ async function findCaregiverReminderRecipients(db, patientId) {
   return recipients;
 }
 
-/**
- * Forward medication reminders to opted-in caregivers.
- * Called after sending reminder to the patient.
- */
 async function forwardRemindersToCaregiver(db, patientId, patientName, meds, reminderTime, offsetKey, userTimezone) {
-  // SPEC v2: caregiver-forwarded reminders are EMAIL ONLY.
-  // SMS and push forwarding to caregivers are intentionally disabled.
   try {
     const recipients = await findCaregiverReminderRecipients(db, patientId);
     if (recipients.length === 0) return;
 
     for (const r of recipients) {
-      // Only fire email forward, and only if the caregiver opted in to email for this patient.
       if (r.prefs && r.prefs.email && r.email) {
         try {
           const medsCopy = meds.map(m => ({ ...m }));
           await sendCombinedReminderEmail(
             r.email, medsCopy, reminderTime, offsetKey,
             [], [], [], userTimezone,
-            `[${patientName}] ` // subjectPrefix
+            `[${patientName}] `
           );
           console.log(`[CaregiverReminders] Forwarded email to caregiver ${r.email} for patient ${patientName}`);
         } catch (e) {
@@ -4144,10 +3338,6 @@ function computeAdherenceForRange(meds, nowDateTime, days) {
 
       if (!shouldSendReminderToday(med, day)) continue;
 
-      // Resolve the doses scheduled for THAT day. Previously this called
-      // getReminderTimes(med) with no date, so today's dose count was applied
-      // to every historical day — and a med not scheduled today silently fell
-      // back to a single 09:00 dose.
       const times = getReminderTimes(med, day);
       const dayTimes = Array.isArray(times) && times.length > 0 ? times : [null];
 
@@ -4155,9 +3345,6 @@ function computeAdherenceForRange(meds, nowDateTime, days) {
         const doseNumber = idx + 1;
         const doseTime = dayTimes[idx];
 
-        // Skip doses that aren't due yet. Counting a dose scheduled for later
-        // today as "missed" understated adherence by up to a full day's worth
-        // — enough on its own to trip the below-80% caregiver alert.
         if (doseTime) {
           const [hh, mm] = String(doseTime).split(':').map(Number);
           if (!Number.isNaN(hh)) {
@@ -4165,7 +3352,7 @@ function computeAdherenceForRange(meds, nowDateTime, days) {
             if (due > nowDateTime) continue;
           }
         } else if (day.hasSame(nowDateTime, 'day')) {
-          continue; // untimed dose today — can't say it's missed yet
+          continue;
         }
 
         total += 1;
@@ -4175,7 +3362,6 @@ function computeAdherenceForRange(meds, nowDateTime, days) {
         if (entry && entry.taken === true) {
           taken += 1;
         } else {
-          // Treat missing entries as missed (otherwise adherence is meaningless)
           missed += 1;
         }
       }
@@ -4202,7 +3388,6 @@ async function sendCaregiverNotification(caregiverData, subject, htmlBody, textB
   if (caregiverEmail) {
     await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
   }
-  // Also send SMS if caregiver has a verified phone
   const phone = caregiverData.phone || null;
   const phoneVerified = caregiverData.phoneVerified === true;
   if (phone && phoneVerified && smsBody && twilioClient && twilioFromNumber) {
@@ -4221,7 +3406,6 @@ async function markCaregiverEmailSent(db, caregiverId, key) {
   try {
     await ref.update(updateObj);
   } catch (e) {
-    // If the doc somehow doesn't exist yet, create it.
     await ref.set(updateObj, { merge: true });
   }
 }
@@ -4233,7 +3417,7 @@ function caregiverAlreadySent(caregiverData, key) {
 exports.sendCaregiverExpirationDatesEmails = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub
-  .schedule('0 9 * * *') // daily 09:00 UTC
+  .schedule('0 9 * * *')
   .timeZone('UTC')
   .onRun(async () => {
     const db = admin.firestore();
@@ -4283,7 +3467,6 @@ exports.sendCaregiverExpirationDatesEmails = functions
       }
 
       if (sectionsHtml.length === 0) {
-        // Nothing to send today
         continue;
       }
 
@@ -4311,13 +3494,10 @@ exports.sendCaregiverExpirationDatesEmails = functions
         ...linesText
       ].join('\n');
 
-      // Stock / bottle / expiration alerts are email-only — no SMS for caregivers.
       try {
         await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, null);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
-        // Without this, a single bad address / SMTP hiccup threw out of the
-        // whole scheduled run and every remaining caregiver silently got nothing.
         console.error(`[Caregiver] expiration digest failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
         continue;
       }
@@ -4330,7 +3510,7 @@ exports.sendCaregiverExpirationDatesEmails = functions
 exports.sendCaregiverAdherenceBelow80Alerts = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub
-  .schedule('30 9 * * *') // daily 09:30 UTC
+  .schedule('30 9 * * *')
   .timeZone('UTC')
   .onRun(async () => {
     const db = admin.firestore();
@@ -4411,8 +3591,6 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions
         await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
-        // Without this, a single bad address / SMTP hiccup threw out of the
-        // whole scheduled run and every remaining caregiver silently got nothing.
         console.error(`[Caregiver] adherence<80 alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
         continue;
       }
@@ -4425,7 +3603,7 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions
 exports.sendCaregiverWeeklyReports = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub
-  .schedule('0 9 * * 1') // Mondays 09:00 UTC
+  .schedule('0 9 * * 1')
   .timeZone('UTC')
   .onRun(async () => {
     const db = admin.firestore();
@@ -4505,8 +3683,6 @@ exports.sendCaregiverWeeklyReports = functions
         await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
         await markCaregiverEmailSent(db, caregiverId, weekKey);
       } catch (cgErr) {
-        // Without this, a single bad address / SMTP hiccup threw out of the
-        // whole scheduled run and every remaining caregiver silently got nothing.
         console.error(`[Caregiver] weekly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
         continue;
       }
@@ -4519,7 +3695,7 @@ exports.sendCaregiverWeeklyReports = functions
 exports.sendCaregiverMonthlyReports = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub
-  .schedule('0 9 1 * *') // 1st of month 09:00 UTC
+  .schedule('0 9 1 * *')
   .timeZone('UTC')
   .onRun(async () => {
     const db = admin.firestore();
@@ -4599,8 +3775,6 @@ exports.sendCaregiverMonthlyReports = functions
         await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
         await markCaregiverEmailSent(db, caregiverId, monthKey);
       } catch (cgErr) {
-        // Without this, a single bad address / SMTP hiccup threw out of the
-        // whole scheduled run and every remaining caregiver silently got nothing.
         console.error(`[Caregiver] monthly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
         continue;
       }
@@ -4610,9 +3784,6 @@ exports.sendCaregiverMonthlyReports = functions
     return null;
   });
 
-// ============================================================
-// CAREGIVER: New medication added (Firestore trigger)
-// ============================================================
 exports.onPatientMedicationCreated = functions.firestore
   .document('users/{userId}/medications/{medId}')
   .onCreate(async (snap, context) => {
@@ -4621,14 +3792,11 @@ exports.onPatientMedicationCreated = functions.firestore
     const medData = snap.data() || {};
     const medName = medData.name || 'a medication';
 
-    // Skip deleted medications
     if (medData.deletedStatus === true) return null;
 
-    // Find all caregivers who have this patient AND opted in to new_medication_added
     const patient = await loadPatientProfile(db, patientId);
     if (!patient) return null;
 
-    // Find caregivers that list this patient
     const allCaregivers = await db.collection('users').where('type', '==', 'C').get();
 
     for (const caregiverDoc of allCaregivers.docs) {
@@ -4636,7 +3804,6 @@ exports.onPatientMedicationCreated = functions.firestore
       const reminders = Array.isArray(caregiverData.email_reminders) ? caregiverData.email_reminders : [];
       if (!reminders.includes(CAREGIVER_EMAIL_KEYS.NEW_MEDICATION_ADDED)) continue;
 
-      // Check if this caregiver monitors this patient
       const patientIds = await resolveCaregiverPatientIds(db, caregiverData);
       if (!patientIds.includes(patientId)) continue;
 
@@ -4679,13 +3846,10 @@ exports.onPatientMedicationCreated = functions.firestore
     return null;
   });
 
-// ============================================================
-// CAREGIVER: Nothing recorded today (daily check)
-// ============================================================
 exports.sendCaregiverNothingRecordedAlerts = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub
-  .schedule('0 21 * * *') // daily 21:00 UTC (afternoon/evening in most US timezones)
+  .schedule('0 21 * * *')
   .timeZone('UTC')
   .onRun(async () => {
     const db = admin.firestore();
@@ -4720,16 +3884,10 @@ exports.sendCaregiverNothingRecordedAlerts = functions
         const activeMeds = meds.filter(m => !m.deletedStatus);
         if (activeMeds.length === 0) continue;
 
-        // Check if ANY dose was recorded today for this patient
         let anyRecorded = false;
         for (const med of activeMeds) {
           if (!shouldSendReminderToday(med, patientNow)) continue;
           const doses = med.doses || {};
-          // Check all dose keys for today.
-          // IMPORTANT: only a dose the patient actually marked TAKEN counts as
-          // "recorded". checkAndMarkMissedDoses auto-writes {taken:false,
-          // autoMarked:true} entries 45 min after a missed dose — counting those
-          // as "recorded" silenced this alert in exactly the case it exists for.
           for (const key of Object.keys(doses)) {
             if (!key.startsWith(todayIso + '_')) continue;
             const entry = doses[key];
@@ -4753,7 +3911,7 @@ exports.sendCaregiverNothingRecordedAlerts = functions
         }
       }
 
-      if (sectionsHtml.length === 0) continue; // All patients have recorded something
+      if (sectionsHtml.length === 0) continue;
 
       const subject = 'Everane: Patients with nothing recorded today';
       const htmlBody = `
@@ -4788,15 +3946,10 @@ exports.sendCaregiverNothingRecordedAlerts = functions
     return null;
   });
 
-/**
- * Send phone verification code via Twilio SMS API
- * Generates a 6-digit OTP, stores in Firestore, sends via SMS
- */
 exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
   console.log('🚀 FUNCTION CALLED - sendPhoneVerificationCode');
   console.log('  Method:', req.method);
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -4832,8 +3985,6 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
         return;
       }
 
-      // AUTH: unauthenticated, this let anyone make us send SMS to arbitrary
-      // numbers on our Twilio account (toll fraud / SMS pumping).
       const authHeader = req.headers.authorization || '';
       const idToken =
         (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '') ||
@@ -4850,11 +4001,9 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
         return;
       }
 
-      // Generate 6-digit OTP
       const code = String(Math.floor(100000 + Math.random() * 900000));
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      // Store in Firestore
       const db = admin.firestore();
       await db.collection('phoneVerifications').doc(phoneNumber).set({
         code: code,
@@ -4862,7 +4011,6 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
-      // Send via Twilio SMS
       const message = `Your Everane verification code is: ${code}. It expires in 10 minutes.`;
       await sendSMS(phoneNumber, message);
 
@@ -4880,11 +4028,7 @@ exports.sendPhoneVerificationCode = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Verify phone verification code and mark phone as verified in user profile
- */
 exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -4924,24 +4068,20 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
       const verification = verDoc.data();
       const expiresAt = verification.expiresAt.toDate();
 
-      // Check expiry
       if (new Date() > expiresAt) {
         await db.collection('phoneVerifications').doc(phoneNumber).delete();
         res.status(400).json({ error: 'Verification code has expired. Please request a new one.' });
         return;
       }
 
-      // Check code
       if (verification.code !== code) {
         res.status(400).json({ error: 'Invalid verification code' });
         return;
       }
 
-      // Code matches — clean up
       await db.collection('phoneVerifications').doc(phoneNumber).delete();
       console.log('✅ Phone verification code approved!');
 
-      // If userId is provided, update Firestore to mark phone as verified
       if (userId) {
         await db.collection('users').doc(userId).set(
           { phoneVerified: true, phoneNumber: phoneNumber },
@@ -4960,13 +4100,7 @@ exports.verifyPhoneCode = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Cloud Function to handle contact form submissions
- * POST /sendContactForm
- * Body: { name: string, email: string, message: string }
- */
 exports.sendContactForm = functions.https.onRequest((req, res) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -4989,19 +4123,16 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
     try {
       const { name, email, message } = req.body;
 
-      // Validate required fields
       if (!name || !email || !message) {
         res.status(400).json({ error: 'Name, email, and message are all required' });
         return;
       }
 
-      // Validate email format
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         res.status(400).json({ error: 'A valid email address is required' });
         return;
       }
 
-      // Build professional HTML email body
       const htmlBody = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background-color: #4A90D9; color: #ffffff; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -5029,12 +4160,10 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
         </div>
       `;
 
-      // Send email via nodemailer transporter
       const mailOptions = {
         from: gmailEmail,
         replyTo: email,
         to: 'rishikeshalladi@gmail.com',
-        // sanitizeHeader strips CR/LF so a crafted name can't inject headers.
         subject: sanitizeHeader(`[Everane Contact] Message from ${name}`),
         html: htmlBody
       };
@@ -5051,29 +4180,13 @@ exports.sendContactForm = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * createRealtimeSession
- * Creates an ephemeral OpenAI Realtime session and returns the client_secret.
- * The client uses this secret to connect directly to OpenAI via WebRTC.
- */
-// ---- Shared guards for the billable AI endpoints -----------------------------
-// Every endpoint below spends real money per call. They were previously gated
-// only by "is this a valid Firebase token", which any self-registered account
-// has — the emailVerified gate lived solely in client-side auth-guard.js.
 
-// Generous daily ceilings: far above any realistic human use of these features,
-// low enough to bound a runaway loop or a scripted abuser.
 const AI_DAILY_LIMITS = {
-  realtime: 40,        // voice sessions/day
-  imageExtract: 60,    // label scans/day
-  medLookup: 300       // name lookups/day (only counted on cache MISS)
+  realtime: 40,
+  imageExtract: 60,
+  medLookup: 300
 };
 
-/**
- * Today's date in the CALLER's timezone (from their profile), not UTC.
- * A user in Pacific after 17:00 is a calendar day behind UTC, so a UTC "today"
- * shifts every relative date and computed endDate by one day.
- */
 async function callerLocalDate(uid) {
   let zone = DEFAULT_TIME_ZONE;
   try {
@@ -5086,14 +4199,6 @@ async function callerLocalDate(uid) {
   return DateTime.now().setZone(zone).toISODate();
 }
 
-/**
- * Verify the caller and require a verified email address.
- * Returns { ok:true, uid, email } or { ok:false, status, error }.
- *
- * If the ID token says the address is unverified we re-check the Auth record
- * before rejecting — a user who verified moments ago may still be holding a
- * cached token, and bouncing them would be a visible regression.
- */
 async function requireVerifiedCaller(req) {
   const authHeader = req.headers.authorization || '';
   const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.body?.idToken || '');
@@ -5108,7 +4213,6 @@ async function requireVerifiedCaller(req) {
   if (!decoded || !decoded.uid) return { ok: false, status: 401, error: 'Invalid auth token' };
 
   if (decoded.email_verified !== true) {
-    // Stale-token fallback: consult the authoritative Auth record.
     try {
       const rec = await admin.auth().getUser(decoded.uid);
       if (!rec.emailVerified) {
@@ -5122,13 +4226,6 @@ async function requireVerifiedCaller(req) {
   return { ok: true, uid: decoded.uid, email: decoded.email || null };
 }
 
-/**
- * Count one use of a billable AI feature against the caller's daily allowance.
- *
- * FAILS OPEN BY DESIGN. If the counter cannot be read or written we allow the
- * call: a bookkeeping outage must never stop someone adding their medication.
- * Returns { allowed, used, limit }.
- */
 async function consumeAiQuota(uid, kind, limit) {
   try {
     const dayKey = DateTime.utc().toISODate();
@@ -5174,7 +4271,6 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
     }
 
     try {
-      // Verify Firebase auth token (and that the address is verified)
       const caller = await requireVerifiedCaller(req);
       if (!caller.ok) {
         res.status(caller.status).json({ error: caller.error });
@@ -5187,20 +4283,14 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
         return;
       }
 
-      // Get OpenAI API key from functions config
       const openaiKey = functions.config().openai?.key;
       if (!openaiKey) {
         res.status(500).json({ error: 'OpenAI API key not configured' });
         return;
       }
 
-      // The model has no clock. Without an injected date it cannot resolve
-      // "tomorrow" / "next Monday", and the prompt previously hardcoded the
-      // year 2026 — correct only by coincidence, and wrong from Jan 2027.
       const realtimeToday = await callerLocalDate(caller.uid);
 
-      // Create ephemeral Realtime client secret with instructions + tools baked in.
-      // This guarantees instructions are applied BEFORE the client connects (no race condition).
       const sessionResp = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
         method: 'POST',
         headers: {
@@ -5248,10 +4338,6 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
                 required: ['name', 'dosage', 'schedule', 'startDate', 'endDate', 'reminderChannels'],
               },
             }],
-            // The prompt requires exactly one short question per turn, so ~500
-            // tokens is far more headroom than any legitimate reply needs. It
-            // exists only to stop a degenerate loop from monologuing at
-            // per-second audio pricing.
             max_output_tokens: 500,
             tool_choice: 'auto',
           },
@@ -5266,7 +4352,6 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
       }
 
       const sessionData = await sessionResp.json();
-      // GA response shape: { value: "ek_...", expires_at: ..., session: { id, model, ... } }
       const clientSecret = sessionData.value
         || sessionData.client_secret?.value
         || sessionData.client_secret;
@@ -5291,76 +4376,29 @@ exports.createRealtimeSession = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * lookupMedicationImage
- * Given a free-typed medication name, validates it via OpenAI (gpt-4o-mini) and,
- * if it's recognized, returns a product image URL via Serper.dev Image Search.
- * Results are cached in Firestore at /medicationImageCache/{normalizedKey} for
- * 30 days to keep API costs low and latency snappy.
- *
- * Request body: { name: "metforminn" }
- * Response: {
- *   isMed: boolean,
- *   canonical: "Metformin"  | null,
- *   genericName: "Metformin" | null,
- *   form: "tablet"|"capsule"|"liquid"|"injection"|"patch"|"inhaler"|"cream"|"other" | null,
- *   imageUrl: "https://..." | null,
- *   source: "cache"|"fresh"|"none",
- *   cachedAt: ISO string | null
- * }
- */
-const MED_IMAGE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-// Serper returns images from anywhere on the open web. A blocklist only kept
-// out the handful of social domains someone thought to name; everything else —
-// including arbitrary hosts that then get embedded in a health app and learn a
-// user's IP — was allowed. This is an allowlist of pharmacy, retailer, drug
-// reference and government sources, which is where "<drug> prescription bottle"
-// results legitimately come from. No allowed candidate => no image (the neutral
-// pill SVG is shown instead), which is the correct failure direction.
+const MED_IMAGE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MED_IMAGE_HOST_ALLOWLIST = new Set([
-  // Government / authoritative
   'nih.gov', 'nlm.nih.gov', 'dailymed.nlm.nih.gov', 'medlineplus.gov', 'fda.gov', 'cdc.gov',
-  // Pharmacies & retailers
   'walgreens.com', 'cvs.com', 'riteaid.com', 'walmart.com', 'target.com', 'costco.com',
   'samsclub.com', 'kroger.com', 'amazon.com', 'ssl-images-amazon.com', 'media-amazon.com',
   'sainsburys.co.uk', 'boots.com', 'chemistwarehouse.com.au', 'shopkodiak.com',
   'healthwarehouse.com', 'pillpack.com', 'costcobusinessdelivery.com',
-  // Drug references
   'drugs.com', 'goodrx.com', 'rxlist.com', 'webmd.com', 'healthline.com', 'medicines.org.uk',
   'empr.com', 'pdr.net', 'druginfo.nlm.nih.gov', 'epocrates.com', 'medscape.com',
-  // Manufacturers / wholesalers commonly surfaced for bottle shots
   'mckesson.com', 'cardinalhealth.com', 'amerisourcebergen.com', 'teva.com', 'pfizer.com',
   'novartis.com', 'lilly.com', 'sandoz.com', 'viatris.com', 'sunpharma.com',
-  // Medical-supply distributors. These turned out to be where most real
-  // "<drug> prescription bottle" photos actually live — an allowlist without
-  // them dropped image coverage to 2 of 6 sampled medications.
   'henryschein.com', 'medline.com', 'macgill.com', 'bettymills.com',
   'mountainside-medical.com', 'empowerpharmacy.com', 'mms.mckesson.com',
   'mediusa.com', 'moorebrand.com', 'discountmedicalsupplies.com', 'vitalitymedical.com',
   'praxisdental.com', 'dentalhealthproducts.com', 'schein.com',
-  // Telehealth / pharmacy services that publish their own product shots
   'plushcare.com', 'lemonaidhealth.com', 'ro.co', 'hims.com', 'capsule.com',
   'medpagetoday.net', 'singlecare.com', 'optum.com', 'expressscripts.com',
-  // Storefront CDNs used by legitimate pharmacy retailers
   'shopify.com', 'shopifycdn.com', 'squarespace-cdn.com', 'bigcommerce.com',
-  // Encyclopedic
   'wikimedia.org', 'wikipedia.org',
 ]);
 
-// Bump this whenever the Serper search query OR LLM output shape changes (so
-// existing cache entries for old shapes are bypassed and re-fetched cleanly).
 const MED_IMAGE_CACHE_VERSION = 'v4-fda-grounded-summary';
 
-/**
- * Fetch the FDA-approved label text for a medication from openFDA.
- *
- * Returns { text, labelName, section } or null when there is no confident match.
- *
- * Filtering matters here: a loose search for "metformin" happily returns
- * combination products such as ZITUVIMET (sitagliptin + metformin), whose
- * indications describe a different drug entirely. We therefore keep only
- * single-ingredient labels whose generic name actually contains the term.
- */
 async function fetchFdaLabel(term) {
   const q = String(term || '').trim();
   if (q.length < 2) return null;
@@ -5371,7 +4409,7 @@ async function fetchFdaLabel(term) {
   let data;
   try {
     const resp = await fetch(url, { method: 'GET' });
-    if (!resp.ok) return null; // 404 simply means "no such label"
+    if (!resp.ok) return null;
     data = await resp.json();
   } catch (e) {
     console.warn('[FDA] label fetch failed:', e.message);
@@ -5385,12 +4423,10 @@ async function fetchFdaLabel(term) {
     const openfda = r.openfda || {};
     const generics = Array.isArray(openfda.generic_name) ? openfda.generic_name.map(x => String(x).toUpperCase()) : [];
 
-    // Single active ingredient only — reject "A AND B" / comma-joined combos.
     if (generics.length !== 1) continue;
     if (generics[0].includes(' AND ') || generics[0].includes(',')) continue;
     if (!generics[0].includes(upper)) continue;
 
-    // Prefer the indications section; OTC monographs use "purpose"/"description".
     for (const section of ['indications_and_usage', 'purpose', 'description']) {
       const arr = r[section];
       const text = Array.isArray(arr) && arr.length ? String(arr[0]).trim() : '';
@@ -5406,15 +4442,6 @@ async function fetchFdaLabel(term) {
   return null;
 }
 
-/**
- * Turn an FDA label extract into 2-3 plain-English sentences.
- *
- * The model is given the label text and told to use ONLY that text. It is a
- * summariser here, not a source of drug knowledge — which is the whole point:
- * previously it wrote these descriptions from memory, and a small model
- * inventing indications inside a medication app is a bad failure mode.
- * No label means no summary; we never fall back to unsourced text.
- */
 async function summarizeFdaLabel(openaiKey, canonical, label) {
   if (!openaiKey || !label || !label.text) return null;
   try {
@@ -5480,20 +4507,10 @@ function isAllowedImageHost(urlStr) {
   }
 }
 
-/**
- * The medication image cache is shared across all users and was only ever
- * expired lazily — a document was refreshed when someone happened to look the
- * same name up again. Entries nobody revisits (typos, one-off searches, names
- * from deleted accounts) stayed forever, and a stale or poisoned entry kept
- * being served until a later lookup happened to overwrite it.
- *
- * This sweeps anything past the TTL once a night so bad entries age out on a
- * bounded schedule and the collection stops growing without limit.
- */
 exports.cleanMedicationImageCache = functions
   .runWith({ timeoutSeconds: 540, memory: '512MB' })
   .pubsub
-  .schedule('0 4 * * *') // daily 04:00 UTC — quiet hours
+  .schedule('0 4 * * *')
   .timeZone('UTC')
   .onRun(async () => {
     const db = admin.firestore();
@@ -5501,7 +4518,6 @@ exports.cleanMedicationImageCache = functions
     let deleted = 0;
 
     try {
-      // Page through so a large collection cannot blow the memory limit.
       for (;;) {
         const snap = await db.collection('medicationImageCache')
           .where('fetchedAt', '<', cutoff)
@@ -5538,7 +4554,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
     try {
-      // Auth (verified users only — keeps the API keys + shared cache private).
       const caller = await requireVerifiedCaller(req);
       if (!caller.ok) { res.status(caller.status).json({ error: caller.error }); return; }
 
@@ -5556,7 +4571,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
       const db = admin.firestore();
       const cacheRef = db.collection('medicationImageCache').doc(key);
 
-      // 1. Cache check
       try {
         const cacheSnap = await cacheRef.get();
         if (cacheSnap.exists) {
@@ -5564,7 +4578,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
           const fetchedAtMs = (c.fetchedAt && c.fetchedAt.toMillis) ? c.fetchedAt.toMillis() : 0;
           const ageMs = Date.now() - fetchedAtMs;
           if (fetchedAtMs > 0 && ageMs < MED_IMAGE_CACHE_TTL_MS) {
-            // Best-effort hit counter (don't await)
             cacheRef.update({ hitCount: admin.firestore.FieldValue.increment(1), lastHitAt: admin.firestore.FieldValue.serverTimestamp() }).catch(() => {});
             res.status(200).json({
               isMed: !!c.isMed,
@@ -5584,13 +4597,8 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         console.warn('[lookupMedicationImage] cache read failed:', e.message);
       }
 
-      // Past this point we are about to call OpenAI + Serper, so this is where
-      // the call gets charged against the caller's allowance. Cache hits above
-      // return without consuming quota — browsing known medications is free.
       const quota = await consumeAiQuota(caller.uid, 'medLookup', AI_DAILY_LIMITS.medLookup);
       if (!quota.allowed) {
-        // Degrade quietly rather than surfacing an error: the caller just gets
-        // the same shape they'd get for an unrecognised name.
         res.status(200).json({
           isMed: false, canonical: null, genericName: null, form: null,
           summary: null, imageUrl: null, source: 'none', cachedAt: null
@@ -5598,7 +4606,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         return;
       }
 
-      // 2. OpenAI validator
       const openaiKey = functions.config().openai?.key;
       if (!openaiKey) { res.status(500).json({ error: 'OpenAI API key not configured' }); return; }
 
@@ -5640,7 +4647,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         console.warn('[lookupMedicationImage] OpenAI call failed:', e.message);
       }
 
-      // If not a med, cache the rejection and return.
       if (!validator.isMed || !validator.canonical) {
         try {
           await cacheRef.set({
@@ -5657,9 +4663,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         return;
       }
 
-      // 2b. Summary, grounded in the official FDA label.
-      // Query by generic name first (that is what openFDA indexes), then fall
-      // back to whatever the user actually typed. No label found => no summary.
       try {
         const candidates = [validator.genericName, validator.canonical].filter(Boolean);
         let label = null;
@@ -5677,15 +4680,10 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         console.warn('[FDA] summary step failed:', e.message);
       }
 
-      // 3. Serper image search
       const serperKey = functions.config().serper?.api_key;
       let imageUrl = null;
       if (serperKey) {
         try {
-          // Search for the medication BOTTLE (not loose pills) so users can match
-          // what's actually sitting in their cabinet. The validator's `form` is
-          // intentionally NOT used here — bottle photography is consistent
-          // regardless of pill/capsule/liquid format.
           const q = `${validator.canonical} prescription bottle`;
           const srResp = await fetch('https://google.serper.dev/images', {
             method: 'POST',
@@ -5706,8 +4704,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
               break;
             }
             if (!imageUrl && candidates.length > 0) {
-              // Surfaces allowlist gaps in the logs so the list can be widened
-              // deliberately rather than by loosening the rule.
               const hosts = candidates.slice(0, 5).map(c => {
                 try { return new URL(c.imageUrl || c.thumbnailUrl).hostname; } catch (_) { return '?'; }
               });
@@ -5724,7 +4720,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
         console.warn('[lookupMedicationImage] Serper API key not configured');
       }
 
-      // 4. Cache + respond
       try {
         await cacheRef.set({
           isMed: true,
@@ -5760,32 +4755,6 @@ exports.lookupMedicationImage = functions.runWith({ timeoutSeconds: 20 }).https.
   });
 });
 
-/**
- * extractMedicationFromImages
- * Accepts 1–5 base64-encoded images of pill bottles, Rx labels, doctor notes,
- * or pharmacy printouts. Calls OpenAI gpt-4o-mini Vision to extract a unified
- * structured medication record. Returns the extracted fields PLUS a per-field
- * confidence map so the frontend can highlight uncertain fields in yellow.
- *
- * Returns:
- * {
- *   name: string|null,
- *   genericName: string|null,
- *   dosage: string|null,            // free-form display string ("500 mg", "1 tablet")
- *   dosageQuantity: number|null,    // numeric pills-per-dose (mapped to form field)
- *   schedules: Array|null,          // [{type, days, times, every, unit}] in Everane shape
- *   startDate: "YYYY-MM-DD"|null,
- *   endDate: "YYYY-MM-DD"|null,
- *   bottles: Array|null,            // [{expiration:"MM/DD/YYYY", quantity:number}]
- *   notes: string|null,             // anything noteworthy (prescriber, pharmacy, etc.)
- *   confidence: { fieldName: number 0..1 },
- *   ambiguities: string[],          // human-readable warnings for the UI
- *   imageCount: number
- * }
- *
- * Notification preferences (reminderChannels) are NEVER extracted from images —
- * the user always picks those manually.
- */
 exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, memory: '512MB' }).https.onRequest((req, res) => {
   if (req.method === 'OPTIONS') {
     res.set('Access-Control-Allow-Origin', '*');
@@ -5801,7 +4770,6 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
     try {
-      // Auth (verified address required — this call costs money per image)
       const caller = await requireVerifiedCaller(req);
       if (!caller.ok) { res.status(caller.status).json({ error: caller.error }); return; }
 
@@ -5811,14 +4779,12 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
         return;
       }
 
-      // Validate images
       const images = Array.isArray(req.body && req.body.images) ? req.body.images : [];
       if (images.length === 0) { res.status(400).json({ error: 'No images provided' }); return; }
       if (images.length > 5) { res.status(400).json({ error: 'Maximum 5 images per extraction' }); return; }
       for (const img of images) {
         if (typeof img !== 'string') { res.status(400).json({ error: 'Each image must be a base64 data URI string' }); return; }
         if (!img.startsWith('data:image/')) { res.status(400).json({ error: 'Each image must be a base64 image data URI (data:image/...)' }); return; }
-        // ~7 MB cap per image (post-base64 padding). Real client-side resize keeps these well under 500 KB.
         if (img.length > 7 * 1024 * 1024 * 4 / 3) { res.status(400).json({ error: 'One or more images exceed the 7 MB limit' }); return; }
       }
 
@@ -5923,7 +4889,6 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
         "9. NEVER include personally-identifying info like patient name in the `notes` field. Pharmacy name and prescriber name are OK; patient name is NOT.",
       ].join('\n');
 
-      // Build vision message
       const userContent = [
         { type: 'text', text: `Extract a single unified medication record from the following ${images.length} image(s).` },
         ...images.map(u => ({ type: 'image_url', image_url: { url: u, detail: 'high' } })),
@@ -5938,9 +4903,6 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
             model: 'gpt-4o-mini',
             response_format: { type: 'json_object' },
             temperature: 0.1,
-            // The schema plus up to 10 ambiguities and a 500-char notes field can
-            // approach the old 1200 ceiling; truncation yields unparseable JSON
-            // and a 502 rather than a partial result.
             max_tokens: 1800,
             messages: [
               { role: 'system', content: systemPrompt },
@@ -5968,7 +4930,6 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
         return;
       }
 
-      // Sanitize + normalize the response
       const VALID_DAYS = new Set(['monday','tuesday','wednesday','thursday','friday','saturday','sunday']);
       const VALID_UNITS = new Set(['hours','days','weeks']);
       const VALID_TYPES = new Set(['weekly','interval']);
@@ -6059,7 +5020,6 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
         ? parsed.ambiguities.map(a => strOrNull(a, 300)).filter(Boolean).slice(0, 10)
         : [];
 
-      // Sanitize extractedFrom — only allow the documented enum values.
       const VALID_SOURCES = new Set(['bottle', 'note', 'printout', 'mixed']);
       const cleanExtractedFrom = {};
       if (parsed.extractedFrom && typeof parsed.extractedFrom === 'object') {
@@ -6085,8 +5045,6 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
         imageCount: images.length,
       };
 
-      // Deliberately does NOT log the medication name — Cloud Logging is not an
-      // appropriate store for health data. Shape only.
       console.log(`[extractMedicationFromImages] ok: ${out.imageCount} image(s), name=${out.name ? 'yes' : 'no'}, schedules=${out.schedules ? out.schedules.length : 0} (uid=${caller.uid})`);
       res.status(200).json(out);
     } catch (error) {
@@ -6096,15 +5054,7 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
   });
 });
 
-// ========================================================================
-// TIMEZONE CHANGE DETECTION & MANAGEMENT
-// ========================================================================
 
-/**
- * requestTimezoneChangeEmail
- * Called from login.html when browser timezone differs from stored timezone.
- * Creates a pending timezone change request and emails the user a link.
- */
 exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -6134,13 +5084,11 @@ exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) 
     const userData = userSnap.data();
     const storedTimezone = userData.timezone || '';
 
-    // If timezones match (or no stored timezone) — nothing to do
     if (!storedTimezone || storedTimezone === detectedTimezone) {
       res.status(200).json({ message: 'No timezone change detected', changed: false });
       return;
     }
 
-    // Check for recent pending request to avoid spam
     const recentRequests = await dbRef.collection('users').doc(uid)
       .collection('timezoneRequests')
       .where('status', '==', 'pending')
@@ -6159,7 +5107,6 @@ exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) 
       }
     }
 
-    // Create timezone change request
     const requestRef = dbRef.collection('users').doc(uid).collection('timezoneRequests').doc();
     await requestRef.set({
       originalTimezone: storedTimezone,
@@ -6168,7 +5115,6 @@ exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) 
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // Send email to user
     const userEmail = userData.email;
     const userName = userData.name || 'there';
 
@@ -6222,10 +5168,6 @@ exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) 
   }
 });
 
-/**
- * getTimezoneChangeRequest
- * Fetches a pending timezone change request so traveltimezone.html can show it.
- */
 exports.getTimezoneChangeRequest = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -6266,10 +5208,6 @@ exports.getTimezoneChangeRequest = functions.https.onRequest(async (req, res) =>
   }
 });
 
-/**
- * resolveTimezoneChange
- * User chose to "stay" at original timezone or "change" to new one.
- */
 exports.resolveTimezoneChange = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -6308,7 +5246,6 @@ exports.resolveTimezoneChange = functions.https.onRequest(async (req, res) => {
       return;
     }
 
-    // Apply the change
     if (action === 'change') {
       await dbRef.collection('users').doc(uid).set({
         timezone: requestData.newTimezone
@@ -6318,7 +5255,6 @@ exports.resolveTimezoneChange = functions.https.onRequest(async (req, res) => {
       console.log(`[Timezone] User ${uid} chose to stay at: ${requestData.originalTimezone}`);
     }
 
-    // Mark as resolved
     await requestRef.update({
       status: 'resolved',
       action: action,
@@ -6337,10 +5273,6 @@ exports.resolveTimezoneChange = functions.https.onRequest(async (req, res) => {
   }
 });
 
-/**
- * Doctor login — validates patientId + doctorPassword server-side.
- * Returns the patient's Firebase UID on success so the frontend can load their data.
- */
 exports.doctorLogin = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -6380,16 +5312,14 @@ exports.doctorLogin = functions.https.onRequest((req, res) => {
         return;
       }
 
-      // Fetch medications for this patient
       const medsSnap = await db.collection('users').doc(userDoc.id).collection('medications').get();
       const medications = [];
       const dayMap = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 
-      // Helper to convert Firestore Timestamps or date strings to ISO string
       function toDateStr(val) {
         if (!val) return null;
-        if (val.toDate) return val.toDate().toISOString(); // Firestore Timestamp
-        if (val._seconds) return new Date(val._seconds * 1000).toISOString(); // Serialized Timestamp
+        if (val.toDate) return val.toDate().toISOString();
+        if (val._seconds) return new Date(val._seconds * 1000).toISOString();
         if (typeof val === 'string') return val;
         return null;
       }
@@ -6421,7 +5351,6 @@ exports.doctorLogin = functions.https.onRequest((req, res) => {
                 if (match) timesSet.add(match[1]);
               }
             }
-            // Also check startDate/endDate at the schedule level
             if (s.startDate) {
               const sd = toDateStr(s.startDate);
               if (sd) d._startDate = d._startDate || sd;
@@ -6432,7 +5361,6 @@ exports.doctorLogin = functions.https.onRequest((req, res) => {
         const times = [...timesSet].sort();
         const days = [...daysSet];
 
-        // Build interval description if present
         let intervalDesc = '';
         if (intervalSchedules.length > 0) {
           const iv = intervalSchedules[0];
@@ -6454,8 +5382,6 @@ exports.doctorLogin = functions.https.onRequest((req, res) => {
       });
       medications.sort((a, b) => a.name.localeCompare(b.name));
 
-      // Success — return patient info + medications + a signed session token.
-      // The token (not the bare uid) is what authorises subsequent doctor calls.
       const doctorToken = issueDoctorToken(userDoc.id);
       res.status(200).json({
         success: true,
@@ -6472,14 +5398,6 @@ exports.doctorLogin = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Doctor: get patient medications — accepts uid (already validated at login).
- * Returns list of active medications (name, dosage, schedule).
- */
-/**
- * Doctor: submit an edit request for a patient.
- * Saves to Firestore at users/{uid}/doctorEdits/{autoId}
- */
 exports.submitDoctorEdit = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -6503,7 +5421,6 @@ exports.submitDoctorEdit = functions.https.onRequest((req, res) => {
 
       const db = admin.firestore();
 
-      // Verify user exists and has doctor access
       const userDoc = await db.collection('users').doc(uid).get();
       if (!userDoc.exists || !userDoc.data().doctorPassword) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -6530,10 +5447,6 @@ exports.submitDoctorEdit = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Doctor: get all edit requests for a patient.
- * Returns from users/{uid}/doctorEdits ordered by createdAt descending.
- */
 exports.getDoctorEdits = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -6556,7 +5469,6 @@ exports.getDoctorEdits = functions.https.onRequest((req, res) => {
 
       const db = admin.firestore();
 
-      // Verify user exists and has doctor access
       const userDoc = await db.collection('users').doc(uid).get();
       if (!userDoc.exists || !userDoc.data().doctorPassword) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -6580,10 +5492,6 @@ exports.getDoctorEdits = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Doctor: reply to an existing edit request.
- * Appends a reply to the replies array on the doctorEdit document.
- */
 exports.replyToDoctorEdit = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -6607,14 +5515,12 @@ exports.replyToDoctorEdit = functions.https.onRequest((req, res) => {
 
       const db = admin.firestore();
 
-      // Verify user exists and has doctor access
       const userDoc = await db.collection('users').doc(uid).get();
       if (!userDoc.exists || !userDoc.data().doctorPassword) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
       }
 
-      // Verify the edit exists
       const editDoc = await db.collection('users').doc(uid).collection('doctorEdits').doc(editId).get();
       if (!editDoc.exists) {
         res.status(404).json({ error: 'Edit not found.' });
@@ -6628,7 +5534,6 @@ exports.replyToDoctorEdit = functions.https.onRequest((req, res) => {
         createdAt: now
       };
 
-      // Append to replies array
       const existing = editDoc.data().replies || [];
       existing.push(reply);
       await db.collection('users').doc(uid).collection('doctorEdits').doc(editId).update({
@@ -6643,11 +5548,6 @@ exports.replyToDoctorEdit = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * Patient: submit a comment/update visible to doctors.
- * Saves to users/{uid}/doctorEdits with source:'patient'.
- * Authenticated via Firebase ID token.
- */
 exports.submitPatientComment = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -6663,7 +5563,6 @@ exports.submitPatientComment = functions.https.onRequest((req, res) => {
         return;
       }
 
-      // Verify the Firebase ID token
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       if (decodedToken.uid !== uid) {
         res.status(401).json({ error: 'Unauthorized — token mismatch.' });
@@ -6692,16 +5591,6 @@ exports.submitPatientComment = functions.https.onRequest((req, res) => {
   });
 });
 
-/**
- * One-shot migration: for every medication that has `reminderMethod` but no `reminderChannels`,
- * derive `reminderChannels` from the legacy field and write it.
- *
- * Callable from the CLI:
- *   curl -X POST "https://<region>-<project>.cloudfunctions.net/migrateReminderMethodToChannels?token=<MIGRATION_TOKEN>"
- *
- * Uses the `migration.token` functions config value as a shared secret. Dry-run by default;
- * pass &dryRun=false to actually write.
- */
 exports.migrateReminderMethodToChannels = functions.runWith({ timeoutSeconds: 540, memory: '512MB' }).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
@@ -6728,7 +5617,6 @@ exports.migrateReminderMethodToChannels = functions.runWith({ timeoutSeconds: 54
       for (const medDoc of medsSnap.docs) {
         medsScanned++;
         const data = medDoc.data() || {};
-        // Skip if already has reminderChannels as an array
         if (Array.isArray(data.reminderChannels)) continue;
         const method = data.reminderMethod;
         let channels = null;
@@ -6745,7 +5633,6 @@ exports.migrateReminderMethodToChannels = functions.runWith({ timeoutSeconds: 54
     }
 
     if (!dryRun && perUserWrites.length > 0) {
-      // Fire them in reasonable chunks
       const chunkSize = 250;
       for (let i = 0; i < perUserWrites.length; i += chunkSize) {
         await Promise.all(perUserWrites.slice(i, i + chunkSize));
@@ -6765,11 +5652,6 @@ exports.migrateReminderMethodToChannels = functions.runWith({ timeoutSeconds: 54
   }
 });
 
-/**
- * Callable endpoint used by the service worker when a user clicks the
- * "Taken" or "Not Taken" action button directly on a Web Push notification.
- * Marks the specified dose in Firestore without the app needing to be open.
- */
 exports.markDoseFromPush = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
@@ -6784,7 +5666,6 @@ exports.markDoseFromPush = functions.https.onCall(async (data, context) => {
   if (!medId || !doseDate || !Number.isFinite(doseNumber) || doseNumber < 1) {
     throw new functions.https.HttpsError('invalid-argument', 'Missing medId, doseDate, or doseNumber.');
   }
-  // ISO date sanity check
   if (!/^\d{4}-\d{2}-\d{2}$/.test(doseDate)) {
     throw new functions.https.HttpsError('invalid-argument', 'doseDate must be YYYY-MM-DD.');
   }
@@ -6816,18 +5697,6 @@ exports.markDoseFromPush = functions.https.onCall(async (data, context) => {
   return { ok: true, doseKey, taken };
 });
 
-/**
- * Diagnostic: dump the caller's own lastSentReminders + med config.
- * Pure read-only. Useful for figuring out why a reminder didn't fire.
- */
-/**
- * Return the caller's push subscriptions with friendly device names parsed
- * from the user-agent string, plus a `here` flag for whichever subscription
- * matches the endpoint the caller passes in (so the UI can highlight "this device").
- *
- * Args: { hereEndpoint?: string }
- * Returns: { ok, devices: [{ endpoint, label, createdAt, here }] }
- */
 exports.listMyPushSubscriptions = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
   const uid = context.auth.uid;
@@ -6836,7 +5705,6 @@ exports.listMyPushSubscriptions = functions.https.onCall(async (data, context) =
   const snap = await db.collection('users').doc(uid).get();
   const subs = (snap.exists ? (snap.data().pushSubscriptions || []) : []).filter(Boolean);
 
-  // Parse a friendly device label from the user-agent string.
   function labelFromUA(ua) {
     ua = String(ua || '');
     let device = 'Unknown device';
@@ -6864,12 +5732,6 @@ exports.listMyPushSubscriptions = functions.https.onCall(async (data, context) =
   return { ok: true, devices };
 });
 
-/**
- * Remove one specific push subscription (by endpoint) from the caller's user doc.
- * Lets the user revoke a lost / old device's push without affecting other devices.
- *
- * Args: { endpoint: string }
- */
 exports.removePushSubscription = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
   const uid = context.auth.uid;
@@ -6886,12 +5748,6 @@ exports.removePushSubscription = functions.https.onCall(async (data, context) =>
   return { ok: true, removed: existing.length - filtered.length, remaining: filtered.length };
 });
 
-/**
- * Fire a test push to a single specific device (identified by its endpoint).
- * Lets the user verify each device individually from profile.
- *
- * Args: { endpoint: string }
- */
 exports.testPushToDevice = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
   const uid = context.auth.uid;
@@ -6923,12 +5779,6 @@ exports.testPushToDevice = functions.https.onCall(async (data, context) => {
   return { ok: result.sent > 0, sent: result.sent, pruned: result.pruned };
 });
 
-/**
- * Clear all of today's dedup keys for the caller. Useful when emails/SMSes
- * appear "already sent" in lastSentReminders but the user never received them
- * (Gmail spam, carrier filtering, etc.) — calling this lets the next cron
- * cycle re-fire reminders for today's remaining doses.
- */
 exports.resetTodayDedup = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
   const uid = context.auth.uid;
@@ -6952,15 +5802,6 @@ exports.resetTodayDedup = functions.https.onCall(async (data, context) => {
   return { ok: true, removed, count: removed.length, todayIso };
 });
 
-/**
- * Safer cleanup: remove all stale (non-today) dedup keys and any leftover
- * pre-channel-format keys that haven't been migrated yet.
- *
- * Does NOT touch today's keys, so this won't cause already-fired-today
- * reminders to re-fire and spam the user.
- *
- * Use this once after a major reminder-pipeline rewrite to clean up the doc.
- */
 exports.cleanStaleDedup = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
   const uid = context.auth.uid;
@@ -6982,18 +5823,15 @@ exports.cleanStaleDedup = functions.https.onCall(async (data, context) => {
     const isChannelKey = last === 'email' || last === 'sms' || last === 'push';
 
     if (isChannelKey) {
-      // New format. Date is second-to-last.
       const d = parts[parts.length - 2];
       if (isoDate.test(d) && d !== todayIso) {
         removedStale.push(key);
         delete lastSent[key];
       }
     } else if (isoDate.test(last)) {
-      // Legacy pre-channel format. Always remove.
       removedLegacy.push(key);
       delete lastSent[key];
     } else {
-      // Unrecognized shape — also remove.
       removedLegacy.push(key);
       delete lastSent[key];
     }
@@ -7032,8 +5870,6 @@ exports.dumpMyReminderDiagnostics = functions.https.onCall(async (data, context)
       doses: m.doses || {}
     }));
 
-  // Recent send attempts (last 100, newest first) — invaluable for debugging
-  // why a particular reminder didn't deliver.
   const auditSnap = await db.collection('users').doc(uid).collection('sendAuditLog')
     .orderBy('ts', 'desc').limit(100).get();
   const recentAttempts = auditSnap.docs.map(d => d.data());
@@ -7053,17 +5889,6 @@ exports.dumpMyReminderDiagnostics = functions.https.onCall(async (data, context)
   };
 });
 
-/**
- * Manual test-fire callable. Sends a reminder NOW to the caller, on every
- * channel they request, regardless of dedup or schedule. Returns a per-channel
- * result so we can see exactly which channels work end-to-end.
- *
- * Args (all optional):
- *   { channels: ['email','sms','push'],   // default: all channels the caller has set up
- *     medId: 'optional-medId-to-use-as-payload' }
- *
- * If no medId given, uses the caller's first non-deleted medication for content.
- */
 exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
@@ -7082,7 +5907,6 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
   const userTimezone = u.timezone || DEFAULT_TIME_ZONE;
   const subs = Array.isArray(u.pushSubscriptions) ? u.pushSubscriptions : [];
 
-  // Pick a medication for the test payload
   let med = null;
   if (data && data.medId) {
     const medSnap = await db.collection('users').doc(uid).collection('medications').doc(String(data.medId)).get();
@@ -7093,7 +5917,6 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
     const cand = medsSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).find(m => !m.deletedStatus);
     if (cand) med = cand;
   }
-  // Fall back to a synthetic med so we can still test
   if (!med) {
     med = { id: 'test-med', name: '[TEST] Sample Medication', dosage: '1 pill', schedules: [] };
   }
@@ -7120,7 +5943,6 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
     channels: {}
   };
 
-  // EMAIL
   if (requestedChannels.includes('email')) {
     if (!userEmail) {
       results.channels.email = { ok: false, reason: 'no-email-on-account' };
@@ -7152,7 +5974,6 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
     }
   }
 
-  // SMS
   if (requestedChannels.includes('sms')) {
     if (!userPhoneNumber) {
       results.channels.sms = { ok: false, reason: 'no-phone-on-account' };
@@ -7175,18 +5996,12 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
           reason: `manual test (sid=${sid || 'unknown'})`
         });
 
-        // Wait ~6s then poll Twilio for the actual delivery status. This catches
-        // the case where Twilio accepts the request but the carrier rejects it
-        // (TFV pending, blocked content, invalid number, etc.).
         let deliveryReport = null;
         if (sid) {
           await new Promise(r => setTimeout(r, 6000));
           deliveryReport = await getSmsDeliveryStatus(sid, userPhoneNumber);
         }
 
-        // Detect carrier rejection from the delivery report. Twilio uses
-        // status='failed'|'undelivered' and errorCode (e.g. 30007 = carrier
-        // filtered, 30003 = unreachable, 30005 = unknown destination).
         let carrierFailed = false;
         if (deliveryReport && !deliveryReport.error) {
           const status = String(deliveryReport.status || '').toLowerCase();
@@ -7195,16 +6010,10 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
           }
         }
 
-        // SPEC v2: NO fallback email when SMS is carrier-rejected on the test
-        // fire either — same rule as the cron pipeline. The user picked SMS;
-        // if the carrier blocked it, that's what we report. We do not auto-send
-        // an email behind their back.
-        // Populate `reason` so the UI doesn't say "reason=?" when SMS fails.
         const smsReason = carrierFailed
           ? `carrier-rejected (status=${deliveryReport && deliveryReport.status}, code=${deliveryReport && deliveryReport.code})`
           : (deliveryReport && deliveryReport.error ? 'no-delivery-report' : null);
 
-        // Surface raw message metadata to the caller so they can see Twilio's view
         results.channels.sms = {
           ok: !carrierFailed,
           reason: smsReason,
@@ -7233,7 +6042,6 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
     }
   }
 
-  // PUSH
   if (requestedChannels.includes('push')) {
     if (subs.length === 0) {
       results.channels.push = { ok: false, reason: 'no-subscriptions' };
@@ -7245,7 +6053,6 @@ exports.testFireReminder = functions.runWith({ timeoutSeconds: 60 }).https.onCal
           { ...med, _doseNumber: 1, _doseTime: time24, _isAlreadyTaken: false },
           time24, 'at_time', userTimezone, todayIso
         );
-        // Tag uniquely so the test push doesn't get coalesced with a real one
         payload.tag = `test-${Date.now()}`;
         payload.title = '[TEST] ' + payload.title;
         const r = await sendPushToSubscriptions(db, uid, subs, payload);

@@ -20,7 +20,7 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #000000;
         --muted-strong: #1a1a1a;
       }
@@ -64,7 +64,7 @@
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -285,7 +285,7 @@
       box-shadow: 0 6px 16px rgba(79,140,255,.25);
     }
 
-    /* Medication characteristics */
+    
     .med-traits {
       display: flex;
       flex-wrap: wrap;
@@ -411,14 +411,12 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Make globally available
     window.auth = auth;
     window.db = db;
     window.doc = doc;
     window.setDoc = setDoc;
     window.getDoc = getDoc;
 
-    // Format time display
     function formatTimeDisplay(timeString) {
       if (!timeString || timeString === 'no-time') return '';
       
@@ -439,7 +437,6 @@
       return `${displayHour}:${displayMinutes} ${period}`;
     }
 
-    // Format date display
     function formatDate(dateString) {
       const [year, month, day] = dateString.split('-').map(Number);
       const date = new Date(year, month - 1, day);
@@ -447,7 +444,6 @@
       return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     }
 
-    // Convert hex color to a readable color name
     function colorHexToName(hex) {
       if (!hex) return '';
       const r = parseInt(hex.slice(1,3), 16);
@@ -479,7 +475,6 @@
       return 'colored';
     }
 
-    // Render classification badges in the UI
     function renderTraits(cls) {
       const container = document.getElementById('med-traits');
       if (!cls || !container) return;
@@ -505,7 +500,6 @@
       }
     }
 
-    // Load and display medication info from URL parameters
     async function loadMedicationInfo() {
       const params = new URLSearchParams(window.location.search);
       const medicationName = params.get('medication');
@@ -520,13 +514,11 @@
         return;
       }
 
-      // Display medication name, dose number, and time
       const timeDisplay = time && time !== 'no-time' ? formatTimeDisplay(time) : '';
       const doseNameText = `${medicationName} - Dose #${doseNumber}${timeDisplay ? ` - ${timeDisplay}` : ''}`;
       document.getElementById('dose-name').textContent = doseNameText;
       document.getElementById('dose-date').textContent = formatDate(dateString);
 
-      // Store for later use
       window.currentMedication = {
         name: medicationName,
         doseNumber: parseInt(doseNumber),
@@ -535,7 +527,6 @@
         id: medId
       };
 
-      // Fetch medication doc to get classifications
       const user = auth.currentUser;
       if (user) {
         try {
@@ -550,11 +541,9 @@
         }
       }
 
-      // Load existing notes
       loadExistingNotes(medId, dateString, parseInt(doseNumber));
     }
 
-    // Load existing notes from Firebase
     async function loadExistingNotes(medId, dateString, doseNumber) {
       const user = auth.currentUser;
       if (!user) {
@@ -570,8 +559,6 @@
           const medData = medDoc.data();
           const notes = medData.notes || {};
           
-          // Check if there's a note for this date and dose
-          // Try new key format first (date_doseNumber), fall back to old format (date only)
           const doseKey = `${dateString}_${doseNumber}`;
           let noteData = notes[doseKey];
           if (!noteData && notes[dateString]) {
@@ -591,7 +578,6 @@
       }
     }
 
-    // Save notes to Firebase
     async function saveNotes() {
       const user = auth.currentUser;
       if (!user) {
@@ -620,7 +606,6 @@
         const medData = medDoc.data();
         const notes = medData.notes || {};
         
-        // Save note keyed by date_doseNumber to avoid multi-dose overwrites
         const doseKey = `${date}_${doseNumber}`;
         notes[doseKey] = [doseNumber, noteText, feelingRating];
 
@@ -630,10 +615,7 @@
 
         console.log(`[Medication-Action] Saved note for ${name} on ${date}, dose ${doseNumber}`);
         
-        // Don't change taken/not taken status here - that's handled by the "Taken"/"Not Taken" buttons
-        // Just save the notes and navigate back
 
-        // Navigate back to home
         window.location.href = 'home.html';
       } catch (error) {
         console.error('[Medication-Action] Error saving notes:', error);
@@ -641,7 +623,6 @@
       }
     }
 
-    // Wait for auth, then load info
     onAuthStateChanged(auth, (user) => {
       if (user) {
         loadMedicationInfo();
@@ -650,9 +631,7 @@
       }
     });
 
-    // Submit button handler
     document.addEventListener('DOMContentLoaded', () => {
-      // Close mobile menu when clicking on nav links
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
       sidebarLinks.forEach(link => {
@@ -661,7 +640,6 @@
         });
       });
 
-      // Submit button
       const submitBtn = document.getElementById('submit-btn');
       if (submitBtn) {
         submitBtn.addEventListener('click', async (e) => {

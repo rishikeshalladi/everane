@@ -1,4 +1,3 @@
-<!-- File: profile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,13 +25,13 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #020617;
         --muted-strong: #334155;
       }
     }
 
-    /* base */
+    
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
@@ -48,7 +47,7 @@
     }
     a { color: inherit; text-decoration: none; }
 
-    /* layout */
+    
     .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); position: relative; }
     .sidebar {
@@ -91,8 +90,8 @@
       transform: translateY(-1px);
       box-shadow: 0 5px 15px rgba(255, 107, 107, .25);
     }
-    /* Hamburger menu */
-    /* Hide checkbox but keep it focusable/clickable for the label (mobile Safari can break on display:none) */
+    
+    
     .menu-toggle {
       position: absolute;
       width: 1px;
@@ -233,11 +232,11 @@
       }
     }
 
-    /* headings */
+    
     h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
     h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
 
-    /* cards */
+    
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -325,7 +324,7 @@
     .input-wrap { position: relative; }
     .input-wrap input { padding-right: 3rem; }
 
-    /* Verification UI */
+    
     .verify-warning {
       font-size: 1rem;
       cursor: help;
@@ -367,7 +366,7 @@
 
     .actions { margin-top: 2rem; display: flex; justify-content: flex-end; }
 
-    /* buttons */
+    
     .btn {
       appearance: none; border: 1px solid transparent;
       border-radius: 12px; padding: .7rem 1rem;
@@ -407,7 +406,7 @@
     .msg.ok { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.2); }
     .msg.err { background: rgba(255, 107, 107, 0.1); color: var(--danger); border: 1px solid rgba(255, 107, 107, 0.2); }
 
-    /* Notification reminders dropdown */
+    
     .notification-reminders { position: relative; }
     .notification-dropdown { position: relative; display: inline-block; width: 100%; }
     .notification-dropdown-toggle {
@@ -501,7 +500,7 @@
     }
     .notification-selected-summary strong { color: var(--text); font-weight: 600; }
 
-    /* Email reminders dropdown (same styles as notification dropdown) */
+    
     .email-reminders-dropdown { position: relative; display: inline-block; width: 100%; }
     .email-reminders-dropdown-toggle {
       width: 100%; padding: 0.7rem 1rem; border-radius: 14px;
@@ -594,7 +593,7 @@
     }
     .email-reminders-selected-summary strong { color: var(--text); font-weight: 600; }
 
-    /* Error message styling - just text, no box */
+    
     .error-message { 
       color: var(--danger); 
       font-size: 0.9rem; 
@@ -604,7 +603,7 @@
 
     .full-width { grid-column: 1 / -1; }
 
-    /* modals */
+    
     .modal {
       display: none;
       position: fixed; inset: 0;
@@ -634,7 +633,7 @@
     .password-input-wrap { position: relative; margin-bottom: 1rem; }
     .password-input-wrap input { padding-right: 3rem; }
 
-    /* Aligned show/hide toggles */
+    
     .password-toggle {
       position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
       background: var(--brand); color: white; border: none; border-radius: 8px;
@@ -648,10 +647,10 @@
 
     .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
 
-    /* Reduce spacing between allergies and conditions */
+    
     .health-info-section .form-group:first-child { margin-bottom: 0.5rem; }
 
-    /* Toast (bottom-right) */
+    
     .toast-container { position: fixed; right: 1rem; bottom: 1rem; display: grid; gap: 0.5rem; z-index: 1100; }
     .toast {
       position: relative; background: var(--surface); color: var(--text);
@@ -664,7 +663,7 @@
     .toast-close:hover { color: var(--text); }
     @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* scrollbars */
+    
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-thumb {
       background: color-mix(in oklab, var(--surface) 80%, var(--border));
@@ -672,20 +671,20 @@
     }
     ::-webkit-scrollbar-track { background: transparent; }
     
-    /* Make calendar icons white */
+    
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator {
       filter: invert(1) opacity(.85);
       cursor: pointer;
     }
     
-    /* Better select dropdowns */
+    
     select, option { 
       background-color: var(--surface); 
       color: var(--text); 
     }
     
-    /* Mobile optimizations */
+    
     @media (max-width: 640px) {
       select {
         font-size: 16px !important;
@@ -825,19 +824,9 @@
       }
     }
 
-    /* ════════════════════════════════════════════════════════════════════════
-       MOBILE MINIMAL — additive only. Do NOT override the form layout or any
-       section card styling. The original styles above already handle desktop
-       AND mobile compactly. This block ONLY:
-         1. Hides the ⋯ button on desktop (we don't use it)
-         2. On mobile: shows the ⋯ button, hides Help/Replay/Sign Out/header-Save
-         3. On mobile: shows a working fixed-position popover for the ⋯ menu
-         4. On mobile: shows a sticky Save Changes bar at the bottom
-         5. Mobile-safe modal sizing (Add Phone, SMS Consent, FAQ, etc.)
-       Everything else is left to the existing styles.
-       ════════════════════════════════════════════════════════════════════════ */
+    
 
-    /* ── ⋯ button + sheet: hidden on desktop ─────────────────────────── */
+    
     #profile-more-btn,
     .profile-more-btn,
     #profile-more-sheet,
@@ -847,7 +836,7 @@
     }
 
     @media (max-width: 720px) {
-      /* ⋯ button visible on mobile */
+      
       #profile-more-btn,
       .profile-more-btn {
         display: inline-flex !important;
@@ -862,11 +851,11 @@
         font-weight: 800 !important;
         flex-shrink: 0;
       }
-      /* Hide secondary header buttons + the header Save Changes (sticky bar covers it) */
+      
       .profile-header-btns .profile-secondary-btn { display: none !important; }
       .profile-header-btns #header-save-btn { display: none !important; }
 
-      /* Popover sheet — fixed-position so it's never clipped by ancestors */
+      
       #profile-more-sheet,
       .profile-more-sheet {
         position: fixed !important;
@@ -911,7 +900,7 @@
         .profile-more-sheet { box-shadow: 0 18px 40px rgba(0,0,0,0.55); }
       }
 
-      /* Sticky Save bar */
+      
       .profile-save-bar {
         position: fixed;
         left: 0; right: 0; bottom: 0;
@@ -930,13 +919,13 @@
         color: #fff;
         border: 1px solid var(--brand);
       }
-      /* Reserve scroll space at the bottom so content clears the sticky bar */
+      
       .profile-container,
       .content {
         padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
       }
 
-      /* iOS no-focus-zoom on inputs */
+      
       .form-group input[type="text"],
       .form-group input[type="email"],
       .form-group input[type="tel"],
@@ -948,7 +937,7 @@
         font-size: 16px !important;
       }
 
-      /* Modal sizing */
+      
       .modal { padding: 0.6rem !important; }
       .modal .modal-content,
       .modal-content {
@@ -972,7 +961,7 @@
       #sms-consent-modal .modal-content ul li { margin-bottom: 0.15rem; font-size: 0.85rem; }
       #sms-consent-modal label[for="sms-consent-checkbox"] { font-size: 0.85rem !important; }
 
-      /* "Add a phone number" button — full width on mobile */
+      
       #add-phone-btn { width: 100%; }
     }
 
@@ -1012,13 +1001,9 @@
         <div class="profile-header-btns">
           <button type="button" id="header-save-btn" class="btn btn-primary">Save Changes</button>
           <button type="button" id="header-sign-out-btn" class="btn btn-danger profile-secondary-btn">Sign Out</button>
-          <!-- Mobile-only "More⋯" toggle. Hidden on desktop via CSS. -->
           <button type="button" id="profile-more-btn" class="btn btn-secondary profile-more-btn" aria-haspopup="true" aria-expanded="false" aria-label="More options">⋯</button>
         </div>
       </div>
-      <!-- Mobile-only popover. Hidden on desktop and when not toggled. The
-           actual Sign Out click is forwarded to the original button so its
-           existing handler keeps working. -->
       <div id="profile-more-sheet" class="profile-more-sheet" role="menu" aria-hidden="true">
         <button type="button" class="profile-more-sheet-item profile-more-sheet-item--danger" data-forwards-to="header-sign-out-btn">Sign out</button>
       </div>
@@ -1037,7 +1022,6 @@
                 <input id="name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
                 <div id="name-error" class="error-message"></div>
               </div>
-              <!-- Phone Number section -->
               <div class="form-group">
                 <label for="phone">Phone Number <small>(optional)</small></label>
                 <div id="phone-display-container">
@@ -1116,13 +1100,10 @@
     </div>
   </div>
 
-  <!-- Sticky bottom Save Changes bar (mobile only, shown via CSS).
-       Forwards click to the existing header save button. -->
   <div id="profile-save-bar" class="profile-save-bar">
     <button type="button" class="btn btn-primary" id="profile-save-bar-btn">Save Changes</button>
   </div>
 
-  <!-- Email Verification Modal -->
   <div id="email-verification-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="email-verify-title">
     <div class="modal-content">
       <button class="modal-close" onclick="closeEmailVerification()" aria-label="Close">&times;</button>
@@ -1138,7 +1119,6 @@
       </div>
       </div>
 
-  <!-- Phone Verification Modal -->
   <div id="phone-verification-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="phone-verify-title">
     <div class="modal-content">
       <button class="modal-close" onclick="closePhoneVerification()" aria-label="Close">&times;</button>
@@ -1161,10 +1141,6 @@
     </div>
   </div>
 
-  <!-- Add Phone Number Modal -->
-  <!-- SMS Consent Modal — shown BEFORE add-phone-modal. Required for Twilio
-       Toll-Free Verification: the user must explicitly opt in to SMS at the
-       moment of providing their number. -->
   <div id="sms-consent-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sms-consent-title">
     <div class="modal-content" style="max-width: 560px;">
       <button class="modal-close" id="sms-consent-close" aria-label="Close">&times;</button>
@@ -1271,7 +1247,6 @@
   </div>
 
   <script>
-    // Close mobile menu when clicking on nav links
     document.addEventListener('DOMContentLoaded', () => {
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
@@ -1285,20 +1260,16 @@
       }
     });
     
-    /* Why: ensure password modal opens clean with no stale input/errors */
 
-    /* Why: sync button a11y state with input visibility */
     function togglePassword(inputId, btn) {
       const input = document.getElementById(inputId);
       const visible = input.type === 'text';
       input.type = visible ? 'password' : 'text';
       if (btn) {
         if (visible) {
-          // Show password icon (eye open)
           btn.textContent = '👁️';
           btn.setAttribute('aria-label', 'Show password');
         } else {
-          // Hide password icon (crossed out eye)
           btn.textContent = '🙈';
           btn.setAttribute('aria-label', 'Hide password');
         }
@@ -1306,7 +1277,6 @@
       }
     }
 
-    // Toast helper (bottom-right professional toast)
     function showToast(titleText) {
       let container = document.getElementById('toast-container');
       if (!container) {
@@ -1328,11 +1298,10 @@
       };
       toast.querySelector('.toast-close').addEventListener('click', remove);
       container.appendChild(toast);
-      setTimeout(remove, 5000); // auto-dismiss after 10s
+      setTimeout(remove, 5000);
     }
 
 
-    // Email reminders helpers
     let emailRemindersDropdownInitialized = false;
 
     function emailRemindersCheckboxes() {
@@ -1420,8 +1389,6 @@
     };
 
 
-    // Load profile data from localStorage
-    // Helper function to update phone display
     window.updatePhoneDisplay = function(phoneValue) {
       const phoneInput = document.getElementById('phone');
       const addPhoneBtn = document.getElementById('add-phone-btn');
@@ -1441,9 +1408,7 @@
       if (profileData.name) document.getElementById('name').value = profileData.name;
       if (profileData.password) document.getElementById('password').value = profileData.password;
       
-      // Update phone display
       updatePhoneDisplay(profileData.phone);
-      // Render the SMS consent footnote (Twilio TFV: surface explicit consent date).
       if (window.renderSmsConsentNote) window.renderSmsConsentNote(profileData.smsConsent || null);
 
       if (profileData.relation) {
@@ -1451,7 +1416,6 @@
         if (relationSelect) relationSelect.value = profileData.relation;
       }
       
-      // Timezone: use stored value from Firestore if available, otherwise keep browser-detected
       const tzField = document.getElementById('tz');
       if (tzField && profileData.timezone && profileData.timezone.trim()) {
         tzField.value = profileData.timezone;
@@ -1461,14 +1425,13 @@
       }
     }
 
-    // Validation functions
     function validateEmail(email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       return emailRegex.test(email);
     }
 
     function validatePhone(phone) {
-      if (!phone || phone.trim() === '') return true; // Phone is optional
+      if (!phone || phone.trim() === '') return true;
       const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
       const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
       return phoneRegex.test(cleanPhone);
@@ -1496,7 +1459,6 @@
     }
 
 
-    // Real-time validation - clear errors when user starts typing
     function setupRealTimeValidation() {
       const nameInput = document.getElementById('name');
 
@@ -1534,9 +1496,7 @@
 
     window.firebaseDataLoaded = false;
 
-    // ============ ADD PHONE NUMBER MODAL ============
     
-    // Open "Add Phone" modal
     window.openAddPhoneModal = function() {
       const modal = document.getElementById('add-phone-modal');
       if (!modal) {
@@ -1545,7 +1505,6 @@
       }
       modal.classList.add('show');
       
-      // Reset form
       const phoneNumberInput = document.getElementById('add-phone-number');
       const phoneCodeInput = document.getElementById('add-phone-code');
       const codeSection = document.getElementById('add-phone-code-section');
@@ -1572,7 +1531,6 @@
       }
     };
 
-    // Close "Add Phone" modal
     window.closeAddPhoneModal = function() {
       const modal = document.getElementById('add-phone-modal');
       if (modal) {
@@ -1581,10 +1539,8 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Don't load profile data immediately - wait for Firebase
       setupRealTimeValidation();
       
-      // Add event listener for "Add a phone number" button
       const addPhoneBtn = document.getElementById('add-phone-btn');
       if (addPhoneBtn) {
         addPhoneBtn.addEventListener('click', () => {
@@ -1601,12 +1557,10 @@
   </script>
 
   <script type="module">
-    // Import Firebase SDKs
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut, sendEmailVerification } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
       authDomain: "medtracker-8c467.firebaseapp.com",
@@ -1617,14 +1571,10 @@
       measurementId: "G-GGHXPT2Q5L"
     };
 
-    // Initialize Firebase
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // ═════════════════════════════════════════════════════════════════════
-    // SMS Consent Gate (Twilio Toll-Free Verification requirement)
-    // ═════════════════════════════════════════════════════════════════════
     const SMS_CONSENT_VERSION = 'v1';
 
     async function userHasValidSmsConsent() {
@@ -1752,9 +1702,7 @@
       }
     };
 
-    // Setup header buttons
     document.addEventListener('DOMContentLoaded', () => {
-      // Header save button triggers form submit
       const headerSaveBtn = document.getElementById('header-save-btn');
       if (headerSaveBtn) {
         headerSaveBtn.addEventListener('click', () => {
@@ -1762,7 +1710,6 @@
         });
       }
 
-      // Timezone — detect browser timezone as fallback only (Firestore value takes priority)
       const tzEl = document.getElementById('tz');
       if (tzEl) {
         try { tzEl.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { tzEl.value = ''; }
@@ -1773,11 +1720,9 @@
         signOutBtn.addEventListener('click', async () => {
           try {
             await signOut(auth);
-            // Clear localStorage
             localStorage.removeItem('userProfile');
             localStorage.removeItem('medications');
             localStorage.removeItem('historyMeds');
-            // Clear all notes
             const keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
               const key = localStorage.key(i);
@@ -1787,7 +1732,6 @@
             }
             keysToRemove.forEach(key => localStorage.removeItem(key));
             
-            // Redirect to login
             window.location.href = '../login.html';
           } catch (error) {
             console.error('Error signing out:', error);
@@ -1797,14 +1741,12 @@
       }
     });
 
-    // Check if user is authenticated and load their profile
     let authChecked = false;
     
     onAuthStateChanged(auth, async (user) => {
       authChecked = true;
       
       if (user) {
-        // User is signed in, load their profile from Firestore
         try {
           const userDocRef = doc(db, "users", user.uid);
           const userDoc = await getDoc(userDocRef);
@@ -1812,22 +1754,18 @@
           if (userDoc.exists()) {
             const profileData = userDoc.data();
             
-            // Update localStorage with Firebase data + preserve password
             const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
             const mergedProfile = {...profileData, password: currentProfile.password};
             localStorage.setItem('userProfile', JSON.stringify(mergedProfile));
             localStorage.setItem('userId', user.uid);
             localStorage.setItem('userEmail', profileData.email);
             
-            // Mark that Firebase data has been loaded
             window.firebaseDataLoaded = true;
             
-            // Load the form with Firebase data
             if (window.loadProfileData) {
               window.loadProfileData();
             }
             
-            // Update phone display based on Firebase data
             if (window.updatePhoneDisplay) {
               window.updatePhoneDisplay(profileData.phone);
             }
@@ -1835,40 +1773,24 @@
               window.renderSmsConsentNote(profileData.smsConsent || null);
             }
           } else {
-            // No profile in Firestore - this shouldn't happen if registration worked
             console.warn('No profile found in Firestore for user:', user.uid);
             window.firebaseDataLoaded = true;
             if (window.loadProfileData) {
               window.loadProfileData();
             }
-            // Phone display update - COMMENTED OUT
-            /*
-            if (window.updatePhoneDisplay) {
-              window.updatePhoneDisplay(null);
-            }
-            */
           }
         } catch (error) {
           console.error('Error loading profile from Firebase:', error);
-          // Still try to load from localStorage
           window.firebaseDataLoaded = true;
           if (window.loadProfileData) {
             window.loadProfileData();
           }
-          // Phone display update - COMMENTED OUT
-          /*
-          if (window.updatePhoneDisplay) {
-            window.updatePhoneDisplay(null);
-          }
-          */
         }
       } else {
-        // No user signed in, redirect to login
         window.location.href = '../login.html';
       }
     });
 
-    // Fallback: if auth state doesn't change within 2 seconds, check localStorage
     setTimeout(() => {
       if (!authChecked) {
         console.log('Auth state not determined, checking localStorage...');
@@ -1888,9 +1810,7 @@
       }
     }, 2000);
 
-    // Save profile data to Firebase
     window.saveProfileData = async function() {
-      // Use the original validation logic
       if (window.clearValidationErrors) {
         window.clearValidationErrors();
       }
@@ -1916,7 +1836,6 @@
       
       let hasErrors = false;
 
-      // Validate required fields
       if (!name) {
         if (window.showValidationError) {
           window.showValidationError('name-error', 'Name is required');
@@ -1937,12 +1856,10 @@
         return;
       }
 
-      // Collect caregiver profile data
       const relationSelect = document.getElementById('relation');
       const relation = relationSelect ? relationSelect.value : '';
       const emailReminders = window.getSelectedEmailReminders ? window.getSelectedEmailReminders() : [];
       
-      // Get existing user data from Firestore to preserve email and phone
       const user = auth.currentUser;
       if (!user) {
         if (message) {
@@ -1953,18 +1870,15 @@
       }
 
       try {
-        // Show loading
         if (message) {
           message.className = 'msg ok';
           message.textContent = 'Saving...';
         }
 
-        // Get existing user data
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         const existingData = userDoc.exists() ? userDoc.data() : {};
         
-        // Only update name, relation, and email_reminders (for caregivers)
         const firestoreData = {
           ...existingData,
           name: name,
@@ -1972,10 +1886,8 @@
           email_reminders: emailReminders
         };
         
-        // Save to Firestore
         await setDoc(userDocRef, firestoreData, { merge: true });
         
-        // Also update localStorage
         const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
         const updatedProfile = {
           ...currentProfile,
@@ -2008,16 +1920,13 @@
       }
     };
 
-    // ============ EMAIL & PHONE VERIFICATION ============
     
     let emailResendTimer = null;
     let phoneResendTimer = null;
     let phoneVerificationId = null;
     let recaptchaVerifier = null;
 
-    // Verification functionality removed - email and phone are now uneditable
 
-    // EMAIL VERIFICATION
     window.openEmailVerification = async function() {
       const modal = document.getElementById('email-verification-modal');
       const message = document.getElementById('email-verify-message');
@@ -2027,14 +1936,11 @@
       
       modal.classList.add('show');
       
-      // Update timer button status when modal opens
       updateEmailResendButton();
       
-      // Check if timer is already running (user already sent email)
       const endTime = parseInt(localStorage.getItem('emailResendEndTime') || '0');
       const now = Date.now();
       if (endTime > now) {
-        // Timer is still running, don't send another email
         message.className = 'msg ok';
         message.textContent = 'Verification email already sent. Check your inbox and spam folder. Click the link, then click "Check Verification Status" below.';
         return;
@@ -2076,7 +1982,6 @@
         if (user.emailVerified) {
           message.textContent = 'Email verified successfully! ✅';
           document.getElementById('email-verify-btn').style.display = 'none';
-          // Verification functionality removed
           
           setTimeout(() => {
             closeEmailVerification();
@@ -2112,7 +2017,7 @@
     };
 
     function startEmailResendTimer() {
-      const endTime = Date.now() + 60000; // 60 seconds from now
+      const endTime = Date.now() + 60000;
       localStorage.setItem('emailResendEndTime', endTime.toString());
       updateEmailResendButton();
     }
@@ -2129,10 +2034,8 @@
         btn.disabled = true;
         btn.textContent = `Resend Email (${timeLeft}s)`;
         
-        // Clear existing timer
         if (emailResendTimer) clearInterval(emailResendTimer);
         
-        // Update every second
         emailResendTimer = setInterval(() => {
           updateEmailResendButton();
         }, 1000);
@@ -2144,213 +2047,12 @@
       }
     }
     
-    // Check timers on page load
     document.addEventListener('DOMContentLoaded', () => {
       updateEmailResendButton();
       updatePhoneResendButton();
     });
 
-    // PHONE VERIFICATION - TEMPORARILY COMMENTED OUT
-    /*
-    window.openPhoneVerification = async function() {
-      const modal = document.getElementById('phone-verification-modal');
-      const message = document.getElementById('phone-verify-message');
-      const codeInput = document.getElementById('phone-code');
-      const phoneInput = document.getElementById('phone').value.trim();
-      
-      if (!phoneInput) {
-        alert('Please enter a phone number first');
-        return;
-      }
-      
-      // Ensure phone number is in E.164 format (+1234567890)
-      let formattedPhone = phoneInput.replace(/\D/g, '');
-      if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
-        formattedPhone = '1' + formattedPhone;
-      }
-      formattedPhone = '+' + formattedPhone;
-      
-      codeInput.value = '';
-      message.className = 'msg';
-      message.textContent = '';
-      
-      modal.classList.add('show');
-      
-      // Update timer button status when modal opens
-      updatePhoneResendButton();
-      
-      // Check if timer is already running (user already sent SMS)
-      const endTime = parseInt(localStorage.getItem('phoneResendEndTime') || '0');
-      const now = Date.now();
-      if (endTime > now && phoneVerificationId) {
-        // Timer is still running and we have a verification ID
-        message.className = 'msg ok';
-        message.textContent = 'Verification code already sent. Check your SMS messages.';
-        return;
-      }
-      
-      try {
-        message.className = 'msg ok';
-        message.textContent = 'Initializing verification...';
-        
-        const user = auth.currentUser;
-        if (!user) {
-          throw new Error('Not signed in');
-        }
-        
-        // Initialize reCAPTCHA if not already done
-        if (!recaptchaVerifier) {
-          recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'normal',
-            callback: () => {
-              console.log('reCAPTCHA solved');
-            }
-          });
-          await recaptchaVerifier.render();
-        }
-        
-        // Send verification code
-        const phoneProvider = new PhoneAuthProvider(auth);
-        phoneVerificationId = await phoneProvider.verifyPhoneNumber(formattedPhone, recaptchaVerifier);
-        
-        message.textContent = 'Verification code sent via SMS!';
-        startPhoneResendTimer();
-      } catch (error) {
-        console.error('Phone verification error:', error);
-        message.className = 'msg err';
-        message.textContent = 'Error: ' + error.message;
-        
-        // Reset reCAPTCHA on error
-        if (recaptchaVerifier) {
-          recaptchaVerifier.clear();
-          recaptchaVerifier = null;
-        }
-      }
-    };
 
-    window.closePhoneVerification = function() {
-      document.getElementById('phone-verification-modal').classList.remove('show');
-      if (phoneResendTimer) clearInterval(phoneResendTimer);
-    };
-
-    window.verifyPhoneCode = async function() {
-      const message = document.getElementById('phone-verify-message');
-      const codeInput = document.getElementById('phone-code');
-      const code = codeInput.value.trim();
-      
-      if (!code || code.length !== 6) {
-        message.className = 'msg err';
-        message.textContent = 'Please enter a valid 6-digit code';
-        return;
-      }
-      
-      try {
-        message.className = 'msg ok';
-        message.textContent = 'Verifying code...';
-        
-        const user = auth.currentUser;
-        const credential = PhoneAuthProvider.credential(phoneVerificationId, code);
-        
-        // Link phone credential to user account
-        await linkWithCredential(user, credential);
-        
-        // Update Firestore to mark phone as verified
-        const userDocRef = doc(db, "users", user.uid);
-        await setDoc(userDocRef, { phoneVerified: true }, { merge: true });
-        
-        message.textContent = 'Phone verified successfully! ✅';
-        document.getElementById('phone-verify-btn').style.display = 'none';
-        checkVerificationStatus();
-        
-        setTimeout(() => {
-          closePhoneVerification();
-        }, 1500);
-      } catch (error) {
-        console.error('Phone verification error:', error);
-        message.className = 'msg err';
-        
-        if (error.code === 'auth/invalid-verification-code') {
-          message.textContent = 'Invalid code. Please try again.';
-        } else if (error.code === 'auth/code-expired') {
-          message.textContent = 'Code expired. Please request a new one.';
-        } else {
-          message.textContent = 'Error: ' + error.message;
-        }
-      }
-    };
-
-    window.resendPhoneCode = async function() {
-      const message = document.getElementById('phone-verify-message');
-      const phoneInput = document.getElementById('phone').value.trim();
-      
-      let formattedPhone = phoneInput.replace(/\D/g, '');
-      if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
-        formattedPhone = '1' + formattedPhone;
-      }
-      formattedPhone = '+' + formattedPhone;
-      
-      try {
-        message.className = 'msg ok';
-        message.textContent = 'Sending new code...';
-        
-        // Reset reCAPTCHA
-        if (recaptchaVerifier) {
-          recaptchaVerifier.clear();
-          recaptchaVerifier = null;
-        }
-        
-        recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'normal'
-        });
-        await recaptchaVerifier.render();
-        
-        const phoneProvider = new PhoneAuthProvider(auth);
-        phoneVerificationId = await phoneProvider.verifyPhoneNumber(formattedPhone, recaptchaVerifier);
-        
-        message.textContent = 'New verification code sent!';
-        startPhoneResendTimer();
-      } catch (error) {
-        console.error('Resend error:', error);
-        message.className = 'msg err';
-        message.textContent = 'Error: ' + error.message;
-      }
-    };
-
-    function startPhoneResendTimer() {
-      const endTime = Date.now() + 60000; // 60 seconds from now
-      localStorage.setItem('phoneResendEndTime', endTime.toString());
-      updatePhoneResendButton();
-    }
-    
-    function updatePhoneResendButton() {
-      const btn = document.getElementById('phone-resend-btn');
-      if (!btn) return;
-      
-      const endTime = parseInt(localStorage.getItem('phoneResendEndTime') || '0');
-      const now = Date.now();
-      const timeLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
-      
-      if (timeLeft > 0) {
-        btn.disabled = true;
-        btn.textContent = `Resend Code (${timeLeft}s)`;
-        
-        // Clear existing timer
-        if (phoneResendTimer) clearInterval(phoneResendTimer);
-        
-        // Update every second
-        phoneResendTimer = setInterval(() => {
-          updatePhoneResendButton();
-        }, 1000);
-      } else {
-        if (phoneResendTimer) clearInterval(phoneResendTimer);
-        btn.disabled = false;
-        btn.textContent = 'Resend Code';
-        localStorage.removeItem('phoneResendEndTime');
-      }
-    }
-    */
-
-    // Phone number formatting for add phone modal
     const addPhoneInput = document.getElementById('add-phone-number');
     if (addPhoneInput) {
       addPhoneInput.addEventListener('input', (e) => {
@@ -2372,7 +2074,6 @@
       });
     }
     
-    // Send phone code button
     const addPhoneSendCodeBtn = document.getElementById('add-phone-send-code');
     console.log('[Phone] Send Code button found:', !!addPhoneSendCodeBtn);
     if (addPhoneSendCodeBtn) {
@@ -2404,7 +2105,6 @@
           addPhoneSendCodeBtn.textContent = 'Sending...';
 
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendPhoneVerificationCode';
-          // This endpoint now requires auth (it spends real money on Twilio).
           const phoneIdToken = await auth.currentUser.getIdToken();
           const response = await fetch(functionUrl, {
             method: 'POST',
@@ -2437,7 +2137,6 @@
       });
     }
     
-    // Verify phone code button
     const addPhoneVerifyCodeBtn = document.getElementById('add-phone-verify-code');
     if (addPhoneVerifyCodeBtn) {
       addPhoneVerifyCodeBtn.addEventListener('click', async () => {
@@ -2454,20 +2153,17 @@
           document.getElementById('add-phone-message').className = 'msg';
           document.getElementById('add-phone-message').textContent = 'Verifying code...';
           
-          // Verify code with Cloud Function
           const user = auth.currentUser;
           if (!user) {
             throw new Error('Not signed in');
           }
           
-          // Get phone number
           const phoneInput = document.getElementById('add-phone-number');
           const phoneDigits = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
           const countryCode = document.getElementById('add-phone-country-code').value;
           const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
           const fullPhoneNumber = formattedCountryCode + phoneDigits;
           
-          // Call Cloud Function to verify code
           const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyPhoneCode';
           const response = await fetch(functionUrl, {
             method: 'POST',
@@ -2487,19 +2183,16 @@
             throw new Error(result.error || 'Failed to verify code');
           }
           
-          // Update Firestore profile (phoneVerified will be set by the function, but we'll also set it here)
           const userDocRef = doc(db, "users", user.uid);
           await updateDoc(userDocRef, { 
             phone: fullPhoneNumber,
             phoneVerified: true
           });
           
-          // Update localStorage
           const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
           currentProfile.phone = fullPhoneNumber;
           localStorage.setItem('userProfile', JSON.stringify(currentProfile));
           
-          // Update UI
           if (window.updatePhoneDisplay) {
             window.updatePhoneDisplay(fullPhoneNumber);
           }
@@ -2507,7 +2200,6 @@
           document.getElementById('add-phone-message').className = 'msg ok';
           document.getElementById('add-phone-message').textContent = 'Phone number added successfully!';
           
-          // Close modal after 1.5 seconds
           setTimeout(() => {
             window.closeAddPhoneModal();
           }, 1500);
@@ -2530,7 +2222,6 @@
 
   </script>
 
-  <!-- Help Modal with Canva Embed -->
   <div id="help-modal" class="help-modal">
     <div class="help-modal-content">
       <button class="help-modal-close" id="close-help-modal">×</button>
@@ -2584,7 +2275,7 @@
   </div>
 
   <style>
-    /* Help Modal Styles */
+    
     .help-modal {
       display: none;
       position: fixed;
@@ -2790,7 +2481,7 @@
       height: 20px;
     }
 
-    /* Mobile Responsive */
+    
     @media (max-width: 768px) {
       .help-modal-content {
         width: 90vw;
@@ -2874,7 +2565,6 @@
   </style>
 
   <script>
-    // Help modal logic for profile page
     document.addEventListener('DOMContentLoaded', function() {
       const helpBtn = document.getElementById('open-help-modal-profile');
       const helpModal = document.getElementById('help-modal');
@@ -2885,7 +2575,6 @@
         return;
       }
 
-      // Slideshow navigation - declare variables first
       let currentSlide = 0;
       const totalSlides = 10;
       const slides = document.querySelectorAll('.slide');
@@ -2895,7 +2584,6 @@
 
       function openHelpModal() {
         helpModal.classList.add('show');
-        // Reset to first slide when opening
         currentSlide = 0;
         updateSlideshow();
       }
@@ -2905,7 +2593,6 @@
       }
 
       function updateSlideshow() {
-        // Update slide visibility
         slides.forEach((slide, index) => {
           if (index === currentSlide) {
             slide.classList.add('active');
@@ -2914,7 +2601,6 @@
           }
         });
 
-        // Show/hide navigation buttons
         if (currentSlide === 0) {
           navLeft.style.display = 'none';
         } else {
@@ -2957,7 +2643,6 @@
         });
       }
 
-      // Initialize slideshow and preload images
       const slideImages = document.querySelectorAll('.slide-image');
       slideImages.forEach((img, index) => {
         img.onerror = function() {
@@ -2971,7 +2656,6 @@
       
       updateSlideshow();
 
-      // Event listeners
       if (helpBtn) {
         console.log('[Profile] Help button found, attaching click listener');
         helpBtn.addEventListener('click', (e) => {
@@ -2985,14 +2669,12 @@
       }
       if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
       
-      // Close modal on background click
       helpModal.addEventListener('click', (e) => {
         if (e.target === helpModal) {
           closeHelpModal();
         }
       });
 
-      // Close modal on Escape key
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && helpModal.classList.contains('show')) {
           closeHelpModal();
@@ -3001,7 +2683,6 @@
     });
   </script>
 
-  <!-- Mobile UI helpers: More⋯ menu + sticky save bar. -->
   <script>
     (function () {
       const moreBtn = document.getElementById('profile-more-btn');

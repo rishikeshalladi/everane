@@ -1,4 +1,3 @@
-<!-- File: logindoctor.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -63,7 +62,7 @@
 
     .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem)}
 
-    /* Navbar */
+    
     .navbar{
       position:sticky;top:0;z-index:100;
       backdrop-filter:saturate(180%) blur(16px);
@@ -89,20 +88,20 @@
     .auth-area a{color:var(--muted);font-size:.95rem;font-weight:500;padding:.5rem .75rem;border-radius:var(--radius-xs);transition:color .2s var(--ease)}
     .auth-area a:hover{color:var(--text)}
 
-    /* Buttons */
+    
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1rem;border-radius:12px;border:1px solid transparent;cursor:pointer;transition:transform .04s ease, background-color .2s ease}
     .btn:active{transform:translateY(1px)}
     .btn-primary{background:linear-gradient(180deg, var(--brand), var(--brand-600));color:#fff;box-shadow:var(--shadow)}
     .btn-primary:hover{background:linear-gradient(180deg, var(--brand-600), var(--brand-700))}
     .btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 
-    /* Page */
+    
     main{max-width:440px;margin:clamp(3rem,8vw,5rem) auto;padding:0 1rem}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.25rem}
     h1{font-size:clamp(1.6rem,3.5vw,2rem);line-height:1.2;margin-bottom:.5rem}
     p.lead{color:var(--muted);margin-bottom:1rem}
 
-    /* Doctor badge */
+    
     .doctor-badge{
       display:inline-flex;align-items:center;gap:.4rem;
       background:linear-gradient(135deg, rgba(79,140,255,0.12), rgba(125,226,209,0.12));
@@ -112,7 +111,7 @@
       margin-bottom:1rem;
     }
 
-    /* Form */
+    
     .field{margin-top:.95rem}
     label{display:block;margin-bottom:.35rem;color:var(--muted)}
     .input-wrap{position:relative}
@@ -133,7 +132,7 @@
     .msg.err{color:var(--danger);font-weight:600}
     .msg.ok{color:var(--accent);font-weight:600}
 
-    /* Hamburger */
+    
     .hamburger{display:none;align-items:center;justify-content:center;background:none;border:1px solid var(--border);border-radius:var(--radius-xs);padding:.55rem;cursor:pointer;color:var(--text)}
     .hamburger svg{width:22px;height:22px}
     @media (max-width:900px){
@@ -199,7 +198,6 @@
   <script>
     const DOCTOR_LOGIN_URL = 'https://us-central1-medtracker-8c467.cloudfunctions.net/doctorLogin';
 
-    // Toggle password visibility
     const pwInput = document.getElementById('doc-pw');
     const eyeOpen = document.getElementById('eye-open');
     const eyeClosed = document.getElementById('eye-closed');
@@ -215,7 +213,6 @@
       }
     });
 
-    // Handle form submit
     const form = document.getElementById('doctor-form');
     const msg = document.getElementById('form-msg');
     const loginBtn = document.getElementById('login-btn');
@@ -269,7 +266,6 @@
           return;
         }
 
-        // Success — store session with medications and redirect
         sessionStorage.setItem('doctorSession', JSON.stringify({
           uid: data.uid,
           doctorToken: data.doctorToken || '',

@@ -7,7 +7,7 @@
   <title>Everane — Tutorial Popup</title>
 
   <style>
-    /* ----- Theme (matches your Everane vibe) ----- */
+    
     :root{
       --bg:#0b1020;
       --surface:#0f1629;
@@ -49,7 +49,7 @@
     h1{ margin:0 0 8px; font-size: clamp(1.4rem, 3vw, 1.9rem); }
     p{ margin:0 0 18px; color: var(--muted); line-height:1.6; }
 
-    /* ----- Button ----- */
+    
     .btn{
       appearance:none;
       border: 1px solid transparent;
@@ -69,7 +69,7 @@
     .btn:hover{ filter: brightness(1.03); }
     .btn span.icon{ font-size: 1.05rem; }
 
-    /* ----- Overlay ----- */
+    
     .tutorial-overlay{
       position: fixed;
       inset: 0;
@@ -77,7 +77,7 @@
       display: none;
       z-index: 5000;
 
-      /* baseline: bottom sheet vibe */
+      
       align-items: flex-end;
       justify-content: center;
 
@@ -85,12 +85,12 @@
     }
     .tutorial-overlay.show{ display:flex; }
 
-    /* ----- Modal (NOT full screen) ----- */
+    
     .tutorial-modal{
       position: relative;
       width: min(980px, 96vw);
 
-      /* Keep space around modal on all devices */
+      
       max-height: min(78vh, 760px);
 
       background: var(--surface);
@@ -108,10 +108,10 @@
       opacity: 1;
     }
 
-    /* Make it feel centered on desktop/tablet */
+    
     @media (min-width: 700px){
       .tutorial-overlay{
-        align-items: center; /* center modal instead of bottom sheet */
+        align-items: center; 
         padding: 18px;
       }
       .tutorial-modal{
@@ -119,7 +119,7 @@
       }
     }
 
-    /* ----- Header (optional) ----- */
+    
     .tutorial-header{
       display:flex;
       align-items:center;
@@ -141,7 +141,7 @@
       color: var(--muted);
     }
 
-    /* Close button */
+    
     .tutorial-close{
       width: 40px;
       height: 40px;
@@ -159,17 +159,17 @@
     .tutorial-close:hover{ background: rgba(255,255,255,0.10); }
     .tutorial-close:active{ transform: translateY(1px); }
 
-    /* ----- Frame area ----- */
+    
     .tutorial-body{
       padding: 12px;
     }
 
-    /* Responsive iframe wrapper: keeps Canva aspect ratio and fits screen */
+    
     .tutorial-frame{
       width: 100%;
-      /* Canva carousel is close to 4:5 */
+      
       aspect-ratio: 4 / 5;
-      max-height: calc(min(78vh, 760px) - 120px); /* keep room for header/footer */
+      max-height: calc(min(78vh, 760px) - 120px); 
       border-radius: 14px;
       overflow: hidden;
       border: 1px solid var(--border);
@@ -183,28 +183,28 @@
       display:block;
     }
 
-    /* On wide screens, make it less tall so it doesn't dominate */
+    
     @media (min-width: 900px){
       .tutorial-frame{
-        aspect-ratio: 16 / 10; /* better fit on desktop, still readable */
+        aspect-ratio: 16 / 10; 
         max-height: calc(min(80vh, 820px) - 120px);
       }
     }
 
-    /* On small phones, keep it a "sheet" and avoid covering everything */
+    
     @media (max-width: 420px){
       .tutorial-modal{
         width: 96vw;
-        max-height: 72vh; /* leaves space above */
+        max-height: 72vh; 
         border-radius: 16px;
       }
       .tutorial-frame{
-        aspect-ratio: 4 / 6; /* taller for phone readability */
+        aspect-ratio: 4 / 6; 
         max-height: calc(72vh - 120px);
       }
     }
 
-    /* ----- Footer ----- */
+    
     .tutorial-footer{
       padding: 10px 14px 14px;
       border-top: 1px solid var(--border);
@@ -244,7 +244,6 @@
     </button>
   </div>
 
-  <!-- Overlay + Popup -->
   <div id="tutorialOverlay" class="tutorial-overlay" aria-hidden="true">
     <div class="tutorial-modal" role="dialog" aria-modal="true" aria-label="Tutorial Popup">
       <div class="tutorial-header">
@@ -288,9 +287,7 @@
     function openTutorial() {
       overlay.classList.add("show");
       overlay.setAttribute("aria-hidden", "false");
-      // prevent background scroll
       document.body.style.overflow = "hidden";
-      // focus close for accessibility
       closeBtn.focus();
     }
 
@@ -304,12 +301,10 @@
     openBtn.addEventListener("click", openTutorial);
     closeBtn.addEventListener("click", closeTutorial);
 
-    // Click outside modal to close
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) closeTutorial();
     });
 
-    // ESC to close
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && overlay.classList.contains("show")) {
         closeTutorial();

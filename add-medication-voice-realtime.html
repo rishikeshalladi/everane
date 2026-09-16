@@ -29,7 +29,7 @@
     }
     .container{max-width:var(--container); margin-inline:auto; padding-inline:clamp(1rem, 3vw, 2rem);}
 
-    /* Layout + sidebar (match add-medication-voice.html) */
+    
     .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
     .sidebar {
       position: fixed; inset: 0 auto 0 0; width: 240px;
@@ -61,7 +61,7 @@
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
 
-    /* Hamburger menu (match add-medication-voice.html) */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -267,7 +267,6 @@
       lastAssistantText: "", currentAiEl: null, currentAiText: "",
       finalizing: false, finalized: false, finalRedirected: false,
       forceAttempts: 0, openerSent: false,
-      // Med-image lookup state (set after first user transcript is parsed as a med name)
       medImageLookupDone: false, medImageData: null, medImageEl: null,
     };
 
@@ -283,9 +282,6 @@
 
     function safeJsonParse(s) { try { return JSON.parse(s); } catch { return null; } }
 
-    // ══════════════════════════════════════════════
-    // Validation / normalization (unchanged)
-    // ══════════════════════════════════════════════
 
     const DAY_NAMES = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
     const DAY_MAP = new Map([
@@ -323,7 +319,6 @@
       const n = { ...raw };
       if (typeof n.name === "string") n.name = n.name.trim();
       if (typeof n.dosage === "string") n.dosage = n.dosage.trim();
-      // Normalize reminderChannels — accept email, sms, push (any combination).
       const VALID_CH = new Set(["email","sms","push"]);
       let chans = [];
       if (Array.isArray(n.reminderChannels)) {
@@ -339,11 +334,10 @@
         if (r.includes("sms") || r.includes("text")) chans.push("sms");
         if (r.includes("push") || r.includes("notification")) chans.push("push");
         if (r.includes("both") && chans.length === 0) {
-          chans = ["email","push"]; // default pair when "both" is unqualified
+          chans = ["email","push"];
         }
       }
       n.reminderChannels = chans;
-      // Keep a human string too, for legacy display paths
       if (chans.length === 0) n.reminder = "None";
       else n.reminder = chans.map(c => c === "email" ? "Email" : c === "sms" ? "SMS" : "Push").join(" + ");
       if (typeof n.startDate==="string") { const sd=normalizeDateString(n.startDate); if(sd) n.startDate=sd; }
@@ -380,7 +374,6 @@
       else { for (const s of n.schedule) { const t=(s.type||"").toLowerCase(); if(t!=="weekly"&&t!=="interval"){issues.push("schedule");break;} if(!Array.isArray(s.times)||s.times.length===0){issues.push("schedule");break;} if(t==="weekly"&&(!Array.isArray(s.days)||s.days.length===0)){issues.push("schedule");break;} if(t==="interval"&&(!s.every||!s.unit)){issues.push("schedule");break;} } }
       if (!String(n.startDate||"").trim()) issues.push("startDate");
       if (!(n.endDate===null||n.endDate===undefined||(typeof n.endDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(n.endDate)))) issues.push("endDate");
-      // Reminder is valid as long as reminderChannels is an array of allowed values (may be empty = None)
       if (!Array.isArray(n.reminderChannels)) issues.push("reminder");
       else {
         const allowed = new Set(["email","sms","push"]);
@@ -407,8 +400,6 @@
 
     function convertToInternalFormat(n) {
       const int={name:n.name,dosage:n.dosage,endDate:n.endDate,reminder:n.reminder,reminderChannels:Array.isArray(n.reminderChannels)?n.reminderChannels.slice():[],schedules:[]};
-      // Carry through the resolved med image (if any) so add-medication.html can
-      // mount it without re-fetching.
       try{
         const mi = state.medImageData || (typeof window!=="undefined"?window.__voiceResolvedMedImage:null);
         if(mi && mi.imageUrl){
@@ -444,7 +435,6 @@
       const int=convertToInternalFormat(n);
       console.log("[Voice] Internal format for localStorage:",JSON.stringify(int));
       await saveDraftToFirebase(int);
-      // Verify localStorage was written
       const saved=localStorage.getItem("voiceMedicationData");
       console.log("[Voice] localStorage voiceMedicationData:",saved);
       setStatus("Saved! Redirecting...");
@@ -458,9 +448,6 @@
       els.start.disabled=true; els.mute.disabled=true; setStatus("Finalizing...");
     }
 
-    // ══════════════════════════════════════════════
-    // WebRTC Realtime API
-    // ══════════════════════════════════════════════
 
     function requestFixFromModel(issues) {
       if(!state.dc||state.dc.readyState!=="open")return;
@@ -482,18 +469,11 @@
       return null;
     }
 
-    // Trigger med-image lookup in the background after the user speaks the
-    // medication name. We DO NOT render anything on this page anymore — the
-    // resolved {imageUrl, canonical, genericName, summary} is stashed on state
-    // and gets carried through the voice→form handoff (see convertToInternalFormat
-    // below). The image first appears for the user when add-medication.html
-    // mounts it post-redirect. Simpler UX, no floating card cluttering the call.
     async function triggerVoiceMedImageLookup(rawTranscript){
       try{
         if(!window.MedImage) return;
         const text = String(rawTranscript||"").trim();
         if(text.length < 2) return;
-        // Strip filler words to improve hit rate on the LLM validator
         const cleaned = text.replace(/^(uh|um|so|the medication is|i take|i'm taking|it's|it is)\s+/i,"")
                             .replace(/\.$/,"")
                             .trim();
@@ -514,7 +494,6 @@
       handleMedicationComplete(parsed); return true;
     }
 
-    // Recap detection — force tool call if AI wraps up without calling the tool
     const RECAP_TRIGGERS = ["here's what we have","to summarize","to recap","here's a summary","finalized","add your bottles","i have all the information","all set","we're all set","you're all set","let me finalize","let me submit","saving your medication","adding your medication","medication has been added","medication saved"];
 
     function checkForRecapAndForceToolCall() {
@@ -555,7 +534,6 @@
 
     function extractTextChunks(data,type) {
       const c=[];
-      // Only use streaming deltas for live display — avoids duplicates from transcript+delta
       if(typeof data?.delta==="string"&&(type.includes("audio_transcript")||type.includes("output_text"))) {
         c.push(data.delta);
       }
@@ -590,25 +568,18 @@
       dc.onopen=()=>{
         setStatus("Connected. Waiting for session...");
         els.mute.disabled=false;
-        // Instructions + tools are already baked into the session from the backend.
-        // We just wait for the session.created event, then trigger the opener.
       };
 
       dc.onmessage=(evt)=>{
         const data=safeJsonParse(evt.data); if(!data)return;
         const type=String(data?.type||"");
 
-        // Wait for session confirmation, then trigger first response
         if(type==="session.created"||type==="session.updated"){
           console.log("[Voice] Session ready:",type);
           setStatus("Connected. Speak naturally.");
           if(!state.openerSent){
             state.openerSent=true;
-            // Set temperature via session.update (not supported at creation time)
-            // Also enable input audio transcription so we can hear the user's first answer
-            // (the medication name) and look up a product image in the background.
             try{dc.send(JSON.stringify({type:"session.update",session:{temperature:0.6,input_audio_transcription:{model:"whisper-1"}}}));}catch(e){console.warn("[Voice] session update failed:",e)}
-            // Trigger first response — session instructions tell it to start with question 1
             try{dc.send(JSON.stringify({type:"response.create"}));}catch(e){console.warn("[Voice] opener failed:",e)}
           }
           return;
@@ -617,7 +588,6 @@
 
         if(handleToolCallEvent(data))return;
 
-        // First user transcript = medication name. Fire image lookup in background.
         if(type==="conversation.item.input_audio_transcription.completed" && !state.medImageLookupDone){
           const transcript = (data && (data.transcript || data.text)) || "";
           if(transcript && typeof transcript === "string"){
@@ -674,12 +644,6 @@
       try{state.localStream?.getAudioTracks()?.forEach(t=>t.enabled=!state.muted)}catch{}
     });
 
-    // Release the microphone and tear down the Realtime peer connection if the
-    // page goes away (tab closed, navigated away, app backgrounded on mobile).
-    // Browsers usually collapse the connection on unload anyway, but relying on
-    // that left the mic track and a billed session open in the cases where they
-    // don't — notably a backgrounded mobile tab. Purely cleanup: no UI effect,
-    // and it is a no-op when no session is running.
     window.addEventListener("pagehide",()=>{ try{ if(state.pc||state.localStream) stopAll(); }catch{} });
 
     onAuthStateChanged(auth,(user)=>{if(!user)setStatus("Not logged in. Please log in first, then return here.")});

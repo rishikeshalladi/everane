@@ -1,11 +1,4 @@
-/**
- * Test script for medication reminder logic
- * Run this locally to test the reminder calculation without deploying
- * 
- * Usage: node test-reminders.js
- */
 
-// Sample medications for testing
 const testMedications = [
   {
     id: 'test1',
@@ -13,7 +6,7 @@ const testMedications = [
     dosage: 100,
     daysOfWeek: ['monday', 'wednesday', 'friday'],
     timesPerDay: 2,
-    times: ['08:00', '20:00'], // Custom times
+    times: ['08:00', '20:00'],
     reminderMethod: 'E',
     deletedStatus: false,
     endDate: '12/31/2025',
@@ -25,7 +18,7 @@ const testMedications = [
     dosage: 1000,
     daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
     timesPerDay: 1,
-    times: [], // No custom times - should default to 9 AM
+    times: [],
     reminderMethod: 'E',
     deletedStatus: false,
     endDate: 'N/A',
@@ -37,7 +30,7 @@ const testMedications = [
     dosage: 50,
     daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
     timesPerDay: 3,
-    times: [], // No custom times - should use 9 AM, 3 PM, 9 PM
+    times: [],
     reminderMethod: 'E',
     deletedStatus: false,
     endDate: 'N/A',
@@ -51,7 +44,7 @@ const testMedications = [
     timesPerDay: 1,
     times: [],
     reminderMethod: 'E',
-    deletedStatus: true, // DELETED - should NOT send
+    deletedStatus: true,
     endDate: 'N/A',
     stock: 0
   },
@@ -64,7 +57,7 @@ const testMedications = [
     times: [],
     reminderMethod: 'E',
     deletedStatus: false,
-    endDate: '01/01/2024', // EXPIRED - should NOT send
+    endDate: '01/01/2024',
     stock: 1
   },
   {
@@ -74,7 +67,7 @@ const testMedications = [
     daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
     timesPerDay: 1,
     times: [],
-    reminderMethod: 'S', // SMS not EMAIL - should NOT send
+    reminderMethod: 'S',
     deletedStatus: false,
     endDate: 'N/A',
     stock: 1
@@ -93,7 +86,6 @@ const testMedications = [
   }
 ];
 
-// Copy the logic from index.js
 function getReminderTimes(med) {
   if (med.times && med.times.length > 0) {
     return med.times;
@@ -155,7 +147,6 @@ function format12Hour(time24) {
   return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 }
 
-// Test function
 function testReminderLogic() {
   const today = new Date();
   const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -171,7 +162,6 @@ function testReminderLogic() {
     console.log(`\n📋 ${med.name}`);
     console.log('─────────────────────────────────────────────────────────');
     
-    // Check if reminder should be sent
     const shouldSend = shouldSendReminderToday(med);
     const reminderTimes = getReminderTimes(med);
     const hasCustomTimes = med.times && med.times.length > 0;
@@ -236,6 +226,5 @@ function subtractMinutes(time24, minutes) {
   return `${newHours.toString().padStart(2, '0')}:${newMins.toString().padStart(2, '0')}`;
 }
 
-// Run the test
 testReminderLogic();
 

@@ -20,7 +20,7 @@
       :root {
         --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
         --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
-        /* High contrast for seniors - maximum readability */
+        
         --text-strong: #000000;
         --muted-strong: #1a1a1a;
       }
@@ -64,7 +64,7 @@
       background: linear-gradient(180deg, var(--brand), var(--brand-600));
       box-shadow: 0 10px 20px rgba(79,140,255,.35);
     }
-    /* Hamburger menu */
+    
     .menu-toggle { display: none; }
     .hamburger {
       display: none;
@@ -320,7 +320,7 @@
       min-width: 150px;
     }
 
-    /* Medication characteristics */
+    
     .med-traits {
       display: flex;
       flex-wrap: wrap;
@@ -364,7 +364,7 @@
       border-color: color-mix(in oklab, #f472b6 20%, transparent);
     }
 
-    /* Tap-to-hear overlay */
+    
     .speak-overlay {
       position: fixed;
       inset: 0;
@@ -421,7 +421,6 @@
   <script src="med-image.js"></script>
 </head>
 <body>
-  <!-- Tap-to-hear overlay (shown until user taps, which unlocks speech) -->
   <div class="speak-overlay hidden" id="speak-overlay">
     <div class="speak-overlay-icon">
       <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
@@ -511,7 +510,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Make globally available
     window.auth = auth;
     window.db = db;
     window.doc = doc;
@@ -519,7 +517,6 @@
     window.getDoc = getDoc;
     window.deleteField = deleteField;
 
-    // Format time display
     function formatTimeDisplay(timeString) {
       if (!timeString || timeString === 'no-time') return '';
       
@@ -540,7 +537,6 @@
       return `${displayHour}:${displayMinutes} ${period}`;
     }
 
-    // Format date display
     function formatDate(dateString) {
       const [year, month, day] = dateString.split('-').map(Number);
       const date = new Date(year, month - 1, day);
@@ -548,23 +544,17 @@
       return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     }
 
-    // Build a human-readable description from classifications
-    // e.g. "the pink oval rough Lisinopril" — only includes what was provided
     function buildMedDescription(medName, cls) {
       if (!cls) return medName;
       const parts = [];
 
-      // Color → readable name
       if (cls.color) {
         parts.push(colorHexToName(cls.color));
       }
-      // Shape
       if (cls.shape) {
         parts.push(cls.shape.toLowerCase());
       }
-      // Texture
       if (cls.texture) {
-        // Strip parenthetical like "Glossy / Shiny" → "glossy"
         parts.push(cls.texture.split('/')[0].trim().toLowerCase());
       }
 
@@ -572,24 +562,20 @@
       return 'the ' + parts.join(' ') + ' ' + medName;
     }
 
-    // Convert hex color to a spoken color name
     function colorHexToName(hex) {
       if (!hex) return '';
       const r = parseInt(hex.slice(1,3), 16);
       const g = parseInt(hex.slice(3,5), 16);
       const b = parseInt(hex.slice(5,7), 16);
 
-      // Simple heuristic mapping
       const brightness = (r * 299 + g * 587 + b * 114) / 1000;
       if (brightness > 240) return 'white';
       if (brightness < 30) return 'black';
 
-      // Check for grays
       if (Math.abs(r - g) < 20 && Math.abs(g - b) < 20) {
         return brightness > 160 ? 'light gray' : 'gray';
       }
 
-      // Determine dominant color
       if (r > g && r > b) {
         if (r > 200 && g > 150 && b < 100) return 'orange';
         if (r > 200 && g < 100 && b < 100) return 'red';
@@ -611,7 +597,6 @@
       return 'colored';
     }
 
-    // Render classification badges in the UI
     function renderTraits(cls) {
       const container = document.getElementById('med-traits');
       if (!cls || !container) return;
@@ -640,9 +625,6 @@
       }
     }
 
-    // Speak the medication description out loud using Web Speech API
-    // Browsers require a user gesture (tap/click) to unlock speechSynthesis,
-    // so we show a full-screen overlay the user taps once.
     function speakMedication(displayName, speechText) {
       const overlay = document.getElementById('speak-overlay');
       const overlayText = document.getElementById('speak-overlay-text');
@@ -652,13 +634,10 @@
         return;
       }
 
-      // Update overlay text with the actual med name
       overlayText.textContent = `Tap to hear: "${displayName}"`;
 
-      // Show the overlay
       overlay.classList.remove('hidden');
 
-      // On tap, speak and dismiss
       const handleTap = () => {
         overlay.removeEventListener('click', handleTap);
         speechSynthesis.cancel();
@@ -667,14 +646,12 @@
         utterance.pitch = 1;
         utterance.volume = 1;
         speechSynthesis.speak(utterance);
-        // Dismiss overlay
         overlay.classList.add('hidden');
       };
 
       overlay.addEventListener('click', handleTap);
     }
 
-    // Load and display medication info from URL parameters
     async function loadMedicationInfo() {
       const params = new URLSearchParams(window.location.search);
       const medicationName = params.get('medication');
@@ -689,13 +666,11 @@
         return;
       }
 
-      // Display medication name, dose number, and time
       const timeDisplay = time && time !== 'no-time' ? formatTimeDisplay(time) : '';
       const doseNameText = `${medicationName} - Dose #${doseNumber}${timeDisplay ? ` - ${timeDisplay}` : ''}`;
       document.getElementById('dose-name').textContent = doseNameText;
       document.getElementById('dose-date').textContent = formatDate(dateString);
 
-      // Store for later use
       window.currentMedication = {
         name: medicationName,
         doseNumber: parseInt(doseNumber),
@@ -704,7 +679,6 @@
         id: medId
       };
 
-      // Fetch medication doc from Firestore to get classifications + image
       const user = auth.currentUser;
       let cls = null;
       let medDocData = null;
@@ -721,7 +695,6 @@
         }
       }
 
-      // Mount the saved medication image (if any) to the right of the dose info.
       try {
         if (medDocData && medDocData.imageUrl && window.MedImage) {
           const mount = document.getElementById('email-action-image-mount');
@@ -734,18 +707,14 @@
         }
       } catch (_) {}
 
-      // Render visual trait badges
       renderTraits(cls);
 
-      // Build descriptive speech: "Take the pink oval rough Lisinopril now"
       const description = buildMedDescription(medicationName, cls);
       speakMedication(medicationName, `Take ${description} now.`);
 
-      // Load existing notes
       loadExistingNotes(medId, dateString, parseInt(doseNumber));
     }
 
-    // Load existing notes from Firebase
     async function loadExistingNotes(medId, dateString, doseNumber) {
       const user = auth.currentUser;
       if (!user) {
@@ -761,12 +730,9 @@
           const medData = medDoc.data();
           const notes = medData.notes || {};
           
-          // Check if there's a note for this date and dose
-          // New format: notes[date_doseNumber], old format: notes[date]
           const doseKey = `${dateString}_${doseNumber}`;
           let noteData = notes[doseKey];
           if (!noteData && notes[dateString]) {
-            // Backward compatibility: read from old format notes[date]
             const oldData = notes[dateString];
             if (Array.isArray(oldData) && oldData[0] === doseNumber) {
               noteData = oldData;
@@ -774,7 +740,6 @@
           }
           if (Array.isArray(noteData)) {
             document.getElementById('dose-notes').value = noteData[1] || '';
-            // Set feeling rating (default to 0 if not present)
             const feelingRating = noteData[2] !== undefined ? noteData[2] : 0;
             document.getElementById('dose-feeling').value = feelingRating.toString();
           }
@@ -784,7 +749,6 @@
       }
     }
 
-    // Save notes to Firebase
     async function saveNotes() {
       const user = auth.currentUser;
       if (!user) {
@@ -813,7 +777,6 @@
         const medData = medDoc.data();
         const notes = medData.notes || {};
         
-        // Save note keyed by date_doseNumber to support multiple doses per day
         const noteKey = `${date}_${doseNumber}`;
         notes[noteKey] = [doseNumber, noteText, feelingRating];
 
@@ -823,7 +786,6 @@
 
         console.log(`[Email-Action] Saved note for ${name} on ${date}, dose ${doseNumber}`);
         
-        // Navigate back to home
         window.location.href = 'home.html';
       } catch (error) {
         console.error('[Email-Action] Error saving notes:', error);
@@ -831,26 +793,19 @@
       }
     }
 
-    // Wait for auth, then load info
     onAuthStateChanged(auth, (user) => {
       if (user) {
         loadMedicationInfo();
       } else {
-        // Preserve where the user was headed. Every "Take your dose" link in
-        // every reminder email lands here, and dropping the query string sent
-        // signed-out users to the marketing page with no way back to the dose
-        // they were trying to mark.
         try {
           sessionStorage.setItem('postLoginRedirect', window.location.pathname + window.location.search);
-        } catch (e) { /* private mode — fall through */ }
+        } catch (e) { }
         window.location.href = 'login.html?returnUrl=' +
           encodeURIComponent(window.location.pathname + window.location.search);
       }
     });
 
-    // Submit button handler
     document.addEventListener('DOMContentLoaded', () => {
-      // Close mobile menu when clicking on nav links
       const menuToggle = document.getElementById('menu-toggle');
       const sidebarLinks = document.querySelectorAll('.sidebar a');
       sidebarLinks.forEach(link => {
@@ -859,23 +814,18 @@
         });
       });
 
-      // Helper function to update stock based on dose status change
       const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
         if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
           console.log('[Email-Action] No bottles to update stock for');
           return medData.bottles || [];
         }
 
-        // Calculate net change: subtract if going from not-taken to taken, add if going from taken to not-taken
         let stockChange = 0;
         if (previousTaken !== true && newTaken === true) {
-          // Going from not-taken (or null) to taken: subtract dosage
           stockChange = -dosage;
         } else if (previousTaken === true && newTaken === false) {
-          // Going from taken to not-taken: add dosage back
           stockChange = dosage;
         }
-        // If status doesn't change or goes from not-taken to not-taken: no change
 
         if (stockChange === 0) {
           console.log('[Email-Action] No stock change needed (status unchanged or not-taken to not-taken)');
@@ -884,7 +834,6 @@
 
         console.log(`[Email-Action] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
 
-        // Parse bottles and find the one about to expire (earliest expiration that hasn't expired)
         const now = new Date();
         const parsedBottles = medData.bottles.map((bottleStr, index) => {
           const parts = bottleStr.split('/');
@@ -902,15 +851,12 @@
           };
         }).filter(b => b !== null);
 
-        // Sort by expiration date (earliest first)
         parsedBottles.sort((a, b) => a.expiration - b.expiration);
 
-        // Find the first bottle that hasn't expired and has quantity
         let activeBottle = parsedBottles.find(b => 
           b.expiration >= now && (b.quantity === null || b.quantity > 0)
         );
 
-        // If no unexpired bottle, use the earliest one (even if expired)
         if (!activeBottle && parsedBottles.length > 0) {
           activeBottle = parsedBottles[0];
         }
@@ -922,21 +868,18 @@
 
         console.log(`[Email-Action] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
 
-        // Update the quantity
         const newBottles = [...medData.bottles];
         const bottleParts = newBottles[activeBottle.index].split('/');
         
         if (bottleParts.length >= 4) {
           let newQuantity = activeBottle.quantity;
           if (newQuantity === null) {
-            // If quantity was N/A, we can't track it, so don't update
             console.log('[Email-Action] Bottle quantity is N/A, cannot update stock');
             return medData.bottles;
           }
           
-          newQuantity = Math.max(0, newQuantity + stockChange); // Ensure non-negative
+          newQuantity = Math.max(0, newQuantity + stockChange);
           
-          // Rebuild bottle string with updated quantity
           const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
           newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
           
@@ -946,7 +889,6 @@
         return newBottles;
       };
 
-      // Function to save dose status to Firebase
       const saveDoseStatus = async (taken) => {
         const user = auth.currentUser;
         if (!user) {
@@ -973,7 +915,6 @@
           const medData = medDoc.data();
           let doses = medData.doses || {};
           
-          // Migrate array to object if needed
           if (Array.isArray(doses)) {
             const dosesObj = {};
             doses.forEach(dose => {
@@ -989,17 +930,14 @@
           
           const doseKey = `${date}_${doseNumber}`;
           
-          // Check if status is changing
           const existingEntry = doses[doseKey];
           const previousTaken = existingEntry ? existingEntry.taken : undefined;
           const statusChanged = !existingEntry || existingEntry.taken !== taken;
           
-          // Preserve existing takenAt timestamp if already taken, or set new one if marking as taken
           const newDoseEntry = {
             date: date,
             doseNumber: doseNumber,
             taken: taken,
-            // Add timestamp when marked as taken, preserve existing if already taken
             takenAt: taken 
               ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
               : null
@@ -1007,16 +945,13 @@
           
           doses[doseKey] = newDoseEntry;
           
-          // Update stock based on dose status change
           const dosage = Number(medData.dosage) || 0;
           const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
           
-          // Save to Firebase
           const updateData = { 
             doses: doses,
             bottles: updatedBottles
           };
-          // Remove old fields if they exist (using deleteField from Firestore)
           if (medData.doseStatus !== undefined && window.deleteField) {
             updateData.doseStatus = window.deleteField();
           }
@@ -1035,7 +970,6 @@
         }
       };
 
-      // Taken/Not Taken buttons
       const takenBtn = document.getElementById('taken-btn');
       const notTakenBtn = document.getElementById('not-taken-btn');
       
@@ -1045,13 +979,11 @@
           console.log('[Email-Action] Taken button clicked');
           const statusChanged = await saveDoseStatus(true);
           if (statusChanged) {
-            // Show success feedback
             takenBtn.style.opacity = '0.7';
             setTimeout(() => {
               takenBtn.style.opacity = '1';
             }, 200);
           }
-          // Save notes as well
           await saveNotes();
         });
       }
@@ -1062,13 +994,11 @@
           console.log('[Email-Action] Not Taken button clicked');
           const statusChanged = await saveDoseStatus(false);
           if (statusChanged) {
-            // Show success feedback
             notTakenBtn.style.opacity = '0.7';
             setTimeout(() => {
               notTakenBtn.style.opacity = '1';
             }, 200);
           }
-          // Save notes as well
           await saveNotes();
         });
       }
