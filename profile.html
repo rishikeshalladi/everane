@@ -2854,6 +2854,8 @@
       const callRemove = httpsCallable(fns, 'removePushSubscription');
       const callTest   = httpsCallable(fns, 'testPushToDevice');
 
+      const getPush = () => (window.Everane && window.Everane.Push) || null;
+
       function formatDate(iso) {
         if (!iso) return '';
         const d = new Date(iso);
@@ -2890,7 +2892,7 @@
         const devices = (res && res.data && res.data.devices) || [];
 
         const hereInList = !!devices.find(d => d.here);
-        const P = window.Everane && window.Everane.Push;
+        const P = getPush();
         const supported = P && P.isSupported && P.isSupported();
         if (enableBtn) {
           if (!supported) {
@@ -3000,7 +3002,11 @@
 
       if (enableBtn) {
         enableBtn.addEventListener('click', async () => {
-          if (!P || !P.subscribe) return;
+          const P = getPush();
+          if (!P || !P.subscribe) {
+            setMsg('Push support did not load. Please refresh the page.', false);
+            return;
+          }
           enableBtn.disabled = true;
           enableBtn.textContent = 'Requesting permission…';
           setMsg('');
