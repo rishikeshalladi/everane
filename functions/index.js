@@ -2373,6 +2373,31 @@ exports.sendMedicationReminders = functions
               console.log(`  (no push delivered; pruned ${anyPruned})`);
             }
           } else if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length === 0) {
+            const orphaned = group.pushMeds.filter(m => {
+              const ch = getMedChannels(m);
+              return !ch.has('email') && !ch.has('sms');
+            });
+
+            if (orphaned.length > 0 && userEmail) {
+              try {
+                await sendCombinedReminderEmail(
+                  userEmail, orphaned, group.reminderTime, group.offsetKey,
+                  [], todaysSchedule, bottleAlerts, userTimezone
+                );
+                for (const m of orphaned) {
+                  await recordSendAttempt(db, userId, {
+                    channel: 'email', medId: m.id, medName: m.name,
+                    doseNumber: m._doseNumber, doseTime: group.reminderTime,
+                    offsetKey: group.offsetKey, date: todayIso,
+                    status: 'sent', reason: 'fallback: push selected but no subscribed device'
+                  });
+                }
+                console.warn(`No push device for ${userEmail}; sent email fallback for ${orphaned.length} push-only med(s)`);
+              } catch (fbErr) {
+                console.error('Push-fallback email failed:', fbErr.message);
+              }
+            }
+
             for (const m of group.pushMeds) {
               pushDelivered[m.id] = true;
               await recordSendAttempt(db, userId, {

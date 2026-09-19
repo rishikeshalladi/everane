@@ -255,8 +255,45 @@
     getCurrentSubscription,
     subscribe,
     unsubscribe,
+    selfHeal,
     VAPID_PUBLIC_KEY
   };
+
+  async function waitForSignedInUser(timeoutMs = 8000) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (window.auth && window.auth.currentUser) return window.auth.currentUser;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return (window.auth && window.auth.currentUser) || null;
+  }
+
+  async function selfHeal() {
+    try {
+      if (!isSupported()) return;
+      if (isIosSafariNotInstalled()) return;
+      if (getPermissionState() !== 'granted') return;
+
+      await waitForFirebaseGlobals(8000);
+      const user = await waitForSignedInUser(8000);
+      if (!user || !window.db) return;
+
+      const reg = await navigator.serviceWorker.getRegistration('/');
+      let live = null;
+      if (reg) {
+        try { live = await reg.pushManager.getSubscription(); } catch (_) {}
+      }
+
+      const result = await subscribe(window.auth, window.db);
+      if (result && result.ok) {
+        if (!live) console.info('[Push] Subscription was missing - re-established.');
+      } else if (result) {
+        console.warn('[Push] Self-heal could not restore subscription:', result.reason);
+      }
+    } catch (e) {
+      console.warn('[Push] Self-heal error:', (e && e.message) || e);
+    }
+  }
 
   async function pushIdTokenToSW(force = false) {
     try {
@@ -277,6 +314,7 @@
     window.addEventListener('load', async () => {
       try { await registerSW(); } catch (_) {}
       pushIdTokenToSW();
+      selfHeal();
     });
 
     document.addEventListener('visibilitychange', () => {
@@ -287,6 +325,13 @@
     setInterval(() => pushIdTokenToSW(true), 30 * 60 * 1000);
 
     navigator.serviceWorker.addEventListener('message', async (event) => {
+      if (event && event.data && event.data.type === 'EVERANE_PUSH_RESUBSCRIBED') {
+        // The browser rotated the subscription and the service worker created a
+        // replacement. Persist it now so the server stops pushing to the dead
+        // endpoint.
+        selfHeal();
+        return;
+      }
       if (!event || !event.data || event.data.type !== 'EVERANE_GET_ID_TOKEN') return;
       const port = event.ports && event.ports[0];
       if (!port) return;

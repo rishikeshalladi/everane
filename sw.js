@@ -109,7 +109,34 @@ self.addEventListener('notificationclick', (event) => {
   })());
 });
 
+const VAPID_PUBLIC_KEY = 'BDFTKQIe6uolT9cKyf_SjIY25z94EdwlzDtvt7ux8bBbFJ1EBOkGuGvfjJO6aYnbGG--KB2yiRG1xXJfDY-y5co';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = self.atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
 self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const sub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const c of clients) {
+        c.postMessage({ type: 'EVERANE_PUSH_RESUBSCRIBED', endpoint: sub && sub.endpoint });
+      }
+    } catch (e) {
+      // No page is open to persist the new endpoint. The page-load self-heal in
+      // push-subscribe.js stores it on the next visit; until then the server
+      // prunes the stale endpoint on its first 410.
+    }
+  })());
 });
 
 async function markDoseFromPush({ medId, doseDate, doseNumber, doseTime, taken }) {
