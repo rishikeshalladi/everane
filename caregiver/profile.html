@@ -364,11 +364,7 @@
       font-size: 0.9rem;
       margin-bottom: 1rem;
     }
-    #recaptcha-container {
-      margin-bottom: 1rem;
-      display: flex;
-      justify-content: center;
-    }
+
 
     .actions { margin-top: 2rem; display: flex; justify-content: flex-end; }
 
@@ -963,12 +959,12 @@
         padding: 0.7rem 0.85rem !important;
         border-radius: 10px !important;
       }
-      #sms-consent-modal .modal-content ul { padding-left: 1rem; margin-bottom: 0.4rem; }
-      #sms-consent-modal .modal-content ul li { margin-bottom: 0.15rem; font-size: 0.85rem; }
-      #sms-consent-modal label[for="sms-consent-checkbox"] { font-size: 0.85rem !important; }
+
+
+
 
       
-      #add-phone-btn { width: 100%; }
+
     }
 
 
@@ -1027,15 +1023,6 @@
                 <label for="name">Name <span style="color: red;">*</span></label>
                 <input id="name" name="name" type="text" placeholder="Your Name" autocomplete="name" required />
                 <div id="name-error" class="error-message"></div>
-              </div>
-              <div class="form-group">
-                <label for="phone">Phone Number <small>(optional)</small></label>
-                <div id="phone-display-container">
-                  <input id="phone" name="phone" type="tel" placeholder="+1 (123) 456-7890" readonly style="display: none;" />
-                  <button type="button" id="add-phone-btn" class="btn btn-secondary" style="display: none; margin-top: 0.5rem;">Add a phone number</button>
-                </div>
-                <div id="sms-consent-note" style="display:none; margin-top:0.45rem; font-size:0.82rem; color:var(--muted,#64748b); line-height:1.5;"></div>
-                <div id="phone-error" class="error-message"></div>
               </div>
               <div class="form-group">
                 <label for="relation">Relation to Patient <small>(optional)</small></label>
@@ -1125,132 +1112,8 @@
       </div>
       </div>
 
-  <div id="phone-verification-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="phone-verify-title">
-    <div class="modal-content">
-      <button class="modal-close" onclick="closePhoneVerification()" aria-label="Close">&times;</button>
-      <h3 id="phone-verify-title">Verify Phone Number</h3>
-      <p class="modal-description">We'll send a verification code via SMS to your phone number.</p>
-      
-      <div id="recaptcha-container"></div>
-      
-      <div class="form-group">
-        <label for="phone-code">Verification Code</label>
-        <input id="phone-code" type="text" placeholder="Enter 6-digit code" maxlength="6" autocomplete="off" />
-        <div id="phone-code-error" class="error-message" role="alert"></div>
-      </div>
-      
-      <div class="modal-actions">
-        <button type="button" id="phone-resend-btn" class="btn-secondary" onclick="resendPhoneCode()" disabled>Resend Code (60s)</button>
-        <button type="button" class="btn-primary" onclick="verifyPhoneCode()">Verify</button>
-      </div>
-      <p id="phone-verify-message" class="msg" role="status" aria-live="polite"></p>
-    </div>
-  </div>
 
-  <div id="sms-consent-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sms-consent-title">
-    <div class="modal-content" style="max-width: 560px;">
-      <button class="modal-close" id="sms-consent-close" aria-label="Close">&times;</button>
-      <h3 id="sms-consent-title" style="margin-bottom: 0.4rem;">📱 SMS Alerts — Your Consent</h3>
-      <p class="modal-description" style="margin-bottom: 0.85rem;">
-        Before you add your phone number, please review what you'll receive and agree to receive SMS text messages.
-      </p>
 
-      <div style="background: color-mix(in oklab, #3f6ff5 8%, var(--surface, #fff)); border: 1px solid color-mix(in oklab, #3f6ff5 25%, var(--border, #e5e7eb)); border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.85rem; font-size: 0.92rem; line-height: 1.55;">
-        <div style="font-weight: 700; margin-bottom: 0.4rem;">What you'll receive (as a caregiver):</div>
-        <ul style="margin: 0 0 0.6rem 1.1rem; padding: 0;">
-          <li>Alerts when a patient you care for misses doses</li>
-          <li>Adherence summaries (e.g. below-80% alerts)</li>
-          <li>Weekly and monthly report notifications</li>
-          <li>Bottle expiration / refill alerts for your patients</li>
-          <li>One-time verification codes when you add or change your phone number</li>
-        </ul>
-        <div style="font-weight: 700; margin-bottom: 0.4rem;">What we will NOT do:</div>
-        <ul style="margin: 0 0 0.6rem 1.1rem; padding: 0;">
-          <li>No marketing or promotional messages — ever</li>
-          <li>No third-party sharing of your phone number</li>
-          <li>No selling your information</li>
-        </ul>
-        <div style="font-size: 0.85rem; color: var(--muted, #64748b);">
-          Message frequency depends on your patients' medication schedules. Message and data rates may apply. Reply <strong>STOP</strong> at any time to unsubscribe. Reply <strong>HELP</strong> for help. You can also remove your phone number from this profile at any time.
-        </div>
-      </div>
-
-      <label for="sms-consent-checkbox" style="display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; padding: 0.5rem 0; font-size: 0.95rem; line-height: 1.5;">
-        <input type="checkbox" id="sms-consent-checkbox" style="margin-top: 0.25rem; flex-shrink: 0; width: 1.05rem; height: 1.05rem; cursor: pointer;">
-        <span>
-          I agree to receive recurring SMS text messages from Everane at the phone number I provide for caregiver alerts, adherence summaries, and verification codes. I have read the
-          <a href="../privacypolicy.html" target="_blank" rel="noopener" style="color: var(--brand, #3f6ff5); text-decoration: underline;">Privacy Policy</a>
-          and
-          <a href="../termsofservice.html" target="_blank" rel="noopener" style="color: var(--brand, #3f6ff5); text-decoration: underline;">Terms of Service</a>.
-          I understand I can reply STOP to unsubscribe at any time.
-        </span>
-      </label>
-
-      <div style="display: flex; gap: 0.6rem; margin-top: 1rem;">
-        <button type="button" id="sms-consent-cancel" class="btn-secondary" style="flex: 1;">Cancel</button>
-        <button type="button" id="sms-consent-agree" class="btn-primary" style="flex: 1;" disabled>I Agree — Continue</button>
-      </div>
-      <p id="sms-consent-message" class="msg" role="status" aria-live="polite" style="margin-top: 0.6rem; font-size: 0.85rem;"></p>
-    </div>
-  </div>
-
-  <div id="add-phone-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="add-phone-title">
-    <div class="modal-content">
-      <button class="modal-close" onclick="closeAddPhoneModal()" aria-label="Close">&times;</button>
-      <h3 id="add-phone-title">Add Phone Number</h3>
-      <p class="modal-description">We'll send a verification code via SMS to verify your phone number.</p>
-      
-      <div class="form-group">
-        <label for="add-phone-number">Phone Number</label>
-        <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
-          <div style="flex: 0 0 140px; min-width: 140px;">
-            <select id="add-phone-country-code" name="country-code" style="width: 100%; padding: 0.9rem 0.75rem; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 0.95rem;">
-              <option value="+1">🇺🇸 +1 (US)</option>
-              <option value="+44">🇬🇧 +44 (UK)</option>
-              <option value="+91">🇮🇳 +91 (IN)</option>
-              <option value="+86">🇨🇳 +86 (CN)</option>
-              <option value="+81">🇯🇵 +81 (JP)</option>
-              <option value="+49">🇩🇪 +49 (DE)</option>
-              <option value="+33">🇫🇷 +33 (FR)</option>
-              <option value="+39">🇮🇹 +39 (IT)</option>
-              <option value="+34">🇪🇸 +34 (ES)</option>
-              <option value="+61">🇦🇺 +61 (AU)</option>
-              <option value="+55">🇧🇷 +55 (BR)</option>
-              <option value="+52">🇲🇽 +52 (MX)</option>
-              <option value="+7">🇷🇺 +7 (RU)</option>
-              <option value="+82">🇰🇷 +82 (KR)</option>
-              <option value="+65">🇸🇬 +65 (SG)</option>
-              <option value="+971">🇦🇪 +971 (AE)</option>
-              <option value="+966">🇸🇦 +966 (SA)</option>
-              <option value="+27">🇿🇦 +27 (ZA)</option>
-              <option value="+234">🇳🇬 +234 (NG)</option>
-              <option value="+20">🇪🇬 +20 (EG)</option>
-            </select>
-          </div>
-          <div style="flex: 1; min-width: 0;">
-            <div class="input-wrap" style="position: relative; z-index: 10;">
-              <input id="add-phone-number" name="phone" type="tel" placeholder="(123) 456-7890" autocomplete="tel" style="position: relative; z-index: 10;" />
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div id="add-phone-code-section" style="display:none">
-        <div class="form-group">
-          <label for="add-phone-code">Verification Code</label>
-          <div class="input-wrap">
-            <input id="add-phone-code" name="phone-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="text-align: center; letter-spacing: 0.5rem; font-size: 1.2rem;" />
-          </div>
-        </div>
-      </div>
-      
-      <div class="modal-actions">
-        <button type="button" id="add-phone-send-code" class="btn-secondary">Send Code</button>
-        <button type="button" id="add-phone-verify-code" class="btn-primary" style="display:none">Verify Code</button>
-      </div>
-      <p id="add-phone-message" class="msg" role="status" aria-live="polite"></p>
-    </div>
-  </div>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -1395,18 +1258,6 @@
     };
 
 
-    window.updatePhoneDisplay = function(phoneValue) {
-      const phoneInput = document.getElementById('phone');
-      const addPhoneBtn = document.getElementById('add-phone-btn');
-      if (phoneValue && phoneValue.trim()) {
-        if (phoneInput) phoneInput.value = phoneValue;
-        if (phoneInput) phoneInput.style.display = 'block';
-        if (addPhoneBtn) addPhoneBtn.style.display = 'none';
-      } else {
-        if (phoneInput) phoneInput.style.display = 'none';
-        if (addPhoneBtn) addPhoneBtn.style.display = 'inline-flex';
-      }
-    };
     
     function loadProfileData() {
       const profileData = JSON.parse(localStorage.getItem('userProfile') || '{}');
@@ -1414,8 +1265,6 @@
       if (profileData.name) document.getElementById('name').value = profileData.name;
       if (profileData.password) document.getElementById('password').value = profileData.password;
       
-      updatePhoneDisplay(profileData.phone);
-      if (window.renderSmsConsentNote) window.renderSmsConsentNote(profileData.smsConsent || null);
 
       if (profileData.relation) {
         const relationSelect = document.getElementById('relation');
@@ -1436,12 +1285,6 @@
       return emailRegex.test(email);
     }
 
-    function validatePhone(phone) {
-      if (!phone || phone.trim() === '') return true;
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-      const cleanPhone = phone.replace(/[\s\-\(\)\.]/g, '');
-      return phoneRegex.test(cleanPhone);
-    }
 
     function validateName(name) {
       return name && name.trim().length >= 2;
@@ -1503,62 +1346,10 @@
     window.firebaseDataLoaded = false;
 
     
-    window.openAddPhoneModal = function() {
-      const modal = document.getElementById('add-phone-modal');
-      if (!modal) {
-        console.error('add-phone-modal not found');
-        return;
-      }
-      modal.classList.add('show');
-      
-      const phoneNumberInput = document.getElementById('add-phone-number');
-      const phoneCodeInput = document.getElementById('add-phone-code');
-      const codeSection = document.getElementById('add-phone-code-section');
-      const sendCodeBtn = document.getElementById('add-phone-send-code');
-      const verifyCodeBtn = document.getElementById('add-phone-verify-code');
-      const message = document.getElementById('add-phone-message');
-      
-      if (phoneNumberInput) phoneNumberInput.value = '';
-      if (phoneCodeInput) phoneCodeInput.value = '';
-      if (codeSection) codeSection.style.display = 'none';
-      if (sendCodeBtn) {
-        sendCodeBtn.style.display = 'inline-flex';
-        sendCodeBtn.disabled = false;
-        sendCodeBtn.textContent = 'Send Code';
-      }
-      if (verifyCodeBtn) {
-        verifyCodeBtn.style.display = 'none';
-        verifyCodeBtn.disabled = false;
-        verifyCodeBtn.textContent = 'Verify Code';
-      }
-      if (message) {
-        message.className = 'msg';
-        message.textContent = '';
-      }
-    };
 
-    window.closeAddPhoneModal = function() {
-      const modal = document.getElementById('add-phone-modal');
-      if (modal) {
-        modal.classList.remove('show');
-      }
-    };
 
     document.addEventListener('DOMContentLoaded', () => {
       setupRealTimeValidation();
-      
-      const addPhoneBtn = document.getElementById('add-phone-btn');
-      if (addPhoneBtn) {
-        addPhoneBtn.addEventListener('click', () => {
-          if (window.openSmsConsentThenAddPhone) {
-            window.openSmsConsentThenAddPhone();
-          } else if (window.openAddPhoneModal) {
-            window.openAddPhoneModal();
-          } else {
-            console.error('No phone-add flow registered');
-          }
-        });
-      }
     });
   </script>
 
@@ -1581,132 +1372,13 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const SMS_CONSENT_VERSION = 'v1';
 
-    async function userHasValidSmsConsent() {
-      try {
-        const u = auth.currentUser;
-        if (!u) return false;
-        const snap = await getDoc(doc(db, 'users', u.uid));
-        if (!snap.exists()) return false;
-        const c = snap.data()?.smsConsent;
-        return !!(c && c.agreedAt && c.version === SMS_CONSENT_VERSION);
-      } catch (e) {
-        console.warn('[SMS Consent] read failed:', e);
-        return false;
-      }
-    }
 
-    async function recordSmsConsent() {
-      const u = auth.currentUser;
-      if (!u) {
-        const e = new Error('You are not signed in. Please refresh the page and try again.');
-        e.code = 'no-current-user';
-        throw e;
-      }
-      try { await u.getIdToken(true); } catch (e) {
-        console.warn('[SMS Consent] token refresh failed:', e);
-      }
-      const consent = {
-        agreedAt: new Date().toISOString(),
-        version: SMS_CONSENT_VERSION,
-        userAgent: (navigator.userAgent || '').slice(0, 300),
-        method: 'opt-in checkbox on caregiver profile page',
-      };
-      try {
-        await setDoc(doc(db, 'users', u.uid), { smsConsent: consent }, { merge: true });
-      } catch (e) {
-        console.error('[SMS Consent] Firestore write failed:', e && e.code, e && e.message, e);
-        const friendly = new Error(
-          (e && e.code === 'permission-denied')
-            ? 'Permission denied saving consent. Please sign out and back in, then try again.'
-            : ((e && e.message) || 'Could not save your consent. Please try again.')
-        );
-        friendly.cause = e;
-        throw friendly;
-      }
-      if (window.renderSmsConsentNote) window.renderSmsConsentNote(consent);
-      return consent;
-    }
 
-    window.renderSmsConsentNote = function(consent) {
-      const el = document.getElementById('sms-consent-note');
-      if (!el) return;
-      if (!consent || !consent.agreedAt) { el.style.display = 'none'; el.textContent = ''; return; }
-      let dateStr = '';
-      try {
-        const d = new Date(consent.agreedAt);
-        if (!isNaN(d.getTime())) {
-          dateStr = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
-        }
-      } catch (_) {}
-      el.style.display = '';
-      el.innerHTML = '\u2713 You agreed to receive SMS alerts' + (dateStr ? (' on <strong>' + dateStr + '</strong>') : '') + '. Reply STOP to any text to unsubscribe.';
-    };
 
-    function closeSmsConsentModal() {
-      const modal = document.getElementById('sms-consent-modal');
-      if (modal) modal.classList.remove('show');
-      const cb = document.getElementById('sms-consent-checkbox');
-      const agreeBtn = document.getElementById('sms-consent-agree');
-      const msg = document.getElementById('sms-consent-message');
-      if (cb) cb.checked = false;
-      if (agreeBtn) agreeBtn.disabled = true;
-      if (msg) { msg.textContent = ''; msg.className = 'msg'; }
-    }
 
-    function openSmsConsentModal() {
-      const modal = document.getElementById('sms-consent-modal');
-      if (!modal) { console.error('sms-consent-modal not found'); return; }
-      const cb = document.getElementById('sms-consent-checkbox');
-      const agreeBtn = document.getElementById('sms-consent-agree');
-      const msg = document.getElementById('sms-consent-message');
-      if (cb) cb.checked = false;
-      if (agreeBtn) agreeBtn.disabled = true;
-      if (msg) { msg.textContent = ''; msg.className = 'msg'; }
-      modal.classList.add('show');
-    }
 
-    (function wireConsentModal() {
-      const cb = document.getElementById('sms-consent-checkbox');
-      const agreeBtn = document.getElementById('sms-consent-agree');
-      const cancelBtn = document.getElementById('sms-consent-cancel');
-      const closeBtn = document.getElementById('sms-consent-close');
-      const msg = document.getElementById('sms-consent-message');
-      if (cb && agreeBtn) {
-        cb.addEventListener('change', () => { agreeBtn.disabled = !cb.checked; });
-      }
-      if (cancelBtn) cancelBtn.addEventListener('click', closeSmsConsentModal);
-      if (closeBtn) closeBtn.addEventListener('click', closeSmsConsentModal);
-      if (agreeBtn) {
-        agreeBtn.addEventListener('click', async () => {
-          if (!cb || !cb.checked) return;
-          agreeBtn.disabled = true;
-          const original = agreeBtn.textContent;
-          agreeBtn.textContent = 'Saving consent…';
-          if (msg) { msg.className = 'msg'; msg.textContent = ''; }
-          try {
-            await recordSmsConsent();
-            closeSmsConsentModal();
-            if (window.openAddPhoneModal) window.openAddPhoneModal();
-          } catch (e) {
-            console.error('[SMS Consent] record failed:', e);
-            agreeBtn.disabled = false;
-            agreeBtn.textContent = original;
-            if (msg) { msg.className = 'msg err'; msg.textContent = (e && e.message) || 'Could not save your consent. Please try again.'; }
-          }
-        });
-      }
-    })();
 
-    window.openSmsConsentThenAddPhone = async function () {
-      const ok = await userHasValidSmsConsent();
-      if (ok) {
-        if (window.openAddPhoneModal) window.openAddPhoneModal();
-      } else {
-        openSmsConsentModal();
-      }
-    };
 
     document.addEventListener('DOMContentLoaded', () => {
       const headerSaveBtn = document.getElementById('header-save-btn');
@@ -1770,13 +1442,6 @@
             
             if (window.loadProfileData) {
               window.loadProfileData();
-            }
-            
-            if (window.updatePhoneDisplay) {
-              window.updatePhoneDisplay(profileData.phone);
-            }
-            if (window.renderSmsConsentNote) {
-              window.renderSmsConsentNote(profileData.smsConsent || null);
             }
           } else {
             console.warn('No profile found in Firestore for user:', user.uid);
@@ -1928,9 +1593,6 @@
 
     
     let emailResendTimer = null;
-    let phoneResendTimer = null;
-    let phoneVerificationId = null;
-    let recaptchaVerifier = null;
 
 
     window.openEmailVerification = async function() {
@@ -2055,176 +1717,11 @@
     
     document.addEventListener('DOMContentLoaded', () => {
       updateEmailResendButton();
-      updatePhoneResendButton();
     });
 
 
-    const addPhoneInput = document.getElementById('add-phone-number');
-    if (addPhoneInput) {
-      addPhoneInput.addEventListener('input', (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 10) {
-          value = value.slice(0, 10);
-        }
-        let formatted = '';
-        if (value.length > 0) {
-          formatted = '(' + value.slice(0, 3);
-          if (value.length > 3) {
-            formatted += ') - ' + value.slice(3, 6);
-          }
-          if (value.length > 6) {
-            formatted += ' - ' + value.slice(6, 10);
-          }
-        }
-        e.target.value = formatted;
-      });
-    }
     
-    const addPhoneSendCodeBtn = document.getElementById('add-phone-send-code');
-    console.log('[Phone] Send Code button found:', !!addPhoneSendCodeBtn);
-    if (addPhoneSendCodeBtn) {
-      addPhoneSendCodeBtn.addEventListener('click', async () => {
-        console.log('[Phone] Send Code clicked');
-        const phoneInput = document.getElementById('add-phone-number');
-        if (!phoneInput) {
-          console.error('[Phone] add-phone-number input not found');
-          return;
-        }
-        const phoneDigits = phoneInput.value.replace(/\D/g, '');
-        const countryCode = document.getElementById('add-phone-country-code').value;
-        console.log('[Phone] digits:', phoneDigits, 'country:', countryCode);
-
-        if (!phoneDigits || phoneDigits.length !== 10) {
-          document.getElementById('add-phone-message').className = 'msg err';
-          document.getElementById('add-phone-message').textContent = 'Please enter a valid 10-digit phone number.';
-          return;
-        }
-
-        const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
-        const fullPhoneNumber = formattedCountryCode + phoneDigits;
-        console.log('[Phone] Sending code to:', fullPhoneNumber);
-
-        try {
-          document.getElementById('add-phone-message').className = 'msg';
-          document.getElementById('add-phone-message').textContent = '';
-          addPhoneSendCodeBtn.disabled = true;
-          addPhoneSendCodeBtn.textContent = 'Sending...';
-
-          const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendPhoneVerificationCode';
-          const phoneIdToken = await auth.currentUser.getIdToken();
-          const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + phoneIdToken
-            },
-            body: JSON.stringify({ phoneNumber: fullPhoneNumber })
-          });
-
-          const result = await response.json();
-          console.log('[Phone] Send code response:', response.status, result);
-
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to send verification code');
-          }
-
-          document.getElementById('add-phone-code-section').style.display = 'block';
-          addPhoneSendCodeBtn.style.display = 'none';
-          document.getElementById('add-phone-verify-code').style.display = 'inline-flex';
-          document.getElementById('add-phone-message').className = 'msg ok';
-          document.getElementById('add-phone-message').textContent = 'Verification code sent to your phone.';
-        } catch (error) {
-          console.error('[Phone] Error sending code:', error);
-          document.getElementById('add-phone-message').className = 'msg err';
-          document.getElementById('add-phone-message').textContent = 'Error: ' + (error.message || error.code || 'Failed to send code');
-          addPhoneSendCodeBtn.disabled = false;
-          addPhoneSendCodeBtn.textContent = 'Send Code';
-        }
-      });
-    }
     
-    const addPhoneVerifyCodeBtn = document.getElementById('add-phone-verify-code');
-    if (addPhoneVerifyCodeBtn) {
-      addPhoneVerifyCodeBtn.addEventListener('click', async () => {
-        const code = document.getElementById('add-phone-code').value.trim();
-        if (!code || code.length !== 6) {
-          document.getElementById('add-phone-message').className = 'msg err';
-          document.getElementById('add-phone-message').textContent = 'Please enter the 6-digit verification code.';
-          return;
-        }
-        
-        try {
-          addPhoneVerifyCodeBtn.disabled = true;
-          addPhoneVerifyCodeBtn.textContent = 'Verifying...';
-          document.getElementById('add-phone-message').className = 'msg';
-          document.getElementById('add-phone-message').textContent = 'Verifying code...';
-          
-          const user = auth.currentUser;
-          if (!user) {
-            throw new Error('Not signed in');
-          }
-          
-          const phoneInput = document.getElementById('add-phone-number');
-          const phoneDigits = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
-          const countryCode = document.getElementById('add-phone-country-code').value;
-          const formattedCountryCode = countryCode.startsWith('+') ? countryCode : '+' + countryCode;
-          const fullPhoneNumber = formattedCountryCode + phoneDigits;
-          
-          const functionUrl = 'https://us-central1-medtracker-8c467.cloudfunctions.net/verifyPhoneCode';
-          const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              phoneNumber: fullPhoneNumber,
-              code: code,
-              userId: user.uid
-            })
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to verify code');
-          }
-          
-          const userDocRef = doc(db, "users", user.uid);
-          await updateDoc(userDocRef, { 
-            phone: fullPhoneNumber,
-            phoneVerified: true
-          });
-          
-          const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-          currentProfile.phone = fullPhoneNumber;
-          localStorage.setItem('userProfile', JSON.stringify(currentProfile));
-          
-          if (window.updatePhoneDisplay) {
-            window.updatePhoneDisplay(fullPhoneNumber);
-          }
-          
-          document.getElementById('add-phone-message').className = 'msg ok';
-          document.getElementById('add-phone-message').textContent = 'Phone number added successfully!';
-          
-          setTimeout(() => {
-            window.closeAddPhoneModal();
-          }, 1500);
-          
-        } catch (error) {
-          console.error('Error verifying phone code:', error);
-          document.getElementById('add-phone-message').className = 'msg err';
-          if (error.code === 'auth/invalid-verification-code') {
-            document.getElementById('add-phone-message').textContent = 'Invalid verification code. Please try again.';
-          } else if (error.code === 'auth/credential-already-in-use') {
-            document.getElementById('add-phone-message').textContent = 'This phone number is already linked to another account.';
-          } else {
-            document.getElementById('add-phone-message').textContent = 'Error: ' + (error.message || error.code || 'Failed to verify code');
-          }
-          addPhoneVerifyCodeBtn.disabled = false;
-          addPhoneVerifyCodeBtn.textContent = 'Verify Code';
-        }
-      });
-    }
 
   </script>
 

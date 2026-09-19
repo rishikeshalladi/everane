@@ -3276,8 +3276,6 @@ async function findCaregiverReminderRecipients(db, patientId) {
         recipients.push({
           uid: cid,
           email: (cData.email || '').toLowerCase(),
-          phone: cData.phone || cData.phoneNumber || '',
-          phoneVerified: !!cData.phoneVerified,
           name: cData.name || '',
           pushSubscriptions: Array.isArray(cData.pushSubscriptions) ? cData.pushSubscriptions : [],
           prefs
@@ -3408,20 +3406,10 @@ async function sendCaregiverEmail(to, subject, htmlBody, textBody) {
   await transporter.sendMail(mailOptions);
 }
 
-async function sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody) {
+async function sendCaregiverNotification(caregiverData, subject, htmlBody, textBody) {
   const caregiverEmail = caregiverData.email;
   if (caregiverEmail) {
     await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
-  }
-  const phone = caregiverData.phone || null;
-  const phoneVerified = caregiverData.phoneVerified === true;
-  if (phone && phoneVerified && smsBody && twilioClient && twilioFromNumber) {
-    try {
-      await sendSMS(phone, smsBody);
-      console.log(`[Caregiver SMS] Sent to ${phone}`);
-    } catch (err) {
-      console.error(`[Caregiver SMS] Failed to send to ${phone}:`, err.message);
-    }
   }
 }
 
@@ -3520,7 +3508,7 @@ exports.sendCaregiverExpirationDatesEmails = functions
       ].join('\n');
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, null);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
         console.error(`[Caregiver] expiration digest failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3611,9 +3599,8 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions
       `;
       const textBody = ['Adherence below 80% (last 7 days)', '', ...linesText].join('\n');
 
-      const smsBody = `Everane: Adherence below 80%\n${linesText.join('\n')}`;
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
         console.error(`[Caregiver] adherence<80 alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3703,9 +3690,8 @@ exports.sendCaregiverWeeklyReports = functions
       `;
       const textBody = ['Weekly patient report (last 7 days)', '', ...linesText].join('\n');
 
-      const smsBody = `Everane: Weekly report\n${linesText.join('\n')}`;
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
         await markCaregiverEmailSent(db, caregiverId, weekKey);
       } catch (cgErr) {
         console.error(`[Caregiver] weekly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3795,9 +3781,8 @@ exports.sendCaregiverMonthlyReports = functions
       `;
       const textBody = ['Monthly patient report (last 30 days)', '', ...linesText].join('\n');
 
-      const smsBody = `Everane: Monthly report\n${linesText.join('\n')}`;
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
         await markCaregiverEmailSent(db, caregiverId, monthKey);
       } catch (cgErr) {
         console.error(`[Caregiver] monthly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3858,10 +3843,9 @@ exports.onPatientMedicationCreated = functions.firestore
         </div>
       `;
       const textBody = `${patient.name} added a new medication: ${medName}${medData.dosage ? ` (${medData.dosage})` : ''}`;
-      const smsBody = `Everane: ${patient.name} added ${medName}${medData.dosage ? ` (${medData.dosage})` : ''}`;
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
         console.log(`[Caregiver] Sent new-med alert to ${caregiverEmail} for patient ${patientId}`);
       } catch (err) {
         console.error(`[Caregiver] Failed new-med alert to ${caregiverEmail}:`, err.message);
@@ -3956,10 +3940,9 @@ exports.sendCaregiverNothingRecordedAlerts = functions
         </div>
       `;
       const textBody = ['Nothing recorded today', '', ...linesText].join('\n');
-      const smsBody = `Everane: Nothing recorded today\n${linesText.join('\n')}`;
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, smsBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
         console.error(`[Caregiver] nothing-recorded alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
