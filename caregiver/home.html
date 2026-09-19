@@ -1088,6 +1088,14 @@
   const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   const auth = getAuth(app);
   const db = getFirestore(app);
+
+  // push-subscribe.js is a classic script and reads these off window; without
+  // them Everane.Push.subscribe() fails with "auth.currentUser is null".
+  window.auth = auth;
+  window.db = db;
+  window.doc = doc;
+  window.getDoc = getDoc;
+  window.setDoc = setDoc;
   
     const stateEl = document.getElementById('state');
     const gridEl = document.getElementById('grid');

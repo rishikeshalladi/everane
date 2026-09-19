@@ -2128,6 +2128,17 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // push-subscribe.js is a classic script and cannot see this module's
+    // bindings; it reads auth/db and the Firestore helpers off window. Without
+    // these, waitForFirebaseGlobals() timed out and subscribe() failed with
+    // "auth.currentUser is null" because window.auth was simply undefined.
+    // home.html already exposed these, which is why push worked there.
+    window.auth = auth;
+    window.db = db;
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+
     async function loadCaregiversList(caregiverIds) {
       console.log('[Profile] Loading caregivers list, ids:', caregiverIds);
       const section = document.getElementById('caregivers-section');
