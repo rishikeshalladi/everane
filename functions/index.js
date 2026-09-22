@@ -1918,7 +1918,6 @@ exports.sendMedicationReminders = functions
         const userData = userDoc.data();
         const userEmail = userData.email;
 
-        console.log(`Checking user: ${userId}, email: ${userEmail}`);
 
         if (!userData.patientId) {
           try {
@@ -1938,7 +1937,6 @@ exports.sendMedicationReminders = functions
         try {
           const userTimezone = userData.timezone || DEFAULT_TIME_ZONE;
           const userNowDateTime = getNowInZone(userTimezone);
-          console.log(`User timezone: ${userTimezone}, current time: ${userNowDateTime.toISO()}`);
         
         const medicationsSnapshot = await db
           .collection('users')
@@ -1946,10 +1944,8 @@ exports.sendMedicationReminders = functions
           .collection('medications')
           .get();
         
-        console.log(`Found ${medicationsSnapshot.size} medications for user ${userId}`);
         
         if (medicationsSnapshot.size === 0) {
-          console.log(`  -> No medications found, skipping user ${userId}`);
           continue;
         }
         
@@ -1958,7 +1954,6 @@ exports.sendMedicationReminders = functions
         if (reminderPreferences.length === 0) {
           reminderPreferences = ['30_minutes_before', 'at_time'];
         }
-        console.log(`Reminder preferences for ${userId}: ${JSON.stringify(reminderPreferences)}`);
         
         const lastSentReminders = userData.lastSentReminders || {};
         const todayIso = userNowDateTime.toISODate();
@@ -1997,7 +1992,6 @@ exports.sendMedicationReminders = functions
           if (!med.schedules && (med.daysOfWeek.length > 0 || med.times.length > 0)) {
             const migrated = ScheduleUtils.migrateOldFormat(med);
             med.schedules = migrated.schedules;
-            console.log(`  -> Auto-migrated ${med.name} to schedules format (${migrated.schedules.length} entries)`);
           }
 
           if (med.deletedStatus === true) {
@@ -2187,21 +2181,17 @@ exports.sendMedicationReminders = functions
             }
           }
 
-          _diagMeds.push(`${med.name}:[${doseDiagParts.join(',')}](${med.reminderMethod})`);
+          _diagMeds.push(`${med.name}:[${doseDiagParts.join(',')}](${Array.from(channels).sort().join('+') || 'none'})`);
         }
         
-        console.log(`[DIAG] ${userEmail} now=${userNowDateTime.toFormat('HH:mm')} prefs=${JSON.stringify(reminderPreferences)} groups=${Object.keys(sendGroups).length} | ${_diagMeds.join(', ')}`);
+        console.log(`[DIAG] ${userEmail} now=${userNowDateTime.toFormat('HH:mm')} prefs=${JSON.stringify(reminderPreferences)} pushDevices=${userPushSubscriptions.length} groups=${Object.keys(sendGroups).length} | ${_diagMeds.join(', ')}`);
 
         let sentAtTimeNineAM = false;
-        console.log(`\n=== EMAIL & SMS SENDING PHASE ===`);
-        console.log(`Total send groups: ${Object.keys(sendGroups).length}`);
-        console.log(`User phone: ${userPhoneNumber}, Verified: ${phoneVerified}`);
 
         const bottleAlerts = await getBottleAlertsForUser(userId, userNowDateTime);
 
         for (const [groupKey, group] of Object.entries(sendGroups)) {
           if (!group || group.meds.length === 0) {
-            console.log(`Skipping empty group: ${groupKey}`);
             continue;
           }
 
@@ -2448,7 +2438,6 @@ exports.sendMedicationReminders = functions
         }
         
         if (Object.keys(sendGroups).length === 0) {
-          console.log(`No emails to send - no send groups created`);
         }
         
         if (Object.keys(lastSentReminders).length > 0) {
@@ -2579,15 +2568,20 @@ exports.sendMedicationReminders = functions
           console.error(`Failed to check missed doses for ${userId}:`, error);
         }
         
-        console.log(`\n=== SUMMARY FOR USER ${userId} ===`);
-        console.log(`  Email: ${userEmail}`);
-        console.log(`  Timezone: ${userTimezone}`);
-        console.log(`  Current time: ${userNowDateTime.toFormat('yyyy-MM-dd HH:mm:ss')}`);
-        console.log(`  Medications checked: ${medicationsSnapshot.size}`);
-        console.log(`  Send groups created: ${Object.keys(sendGroups).length}`);
-        console.log(`  Bottle alerts found: ${bottleAlerts.length} (${bottleAlerts.filter(a => a.severity === 'critical').length} critical)`);
-        console.log(`  Emails queued: ${Object.values(sendGroups).reduce((sum, g) => sum + (g.meds ? g.meds.length : 0), 0)}`);
-        console.log(`===================================\n`);
+        // Only print the per-user summary when this cycle actually did
+        // something. At one run per minute the idle version buried real
+        // events under ~150 lines/minute, making a whole day unreadable.
+        if (Object.keys(sendGroups).length > 0) {
+          console.log(`\n=== SUMMARY FOR USER ${userId} ===`);
+          console.log(`  Email: ${userEmail}`);
+          console.log(`  Timezone: ${userTimezone}`);
+          console.log(`  Current time: ${userNowDateTime.toFormat('yyyy-MM-dd HH:mm:ss')}`);
+          console.log(`  Medications checked: ${medicationsSnapshot.size}`);
+          console.log(`  Send groups created: ${Object.keys(sendGroups).length}`);
+          console.log(`  Bottle alerts found: ${bottleAlerts.length} (${bottleAlerts.filter(a => a.severity === 'critical').length} critical)`);
+          console.log(`  Emails queued: ${Object.values(sendGroups).reduce((sum, g) => sum + (g.meds ? g.meds.length : 0), 0)}`);
+          console.log(`===================================\n`);
+        }
 
         try {
           const groupCount = Object.keys(sendGroups).length;
