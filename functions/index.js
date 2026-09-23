@@ -290,7 +290,13 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
         body,
         {
           urgency: 'high',
-          TTL: 60 * 60,
+          // Matches MAX_SEND_LATENESS_MINUTES (180), the cap the email path
+          // already uses. At the old 1 hour, a phone that was off or out of
+          // signal past the hour had its reminder DISCARDED by the push
+          // service - and because the service had already accepted it, the
+          // dose was marked delivered and never retried. Push and email now
+          // agree on how late is too late.
+          TTL: 3 * 60 * 60,
           headers: {
             Urgency: 'high'
           }
@@ -2228,6 +2234,91 @@ exports.sendMedicationReminders = functions
           const smsDelivered = {};
           const pushDelivered = {};
 
+          // Push goes FIRST. It is the most latency-sensitive channel (a lock
+          // screen alert at the dose time) and the cheapest to send - a single
+          // HTTP POST. It used to run last, behind an SMTP round-trip and a
+          // 2.5s blocking Twilio delivery poll, which pushed real notifications
+          // to ~20s after the dose time instead of ~3s.
+          if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length > 0) {
+            console.log(`\n>>> ATTEMPTING TO SEND PUSH (one per med) <<<`);
+            console.log(`  Group key: ${groupKey}`);
+            console.log(`  Push medications: ${group.pushMeds.length}`);
+            console.log(`  Subscriptions: ${userPushSubscriptions.length}`);
+            let anyPruned = 0;
+            for (const pm of group.pushMeds) {
+              try {
+                const payload = buildSingleMedPushPayload(pm, group.reminderTime, group.offsetKey, userTimezone, todayIso);
+                const pushResult = await sendPushToSubscriptions(db, userId, userPushSubscriptions, payload);
+                anyPruned += pushResult.pruned;
+                if (pushResult.sent > 0) {
+                  pushDelivered[pm.id] = true;
+                  await recordSendAttempt(db, userId, {
+                    channel: 'push', medId: pm.id, medName: pm.name,
+                    doseNumber: pm._doseNumber, doseTime: group.reminderTime,
+                    offsetKey: group.offsetKey, date: todayIso,
+                    status: 'sent', reason: `${pushResult.sent} device(s)`
+                  });
+                } else {
+                  await recordSendAttempt(db, userId, {
+                    channel: 'push', medId: pm.id, medName: pm.name,
+                    doseNumber: pm._doseNumber, doseTime: group.reminderTime,
+                    offsetKey: group.offsetKey, date: todayIso,
+                    status: 'failed', reason: `0 devices delivered, ${pushResult.pruned} pruned`
+                  });
+                }
+              } catch (error) {
+                console.error(`❌ Push failed for ${pm.name}:`, error.message);
+                await recordSendAttempt(db, userId, {
+                  channel: 'push', medId: pm.id, medName: pm.name,
+                  doseNumber: pm._doseNumber, doseTime: group.reminderTime,
+                  offsetKey: group.offsetKey, date: todayIso,
+                  status: 'failed', error: error && error.message || String(error)
+                });
+              }
+            }
+            const deliveredCount = Object.keys(pushDelivered).length;
+            if (deliveredCount > 0) {
+              console.log(`✅ Push sent for ${deliveredCount}/${group.pushMeds.length} med(s); pruned ${anyPruned}`);
+            } else {
+              console.log(`  (no push delivered; pruned ${anyPruned})`);
+            }
+          } else if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length === 0) {
+            const orphaned = group.pushMeds.filter(m => {
+              const ch = getMedChannels(m);
+              return !ch.has('email') && !ch.has('sms');
+            });
+
+            if (orphaned.length > 0 && userEmail) {
+              try {
+                await sendCombinedReminderEmail(
+                  userEmail, orphaned, group.reminderTime, group.offsetKey,
+                  [], todaysSchedule, bottleAlerts, userTimezone
+                );
+                for (const m of orphaned) {
+                  await recordSendAttempt(db, userId, {
+                    channel: 'email', medId: m.id, medName: m.name,
+                    doseNumber: m._doseNumber, doseTime: group.reminderTime,
+                    offsetKey: group.offsetKey, date: todayIso,
+                    status: 'sent', reason: 'fallback: push selected but no subscribed device'
+                  });
+                }
+                console.warn(`No push device for ${userEmail}; sent email fallback for ${orphaned.length} push-only med(s)`);
+              } catch (fbErr) {
+                console.error('Push-fallback email failed:', fbErr.message);
+              }
+            }
+
+            for (const m of group.pushMeds) {
+              pushDelivered[m.id] = true;
+              await recordSendAttempt(db, userId, {
+                channel: 'push', medId: m.id, medName: m.name,
+                doseNumber: m._doseNumber, doseTime: group.reminderTime,
+                offsetKey: group.offsetKey, date: todayIso,
+                status: 'skipped', reason: 'no-push-subscriptions'
+              });
+            }
+          }
+
           if (group.emailMeds && group.emailMeds.length > 0) {
             try {
               console.log(`\n>>> ATTEMPTING TO SEND EMAIL <<<`);
@@ -2340,86 +2431,6 @@ exports.sendMedicationReminders = functions
                   console.log(`✅ SMS sent to ${userPhoneNumber} (status=${dlrInfo && dlrInfo.status || 'unknown'})`);
                 }
               }
-            }
-          }
-
-          if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length > 0) {
-            console.log(`\n>>> ATTEMPTING TO SEND PUSH (one per med) <<<`);
-            console.log(`  Group key: ${groupKey}`);
-            console.log(`  Push medications: ${group.pushMeds.length}`);
-            console.log(`  Subscriptions: ${userPushSubscriptions.length}`);
-            let anyPruned = 0;
-            for (const pm of group.pushMeds) {
-              try {
-                const payload = buildSingleMedPushPayload(pm, group.reminderTime, group.offsetKey, userTimezone, todayIso);
-                const pushResult = await sendPushToSubscriptions(db, userId, userPushSubscriptions, payload);
-                anyPruned += pushResult.pruned;
-                if (pushResult.sent > 0) {
-                  pushDelivered[pm.id] = true;
-                  await recordSendAttempt(db, userId, {
-                    channel: 'push', medId: pm.id, medName: pm.name,
-                    doseNumber: pm._doseNumber, doseTime: group.reminderTime,
-                    offsetKey: group.offsetKey, date: todayIso,
-                    status: 'sent', reason: `${pushResult.sent} device(s)`
-                  });
-                } else {
-                  await recordSendAttempt(db, userId, {
-                    channel: 'push', medId: pm.id, medName: pm.name,
-                    doseNumber: pm._doseNumber, doseTime: group.reminderTime,
-                    offsetKey: group.offsetKey, date: todayIso,
-                    status: 'failed', reason: `0 devices delivered, ${pushResult.pruned} pruned`
-                  });
-                }
-              } catch (error) {
-                console.error(`❌ Push failed for ${pm.name}:`, error.message);
-                await recordSendAttempt(db, userId, {
-                  channel: 'push', medId: pm.id, medName: pm.name,
-                  doseNumber: pm._doseNumber, doseTime: group.reminderTime,
-                  offsetKey: group.offsetKey, date: todayIso,
-                  status: 'failed', error: error && error.message || String(error)
-                });
-              }
-            }
-            const deliveredCount = Object.keys(pushDelivered).length;
-            if (deliveredCount > 0) {
-              console.log(`✅ Push sent for ${deliveredCount}/${group.pushMeds.length} med(s); pruned ${anyPruned}`);
-            } else {
-              console.log(`  (no push delivered; pruned ${anyPruned})`);
-            }
-          } else if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length === 0) {
-            const orphaned = group.pushMeds.filter(m => {
-              const ch = getMedChannels(m);
-              return !ch.has('email') && !ch.has('sms');
-            });
-
-            if (orphaned.length > 0 && userEmail) {
-              try {
-                await sendCombinedReminderEmail(
-                  userEmail, orphaned, group.reminderTime, group.offsetKey,
-                  [], todaysSchedule, bottleAlerts, userTimezone
-                );
-                for (const m of orphaned) {
-                  await recordSendAttempt(db, userId, {
-                    channel: 'email', medId: m.id, medName: m.name,
-                    doseNumber: m._doseNumber, doseTime: group.reminderTime,
-                    offsetKey: group.offsetKey, date: todayIso,
-                    status: 'sent', reason: 'fallback: push selected but no subscribed device'
-                  });
-                }
-                console.warn(`No push device for ${userEmail}; sent email fallback for ${orphaned.length} push-only med(s)`);
-              } catch (fbErr) {
-                console.error('Push-fallback email failed:', fbErr.message);
-              }
-            }
-
-            for (const m of group.pushMeds) {
-              pushDelivered[m.id] = true;
-              await recordSendAttempt(db, userId, {
-                channel: 'push', medId: m.id, medName: m.name,
-                doseNumber: m._doseNumber, doseTime: group.reminderTime,
-                offsetKey: group.offsetKey, date: todayIso,
-                status: 'skipped', reason: 'no-push-subscriptions'
-              });
             }
           }
 
