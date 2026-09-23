@@ -282,16 +282,24 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
       );
       stillValid.push(sub);
       sent++;
+      outcomes.push(`${providerOf(sub.endpoint)}:ok`);
     } catch (err) {
       const status = err && err.statusCode;
       if (status === 404 || status === 410) {
         console.log(`[Push] Pruning dead subscription (${status}) for user ${userId}`);
         dead.push(sub.endpoint);
+        outcomes.push(`${providerOf(sub.endpoint)}:gone(${status})`);
       } else {
         console.warn(`[Push] sendNotification failed (${status || '?'}):`, err.message || err);
         stillValid.push(sub);
+        outcomes.push(`${providerOf(sub.endpoint)}:err(${status || '?'})`);
       }
     }
+  }
+
+  console.log(`[Push] devices=${subscriptions.length} accepted=${sent} malformed=${malformed} pruned=${dead.length} [${outcomes.join(', ')}]`);
+  if (malformed > 0) {
+    console.warn(`[Push] ${malformed} stored subscription(s) are malformed and can never receive a notification`);
   }
   if (dead.length > 0) {
     try {
@@ -302,7 +310,7 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
       console.warn('[Push] Failed to prune dead subscriptions:', e.message);
     }
   }
-  return { sent, pruned: dead.length };
+  return { sent, pruned: dead.length, malformed, total: subscriptions.length };
 }
 
 function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, todayIso) {
