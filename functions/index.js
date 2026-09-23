@@ -264,8 +264,24 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
   const stillValid = [];
   const dead = [];
   let sent = 0;
+  let malformed = 0;
+  const outcomes = [];
+  const providerOf = (url) => {
+    try {
+      const h = new URL(url).hostname;
+      if (/googleapis\.com$/.test(h)) return 'chrome/android';
+      if (/push\.apple\.com$/.test(h)) return 'safari/ios';
+      if (/mozilla\.com$/.test(h)) return 'firefox';
+      if (/windows\.com$/.test(h)) return 'edge';
+      return h;
+    } catch (_) { return 'unknown'; }
+  };
   for (const sub of subscriptions) {
     if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
+      // Previously skipped silently: never sent, never pruned, never logged,
+      // yet still counted toward the device total shown in the profile panel.
+      malformed++;
+      outcomes.push('malformed');
       continue;
     }
     try {
