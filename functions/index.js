@@ -5164,7 +5164,7 @@ async function ensurePushQueue() {
   } catch (e) {
     try {
       await client.createQueue({ parent, queue: { name } });
-      console.log(`[Tasks] Created queue ${TASKS_QUEUE}`);
+      console.log(`[Tasks] Created queue ${TASKS_QUEUE} in ${TASKS_LOCATION}`);
       _queueEnsured = true;
       return true;
     } catch (e2) {
@@ -5293,9 +5293,9 @@ exports.enqueuePushTasks = functions
       }
     }
 
-    if (enqueued || failed) {
-      console.log(`[Tasks] enqueued=${enqueued} duplicate=${duplicate} failed=${failed}`);
-    }
+    // Always log, even on an idle window. Without this there is no way to tell
+    // "ran and found nothing due" apart from "never ran at all".
+    console.log(`[Tasks] scan: users=${usersSnapshot.size} window=${TASK_LOOKAHEAD_MINUTES}min enqueued=${enqueued} duplicate=${duplicate} failed=${failed}`);
     return null;
   });
 
