@@ -5092,6 +5092,289 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
 });
 
 
+// ============================================================================
+// EXACT-TIME PUSH DELIVERY VIA CLOUD TASKS
+// ----------------------------------------------------------------------------
+// The every-minute scheduler cannot hit a dose time precisely: Cloud Scheduler
+// delivers its trigger a median of 1s past the minute but drifts to 8s at p90
+// and has been measured at 30s. Nothing inside the function can compensate for
+// a trigger that arrives late.
+//
+// So push - the one latency-sensitive channel - is additionally scheduled
+// through Cloud Tasks, which honours an absolute scheduleTime to within about a
+// second. enqueuePushTasks runs every 5 minutes and books a task for each push
+// dose falling in the next ~11 minutes; firePushTask delivers it at the exact
+// instant.
+//
+// The per-minute loop deliberately still sends push. Both paths write the SAME
+// lastSentReminders key, so whichever runs first wins and the other skips. If
+// Cloud Tasks is unavailable the loop still delivers within a minute: the
+// failure mode is lost precision, never a lost reminder.
+// ============================================================================
+
+const { CloudTasksClient } = require('@google-cloud/tasks');
+
+const TASKS_LOCATION = 'us-central1';
+const TASKS_QUEUE = 'push-reminders';
+const TASK_LOOKAHEAD_MINUTES = 11;
+
+function tasksProjectId() {
+  return process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT ||
+    (functions.config().app && functions.config().app.project) || 'medtracker-8c467';
+}
+
+let _tasksClient = null;
+function getTasksClient() {
+  if (!_tasksClient) _tasksClient = new CloudTasksClient();
+  return _tasksClient;
+}
+
+// Shared secret so firePushTask only accepts bodies this project produced.
+const pushTaskSecret =
+  functions.config().tasks?.secret ||
+  process.env.PUSH_TASK_SECRET ||
+  (gmailPassword
+    ? crypto.createHash('sha256').update('everane-push-task:' + gmailPassword).digest('hex')
+    : null);
+
+function signPushTask(payload) {
+  if (!pushTaskSecret) return null;
+  return crypto.createHmac('sha256', pushTaskSecret)
+    .update(JSON.stringify(payload)).digest('hex');
+}
+
+function verifyPushTask(payload, signature) {
+  const expected = signPushTask(payload);
+  if (!expected || typeof signature !== 'string') return false;
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+let _queueEnsured = false;
+async function ensurePushQueue() {
+  if (_queueEnsured) return true;
+  const client = getTasksClient();
+  const parent = client.locationPath(tasksProjectId(), TASKS_LOCATION);
+  const name = client.queuePath(tasksProjectId(), TASKS_LOCATION, TASKS_QUEUE);
+  try {
+    await client.getQueue({ name });
+    _queueEnsured = true;
+    return true;
+  } catch (e) {
+    try {
+      await client.createQueue({ parent, queue: { name } });
+      console.log(`[Tasks] Created queue ${TASKS_QUEUE}`);
+      _queueEnsured = true;
+      return true;
+    } catch (e2) {
+      if (String(e2.message || '').includes('ALREADY_EXISTS')) { _queueEnsured = true; return true; }
+      console.error('[Tasks] Could not ensure queue:', e2.message);
+      return false;
+    }
+  }
+}
+
+// Deterministic task id. Cloud Tasks rejects a duplicate name, which gives us
+// idempotent enqueueing for free across overlapping scheduler windows.
+function pushTaskId(uid, medId, dateIso, doseNumber) {
+  const h = crypto.createHash('sha256')
+    .update(`${uid}|${medId}|${dateIso}|${doseNumber}`).digest('hex').slice(0, 48);
+  return `push-${h}`;
+}
+
+exports.enqueuePushTasks = functions
+  .runWith({ timeoutSeconds: 300, memory: '512MB', maxInstances: 1 })
+  .pubsub
+  .schedule('every 5 minutes')
+  .timeZone('UTC')
+  .onRun(async () => {
+    if (!pushTaskSecret) {
+      console.error('[Tasks] No task secret configured; skipping enqueue');
+      return null;
+    }
+    if (!(await ensurePushQueue())) return null;
+
+    const db = admin.firestore();
+    const client = getTasksClient();
+    const parent = client.queuePath(tasksProjectId(), TASKS_LOCATION, TASKS_QUEUE);
+    const handlerUrl = `https://${TASKS_LOCATION}-${tasksProjectId()}.cloudfunctions.net/firePushTask`;
+
+    const nowMs = Date.now();
+    const windowEndMs = nowMs + TASK_LOOKAHEAD_MINUTES * 60 * 1000;
+
+    let enqueued = 0, duplicate = 0, failed = 0;
+    const usersSnapshot = await db.collection('users').get();
+
+    for (const userDoc of usersSnapshot.docs) {
+      try {
+        const userData = userDoc.data() || {};
+        const subs = Array.isArray(userData.pushSubscriptions) ? userData.pushSubscriptions : [];
+        if (subs.length === 0) continue;
+
+        const rawPrefs = Array.isArray(userData.notification_reminders) ? userData.notification_reminders : [];
+        let prefs = Array.from(new Set(rawPrefs.filter(p => REMINDER_OPTIONS[p])));
+        if (prefs.length === 0) prefs = ['30_minutes_before', 'at_time'];
+        if (!prefs.includes('at_time')) continue; // push only ever fires at_time
+
+        const tz = userData.timezone || DEFAULT_TIME_ZONE;
+        const medsSnapshot = await db.collection('users').doc(userDoc.id).collection('medications').get();
+        const lastSent = userData.lastSentReminders || {};
+
+        for (const medDoc of medsSnapshot.docs) {
+          const raw = medDoc.data() || {};
+          if (raw.deletedStatus === true) continue;
+          if (!getMedChannels(raw).has('push')) continue;
+
+          let schedules = raw.schedules || null;
+          if (!schedules && ((raw.daysOfWeek || raw.days || []).length > 0 || (raw.times || []).length > 0)) {
+            schedules = ScheduleUtils.migrateOldFormat({
+              daysOfWeek: raw.daysOfWeek || raw.days || [],
+              times: Array.isArray(raw.times) ? raw.times.filter(Boolean) : [],
+              timesPerDay: raw.timesPerDay || 0,
+              startDate: raw.startDate || null,
+              endDate: raw.endDate || null
+            }).schedules;
+          }
+          if (!schedules || schedules.length === 0) continue;
+
+          // The look-ahead window can cross local midnight, so check both days.
+          for (const dayOffset of [0, 1]) {
+            const day = DateTime.now().setZone(tz).plus({ days: dayOffset });
+            const dayIso = day.toISODate();
+            const doses = ScheduleUtils.getScheduledDosesForDate(schedules, day);
+
+            for (const dose of doses) {
+              if (!dose.time) continue;
+              const [hh, mm] = String(dose.time).split(':').map(Number);
+              if (Number.isNaN(hh) || Number.isNaN(mm)) continue;
+
+              const fireAt = day.set({ hour: hh, minute: mm, second: 0, millisecond: 0 });
+              const fireMs = fireAt.toMillis();
+              if (fireMs <= nowMs || fireMs > windowEndMs) continue;
+
+              const dedupKey = `${medDoc.id}|${dose.time}|d${dose.doseNumber}|at_time|${dayIso}|push`;
+              if (lastSent[dedupKey]) continue; // already delivered
+
+              const payload = {
+                uid: userDoc.id,
+                medId: medDoc.id,
+                dateIso: dayIso,
+                doseTime: dose.time,
+                doseNumber: dose.doseNumber
+              };
+              const body = { payload, signature: signPushTask(payload) };
+
+              try {
+                await client.createTask({
+                  parent,
+                  task: {
+                    name: `${parent}/tasks/${pushTaskId(userDoc.id, medDoc.id, dayIso, dose.doseNumber)}`,
+                    scheduleTime: { seconds: Math.floor(fireMs / 1000) },
+                    httpRequest: {
+                      httpMethod: 'POST',
+                      url: handlerUrl,
+                      headers: { 'Content-Type': 'application/json' },
+                      body: Buffer.from(JSON.stringify(body)).toString('base64')
+                    }
+                  }
+                });
+                enqueued++;
+              } catch (e) {
+                const msg = String(e.message || '');
+                if (msg.includes('ALREADY_EXISTS') || e.code === 6) duplicate++;
+                else { failed++; console.warn('[Tasks] createTask failed:', msg.slice(0, 160)); }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[Tasks] enqueue error for ${userDoc.id}:`, e.message);
+      }
+    }
+
+    if (enqueued || failed) {
+      console.log(`[Tasks] enqueued=${enqueued} duplicate=${duplicate} failed=${failed}`);
+    }
+    return null;
+  });
+
+exports.firePushTask = functions
+  .runWith({ timeoutSeconds: 60, memory: '256MB' })
+  .https.onRequest(async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).send('Method not allowed'); return; }
+
+    const { payload, signature } = req.body || {};
+    if (!payload || !verifyPushTask(payload, signature)) {
+      console.warn('[Tasks] Rejected task with bad or missing signature');
+      res.status(403).send('forbidden');
+      return;
+    }
+
+    const { uid, medId, dateIso, doseTime, doseNumber } = payload;
+    const db = admin.firestore();
+
+    try {
+      // Re-validate at fire time. Tasks are booked up to 11 minutes ahead, so
+      // the medication may have been edited, deleted, or already taken since.
+      // This is why stale tasks need no cancellation.
+      const userSnap = await db.collection('users').doc(uid).get();
+      if (!userSnap.exists) { res.status(200).send('no-user'); return; }
+      const userData = userSnap.data() || {};
+
+      const subs = Array.isArray(userData.pushSubscriptions) ? userData.pushSubscriptions : [];
+      if (subs.length === 0) { res.status(200).send('no-devices'); return; }
+
+      const lastSent = userData.lastSentReminders || {};
+      const dedupKey = `${medId}|${doseTime}|d${doseNumber}|at_time|${dateIso}|push`;
+      if (lastSent[dedupKey]) { res.status(200).send('already-sent'); return; }
+
+      const medSnap = await db.collection('users').doc(uid).collection('medications').doc(medId).get();
+      if (!medSnap.exists) { res.status(200).send('no-med'); return; }
+      const raw = medSnap.data() || {};
+      if (raw.deletedStatus === true) { res.status(200).send('deleted'); return; }
+      if (!getMedChannels(raw).has('push')) { res.status(200).send('push-off'); return; }
+
+      const doseEntry = (raw.doses || {})[`${dateIso}_${doseNumber}`];
+      if (doseEntry && doseEntry.taken === true) { res.status(200).send('already-taken'); return; }
+
+      const tz = userData.timezone || DEFAULT_TIME_ZONE;
+      const med = {
+        id: medId,
+        name: raw.name || 'Medication',
+        dosage: raw.dosage || '',
+        _doseNumber: doseNumber,
+        _doseTime: doseTime,
+        _isAlreadyTaken: false
+      };
+      const payloadBody = buildSingleMedPushPayload(med, doseTime, 'at_time', tz, dateIso);
+      const result = await sendPushToSubscriptions(db, uid, subs, payloadBody);
+
+      if (result.sent > 0) {
+        await db.collection('users').doc(uid).set({
+          lastSentReminders: { ...lastSent, [dedupKey]: DateTime.now().setZone(tz).toISO() }
+        }, { merge: true });
+        await recordSendAttempt(db, uid, {
+          channel: 'push', medId, medName: med.name,
+          doseNumber, doseTime, offsetKey: 'at_time', date: dateIso,
+          status: 'sent', reason: `cloud-task, ${result.sent} device(s)`
+        });
+        console.log(`[Tasks] Delivered on time: ${med.name} d${doseNumber} @${doseTime} (${result.sent} device(s))`);
+        res.status(200).send('sent');
+        return;
+      }
+
+      // Nothing delivered. Leave the dedup key unset so the per-minute loop
+      // retries within the minute.
+      console.warn(`[Tasks] No device accepted push for ${med.name} d${doseNumber}; leaving to the minute loop`);
+      res.status(200).send('no-delivery');
+    } catch (e) {
+      console.error('[Tasks] firePushTask error:', e.message);
+      // 500 makes Cloud Tasks retry; the minute loop is the backstop either way.
+      res.status(500).send('error');
+    }
+  });
+
 exports.requestTimezoneChangeEmail = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
