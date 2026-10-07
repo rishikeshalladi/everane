@@ -5280,6 +5280,7 @@ exports.enqueuePushTasks = functions
                   }
                 });
                 enqueued++;
+                console.log(`[Tasks] booked ${raw.name || medId} d${dose.doseNumber} for ${fireAt.toISO()} (in ${Math.round((fireMs - nowMs) / 1000)}s) url=${handlerUrl}`);
               } catch (e) {
                 const msg = String(e.message || '');
                 if (msg.includes('ALREADY_EXISTS') || e.code === 6) duplicate++;
@@ -5313,30 +5314,32 @@ exports.firePushTask = functions
 
     const { uid, medId, dateIso, doseTime, doseNumber } = payload;
     const db = admin.firestore();
+    const lateBy = Date.now() - DateTime.fromISO(`${dateIso}T${doseTime}`, { zone: 'UTC' }).toMillis();
+    console.log(`[Tasks] fired: med=${medId} d${doseNumber} @${doseTime} ${dateIso}`);
 
     try {
       // Re-validate at fire time. Tasks are booked up to 11 minutes ahead, so
       // the medication may have been edited, deleted, or already taken since.
       // This is why stale tasks need no cancellation.
       const userSnap = await db.collection('users').doc(uid).get();
-      if (!userSnap.exists) { res.status(200).send('no-user'); return; }
+      if (!userSnap.exists) { console.log('[Tasks] skip: no-user'); res.status(200).send('no-user'); return; }
       const userData = userSnap.data() || {};
 
       const subs = Array.isArray(userData.pushSubscriptions) ? userData.pushSubscriptions : [];
-      if (subs.length === 0) { res.status(200).send('no-devices'); return; }
+      if (subs.length === 0) { console.log('[Tasks] skip: no-devices'); res.status(200).send('no-devices'); return; }
 
       const lastSent = userData.lastSentReminders || {};
       const dedupKey = `${medId}|${doseTime}|d${doseNumber}|at_time|${dateIso}|push`;
-      if (lastSent[dedupKey]) { res.status(200).send('already-sent'); return; }
+      if (lastSent[dedupKey]) { console.log('[Tasks] skip: already-sent'); res.status(200).send('already-sent'); return; }
 
       const medSnap = await db.collection('users').doc(uid).collection('medications').doc(medId).get();
-      if (!medSnap.exists) { res.status(200).send('no-med'); return; }
+      if (!medSnap.exists) { console.log('[Tasks] skip: no-med'); res.status(200).send('no-med'); return; }
       const raw = medSnap.data() || {};
-      if (raw.deletedStatus === true) { res.status(200).send('deleted'); return; }
-      if (!getMedChannels(raw).has('push')) { res.status(200).send('push-off'); return; }
+      if (raw.deletedStatus === true) { console.log('[Tasks] skip: deleted'); res.status(200).send('deleted'); return; }
+      if (!getMedChannels(raw).has('push')) { console.log('[Tasks] skip: push-off'); res.status(200).send('push-off'); return; }
 
       const doseEntry = (raw.doses || {})[`${dateIso}_${doseNumber}`];
-      if (doseEntry && doseEntry.taken === true) { res.status(200).send('already-taken'); return; }
+      if (doseEntry && doseEntry.taken === true) { console.log('[Tasks] skip: already-taken'); res.status(200).send('already-taken'); return; }
 
       const tz = userData.timezone || DEFAULT_TIME_ZONE;
       const med = {
