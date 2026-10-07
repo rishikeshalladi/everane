@@ -11,7 +11,7 @@
   // An already-running tour resumes from sessionStorage on every page, so the
   // profile flag alone is not enough to keep it out of the demo.
   try { sessionStorage.removeItem('everaneTutorialState'); } catch (_) {}
-  try { localStorage.setItem('everaneFirstTimePopupSeen', '1'); } catch (_) {}
+  try { localStorage.setItem('hasSeenFirstTimePopup', 'true'); } catch (_) {}
 
   const TZ_OFFSET_DAYS_HISTORY = 21;
 
