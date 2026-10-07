@@ -3758,5 +3758,161 @@
       window.closeHelpModal = closeHelpModal;
     })();
   </script>
+
+  <style>
+    /* Always-visible problem report. Deliberately not in settings: the people
+       most likely to hit a problem are the least likely to go looking for a
+       way to tell anyone about it. */
+    .report-fab {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 15000;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.15rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,0,0,.28);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .report-fab:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.34); }
+    .report-fab:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+    .report-fab__dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--danger); flex: none;
+    }
+    @media (max-width: 900px) {
+      .report-fab { bottom: 14px; right: 14px; padding: 0.7rem 1rem; font-size: 0.9rem; }
+    }
+    /* Keep the one-off welcome popup from sitting on top of the button. */
+    .first-time-popup { bottom: 92px !important; }
+
+    #report-modal .modal-content { max-width: 540px; width: 95%; text-align: left; }
+    .report-title { margin: 0 0 .35rem; font-size: 1.25rem; font-weight: 800; color: var(--text); }
+    .report-sub { margin: 0 0 1rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+    #report-text {
+      width: 100%; min-height: 140px; padding: 0.85rem 1rem;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 12px;
+      font: inherit; font-size: 1rem; line-height: 1.55; resize: vertical;
+    }
+    #report-text:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(79,140,255,.25); }
+    .report-foot { display: flex; gap: .6rem; justify-content: flex-end; margin-top: 1rem; flex-wrap: wrap; }
+    .report-note { margin-top: .75rem; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .report-msg { margin-top: .8rem; font-size: 0.95rem; display: none; }
+    .report-msg.show { display: block; }
+    .report-msg.ok { color: var(--success); }
+    .report-msg.err { color: var(--danger); }
+  </style>
+
+  <button type="button" id="report-fab" class="report-fab" aria-haspopup="dialog" title="Tell us about a problem">
+    <span class="report-fab__dot" aria-hidden="true"></span>
+    Report a problem
+  </button>
+
+  <div id="report-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="report-title">
+    <div class="modal-content">
+      <h3 id="report-title" class="report-title">Report a problem</h3>
+      <p class="report-sub">Tell us what went wrong in your own words. You don't need to know any technical details.</p>
+
+      <label for="report-text" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Describe the problem</label>
+      <textarea id="report-text" placeholder="For example: my 8am reminder didn't arrive this morning" maxlength="4000"></textarea>
+
+      <p class="report-note">We'll automatically include which screen you're on and your account details, so you don't have to explain any of that.</p>
+      <p id="report-msg" class="report-msg" role="status" aria-live="polite"></p>
+
+      <div class="report-foot">
+        <button type="button" id="report-cancel" class="btn btn-sm btn-secondary">Cancel</button>
+        <button type="button" id="report-send" class="btn btn-sm btn-primary">Send report</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function wireProblemReport() {
+      var REPORT_URL = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendProblemReport';
+      var APP_VERSION = '1.0.0';
+
+      var fab = document.getElementById('report-fab');
+      var modal = document.getElementById('report-modal');
+      var text = document.getElementById('report-text');
+      var sendBtn = document.getElementById('report-send');
+      var cancelBtn = document.getElementById('report-cancel');
+      var msg = document.getElementById('report-msg');
+      if (!fab || !modal || !text || !sendBtn) return;
+
+      function setMsg(t, kind) {
+        msg.textContent = t || '';
+        msg.className = 'report-msg' + (t ? ' show ' + (kind || '') : '');
+      }
+      function open() {
+        setMsg('');
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send report';
+        modal.classList.add('show');
+        setTimeout(function () { text.focus(); }, 50);
+      }
+      function close() { modal.classList.remove('show'); }
+
+      fab.addEventListener('click', open);
+      cancelBtn.addEventListener('click', close);
+      modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) close();
+      });
+
+      sendBtn.addEventListener('click', async function () {
+        var body = (text.value || '').trim();
+        if (!body) { setMsg('Please describe the problem first.', 'err'); text.focus(); return; }
+
+        var auth = window.auth;
+        var user = auth && auth.currentUser;
+        if (!user) { setMsg('Please sign in again, then resend.', 'err'); return; }
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending…';
+        setMsg('');
+
+        try {
+          var idToken = await user.getIdToken();
+          var resp = await fetch(REPORT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+            body: JSON.stringify({
+              message: body,
+              context: {
+                page: location.pathname + location.search,
+                appVersion: APP_VERSION,
+                // document.lastModified is the deployed file's timestamp, so it
+                // identifies the build without anyone remembering to bump a number.
+                buildDate: document.lastModified,
+                viewport: window.innerWidth + 'x' + window.innerHeight,
+                userAgent: navigator.userAgent
+              }
+            })
+          });
+          var data = await resp.json().catch(function () { return {}; });
+          if (!resp.ok) throw new Error(data.error || 'Could not send your report.');
+
+          text.value = '';
+          setMsg('Thank you — your report was sent. We read every one.', 'ok');
+          sendBtn.textContent = 'Sent';
+          setTimeout(close, 2200);
+        } catch (e) {
+          setMsg((e && e.message) || 'Could not send your report. Please try again.', 'err');
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send report';
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

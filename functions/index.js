@@ -44,6 +44,10 @@ function getMedChannels(med) {
 const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
 
+// Where in-app problem reports go. Override with:
+//   firebase functions:config:set report.to="you@example.com"
+const PROBLEM_REPORT_TO = functions.config().report?.to || process.env.PROBLEM_REPORT_TO || 'rishikeshalladi@gmail.com';
+
 const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://everane.live';
 
 const twilioAccountSid = functions.config().twilio?.account_sid || process.env.TWILIO_ACCOUNT_SID;
@@ -4288,6 +4292,159 @@ async function consumeAiQuota(uid, kind, limit) {
     return { allowed: true, used: 0, limit, degraded: true };
   }
 }
+
+/**
+ * sendProblemReport
+ * In-app "something is wrong" button. Authenticated, so the identifying
+ * context is taken from the server side rather than trusted from the client -
+ * the whole point is not having to interview someone about which screen they
+ * were on.
+ *
+ * POST { message, context: { page, userAgent, viewport, buildDate, appVersion } }
+ * Authorization: Bearer <firebase id token>
+ */
+exports.sendProblemReport = functions
+  .runWith({ timeoutSeconds: 60, memory: '256MB' })
+  .https.onRequest((req, res) => {
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.set('Access-Control-Max-Age', '3600');
+      res.status(204).send('');
+      return;
+    }
+
+    return cors(req, res, async () => {
+      res.set('Access-Control-Allow-Origin', '*');
+      if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
+
+      try {
+        const authHeader = req.headers.authorization || '';
+        const idToken =
+          (authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '') ||
+          (typeof req.body?.idToken === 'string' ? req.body.idToken : '');
+        if (!idToken) { res.status(401).json({ error: 'Please sign in first.' }); return; }
+
+        let decoded;
+        try { decoded = await admin.auth().verifyIdToken(idToken); }
+        catch (_) { res.status(401).json({ error: 'Your session expired. Please sign in again.' }); return; }
+        if (!decoded?.uid) { res.status(401).json({ error: 'Invalid session.' }); return; }
+
+        const rawMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+        if (!rawMessage) { res.status(400).json({ error: 'Please describe the problem.' }); return; }
+        const message = rawMessage.slice(0, 4000);
+
+        const ctx = (req.body && typeof req.body.context === 'object' && req.body.context) || {};
+        const str = (v, n = 300) => (typeof v === 'string' ? v.slice(0, n) : '');
+
+        // Everything below comes from the server, not the browser.
+        const db = admin.firestore();
+        let profile = {};
+        let medCount = 0, activeMeds = 0, pushDevices = 0;
+        try {
+          const snap = await db.collection('users').doc(decoded.uid).get();
+          profile = snap.exists ? (snap.data() || {}) : {};
+          pushDevices = Array.isArray(profile.pushSubscriptions) ? profile.pushSubscriptions.length : 0;
+          const meds = await db.collection('users').doc(decoded.uid).collection('medications').get();
+          medCount = meds.size;
+          meds.forEach(d => { if ((d.data() || {}).deletedStatus !== true) activeMeds++; });
+        } catch (e) {
+          console.warn('[Report] Could not load profile context:', e.message);
+        }
+
+        const tz = profile.timezone || DEFAULT_TIME_ZONE;
+        const localNow = DateTime.now().setZone(tz).toFormat('yyyy-LL-dd HH:mm:ss ZZZZ');
+        const accountType = profile.type === 'C' ? 'Caregiver' : 'Patient';
+
+        const facts = [
+          ['Name', profile.name || '(not set)'],
+          ['Email', decoded.email || profile.email || '(unknown)'],
+          ['Account type', accountType],
+          ['User ID', decoded.uid],
+          ['Patient ID', profile.patientId || '(none)'],
+          ['Their local time', localNow],
+          ['Timezone', tz],
+          ['Medications', `${activeMeds} active (${medCount} total incl. deleted)`],
+          ['Push devices', String(pushDevices)],
+          ['Screen they were on', str(ctx.page) || '(unknown)'],
+          ['App build', str(ctx.buildDate) || '(unknown)'],
+          ['App version', str(ctx.appVersion) || '(unknown)'],
+          ['Viewport', str(ctx.viewport, 40) || '(unknown)'],
+          ['Browser', str(ctx.userAgent, 220) || '(unknown)'],
+        ];
+
+        const rowsHtml = facts.map(([k, v]) => `
+          <tr>
+            <td style="padding:7px 12px; border-bottom:1px solid #eef2f7; color:#64748b; font-size:13px; white-space:nowrap; vertical-align:top;">${escapeHtml(k)}</td>
+            <td style="padding:7px 12px; border-bottom:1px solid #eef2f7; color:#0f172a; font-size:13px; word-break:break-word;">${escapeHtml(v)}</td>
+          </tr>`).join('');
+
+        const htmlBody = `
+          <div style="background:#f4f7fb; padding:24px 0; font-family:Segoe UI, Arial, sans-serif;">
+            <div style="width:92%; max-width:680px; margin:0 auto; background:#fff; border-radius:18px; overflow:hidden; box-shadow:0 10px 28px rgba(15,23,42,.12);">
+              <div style="background:linear-gradient(135deg,#ff8a4c,#ef4444); padding:22px; color:#fff;">
+                <div style="font-size:20px; font-weight:900;">Problem report</div>
+                <div style="margin-top:6px; opacity:.93; font-size:14px;">from ${escapeHtml(profile.name || decoded.email || decoded.uid)}</div>
+              </div>
+              <div style="padding:22px;">
+                <div style="background:#fff7ed; border-left:4px solid #f97316; border-radius:8px; padding:14px 16px; color:#0f172a; font-size:15px; line-height:1.6; white-space:pre-wrap;">${escapeHtml(message)}</div>
+                <div style="margin-top:20px; font-size:12px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:#64748b;">Context</div>
+                <table style="width:100%; border-collapse:collapse; margin-top:8px;">${rowsHtml}</table>
+                <div style="margin-top:18px; color:#64748b; font-size:12px;">Reply to this email to respond to them directly.</div>
+              </div>
+            </div>
+          </div>`;
+
+        const textBody = [
+          'PROBLEM REPORT',
+          '',
+          message,
+          '',
+          '--- context ---',
+          ...facts.map(([k, v]) => `${k}: ${v}`)
+        ].join('\n');
+
+        await withRetry(
+          `sendProblemReport->${decoded.uid}`,
+          () => transporter.sendMail({
+            from: `Everane Reports <${gmailEmail}>`,
+            to: PROBLEM_REPORT_TO,
+            replyTo: decoded.email || profile.email || gmailEmail,
+            subject: sanitizeHeader(`[Everane] Problem report from ${profile.name || decoded.email || decoded.uid}`),
+            text: textBody,
+            html: htmlBody
+          }),
+          3,
+          600
+        );
+
+        // Keep a copy so reports are not lost if the mailbox is missed.
+        try {
+          await db.collection('problemReports').add({
+            uid: decoded.uid,
+            email: decoded.email || null,
+            name: profile.name || null,
+            message,
+            context: {
+              page: str(ctx.page), buildDate: str(ctx.buildDate), appVersion: str(ctx.appVersion),
+              viewport: str(ctx.viewport, 40), userAgent: str(ctx.userAgent, 220),
+              timezone: tz, activeMeds, medCount, pushDevices, accountType
+            },
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        } catch (e) {
+          console.warn('[Report] Could not archive report:', e.message);
+        }
+
+        console.log(`[Report] Problem report from ${decoded.uid} (${message.length} chars)`);
+        res.status(200).json({ ok: true });
+      } catch (error) {
+        console.error('[Report] sendProblemReport failed:', error.message);
+        res.status(500).json({ error: 'Could not send your report. Please try again.' });
+      }
+    });
+  });
 
 exports.createRealtimeSession = functions.https.onRequest((req, res) => {
   if (req.method === 'OPTIONS') {
