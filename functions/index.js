@@ -5118,6 +5118,15 @@ const TASKS_LOCATION = 'us-central1';
 const TASKS_QUEUE = 'push-reminders';
 const TASK_LOOKAHEAD_MINUTES = 11;
 
+// Cloud Tasks mints an OIDC token as this identity. The App Engine default
+// service account exists in every Firebase project and normally already holds
+// the permissions needed to invoke a function in the same project.
+function taskInvokerServiceAccount() {
+  return functions.config().tasks?.invoker ||
+    process.env.TASK_INVOKER_SA ||
+    `${tasksProjectId()}@appspot.gserviceaccount.com`;
+}
+
 function tasksProjectId() {
   return process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT ||
     (functions.config().app && functions.config().app.project) || 'medtracker-8c467';
@@ -5275,7 +5284,14 @@ exports.enqueuePushTasks = functions
                       httpMethod: 'POST',
                       url: handlerUrl,
                       headers: { 'Content-Type': 'application/json' },
-                      body: Buffer.from(JSON.stringify(body)).toString('base64')
+                      body: Buffer.from(JSON.stringify(body)).toString('base64'),
+                      // Authenticate as a service account instead of requiring
+                      // firePushTask to be invokable by allUsers. The HMAC in the
+                      // body is still checked; this is defence in depth.
+                      oidcToken: {
+                        serviceAccountEmail: taskInvokerServiceAccount(),
+                        audience: handlerUrl
+                      }
                     }
                   }
                 });
@@ -5298,6 +5314,68 @@ exports.enqueuePushTasks = functions
     // "ran and found nothing due" apart from "never ran at all".
     console.log(`[Tasks] scan: users=${usersSnapshot.size} window=${TASK_LOOKAHEAD_MINUTES}min enqueued=${enqueued} duplicate=${duplicate} failed=${failed}`);
     return null;
+  });
+
+/**
+ * Diagnostic: book a Cloud Task a few seconds out so the delivery path can be
+ * exercised without waiting for a real dose. Gated on the same shared secret
+ * as the task bodies. Uses a deliberately non-existent medication id, so
+ * firePushTask runs its full auth + re-validation path and then stops at the
+ * "no-med" guard without sending anything to a real device.
+ */
+exports.debugEnqueueTestTask = functions
+  .runWith({ timeoutSeconds: 60, memory: '256MB' })
+  .https.onRequest(async (req, res) => {
+    const provided = (req.headers.authorization || '').replace(/^Bearer /, '');
+    if (!pushTaskSecret || provided !== pushTaskSecret) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+    if (!(await ensurePushQueue())) {
+      res.status(500).json({ error: 'queue unavailable' });
+      return;
+    }
+    try {
+      const client = getTasksClient();
+      const parent = client.queuePath(tasksProjectId(), TASKS_LOCATION, TASKS_QUEUE);
+      const handlerUrl = `https://${TASKS_LOCATION}-${tasksProjectId()}.cloudfunctions.net/firePushTask`;
+      const delaySec = Math.min(120, Math.max(5, Number(req.query.delay) || 20));
+      const fireMs = Date.now() + delaySec * 1000;
+
+      const payload = {
+        uid: 'debug-nonexistent-user',
+        medId: 'debug-nonexistent-med',
+        dateIso: DateTime.utc().toISODate(),
+        doseTime: '00:00',
+        doseNumber: 99
+      };
+      const body = { payload, signature: signPushTask(payload) };
+
+      const [task] = await client.createTask({
+        parent,
+        task: {
+          name: `${parent}/tasks/debug-${Date.now()}`,
+          scheduleTime: { seconds: Math.floor(fireMs / 1000) },
+          httpRequest: {
+            httpMethod: 'POST',
+            url: handlerUrl,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(JSON.stringify(body)).toString('base64'),
+            oidcToken: { serviceAccountEmail: taskInvokerServiceAccount(), audience: handlerUrl }
+          }
+        }
+      });
+      res.status(200).json({
+        ok: true,
+        task: task.name,
+        firesInSeconds: delaySec,
+        invoker: taskInvokerServiceAccount(),
+        url: handlerUrl
+      });
+    } catch (e) {
+      console.error('[Tasks] debug enqueue failed:', e.message);
+      res.status(500).json({ error: e.message });
+    }
   });
 
 exports.firePushTask = functions
