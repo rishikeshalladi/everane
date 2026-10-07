@@ -5326,7 +5326,10 @@ exports.enqueuePushTasks = functions
 exports.debugEnqueueTestTask = functions
   .runWith({ timeoutSeconds: 60, memory: '256MB' })
   .https.onRequest(async (req, res) => {
-    const provided = (req.headers.authorization || '').replace(/^Bearer /, '');
+    // Deliberately NOT the Authorization header: Google's front end tries to
+    // validate that as a Google credential and rejects the request before any
+    // of this code runs.
+    const provided = req.get('x-task-secret') || (req.query && req.query.secret) || '';
     if (!pushTaskSecret || provided !== pushTaskSecret) {
       res.status(403).json({ error: 'forbidden' });
       return;
