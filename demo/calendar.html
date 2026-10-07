@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <script type="importmap">
+  {
+    "imports": {
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js": "./fb-app.js",
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js": "./fb-auth.js",
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js": "./fb-firestore.js",
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-functions.js": "./fb-functions.js"
+    }
+  }
+  </script>
+  <script src="demo-data.js"></script>
+  <style>
+    .demo-banner{
+      position:fixed; top:0; left:0; right:0; z-index:30000;
+      display:flex; align-items:center; justify-content:center; gap:.6rem;
+      padding:.5rem 1rem; font:600 .85rem/1.3 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background:linear-gradient(135deg,#4f8cff,#7a5cff); color:#fff; text-align:center;
+      box-shadow:0 2px 10px rgba(0,0,0,.25);
+    }
+    .demo-banner b{font-weight:800}
+    body{padding-top:34px !important}
+    .sidebar{top:34px !important}
+    .demo-banner__x{
+      position:absolute; right:.6rem; top:50%; transform:translateY(-50%);
+      background:transparent; border:0; color:#fff; font-size:1.1rem; cursor:pointer; opacity:.85;
+    }
+    @media (max-width:640px){ .demo-banner{font-size:.76rem; padding:.45rem .5rem} }
+  </style>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
+  <link rel="manifest" href="../manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Everane">
+  <link rel="apple-touch-icon" href="../icon-192.png">
+  <meta name="theme-color" content="#3f6ff5">
+  <title>Everane – Calendar</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    
+    :root {
+      --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+      --container:1200px;
+      
+      --danger-color: var(--danger);
+      
+      --text-strong: #000000;
+      --muted-strong: #1a1a1a;
+    }
+
+    
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+        --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      }
+    }
+
+    
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+    
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.5rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1000 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+    }
+
+    
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0 0 1rem; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+
+    
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary { background: linear-gradient(135deg, var(--brand), var(--brand-600)); color: #fff; border: none; }
+    .btn-primary:hover { background: linear-gradient(135deg, var(--brand-600), var(--brand-700)); box-shadow: 0 6px 16px rgba(79,140,255,.25); }
+
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); border-color: color-mix(in oklab, var(--border) 80%, var(--text)); }
+
+    .btn-success { background: var(--success); color: #fff; border: none; }
+    .btn-success:hover { background: color-mix(in oklab, var(--success) 85%, black); box-shadow: 0 6px 16px rgba(34,197,94,.25); }
+
+    .btn-danger { background: var(--danger); color: #fff; border: none; }
+    .btn-danger:hover { background: color-mix(in oklab, var(--danger) 85%, black); box-shadow: 0 6px 16px rgba(255,107,107,.25); }
+
+    
+    .calendar-container{max-width:95%; margin:0 auto; padding:1rem}
+    
+    @media (max-width: 900px) {
+      body {
+        
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        position: static;
+        width: 100%;
+        height: auto;
+      }
+      .content {
+        padding: 0 !important;
+        padding-top: 5rem !important;
+        margin: 0 !important;
+        width: 100vw;
+        height: auto;
+        overflow: visible;
+        position: relative;
+      }
+      .calendar-container {
+        padding: 0.3rem;
+        max-width: 100%;
+        
+        min-height: calc(100vh - 5rem);
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2rem;
+      }
+      .calendar-header {
+        padding: 0.25rem;
+        margin-bottom: 0.2rem;
+        flex-shrink: 0;
+      }
+      .calendar-title {
+        display: none;
+      }
+      .calendar-nav {
+        gap: 0;
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        display: flex;
+      }
+      .nav-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+        border: none !important;
+        border-radius: 0 !important;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+      #prev-month {
+        flex: 0 0 auto;
+        min-width: 75px;
+        border-right: 1px solid var(--border) !important;
+      }
+      #today-btn {
+        flex: 0 0 auto;
+        min-width: 50px;
+        border-right: 1px solid var(--border) !important;
+      }
+      #next-month {
+        flex: 0 0 auto;
+        min-width: 75px;
+        border-right: none !important;
+        padding-left: 0.2rem !important;
+        padding-right: 1rem !important;
+      }
+      .mini-calendar-picker {
+        flex: 1;
+        display: flex;
+      }
+      .mini-calendar-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        min-width: 0;
+        width: 100%;
+        border: none !important;
+        border-radius: 0 !important;
+        border-right: 1px solid var(--border) !important;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+      }
+      .mini-calendar-dropdown {
+        position: fixed !important;
+        top: 8rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 3500 !important;
+        min-width: 280px !important;
+        max-width: 90vw !important;
+      }
+      .calendar-grid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: visible;
+        border-radius: 8px;
+      }
+      .calendar-weekdays {
+        flex-shrink: 0;
+      }
+      .weekday {
+        padding: 0.2rem 0.05rem;
+        font-size: 0.55rem;
+      }
+      .calendar-days {
+        flex: 1;
+        min-height: 0;
+        overflow: visible;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        grid-template-rows: repeat(6, 1fr);
+    }
+      .calendar-day {
+        padding: 0.05rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+      }
+      .day-number {
+        font-size: 0.65rem;
+        margin-bottom: 0;
+        line-height: 1;
+      }
+      
+      .calendar-day .medication-checklist {
+        display: none !important;
+      }
+      
+      .medication-indicator {
+        display: block !important;
+        width: 4px;
+        height: 4px;
+        background: var(--brand);
+        border-radius: 50%;
+        margin-top: 0.05rem;
+      }
+    }
+
+    
+    .medication-indicator {
+      display: none;
+    }
+    
+    
+    .day-details-modal {
+      display: flex;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.8);
+      z-index: 3000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .day-details-modal.show {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+    .day-details-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      max-width: 90vw;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow);
+    }
+    .day-details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .day-details-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .day-details-close {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.15rem 0.3rem;
+      border-radius: 6px;
+      transition: background 0.2s ease, color 0.2s ease;
+      line-height: 1;
+    }
+    .day-details-close:hover {
+      background: color-mix(in oklab, var(--danger) 15%, transparent);
+      color: var(--danger);
+    }
+    .day-details-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .calendar-header{position:relative;
+      display:flex; align-items:center; margin-bottom:2rem;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:1rem; box-shadow:var(--shadow);
+    }
+    .calendar-title{font-size:1.5rem; font-weight:800; color:var(--text); margin:0; cursor:pointer; flex:1; min-width:200px;}
+    .calendar-nav{display:flex; gap:.5rem; align-items:center; flex-shrink:0;}
+
+    
+    .nav-btn{background:transparent; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:.6rem 1rem}
+    .nav-btn:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
+    .mini-calendar-picker{position:relative; display:inline-block}
+    .mini-calendar-btn{background:transparent; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:.6rem 1rem; min-width:140px; text-align:center}
+    .mini-calendar-btn:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
+    .mini-calendar-dropdown{
+      position:absolute; top:100%; left:0; background:var(--surface); color:var(--text);
+      border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:1000; display:none; padding:1rem; min-width:280px;
+    }
+    .mini-calendar-dropdown.show{display:block !important}
+    .mini-calendar-header{display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem}
+    .mini-calendar-title{font-weight:bold; font-size:0.875rem}
+    .mini-calendar-nav{display:flex; gap:.25rem}
+    .mini-calendar-grid{display:grid; grid-template-columns:repeat(7, 1fr); gap:0}
+    .mini-calendar-grid .weekday-mini{font-size:0.75rem; font-weight:bold; text-align:center; padding:0.25rem; color:var(--muted)}
+    .mini-calendar-day{padding:.4rem; text-align:center; border-radius:6px; cursor:pointer; font-size:0.875rem}
+    .mini-calendar-day:hover{background: color-mix(in oklab, var(--brand) 12%, transparent)}
+    .mini-calendar-day.today{background: color-mix(in oklab, var(--muted) 20%, transparent); font-weight:bold}
+    .mini-calendar-day.selected{background:linear-gradient(135deg, var(--brand), var(--brand-600)); color:#fff; font-weight:bold}
+    .mini-calendar-day.other-month{color:var(--muted); opacity:0.4}
+
+    
+    .calendar-grid{background:var(--surface); border-radius:12px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden}
+    .calendar-weekdays{display:grid; grid-template-columns:repeat(7,1fr); background: linear-gradient(180deg, var(--brand), var(--brand-600)); color:#fff; font-weight:700}
+    .weekday{padding:1rem .5rem; text-align:center; font-size:.9rem}
+    .calendar-days{display:grid; grid-template-columns:repeat(7,1fr)}
+    .calendar-day{min-height:120px; padding:.5rem; border:1px solid var(--border); position:relative; background: color-mix(in oklab, var(--surface) 96%, transparent); transition:background .2s}
+    .calendar-day.other-month{background: color-mix(in oklab, var(--surface) 88%, transparent); color:var(--muted)}
+    .calendar-day.today{background: color-mix(in oklab, var(--brand) 18%, transparent); outline:1px solid color-mix(in oklab, var(--brand) 45%, transparent)}
+    .calendar-day:hover{background: color-mix(in oklab, var(--surface) 92%, transparent)}
+    .day-number{font-size:.9rem; font-weight:700; margin-bottom:.25rem}
+
+    
+    .medication-checklist{margin-top:.25rem}
+    .medication-item{
+      display:flex; align-items:center; justify-content:space-between; padding:.3rem .4rem; margin-bottom:.25rem;
+      background: color-mix(in oklab, var(--brand) 8%, transparent); border:1px solid var(--brand); border-radius:8px;
+      font-size:0.75rem; min-height:2rem; cursor:pointer; transition: background 0.2s ease;
+    }
+    .medication-item:hover{background: color-mix(in oklab, var(--brand) 15%, transparent)}
+    
+    
+    .medication-item.status-grey{
+      background: color-mix(in oklab, var(--muted) 20%, var(--surface));
+      border-color: color-mix(in oklab, var(--muted) 40%, transparent);
+    }
+    .medication-item.status-green{
+      background: color-mix(in oklab, var(--success) 30%, var(--surface));
+      border-color: color-mix(in oklab, var(--success) 50%, transparent);
+    }
+    .medication-item.status-red{
+      background: color-mix(in oklab, var(--danger) 30%, var(--surface));
+      border-color: color-mix(in oklab, var(--danger) 50%, transparent);
+    }
+    .medication-item.status-green:hover{
+      background: color-mix(in oklab, var(--success) 40%, var(--surface));
+    }
+    .medication-item.status-red:hover{
+      background: color-mix(in oklab, var(--danger) 40%, var(--surface));
+    }
+    .medication-item:last-child{margin-bottom:0}
+    .medication-info{flex:1; display:flex; flex-direction:column; gap:0.1rem}
+    .medication-name{color:var(--text); font-weight:600; line-height:1.2}
+    .medication-time{color:var(--muted); font-size:0.7rem}
+    .medication-plus{
+      width:24px; height:24px; flex-shrink:0; margin-left:.25rem; background:var(--brand); border:none; border-radius:6px; cursor:pointer; position:relative;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    .medication-plus:hover{background:var(--brand-600); transform: scale(1.1);}
+    .medication-plus::before, .medication-plus::after{
+      content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:1px;
+    }
+    .medication-plus::before{width:2px; height:12px}
+    .medication-plus::after{width:12px; height:2px}
+
+    
+    .dose-status-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+    .dose-status-modal.show {
+      display: flex;
+    }
+    .dose-status-content {
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      max-width: 400px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .dose-status-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dose-status-header h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: var(--text);
+    }
+    .dose-status-close {
+      background: none;
+      border: none;
+      font-size: 1.75rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+    .dose-status-close:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+    .dose-status-body {
+      padding: 1.5rem;
+    }
+    .dose-status-info {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--brand) 8%, transparent);
+      border-radius: 8px;
+      border: 1px solid var(--brand);
+    }
+    .dose-status-info p {
+      margin: 0.25rem 0;
+      color: var(--text);
+    }
+    .dose-status-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .dose-status-buttons button {
+      padding: 1rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: white;
+    }
+    .dose-status-buttons .btn-taken {
+      background: var(--success);
+    }
+    .dose-status-buttons .btn-taken:hover {
+      background: color-mix(in oklab, var(--success) 85%, black);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+    .dose-status-buttons .btn-not-taken {
+      background: var(--danger);
+    }
+    .dose-status-buttons .btn-not-taken:hover {
+      background: color-mix(in oklab, var(--danger) 85%, black);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+    }
+
+    
+    @keyframes flash-green {
+      0%, 100% { background: color-mix(in oklab, var(--success) 30%, var(--surface)); }
+      50% { background: color-mix(in oklab, var(--success) 60%, var(--surface)); }
+    }
+    @keyframes flash-red {
+      0%, 100% { background: color-mix(in oklab, var(--danger) 30%, var(--surface)); }
+      50% { background: color-mix(in oklab, var(--danger) 60%, var(--surface)); }
+    }
+    .medication-item.flash-green {
+      animation: flash-green 1s ease;
+    }
+    .medication-item.flash-red {
+      animation: flash-red 1s ease;
+    }
+
+
+</style>
+<script src="../tutorial.js"></script>
+<script src="../auth-guard.js" type="module"></script>
+</head>
+<body>
+  <div class="demo-banner" role="status">
+    <span><b>Demo</b> &middot; sample data, read&#8209;only &mdash; nothing you change here is saved</span>
+    <button class="demo-banner__x" type="button" aria-label="Hide" onclick="this.parentNode.remove();document.body.style.paddingTop='0'">&times;</button>
+  </div>
+
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html" class="active">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="stats.html">Stats</a>
+    <a href="medicom.html">Communication</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="calendar-container" data-tutorial="calendar-content">
+      <div class="calendar-header">
+        <h1 class="calendar-title" id="calendar-title">July 2025</h1>
+                 <div class="calendar-nav">
+           <button class="nav-btn" id="prev-month">&lt; Previous</button>
+           <button class="nav-btn" id="today-btn">Today</button>
+           <div class="mini-calendar-picker">
+            <button class="mini-calendar-btn" id="mini-calendar-btn">July 2025</button>
+            <div class="mini-calendar-dropdown" id="mini-calendar-dropdown">
+              <div class="mini-calendar-header">
+                <button class="nav-btn" id="mini-prev-month">&lt;</button>
+                <span class="mini-calendar-title" id="mini-calendar-title">July 2025</span>
+                <button class="nav-btn" id="mini-next-month">&gt;</button>
+              </div>
+              <div class="mini-calendar-grid" id="mini-calendar-grid">
+                <div class="weekday-mini">S</div>
+                <div class="weekday-mini">M</div>
+                <div class="weekday-mini">T</div>
+                <div class="weekday-mini">W</div>
+                <div class="weekday-mini">T</div>
+                <div class="weekday-mini">F</div>
+                <div class="weekday-mini">S</div>
+              </div>
+            </div>
+          </div>
+          <button class="nav-btn" id="next-month">Next &gt;</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid">
+        <div class="calendar-weekdays">
+          <div class="weekday">Sun</div>
+          <div class="weekday">Mon</div>
+          <div class="weekday">Tue</div>
+          <div class="weekday">Wed</div>
+          <div class="weekday">Thu</div>
+          <div class="weekday">Fri</div>
+          <div class="weekday">Sat</div>
+        </div>
+        <div class="calendar-days" id="calendar-days">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="day-details-modal" class="day-details-modal">
+    <div class="day-details-content">
+      <div class="day-details-header">
+        <h3 id="day-details-title">Medications</h3>
+        <button class="day-details-close" onclick="closeDayModal()">&times;</button>
+      </div>
+      <div id="day-details-list" class="day-details-list"></div>
+    </div>
+  </div>
+
+  <div id="dose-status-modal" class="dose-status-modal">
+    <div class="dose-status-content">
+      <div class="dose-status-header">
+        <h3 id="dose-status-title">Update Dose Status</h3>
+        <button class="dose-status-close" onclick="closeDoseStatusModal()">&times;</button>
+      </div>
+      <div class="dose-status-body">
+        <div class="dose-status-info">
+          <p><strong id="dose-med-name">Medication</strong></p>
+          <p id="dose-date-time">Date & Time</p>
+          <p id="dose-number">Dose #1</p>
+          <p id="dose-taken-time" style="display: none; color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem;"></p>
+        </div>
+        <div class="dose-status-buttons">
+          <button class="btn-taken" id="dose-taken-btn">✓ Taken</button>
+          <button class="btn-not-taken" id="dose-not-taken-btn">✗ Not Taken</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../schedule-utils.js"></script>
+  <script type="module">
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, collection, getDocs, setDoc, deleteField } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+      authDomain: "medtracker-8c467.firebaseapp.com",
+      projectId: "medtracker-8c467",
+      storageBucket: "medtracker-8c467.firebasestorage.app",
+      messagingSenderId: "847799899373",
+      appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+    };
+
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.auth = auth;
+    window.db = db;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+    window.deleteField = deleteField;
+
+    window.globalMedications = [];
+    
+    window.loadedDoseRanges = new Set();
+    window.loadedNoteDays = new Set();
+
+    window.loadMedicationsFromFirebase = async function() {
+      const user = auth.currentUser;
+      if (!user) return [];
+
+      try {
+        const medicationsCollectionRef = collection(db, "users", user.uid, "medications");
+        const medicationsSnapshot = await getDocs(medicationsCollectionRef);
+        const medications = [];
+        
+        for (const medDoc of medicationsSnapshot.docs) {
+          const medData = medDoc.data();
+
+          if (!medData.deletedStatus) {
+            const med = {
+              id: medDoc.id,
+              name: medData.name,
+              dosage: medData.dosage,
+              schedules: medData.schedules || [],
+              startDate: medData.startDate === 'N/A' ? null : medData.startDate,
+              endDate: medData.endDate === 'N/A' ? null : medData.endDate,
+              createdAt: medData.createdAt || null,
+              doses: {},
+              notes: {},
+            };
+
+            if ((!med.schedules || med.schedules.length === 0) && (medData.daysOfWeek || medData.times)) {
+              const migrated = ScheduleUtils.migrateOldFormat(medData);
+              med.schedules = migrated.schedules;
+              try {
+                const medDocRef = doc(db, "users", user.uid, "medications", medDoc.id);
+                await setDoc(medDocRef, { schedules: migrated.schedules }, { merge: true });
+                console.log('[Calendar] Auto-migrated schedules for', med.name);
+              } catch (e) {
+                console.warn('[Calendar] Failed to save migrated schedules:', e);
+              }
+            }
+
+            medications.push(med);
+          }
+        }
+        
+        return medications;
+      } catch (error) {
+        console.error('[Calendar] Error loading medications:', error);
+        return [];
+      }
+    };
+
+    window.loadDosesForMonth = async function(year, month) {
+      const user = auth.currentUser;
+      if (!user || !window.globalMedications) return;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDateStr = firstDay.toISOString().split('T')[0];
+      const endDateStr = lastDay.toISOString().split('T')[0];
+      const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+      try {
+        for (const med of window.globalMedications) {
+          const rangeKey = `${med.id}:${monthKey}`;
+          if (window.loadedDoseRanges.has(rangeKey)) {
+            continue;
+          }
+
+          try {
+            const medDocRef = doc(db, "users", user.uid, "medications", med.id);
+            const medDoc = await getDoc(medDocRef);
+            
+            if (medDoc.exists()) {
+              const medData = medDoc.data();
+              const allDoses = medData.doses || {};
+              
+              const monthDoses = {};
+              Object.keys(allDoses).forEach(key => {
+                const doseDate = key.split('_')[0];
+                if (doseDate >= startDateStr && doseDate <= endDateStr) {
+                  monthDoses[key] = allDoses[key];
+                }
+              });
+              
+              med.doses = { ...med.doses, ...monthDoses };
+              window.loadedDoseRanges.add(rangeKey);
+              
+              console.log(`[Calendar] Loaded doses for ${med.name} in ${monthKey}:`, Object.keys(monthDoses).length);
+            }
+          } catch (error) {
+            console.error(`[Calendar] Error loading doses for ${med.name}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error('[Calendar] Error loading doses for month:', error);
+      }
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        window.globalMedications = await window.loadMedicationsFromFirebase();
+        console.log('[Calendar] Loaded medication metadata:', window.globalMedications.length);
+        
+        const now = new Date();
+        await window.loadDosesForMonth(now.getFullYear(), now.getMonth());
+      } else {
+        window.globalMedications = [];
+        window.loadedDoseRanges.clear();
+      }
+      if (typeof window.renderCalendar === 'function') {
+        window.renderCalendar();
+      }
+    });
+
+  </script>
+
+  <script>
+    function closeDayModal() {
+      document.getElementById('day-details-modal').classList.remove('show');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+    });
+
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    function renderCalendar() {
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const lastDay = new Date(currentYear, currentMonth + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const calendarDays = document.getElementById('calendar-days');
+      const calendarTitle = document.getElementById('calendar-title');
+      const miniCalendarBtn = document.getElementById('mini-calendar-btn');
+
+      calendarTitle.textContent = `${months[currentMonth]} ${currentYear}`;
+      miniCalendarBtn.textContent = `${months[currentMonth]} ${currentYear}`;
+
+      calendarDays.innerHTML = '';
+
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+
+        const isCurrentMonth = date.getMonth() === currentMonth;
+        const isToday = date.toDateString() === new Date().toDateString();
+
+        if (!isCurrentMonth) {
+          dayElement.classList.add('other-month');
+        }
+        if (isToday) {
+          dayElement.classList.add('today');
+        }
+
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = date.getDate();
+
+        dayElement.appendChild(dayNumber);
+
+        if (isCurrentMonth) {
+          const medications = window.getMedicationsForDate(date);
+          if (medications.length > 0) {
+            const checklist = createMedicationChecklist(medications, date);
+            dayElement.appendChild(checklist);
+            
+            const indicator = document.createElement('div');
+            indicator.className = 'medication-indicator';
+            dayElement.appendChild(indicator);
+            
+            dayElement.addEventListener('click', (e) => {
+              if (window.innerWidth <= 900) {
+                e.stopPropagation();
+                showDayDetailsModal(date, medications);
+              }
+            });
+          } 
+        }
+
+        calendarDays.appendChild(dayElement);
+      }
+    }
+
+    window.renderCalendar = renderCalendar;
+
+    window.getMedicationsForDate = function(date) {
+      const medications = window.globalMedications || [];
+      const dateString = typeof date === 'string' ? date : (date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0'));
+
+      return medications.filter(med => {
+        if (med.deletedStatus === true) return false;
+
+        if (med.doses) {
+          const hasDosesForDate = Object.keys(med.doses).some(key => key.split('_')[0] === dateString);
+          if (hasDosesForDate) return true;
+        }
+
+        const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
+        return ScheduleUtils.isScheduledForDate(med.schedules || [], dateObj);
+      });
+    };
+
+    function createMedicationChecklist(medications, date) {
+      const checklist = document.createElement('div');
+      checklist.className = 'medication-checklist';
+      
+      const allItems = [];
+      
+      medications.forEach(med => {
+        const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], date);
+        doses.forEach(dose => {
+          allItems.push({
+            name: med.name,
+            time: dose.time,
+            doseNumber: dose.doseNumber,
+            timeSort: dose.time || '99:99'
+          });
+        });
+      });
+
+      allItems.sort((a, b) => {
+        if (a.timeSort === '99:99' && b.timeSort === '99:99') {
+          return a.name.localeCompare(b.name);
+        }
+        if (a.timeSort === '99:99') return 1;
+        if (b.timeSort === '99:99') return -1;
+        return a.timeSort.localeCompare(b.timeSort);
+      });
+
+      allItems.forEach(item => {
+        const med = medications.find(m => m.name === item.name);
+        const medItem = createMedicationItem(item.name, item.time, item.doseNumber, date, med);
+        checklist.appendChild(medItem);
+      });
+      
+      return checklist;
+    }
+
+    function convertTo12Hour(time24) {
+      if (!time24) return time24;
+      
+      if (time24.includes('AM') || time24.includes('PM')) {
+        return time24;
+      }
+      
+      const [hours, minutes] = time24.split(':');
+      const hour24 = parseInt(hours, 10);
+      
+      if (hour24 === 0) {
+        return `12:${minutes} AM`;
+      } else if (hour24 < 12) {
+        return `${hour24}:${minutes} AM`;
+      } else if (hour24 === 12) {
+        return `12:${minutes} PM`;
+      } else {
+        return `${hour24 - 12}:${minutes} PM`;
+      }
+    }
+
+    function createMedicationItem(name, time, doseNumber, date, medication = null) {
+      const medItem = document.createElement('div');
+      medItem.className = 'medication-item';
+      
+      let statusClass = 'status-grey';
+      let hasExistingDoseEntry = false;
+      if (medication && medication.doses && typeof medication.doses === 'object') {
+        try {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${day}`;
+          const doseKey = `${dateStr}_${doseNumber}`;
+          const doseEntry = medication.doses[doseKey];
+          
+          if (doseEntry && typeof doseEntry === 'object') {
+            hasExistingDoseEntry = true;
+            if (doseEntry.taken === true) {
+              statusClass = 'status-green';
+            } else if (doseEntry.taken === false) {
+              statusClass = 'status-red';
+            }
+          }
+        } catch (error) {
+          console.error('[Calendar] Error checking dose status:', error);
+        }
+      }
+      
+      if (!hasExistingDoseEntry && statusClass !== 'status-green' && time) {
+        const now = new Date();
+        const [hours, minutes] = time.split(':').map(Number);
+        const doseDateTime = new Date(date);
+        doseDateTime.setHours(hours, minutes, 0, 0);
+        
+        const minutesPast = (now - doseDateTime) / (1000 * 60);
+        if (minutesPast > 45) {
+          statusClass = 'status-red';
+        }
+      }
+      
+      medItem.classList.add(statusClass);
+      
+      const medInfo = document.createElement('div');
+      medInfo.className = 'medication-info';
+      
+      const medName = document.createElement('div');
+      medName.className = 'medication-name';
+      medName.textContent = `${name} - Dose ${doseNumber}`;
+      
+      medInfo.appendChild(medName);
+      
+      if (time) {
+        const medTime = document.createElement('div');
+        medTime.className = 'medication-time';
+        medTime.textContent = convertTo12Hour(time);
+        medInfo.appendChild(medTime);
+      }
+      
+      const plusBtn = document.createElement('button');
+      plusBtn.className = 'medication-plus';
+      plusBtn.title = 'Go to notes for this dose';
+      
+      plusBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
+        
+        const timeParam = time ? encodeURIComponent(time) : 'no-time';
+        const url = `notes.html?date=${dateString}&medication=${encodeURIComponent(name)}&dose=${doseNumber}&time=${timeParam}`;
+        
+        window.location.href = url;
+      });
+      
+      medItem.addEventListener('click', (e) => {
+        if (e.target.closest('.medication-plus')) {
+          return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        openDoseStatusModal(name, time, doseNumber, date, medication, medItem);
+      });
+      
+      medItem.appendChild(medInfo);
+      medItem.appendChild(plusBtn);
+      
+      return medItem;
+    }
+
+    function showDayDetailsModal(date, medications) {
+      console.log('[Calendar] Opening modal for date:', date, 'medications:', medications.length);
+      
+      const modal = document.getElementById('day-details-modal');
+      const titleEl = document.getElementById('day-details-title');
+      const listEl = document.getElementById('day-details-list');
+      
+      if (!modal) {
+        console.error('[Calendar] Modal element not found!');
+        return;
+      }
+      
+      const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      titleEl.textContent = dateStr;
+      
+      listEl.innerHTML = '';
+      
+      const allItems = [];
+      
+      medications.forEach(med => {
+        const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], date);
+        doses.forEach(dose => {
+          allItems.push({
+            name: med.name,
+            time: dose.time,
+            doseNumber: dose.doseNumber,
+            timeSort: dose.time || '99:99',
+            medication: med
+          });
+        });
+      });
+
+      allItems.sort((a, b) => {
+        if (a.timeSort === '99:99' && b.timeSort === '99:99') {
+          return a.name.localeCompare(b.name);
+        }
+        if (a.timeSort === '99:99') return 1;
+        if (b.timeSort === '99:99') return -1;
+        return a.timeSort.localeCompare(b.timeSort);
+      });
+      
+      allItems.forEach(item => {
+        const medItem = createMedicationItem(item.name, item.time, item.doseNumber, date, item.medication);
+        listEl.appendChild(medItem);
+      });
+      
+      modal.classList.add('show');
+      console.log('[Calendar] Modal should now be visible, classes:', modal.className);
+    }
+
+    let miniCalendarMonth = currentMonth;
+    let miniCalendarYear = currentYear;
+
+    function renderMiniCalendar() {
+      const firstDay = new Date(miniCalendarYear, miniCalendarMonth, 1);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+      const miniCalendarGrid = document.getElementById('mini-calendar-grid');
+      const miniCalendarTitle = document.getElementById('mini-calendar-title');
+
+      miniCalendarTitle.textContent = `${months[miniCalendarMonth]} ${miniCalendarYear}`;
+
+      const weekdayHeaders = Array.from(miniCalendarGrid.querySelectorAll('.weekday-mini'));
+      miniCalendarGrid.innerHTML = '';
+      weekdayHeaders.forEach(header => miniCalendarGrid.appendChild(header));
+
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+
+        const dayElement = document.createElement('div');
+        dayElement.className = 'mini-calendar-day';
+
+        if (date.getMonth() !== miniCalendarMonth) {
+          dayElement.classList.add('other-month');
+        }
+
+        if (date.toDateString() === new Date().toDateString()) {
+          dayElement.classList.add('today');
+        }
+
+        if (date.toDateString() === currentDate.toDateString()) {
+          dayElement.classList.add('selected');
+        }
+
+        dayElement.textContent = date.getDate();
+
+        dayElement.addEventListener('click', async () => {
+          currentMonth = date.getMonth();
+          currentYear = date.getFullYear();
+          await window.loadDosesForMonth(currentYear, currentMonth);
+          renderCalendar();
+          document.getElementById('mini-calendar-dropdown').classList.remove('show');
+        });
+
+        miniCalendarGrid.appendChild(dayElement);
+      }
+    }
+
+    document.getElementById('prev-month').addEventListener('click', async () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      await window.loadDosesForMonth(currentYear, currentMonth);
+      renderCalendar();
+    });
+
+    document.getElementById('next-month').addEventListener('click', async () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      await window.loadDosesForMonth(currentYear, currentMonth);
+      renderCalendar();
+    });
+
+    document.getElementById('today-btn').addEventListener('click', async () => {
+      const today = new Date();
+      currentMonth = today.getMonth();
+      currentYear = today.getFullYear();
+      await window.loadDosesForMonth(currentYear, currentMonth);
+      renderCalendar();
+    });
+
+    document.getElementById('mini-calendar-btn').addEventListener('click', () => {
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      const isVisible = dropdown.classList.contains('show');
+      
+      if (!isVisible) {
+      miniCalendarMonth = currentMonth;
+      miniCalendarYear = currentYear;
+      renderMiniCalendar();
+      }
+      
+      dropdown.classList.toggle('show');
+    });
+
+    document.getElementById('mini-prev-month').addEventListener('click', async () => {
+      miniCalendarMonth--;
+      if (miniCalendarMonth < 0) {
+        miniCalendarMonth = 11;
+        miniCalendarYear--;
+      }
+      await window.loadDosesForMonth(miniCalendarYear, miniCalendarMonth);
+      renderMiniCalendar();
+    });
+
+    document.getElementById('mini-next-month').addEventListener('click', async () => {
+      miniCalendarMonth++;
+      if (miniCalendarMonth > 11) {
+        miniCalendarMonth = 0;
+        miniCalendarYear++;
+      }
+      await window.loadDosesForMonth(miniCalendarYear, miniCalendarMonth);
+      renderMiniCalendar();
+    });
+
+    document.addEventListener('click', (e) => {
+      const miniCalendarPicker = document.querySelector('.mini-calendar-picker');
+      const dropdown = document.getElementById('mini-calendar-dropdown');
+      
+      if (!miniCalendarPicker.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
+
+    document.getElementById('day-details-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'day-details-modal') {
+        closeDayModal();
+      }
+    });
+
+    renderCalendar();
+
+    window.closeDoseStatusModal = function() {
+      const modal = document.getElementById('dose-status-modal');
+      if (modal) {
+        modal.classList.remove('show');
+      }
+    };
+
+    window.openDoseStatusModal = function(name, time, doseNumber, date, medication, medItem) {
+      console.log('[Calendar] Opening dose status modal for:', name, 'dose', doseNumber);
+      
+      const modal = document.getElementById('dose-status-modal');
+      const medNameEl = document.getElementById('dose-med-name');
+      const dateTimeEl = document.getElementById('dose-date-time');
+      const doseNumEl = document.getElementById('dose-number');
+      const takenBtn = document.getElementById('dose-taken-btn');
+      const notTakenBtn = document.getElementById('dose-not-taken-btn');
+      
+      console.log('[Calendar] Modal elements found:', { modal: !!modal, takenBtn: !!takenBtn, notTakenBtn: !!notTakenBtn });
+      
+      medNameEl.textContent = name;
+      
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timeStr = time ? convertTo12Hour(time) : 'Any time';
+      dateTimeEl.textContent = `${dateStr} at ${timeStr}`;
+      
+      doseNumEl.textContent = `Dose #${doseNumber}`;
+      
+      const takenTimeEl = document.getElementById('dose-taken-time');
+      if (medication && medication.doses) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStrKey = `${year}-${month}-${day}`;
+        const doseKey = `${dateStrKey}_${doseNumber}`;
+        const doseEntry = medication.doses[doseKey];
+        
+        if (doseEntry && doseEntry.taken === true && doseEntry.takenAt) {
+          const takenDate = new Date(doseEntry.takenAt);
+          const takenTimeStr = takenDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+          });
+          takenTimeEl.textContent = `Taken at ${takenTimeStr}`;
+          takenTimeEl.style.display = 'block';
+        } else {
+          takenTimeEl.style.display = 'none';
+        }
+      } else {
+        takenTimeEl.style.display = 'none';
+      }
+      
+      const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+        if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
+          console.log('[Calendar] No bottles to update stock for');
+          return medData.bottles || [];
+        }
+
+        let stockChange = 0;
+        if (previousTaken !== true && newTaken === true) {
+          stockChange = -dosage;
+        } else if (previousTaken === true && newTaken === false) {
+          stockChange = dosage;
+        }
+
+        if (stockChange === 0) {
+          console.log('[Calendar] No stock change needed (status unchanged or not-taken to not-taken)');
+          return medData.bottles;
+        }
+
+        console.log(`[Calendar] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
+
+        const now = new Date();
+        const parsedBottles = medData.bottles.map((bottleStr, index) => {
+          const parts = bottleStr.split('/');
+          if (parts.length < 3) return null;
+          
+          const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
+          const expirationDate = new Date(expirationStr);
+          const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
+          
+          return {
+            index,
+            expiration: expirationDate,
+            quantity: quantity,
+            original: bottleStr
+          };
+        }).filter(b => b !== null);
+
+        parsedBottles.sort((a, b) => a.expiration - b.expiration);
+
+        let activeBottle = parsedBottles.find(b => 
+          b.expiration >= now && (b.quantity === null || b.quantity > 0)
+        );
+
+        if (!activeBottle && parsedBottles.length > 0) {
+          activeBottle = parsedBottles[0];
+        }
+
+        if (!activeBottle) {
+          console.log('[Calendar] No active bottle found to update');
+          return medData.bottles;
+        }
+
+        console.log(`[Calendar] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
+
+        const newBottles = [...medData.bottles];
+        const bottleParts = newBottles[activeBottle.index].split('/');
+        
+        if (bottleParts.length >= 4) {
+          let newQuantity = activeBottle.quantity;
+          if (newQuantity === null) {
+            console.log('[Calendar] Bottle quantity is N/A, cannot update stock');
+            return medData.bottles;
+          }
+          
+          newQuantity = Math.max(0, newQuantity + stockChange);
+          
+          const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
+          newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
+          
+          console.log(`[Calendar] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
+        }
+
+        return newBottles;
+      };
+
+      const saveDose = async (taken) => {
+        console.log('[Calendar] saveDose called with taken:', taken);
+        try {
+          const user = window.auth.currentUser;
+          if (!user) {
+            alert('Please sign in to update dose status');
+            return false;
+          }
+          
+          if (!medication || !medication.id) {
+            console.error('[Calendar] No medication data available');
+            return false;
+          }
+          
+          const medDocRef = window.doc(window.db, "users", user.uid, "medications", medication.id);
+          const medDoc = await window.getDoc(medDocRef);
+          
+          if (!medDoc.exists()) {
+            console.error('[Calendar] Medication not found:', medication.id);
+            return false;
+          }
+          
+          const medData = medDoc.data();
+          let doses = medData.doses || {};
+          
+          if (Array.isArray(doses)) {
+            const dosesObj = {};
+            doses.forEach(dose => {
+              const key = `${String(dose.date || '')}_${Number(dose.doseNumber || 0)}`;
+              dosesObj[key] = {
+                date: String(dose.date || ''),
+                doseNumber: Number(dose.doseNumber || 0),
+                taken: Boolean(dose.taken)
+              };
+            });
+            doses = dosesObj;
+          }
+          
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const dateStrKey = `${year}-${month}-${day}`;
+          const doseNum = Number(doseNumber);
+          const doseKey = `${dateStrKey}_${doseNum}`;
+          
+          console.log('[Calendar] Saving dose for date:', dateStrKey, 'dose:', doseNum, 'taken:', taken);
+          
+          const existingEntry = doses[doseKey];
+          const previousTaken = existingEntry ? existingEntry.taken : undefined;
+          const statusChanged = !existingEntry || existingEntry.taken !== taken;
+          
+          const newDoseEntry = {
+            date: dateStrKey,
+            doseNumber: doseNum,
+            taken: taken,
+            autoMarked: false,
+            takenAt: taken 
+              ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
+              : null
+          };
+          
+          doses[doseKey] = newDoseEntry;
+          
+          const dosage = Number(medData.dosage) || 0;
+          const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
+          
+          const updateData = { 
+            doses: doses,
+            bottles: updatedBottles
+          };
+          if (medData.doseStatus !== undefined && window.deleteField) {
+            updateData.doseStatus = window.deleteField();
+          }
+          if (medData.doseHistory !== undefined && window.deleteField) {
+            updateData.doseHistory = window.deleteField();
+          }
+          
+          await window.setDoc(medDocRef, updateData, { merge: true });
+          console.log('[Calendar] Saved dose and updated stock to Firebase:', medication.id);
+          
+          const medIndex = window.globalMedications.findIndex(m => m.id === medication.id);
+          if (medIndex !== -1) {
+            window.globalMedications[medIndex].doses = doses;
+            window.globalMedications[medIndex].bottles = updatedBottles;
+            medication.doses = doses;
+            medication.bottles = updatedBottles;
+            console.log('[Calendar] Updated medication doses in globalMedications:', medication.id, 'dose count:', Object.keys(doses).length);
+          } else {
+            console.warn('[Calendar] Medication not found in globalMedications:', medication.id);
+            medication.doses = doses;
+            medication.bottles = updatedBottles;
+          }
+          
+          return statusChanged;
+        } catch (error) {
+          console.error('[Calendar] Error saving dose:', error);
+          alert('Error saving dose: ' + error.message);
+          return false;
+        }
+      };
+      
+      const triggerFlash = (color) => {
+        medItem.classList.remove('flash-green', 'flash-red', 'status-grey', 'status-green', 'status-red');
+        void medItem.offsetWidth;
+        medItem.classList.add(`flash-${color}`, `status-${color}`);
+        setTimeout(() => {
+          medItem.classList.remove(`flash-${color}`);
+        }, 1000);
+      };
+      
+      const newTakenBtn = takenBtn.cloneNode(true);
+      takenBtn.parentNode.replaceChild(newTakenBtn, takenBtn);
+      const newNotTakenBtn = notTakenBtn.cloneNode(true);
+      notTakenBtn.parentNode.replaceChild(newNotTakenBtn, notTakenBtn);
+      
+      newTakenBtn.addEventListener('click', async (e) => {
+        console.log('[Calendar] Taken button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const statusChanged = await saveDose(true);
+          console.log('[Calendar] Status changed:', statusChanged);
+          if (statusChanged) {
+            triggerFlash('green');
+          }
+          closeDoseStatusModal();
+          
+          renderCalendar();
+          console.log('[Calendar] Calendar re-rendered after marking as taken');
+        } catch (error) {
+          console.error('[Calendar] Error in taken button handler:', error);
+          alert('Error updating dose: ' + error.message);
+        }
+      });
+      
+      newNotTakenBtn.addEventListener('click', async (e) => {
+        console.log('[Calendar] Not Taken button clicked');
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const statusChanged = await saveDose(false);
+          console.log('[Calendar] Status changed:', statusChanged);
+          if (statusChanged) {
+            triggerFlash('red');
+          }
+          closeDoseStatusModal();
+          
+          renderCalendar();
+          console.log('[Calendar] Calendar re-rendered after marking as not taken');
+        } catch (error) {
+          console.error('[Calendar] Error in not taken button handler:', error);
+          alert('Error updating dose: ' + error.message);
+        }
+      });
+      
+      modal.classList.add('show');
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeDoseStatusModal();
+        }
+      });
+    }
+  </script>
+
+<style>
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+</style>
+  <script>
+    // Anything outside the demo set is inert rather than a 404.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[data-demo-disabled]');
+      if (!a) return;
+      e.preventDefault();
+      alert('This part of Everane is not included in the demo.');
+    }, true);
+  </script>
+</body>
+</html>

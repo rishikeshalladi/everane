@@ -1,0 +1,3943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="robots" content="noindex, nofollow">
+  <script type="importmap">
+  {
+    "imports": {
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js": "./fb-app.js",
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js": "./fb-auth.js",
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js": "./fb-firestore.js",
+      "https://www.gstatic.com/firebasejs/12.4.0/firebase-functions.js": "./fb-functions.js"
+    }
+  }
+  </script>
+  <script src="demo-data.js"></script>
+  <style>
+    .demo-banner{
+      position:fixed; top:0; left:0; right:0; z-index:30000;
+      display:flex; align-items:center; justify-content:center; gap:.6rem;
+      padding:.5rem 1rem; font:600 .85rem/1.3 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      background:linear-gradient(135deg,#4f8cff,#7a5cff); color:#fff; text-align:center;
+      box-shadow:0 2px 10px rgba(0,0,0,.25);
+    }
+    .demo-banner b{font-weight:800}
+    body{padding-top:34px !important}
+    .sidebar{top:34px !important}
+    .demo-banner__x{
+      position:absolute; right:.6rem; top:50%; transform:translateY(-50%);
+      background:transparent; border:0; color:#fff; font-size:1.1rem; cursor:pointer; opacity:.85;
+    }
+    @media (max-width:640px){ .demo-banner{font-size:.76rem; padding:.45rem .5rem} }
+  </style>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="../logo.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Everane">
+  <link rel="apple-touch-icon" href="../icon-192.png">
+  <title>Everane – Home</title>
+  <link rel="stylesheet" href="../styles.css">
+  <style>
+    :root {
+      --bg:#0b1020; --surface:#0f1629; --text:#e7ebf3; --muted:#b1bad4; --border:rgba(255,255,255,0.12);
+      --brand:#4f8cff; --brand-600:#3c74f7; --brand-700:#2b63e6;
+      --accent:#7de2d1; --danger:#ff6b6b; --success:#22c55e;
+      --radius:20px; --shadow:0 10px 30px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.2);
+      --container:1200px;
+      
+      --danger-color: var(--danger);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:#ffffff; --surface:#ffffff; --text:#000000; --muted:#1a1a1a; --border:#1a1a1a;
+        --shadow:0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+        
+        --text-strong: #000000;
+        --muted-strong: #1a1a1a;
+      }
+    }
+
+    
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+      color: var(--text);
+      background:
+        radial-gradient(600px 400px at 10% 0%, color-mix(in oklab, var(--brand) 30%, transparent), transparent),
+        radial-gradient(500px 300px at 90% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    
+    .container { max-width: var(--container); margin-inline: auto; padding-inline: clamp(1rem, 3vw, 2rem); }
+    .content { margin-left: 240px; min-height: 100vh; padding-block: clamp(2rem, 4vw, 3rem); }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; width: 240px;
+      padding: 1rem;
+      background: color-mix(in oklab, var(--surface) 88%, transparent);
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: .5rem;
+      backdrop-filter: blur(6px) saturate(1.1);
+    }
+    .sidebar a {
+      display: block; padding: .75rem .9rem; border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: .2s ease;
+    }
+    .sidebar a:hover { color: var(--text); border-color: var(--border); background: color-mix(in oklab, var(--surface) 92%, transparent); transform: translateY(-1px); }
+    .sidebar a.active {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    
+    .menu-toggle { display: none; }
+    .hamburger {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1001;
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .hamburger span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text);
+      transition: all 0.3s ease;
+    }
+    
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,.6);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    @media (max-width: 900px) {
+      .hamburger { display: flex !important; }
+      nav.sidebar {
+        position: fixed !important;
+        top: 4.2rem !important;
+        right: 4rem !important;
+        left: auto !important;
+        width: 165px !important;
+        height: auto !important;
+        max-height: fit-content !important;
+        min-height: auto !important;
+        padding: 0.45rem !important;
+        padding-top: 0.45rem !important;
+        border: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        gap: .1rem !important;
+        z-index: 1001 !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: translateY(-10px) scale(0.95) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.25), 0 8px 16px rgba(0,0,0,0.15) !important;
+        background: var(--surface) !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+      }
+      .menu-toggle:checked ~ .menu-overlay {
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .menu-toggle:checked ~ nav.sidebar {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
+      }
+      .content { margin-left: 0 !important; padding-top: 4rem !important; }
+      nav.sidebar a { 
+        display: block !important;
+        text-align: center !important;
+        padding: .45rem .6rem !important;
+        font-size: 0.85rem !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: none !important;
+        margin: 0 !important;
+        font-weight: 500 !important;
+        line-height: 1.3 !important;
+        flex: none !important;
+        transition: background 0.2s ease !important;
+      }
+      nav.sidebar a:hover {
+        background: color-mix(in oklab, var(--brand) 12%, transparent) !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      nav.sidebar a.active {
+        background: linear-gradient(135deg, var(--brand), var(--brand-600)) !important;
+        color: white !important;
+        border: none !important;
+        border-left: none !important;
+      }
+      
+      .sidebar-signout {
+        width: 100% !important;
+        padding: 0.75rem 1rem !important;
+        background: var(--danger) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: var(--radius) !important;
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+      }
+      
+      .sidebar-signout:hover {
+        background: color-mix(in oklab, var(--danger) 85%, black) !important;
+        transform: translateY(-1px) !important;
+      }
+    }
+
+    
+    h1 { font-size: clamp(1.6rem, 3.5vw, 2rem); font-weight: 800; letter-spacing: .2px; margin: 0; }
+    h2 { font-size: clamp(1.2rem, 2.5vw, 1.5rem); margin: 0 0 .5rem; }
+
+    
+    #med-list { max-height: 70vh; overflow-y: auto; display: grid; gap: 1rem; }
+
+    
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+      transition: background-color 0.3s ease;
+    }
+    .card p { color: var(--muted); margin: 0; }
+    .card strong { color: var(--text); }
+    
+    
+    .card.flash-green {
+      animation: flashGreen 1s ease-out;
+    }
+    .card.flash-red {
+      animation: flashRed 1s ease-out;
+    }
+    
+    @keyframes flashGreen {
+      0% { background-color: var(--surface); }
+      20% { background-color: color-mix(in oklab, var(--success) 40%, var(--surface)); }
+      100% { background-color: var(--surface); }
+    }
+    
+    @keyframes flashRed {
+      0% { background-color: var(--surface); }
+      20% { background-color: color-mix(in oklab, var(--danger) 40%, var(--surface)); }
+      100% { background-color: var(--surface); }
+    }
+
+    
+    .btn {
+      appearance: none; border: 1px solid transparent;
+      border-radius: 12px; padding: .7rem 1rem;
+      font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: transform .05s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: .45rem .7rem; font-size: .9rem; border-radius: 10px; }
+
+    .btn-primary, .btn.btn-primary {
+      color: #fff;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      box-shadow: 0 10px 20px rgba(79,140,255,.35);
+    }
+    .btn-primary:hover, .btn.btn-primary:hover {
+      background: linear-gradient(180deg, var(--brand-600), var(--brand-700));
+    }
+    .btn-secondary, .btn.btn-secondary {
+      background: transparent; color: var(--text); border-color: var(--border);
+    }
+    .btn-secondary:hover { background: color-mix(in oklab, var(--surface) 92%, transparent); }
+    .btn-danger, .btn.btn-danger {
+      background: color-mix(in oklab, var(--danger) 90%, black 10%); color: #fff;
+      border-color: color-mix(in oklab, var(--danger) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(255,107,107,.25);
+    }
+    .btn-danger:hover { filter: brightness(.98); }
+    .btn-success, .btn.btn-success {
+      background: color-mix(in oklab, var(--success) 90%, black 5%); color: #fff;
+      border-color: color-mix(in oklab, var(--success) 40%, transparent);
+      box-shadow: 0 10px 20px rgba(34,197,94,.25);
+    }
+    .btn-success:hover { filter: brightness(1.02); }
+
+    .home-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .agenda-btn {
+      background: linear-gradient(135deg, var(--accent), #63cbb8);
+      color: #0b1020;
+      padding: 0.65rem 1.1rem;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      box-shadow: 0 10px 25px rgba(125, 226, 209, 0.35);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .agenda-btn:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+
+    .agenda-btn::before {
+      content: "🗓️";
+      font-size: 1rem;
+    }
+
+    
+    .modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(2,6,23,.55);
+      align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.show { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      text-align: left;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-content h3 { margin: 0 0 .5rem; font-size: 1.25rem; }
+
+    
+    .agenda-modal .modal-content {
+      max-width: 720px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 2rem;
+    }
+
+    .agenda-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .agenda-title-group h3 {
+      font-size: 1.6rem;
+      margin: 0;
+    }
+
+    .agenda-title-group p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .agenda-close {
+      appearance: none;
+      border: none;
+      background: color-mix(in oklab, var(--surface) 92%, transparent);
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .agenda-close:hover {
+      background: color-mix(in oklab, var(--surface) 86%, transparent);
+      transform: rotate(6deg);
+      color: var(--text);
+    }
+
+    .agenda-list {
+      flex: 1;
+      overflow-y: auto;
+      border-radius: 16px;
+      border: 1px solid color-mix(in oklab, var(--border) 120%, transparent);
+      background: color-mix(in oklab, var(--surface) 94%, transparent);
+      padding: 1rem 1.2rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .agenda-empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 1.05rem;
+      padding: 2rem 1rem;
+    }
+
+    .agenda-entry {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      padding: 0.85rem 1rem;
+      background: color-mix(in oklab, var(--surface) 97%, transparent);
+      border-radius: 14px;
+      border: 1px solid color-mix(in oklab, var(--border) 130%, transparent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+
+    .agenda-entry-time {
+      min-width: 110px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: color-mix(in oklab, var(--brand) 80%, white 20%);
+    }
+
+    .agenda-entry-name {
+      flex: 1;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .agenda-entry-dose {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .agenda-footer {
+      margin-top: 0.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid color-mix(in oklab, var(--border) 140%, transparent);
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    
+    .qa-chip-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .qa-chip {
+      flex: 1;
+      min-width: 90px;
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .qa-chip:hover {
+      border-color: color-mix(in oklab, var(--brand) 60%, var(--border));
+    }
+    .qa-chip--on {
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      border-color: var(--brand-600);
+      color: #fff;
+    }
+
+    
+    .bottle-item {
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s ease, transform .1s ease;
+    }
+    .bottle-item:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+    .bottle-item small { color: var(--muted); }
+    
+    .bottle-info {
+      flex: 1;
+      margin-right: 1rem;
+    }
+    
+    .delete-bottle-btn {
+      min-width: 80px;
+      min-height: 44px; 
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+    
+    .delete-bottle-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+    }
+    
+    .delete-bottle-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .delete-icon {
+      font-size: 1rem;
+    }
+    
+    .delete-text {
+      font-size: 0.875rem;
+    }
+
+    
+    .form-group { text-align: left; margin-bottom: 1rem; }
+    .form-group label { display:block; margin-bottom: .35rem; color: var(--text); font-weight: 600; }
+    .form-group input[type="date"], .form-group input[type="number"] {
+      width: 100%;
+      padding: .8rem 1rem;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    .form-group input::placeholder { color: color-mix(in oklab, var(--muted) 60%, transparent); }
+    .form-group input:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .error-message { color: var(--danger); font-size:0.9rem; margin-top:0.25rem; min-height: 1.2em; }
+
+    
+    .muted, .lead { color: var(--muted); }
+
+    
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb {
+      background: color-mix(in oklab, var(--surface) 80%, var(--border));
+      border-radius: 999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track { background: transparent; }
+    
+    
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) opacity(.85);
+      cursor: pointer;
+    }
+    
+    
+    @media (max-width: 640px) {
+      .container { padding-inline: 1rem; }
+      .content { padding-block: 1.5rem; padding-top: 4.5rem; }
+      
+      h1 { font-size: 1.6rem; margin-bottom: 0.75rem; }
+      h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+
+      .home-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .agenda-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .agenda-modal .modal-content {
+        max-height: 90vh;
+        padding: 1.5rem;
+      }
+
+      .agenda-entry {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .agenda-entry-time {
+        min-width: auto;
+      }
+      
+      .card {
+        padding: 0.9rem;
+        border-radius: 16px;
+      }
+      .card p {
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      .card > div[style*="display:flex"] {
+        gap: 0.4rem !important;
+        margin-top: 0.75rem !important;
+      }
+      
+      .btn {
+        padding: .6rem .8rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+      }
+      .btn-sm {
+        padding: .4rem .6rem;
+        font-size: 0.85rem;
+        border-radius: 8px;
+        flex: 1 1 calc(50% - 0.2rem);
+        min-width: fit-content;
+      }
+      
+      #med-list { gap: 0.75rem; }
+      
+      .modal { padding: 0.5rem; }
+      .modal-content {
+        padding: 1rem;
+        border-radius: 16px;
+        max-width: 100% !important;
+      }
+      .modal-content h3 { font-size: 1.1rem; }
+      
+      .bottle-item {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+      }
+      
+      .bottle-info {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+      }
+      
+      .delete-bottle-btn {
+        width: 100%;
+        min-height: 48px; 
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.2);
+      }
+      
+      .delete-bottle-btn:active {
+        transform: scale(0.98);
+        box-shadow: 0 1px 4px rgba(255, 107, 107, 0.3);
+      }
+      
+      .delete-icon {
+        font-size: 1.1rem;
+      }
+      
+      .delete-text {
+        font-size: 1rem;
+        font-weight: 700;
+      }
+      
+      .form-group input[type="date"],
+      .form-group input[type="number"] {
+        padding: .7rem .85rem;
+        font-size: 16px;
+      }
+      
+      input[type="date"],
+      input[type="number"],
+      input[type="text"],
+      select {
+        font-size: 16px !important;
+      }
+      
+      select option {
+        background-color: var(--surface);
+        color: var(--text);
+        font-size: 16px;
+      }
+      
+      .form-group label {
+        font-size: 0.9rem;
+      }
+    }
+
+    
+    #groups-area { margin-bottom: 1.5rem; }
+    .group-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+    }
+    .group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .group-header h3 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .group-header .group-count {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .group-meds-list {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .group-med-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      background: color-mix(in oklab, var(--surface) 94%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
+    .group-med-item .med-label { font-weight: 600; }
+    .group-med-item .dose-status {
+      font-size: 0.8rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .dose-status.taken { background: color-mix(in oklab, var(--success) 20%, transparent); color: var(--success); }
+    .dose-status.pending { background: color-mix(in oklab, var(--brand) 15%, transparent); color: var(--brand); }
+    .dose-status.no-dose { color: var(--muted); }
+    .group-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+    .manage-groups-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .manage-groups-btn:hover {
+      color: var(--text);
+      border-color: color-mix(in oklab, var(--brand) 40%, var(--border));
+    }
+    
+    .group-mgmt-modal .modal-content {
+      max-width: 600px;
+      width: 95%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+    .group-mgmt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .group-mgmt-header h3 { margin: 0; }
+    .group-create-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .group-create-row input {
+      flex: 1;
+      padding: 0.65rem 0.85rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .group-create-row input:focus {
+      border-color: color-mix(in oklab, var(--brand) 40%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 20%, transparent);
+    }
+    .group-edit-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      background: color-mix(in oklab, var(--surface) 96%, transparent);
+    }
+    .group-edit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .group-edit-header input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 600;
+      outline: none;
+    }
+    .group-med-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .group-med-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+    .take-all-feedback {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(34,197,94,.4);
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .take-all-feedback.show { opacity: 1; }
+
+    
+    .group-locked {
+      opacity: 0.65;
+      border-color: color-mix(in oklab, var(--muted) 30%, var(--border));
+    }
+    .group-locked .take-all-btn {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .group-unlocked {
+      border-color: color-mix(in oklab, var(--success) 35%, var(--border));
+    }
+    .group-lock-reason {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+    .group-window {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-left: 0.5rem;
+    }
+    .group-all-taken .take-all-btn {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    
+    .wizard-step-indicator {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    .wizard-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .anchor-option, .nearby-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .anchor-option:hover, .nearby-option:hover {
+      border-color: color-mix(in oklab, var(--brand) 40%, var(--border));
+      background: color-mix(in oklab, var(--brand) 5%, var(--surface));
+    }
+    .anchor-option input[type="radio"],
+    .nearby-option input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+    .anchor-option .option-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .anchor-option .option-time,
+    .nearby-option .option-time {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-left: auto;
+    }
+    .nearby-option .option-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    #anchor-summary {
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: color-mix(in oklab, var(--brand) 8%, var(--surface));
+      border-radius: 10px;
+    }
+    .wizard-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .group-section { padding: 0.85rem; }
+      .group-header h3 { font-size: 1rem; }
+      .group-med-item { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+      .group-mgmt-modal .modal-content { padding: 1rem; }
+      .group-create-row { flex-direction: column; }
+    }
+
+    
+    @media (max-width: 720px) {
+      #add-actions {
+        position: fixed !important;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: 0 !important;
+        padding: 0.6rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, rgba(11,16,32,0.96) 70%, rgba(11,16,32,0.6) 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-top: 1px solid rgba(255,255,255,0.08);
+        z-index: 30;
+        flex-wrap: nowrap !important;   
+        justify-content: stretch;
+        gap: 0.45rem !important;
+      }
+      @media (prefers-color-scheme: light) {
+        #add-actions {
+          background: linear-gradient(to top, rgba(248,250,252,0.97) 70%, rgba(248,250,252,0.7) 100%);
+          border-top-color: rgba(15,23,42,0.10);
+        }
+      }
+      #add-actions .add-action-btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;         
+        max-width: none !important;
+        padding: 0.7rem 0.4rem !important;
+        font-size: 0.85rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .content {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+    }
+    
+    @media (max-width: 380px) {
+      #add-actions .add-action-btn {
+        font-size: 0.78rem !important;
+        padding: 0.7rem 0.3rem !important;
+      }
+    }
+</style>
+<link rel="manifest" href="..//manifest.json">
+<meta name="theme-color" content="#3f6ff5">
+
+<script src="../tutorial.js"></script>
+<script src="../med-image.js"></script>
+<script src="../auth-guard.js" type="module"></script>
+</head>
+<body>
+  <div class="demo-banner" role="status">
+    <span><b>Demo</b> &middot; sample data, read&#8209;only &mdash; nothing you change here is saved</span>
+    <button class="demo-banner__x" type="button" aria-label="Hide" onclick="this.parentNode.remove();document.body.style.paddingTop='0'">&times;</button>
+  </div>
+
+  <input type="checkbox" id="menu-toggle" class="menu-toggle">
+  <label for="menu-toggle" class="hamburger">
+    <span></span>
+    <span></span>
+    <span></span>
+  </label>
+  
+  <div class="menu-overlay" onclick="document.getElementById('menu-toggle').checked = false;"></div>
+  
+  <nav class="sidebar">
+    <a href="home.html" class="active">Home</a>
+    <a href="history.html">History</a>
+    <a href="calendar.html">Calendar</a>
+    <a href="notes.html">Notes</a>
+    <a href="stats.html">Stats</a>
+    <a href="medicom.html" data-tutorial="medicom">Communication</a>
+    <a href="profile.html">Profile</a>
+  </nav>
+
+  <div class="content">
+    <div class="container">
+      <div class="home-header">
+      <h1>Home</h1>
+        <button class="btn agenda-btn" id="open-agenda-btn">Agenda</button>
+      </div>
+      <div id="med-list" data-tutorial="med-list"></div>
+      <div id="add-actions" data-tutorial="add-medication" style="display:flex; gap:0.75rem; justify-content:center; margin-top:2rem; flex-wrap:wrap;">
+        <button class="btn btn-primary add-action-btn" id="use-voice-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          🎤 Voice Add
+        </button>
+        <button class="btn btn-secondary add-action-btn" id="type-manually-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          ✏️ Manual Add
+        </button>
+        <button class="btn btn-secondary add-action-btn" id="picture-add-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          📷 Picture Add
+        </button>
+        <button class="btn btn-secondary add-action-btn" id="quick-add-btn" style="padding:0.85rem 1.25rem; font-size:1rem; flex:1; min-width:140px; max-width:200px;">
+          ⚡ Quick Add
+        </button>
+      </div>
+      <div id="groups-header" style="display:flex; align-items:center; justify-content:space-between; margin-top:2rem; margin-bottom:0.75rem;">
+        <h2 style="margin:0;">Groups</h2>
+        <button class="manage-groups-btn" id="manage-groups-btn">⚙ Manage</button>
+      </div>
+      <div id="groups-area"></div>
+    </div>
+  </div>
+
+  <div id="confirm-modal" class="modal">
+    <div class="modal-content">
+      <p>Are you sure you want to delete this medication?<br>
+         <small>(It will still appear in History.)</small></p>
+      <button id="confirm-yes" class="btn btn-sm btn-primary">Yes</button>
+      <button id="confirm-no"  class="btn btn-sm btn-secondary">No</button>
+    </div>
+  </div>
+
+  <div id="stock-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px; width: 95%;">
+      <h3>Stock for <span id="stock-med-name"></span></h3>
+      <div id="stock-list" style="max-height: 400px; overflow-y: auto; margin: 1rem 0;"></div>
+      <div style="display:flex; gap:0.5rem; justify-content:center; margin-top:1rem;">
+        <button id="stock-add-btn" class="btn btn-sm btn-primary">+ Add Bottle</button>
+        <button id="stock-close-btn" class="btn btn-sm btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stock-add-modal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3>Add Bottle for <span id="stock-add-med-name"></span></h3>
+      <div class="form-group">
+        <label>Expiration Date <span style="color: red;">*</span></label>
+        <input type="date" id="stock-add-exp" required>
+        <div id="stock-add-exp-error" class="error-message"></div>
+      </div>
+      <div class="form-group">
+        <label>Quantity <small>(optional)</small></label>
+        <input type="number" id="stock-add-qty" min="0" placeholder="e.g., 30 pills">
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:1rem;">
+        <button id="stock-add-back"  class="btn btn-sm btn-secondary">Back</button>
+        <button id="stock-add-save" class="btn btn-sm btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="quick-add-modal" class="modal">
+    <div class="modal-content" style="max-width: 460px; width: 95%; text-align: left;">
+      <h3 style="margin-top:0;">⚡ Quick Add</h3>
+      <p style="color:var(--muted); font-size:0.9rem; margin-top:-0.25rem;">Just the essentials. You can add bottles, color, and more later from Edit.</p>
+
+      <div class="form-group">
+        <label>Medication name <span style="color:#ff5470;">*</span></label>
+        <input type="text" id="qa-name" placeholder="e.g. Azulix" autocomplete="off">
+        <div id="qa-name-error" class="error-message"></div>
+      </div>
+
+      <div class="form-group">
+        <label>How often?</label>
+        <div id="qa-freq" class="qa-chip-row">
+          <button type="button" class="qa-chip qa-chip--on" data-freq="once">Once a day</button>
+          <button type="button" class="qa-chip" data-freq="twice">Twice a day</button>
+          <button type="button" class="qa-chip" data-freq="interval">Every X hours</button>
+        </div>
+      </div>
+
+      <div class="form-group" id="qa-times-wrap">
+        <label>Time</label>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <input type="time" id="qa-time-1" value="09:00" style="flex:1; min-width:130px;">
+          <input type="time" id="qa-time-2" value="21:00" style="flex:1; min-width:130px; display:none;">
+        </div>
+      </div>
+
+      <div class="form-group" id="qa-interval-wrap" style="display:none;">
+        <label>Every how many hours?</label>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <input type="number" id="qa-interval-hours" min="1" value="8" style="flex:1;">
+          <span style="color:var(--muted);">hours, starting</span>
+          <input type="time" id="qa-interval-start" value="09:00" style="flex:1;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Dosage <small style="color:var(--muted);">(optional)</small></label>
+        <input type="number" id="qa-dosage" min="1" value="1" placeholder="pills per dose">
+      </div>
+
+      <div class="form-group">
+        <label>Remind me by</label>
+        <div id="qa-channels" class="qa-chip-row">
+          <button type="button" class="qa-chip qa-chip--on" data-channel="push">Push</button>
+          <button type="button" class="qa-chip" data-channel="email">Email</button>
+          <button type="button" class="qa-chip" data-channel="sms">SMS</button>
+        </div>
+      </div>
+
+      <div id="qa-error" class="error-message"></div>
+
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+        <button id="qa-cancel" class="btn btn-sm btn-secondary">Cancel</button>
+        <button id="qa-save" class="btn btn-sm btn-primary">Save medication</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delete-bottle-modal" class="modal">
+    <div class="modal-content">
+      <p>Are you sure you want to delete this bottle?<br>
+         <small>(This action cannot be undone.)</small></p>
+      <button id="delete-bottle-yes" class="btn btn-sm btn-danger">Delete</button>
+      <button id="delete-bottle-no" class="btn btn-sm btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <div id="agenda-modal" class="modal agenda-modal">
+    <div class="modal-content">
+      <div class="agenda-header">
+        <div class="agenda-title-group">
+          <h3>Today’s Agenda</h3>
+          <p id="agenda-date"></p>
+        </div>
+        <button class="agenda-close" id="agenda-close" aria-label="Close agenda">&times;</button>
+      </div>
+      <div class="agenda-list" id="agenda-list"></div>
+      <div class="agenda-footer" id="agenda-footer">
+        Automatic daily agenda emails are sent at 9:00 AM your local time.
+      </div>
+    </div>
+  </div>
+
+  <div id="groups-modal" class="modal group-mgmt-modal">
+    <div class="modal-content">
+      <div class="group-mgmt-header">
+        <h3 id="groups-modal-title">Manage Groups</h3>
+        <button class="agenda-close" id="groups-modal-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div id="groups-step-main">
+        <button class="btn btn-primary" id="start-create-group-btn" style="width:100%;margin-bottom:1rem;">+ Create New Group</button>
+        <div id="groups-edit-list"></div>
+      </div>
+
+      <div id="groups-step-1" style="display:none;">
+        <p class="wizard-step-indicator">Step 1 of 3: Name your group</p>
+        <div class="group-create-row">
+          <input type="text" id="new-group-name" placeholder="Group name..." maxlength="50">
+        </div>
+        <div class="wizard-nav">
+          <button class="btn btn-sm btn-secondary" id="wizard-back-to-main">Cancel</button>
+          <button class="btn btn-sm btn-primary" id="wizard-to-step-2">Next</button>
+        </div>
+      </div>
+
+      <div id="groups-step-2" style="display:none;">
+        <p class="wizard-step-indicator">Step 2 of 3: Choose anchor medication & time</p>
+        <p class="wizard-desc">Select one medication + dose time as the anchor. Other medications within 2 hours will be shown next.</p>
+        <div id="anchor-med-list" style="max-height:50vh;overflow-y:auto;"></div>
+        <div class="wizard-nav">
+          <button class="btn btn-sm btn-secondary" id="wizard-back-to-step-1">Back</button>
+        </div>
+      </div>
+
+      <div id="groups-step-3" style="display:none;">
+        <p class="wizard-step-indicator">Step 3 of 3: Add nearby medications</p>
+        <div id="anchor-summary"></div>
+        <div id="nearby-med-list" style="max-height:50vh;overflow-y:auto;"></div>
+        <div class="wizard-nav">
+          <button class="btn btn-sm btn-secondary" id="wizard-back-to-step-2">Back</button>
+          <button class="btn btn-sm btn-primary" id="wizard-save-group">Create Group</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="take-all-feedback" id="take-all-feedback"></div>
+
+  <div id="delete-group-modal" class="modal" style="z-index:1100;">
+    <div class="modal-content" style="max-width:380px;text-align:center;">
+      <p style="margin-bottom:0.25rem;font-size:1.05rem;font-weight:600;">Delete group?</p>
+      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.25rem;">
+        <span id="delete-group-name" style="font-weight:600;color:var(--text);"></span><br>
+        <small>This won't delete any medications.</small>
+      </p>
+      <div style="display:flex;gap:0.5rem;justify-content:center;">
+        <button id="delete-group-yes" class="btn btn-sm btn-danger">Delete</button>
+        <button id="delete-group-no" class="btn btn-sm btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+      document.addEventListener('DOMContentLoaded', () => {
+      const menuToggle = document.getElementById('menu-toggle');
+      const sidebarLinks = document.querySelectorAll('.sidebar a');
+      sidebarLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          menuToggle.checked = false;
+        });
+      });
+
+      const useVoiceBtn = document.getElementById('use-voice-btn');
+      const typeManuallyBtn = document.getElementById('type-manually-btn');
+      const pictureAddBtn = document.getElementById('picture-add-btn');
+
+      if (useVoiceBtn) {
+        useVoiceBtn.addEventListener('click', () => {
+          window.location.href = 'add-medication-voice-realtime.html';
+        });
+      }
+
+      if (typeManuallyBtn) {
+        typeManuallyBtn.addEventListener('click', () => {
+          window.location.href = 'add-medication.html';
+        });
+      }
+
+      if (pictureAddBtn) {
+        pictureAddBtn.addEventListener('click', () => {
+          window.location.href = 'scan-medication.html';
+        });
+      }
+
+      (function wireQuickAdd() {
+        const openBtn   = document.getElementById('quick-add-btn');
+        const modal     = document.getElementById('quick-add-modal');
+        if (!openBtn || !modal) return;
+
+        const nameEl     = document.getElementById('qa-name');
+        const nameErr    = document.getElementById('qa-name-error');
+        const freqRow    = document.getElementById('qa-freq');
+        const timesWrap  = document.getElementById('qa-times-wrap');
+        const time1El    = document.getElementById('qa-time-1');
+        const time2El    = document.getElementById('qa-time-2');
+        const intWrap    = document.getElementById('qa-interval-wrap');
+        const intHoursEl = document.getElementById('qa-interval-hours');
+        const intStartEl = document.getElementById('qa-interval-start');
+        const dosageEl   = document.getElementById('qa-dosage');
+        const channelRow = document.getElementById('qa-channels');
+        const errEl      = document.getElementById('qa-error');
+        const cancelBtn  = document.getElementById('qa-cancel');
+        const saveBtn    = document.getElementById('qa-save');
+
+        let freq = 'once';
+
+        const resetForm = () => {
+          nameEl.value = '';
+          nameErr.textContent = '';
+          errEl.textContent = '';
+          dosageEl.value = '1';
+          time1El.value = '09:00';
+          time2El.value = '21:00';
+          intHoursEl.value = '8';
+          intStartEl.value = '09:00';
+          freq = 'once';
+          freqRow.querySelectorAll('.qa-chip').forEach(c => c.classList.toggle('qa-chip--on', c.dataset.freq === 'once'));
+          channelRow.querySelectorAll('.qa-chip').forEach(c => c.classList.toggle('qa-chip--on', c.dataset.channel === 'push'));
+          applyFreqUI();
+        };
+
+        const applyFreqUI = () => {
+          if (freq === 'interval') {
+            timesWrap.style.display = 'none';
+            intWrap.style.display = '';
+          } else {
+            timesWrap.style.display = '';
+            intWrap.style.display = 'none';
+            time2El.style.display = (freq === 'twice') ? '' : 'none';
+          }
+        };
+
+        const open  = () => { resetForm(); modal.classList.add('show'); setTimeout(() => nameEl.focus(), 50); };
+        const close = () => { modal.classList.remove('show'); };
+
+        openBtn.addEventListener('click', open);
+        cancelBtn.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        freqRow.querySelectorAll('.qa-chip').forEach(chip => {
+          chip.addEventListener('click', () => {
+            freq = chip.dataset.freq;
+            freqRow.querySelectorAll('.qa-chip').forEach(c => c.classList.toggle('qa-chip--on', c === chip));
+            applyFreqUI();
+          });
+        });
+
+        channelRow.querySelectorAll('.qa-chip').forEach(chip => {
+          chip.addEventListener('click', () => chip.classList.toggle('qa-chip--on'));
+        });
+
+        const channelsToLegacyMethod = (channels) => {
+          const set = new Set(channels);
+          const hasE = set.has('email'), hasS = set.has('sms');
+          if (hasE && hasS) return 'ES';
+          if (hasE) return 'E';
+          if (hasS) return 'S';
+          return 'N';
+        };
+
+        const dailySchedulesForTime = (time) => {
+          const out = [];
+          for (let wd = 0; wd < 7; wd++) {
+            out.push({
+              scheduleId: `sch_${Date.now()}_${wd}_${Math.random().toString(36).substr(2, 6)}`,
+              type: 'WEEKLY',
+              weekday: wd,
+              time: time,
+              everyWeeks: 1
+            });
+          }
+          return out;
+        };
+
+        const buildSchedules = () => {
+          if (freq === 'interval') {
+            const hours = parseInt(intHoursEl.value, 10);
+            const start = intStartEl.value;
+            if (!hours || hours < 1 || !start) return null;
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return [{
+              scheduleId: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: 'INTERVAL',
+              interval: { value: hours, unit: 'HOUR' },
+              anchorDateTime: `${y}-${m}-${d}T${start}:00`
+            }];
+          }
+          if (freq === 'twice') {
+            if (!time1El.value || !time2El.value) return null;
+            return [...dailySchedulesForTime(time1El.value), ...dailySchedulesForTime(time2El.value)];
+          }
+          if (!time1El.value) return null;
+          return dailySchedulesForTime(time1El.value);
+        };
+
+        saveBtn.addEventListener('click', async () => {
+          errEl.textContent = '';
+          nameErr.textContent = '';
+
+          const name = (nameEl.value || '').trim();
+          if (!name) { nameErr.textContent = 'Please enter a medication name'; nameEl.focus(); return; }
+
+          const schedules = buildSchedules();
+          if (!schedules) { errEl.textContent = 'Please complete the schedule fields'; return; }
+
+          const channels = Array.from(channelRow.querySelectorAll('.qa-chip--on')).map(c => c.dataset.channel);
+          const reminderChannels = channels.filter(c => c === 'email' || c === 'sms');
+          const reminderMethod = channelsToLegacyMethod(reminderChannels);
+
+          const user = window.auth.currentUser;
+          if (!user) { errEl.textContent = 'Please log in to save medications'; return; }
+
+          const dosage = parseInt(dosageEl.value, 10) || 1;
+
+          const medData = {
+            name: name,
+            dosage: String(dosage),
+            schedules: schedules,
+            reminderMethod: reminderMethod,
+            reminderChannels: reminderChannels,
+            stock: 0,
+            bottles: [],
+            skipBottleTracking: true,
+            classifications: {},
+            groups: [],
+            deletedStatus: false,
+            notes: {},
+            doses: {},
+            createdAt: new Date().toISOString()
+          };
+
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+          try {
+            const ref = window.collection(window.db, "users", user.uid, "medications");
+            await window.addDoc(ref, medData);
+            close();
+            window.location.href = 'home.html?t=' + Date.now();
+          } catch (e) {
+            console.error('[QuickAdd] Save failed:', e);
+            errEl.textContent = 'Could not save. Please try again.';
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save medication';
+          }
+        });
+      })();
+
+      let pendingDeleteIndex = null;
+      let currentStockMedId = null;
+      let pendingDeleteBottleIndex = null;
+
+
+    function confirmDelete(medId) {
+      pendingDeleteIndex = medId;
+      document.getElementById('confirm-modal').classList.add('show');
+    }
+    
+    window.confirmDelete = confirmDelete;
+
+    document.getElementById('confirm-yes')
+            .addEventListener('click', async () => {
+      try {
+        const user = window.auth.currentUser;
+        if (!user) return;
+
+        console.log('[Home] Deleting medication with ID:', pendingDeleteIndex);
+
+        const medDocRef = doc(window.db, "users", user.uid, "medications", pendingDeleteIndex);
+        await setDoc(medDocRef, { deletedStatus: true }, { merge: true });
+
+        console.log('[Home] Medication marked as deleted in Firebase');
+
+        document.getElementById('confirm-modal').classList.remove('show');
+      window.renderList();
+      if (!window.__medListRefreshInterval) {
+        window.__medListRefreshInterval = setInterval(() => {
+          if (document.visibilityState === 'visible') {
+            window.renderList();
+          }
+        }, 60 * 1000);
+      }
+      } catch (error) {
+        console.error('Error during delete:', error);
+        alert('Error deleting medication: ' + error.message);
+      }
+    });
+
+    document.getElementById('confirm-no')
+            .addEventListener('click', () => {
+      document.getElementById('confirm-modal').classList.remove('show');
+    });
+
+    window.openStock = async function(medId) {
+      try {
+        currentStockMedId = medId;
+        const user = window.auth.currentUser;
+        if (!user) {
+          console.error('No user logged in for stock view');
+          return;
+        }
+
+        const medDocRef = doc(window.db, "users", user.uid, "medications", medId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) {
+          console.error('Medication not found:', medId);
+          return;
+        }
+        
+        const medData = medDoc.data();
+        
+        const med = {
+          id: medDoc.id,
+          name: medData.name,
+          skipBottleTracking: medData.skipBottleTracking === true,
+          bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+            const parts = bottleStr.split('/');
+            if (parts.length >= 2) {
+              const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
+              if (dateMatch) {
+                return {
+                  expiration: dateMatch[1],
+                  quantity: dateMatch[2] === 'N/A' ? null : parseInt(dateMatch[2])
+                };
+              }
+            }
+            return null;
+          }).filter(Boolean) : []
+        };
+
+      document.getElementById('stock-med-name').textContent = med.name;
+        renderStockList(med);
+      document.getElementById('stock-modal').classList.add('show');
+      } catch (error) {
+        console.error('Error opening stock:', error);
+      }
+    }
+
+    async function renderStockList(med) {
+      const stockList = document.getElementById('stock-list');
+      
+      if (!med) {
+        const user = window.auth.currentUser;
+        if (!user || !currentStockMedId) return;
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) return;
+        
+        const medData = medDoc.data();
+        med = {
+          skipBottleTracking: medData.skipBottleTracking === true,
+          bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+            const dateMatch = bottleStr.match(/^(\d+\/\d+\/\d+)\/(.+)$/);
+            if (dateMatch) {
+              return {
+                expiration: dateMatch[1],
+                quantity: dateMatch[2] === 'N/A' ? null : parseInt(dateMatch[2])
+              };
+            }
+            return null;
+          }).filter(Boolean) : []
+        };
+      }
+
+      if (!med || !med.bottles || med.bottles.length === 0) {
+        const msg = (med && med.skipBottleTracking)
+          ? 'No bottles added.'
+          : 'No bottles added yet.';
+        stockList.innerHTML = '<p style="text-align:center;color:#666;padding:2rem;">' + msg + '</p>';
+        return;
+      }
+
+      const sortedBottles = [...med.bottles].sort((a, b) => new Date(a.expiration) - new Date(b.expiration));
+      
+      stockList.innerHTML = '';
+      sortedBottles.forEach((bottle, index) => {
+        const bottleEl = document.createElement('div');
+        bottleEl.className = 'bottle-item';
+        bottleEl.innerHTML = `
+          <div class="bottle-info">
+            <strong>Bottle #${index + 1}</strong><br>
+            <small>Expires: ${bottle.expiration}</small><br>
+            <small>Amount: ${bottle.quantity || 'N/A'}</small>
+          </div>
+          <button class="btn btn-sm btn-danger delete-bottle-btn" data-index="${index}">
+            <span class="delete-icon">🗑️</span>
+            <span class="delete-text">Delete</span>
+          </button>
+        `;
+        bottleEl.querySelector('.delete-bottle-btn')
+            .addEventListener('click', () => confirmDeleteBottle(index));
+        stockList.appendChild(bottleEl);
+      });
+    }
+
+    function confirmDeleteBottle(bottleIndex) {
+      pendingDeleteBottleIndex = bottleIndex;
+      document.getElementById('delete-bottle-modal').classList.add('show');
+    }
+    
+    window.confirmDeleteBottle = confirmDeleteBottle;
+
+    document.getElementById('stock-add-btn')
+            .addEventListener('click', async () => {
+      const user = window.auth.currentUser;
+      if (!user) return;
+      
+      const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+      const medDoc = await getDoc(medDocRef);
+      
+      if (!medDoc.exists()) return;
+      
+      const med = medDoc.data();
+      document.getElementById('stock-add-med-name').textContent = med.name;
+      document.getElementById('stock-add-exp').value = '';
+      document.getElementById('stock-add-qty').value = '';
+      document.getElementById('stock-add-exp-error').textContent = '';
+      document.getElementById('stock-modal').classList.remove('show');
+      document.getElementById('stock-add-modal').classList.add('show');
+    });
+
+    document.getElementById('stock-close-btn')
+            .addEventListener('click', () => {
+      document.getElementById('stock-modal').classList.remove('show');
+    });
+
+    document.getElementById('stock-add-back')
+            .addEventListener('click', () => {
+      document.getElementById('stock-add-modal').classList.remove('show');
+      document.getElementById('stock-modal').classList.add('show');
+    });
+
+    document.getElementById('stock-add-save')
+.addEventListener('click', async () => {
+      const expDate = document.getElementById('stock-add-exp').value;
+      const quantity = document.getElementById('stock-add-qty').value;
+      const errorEl = document.getElementById('stock-add-exp-error');
+      
+      errorEl.textContent = '';
+      
+      if (!expDate) {
+        errorEl.textContent = 'Expiration date is required';
+        return;
+      }
+
+      try {
+        const user = window.auth.currentUser;
+        if (!user || !currentStockMedId) return;
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+        const medDoc = await getDoc(medDocRef);
+      
+        if (!medDoc.exists()) return;
+        
+        const medData = medDoc.data();
+        
+        const dateObj = new Date(expDate + 'T00:00:00');
+        const month = dateObj.getMonth() + 1;
+        const day = dateObj.getDate();
+        const year = dateObj.getFullYear();
+        const formattedDate = `${month}/${day}/${year}`;
+        
+        const bottles = medData.bottles || [];
+        const newBottle = `${formattedDate}/${quantity || 'N/A'}`;
+        bottles.push(newBottle);
+        
+        await setDoc(medDocRef, {
+          bottles: bottles,
+          stock: bottles.length
+        }, { merge: true });
+        
+        console.log('[Home] Added bottle to medication:', currentStockMedId);
+      
+        await renderStockList();
+      
+      document.getElementById('stock-add-modal').classList.remove('show');
+      document.getElementById('stock-modal').classList.add('show');
+      } catch (error) {
+        console.error('Error adding bottle:', error);
+        errorEl.textContent = 'Error adding bottle: ' + error.message;
+      }
+    });
+
+    document.getElementById('delete-bottle-yes')
+            .addEventListener('click', async () => {
+      try {
+        const user = window.auth.currentUser;
+        if (!user || !currentStockMedId) return;
+        
+        const medDocRef = doc(window.db, "users", user.uid, "medications", currentStockMedId);
+        const medDoc = await getDoc(medDocRef);
+        
+        if (!medDoc.exists()) return;
+        
+        const medData = medDoc.data();
+        const bottles = medData.bottles || [];
+        
+        bottles.splice(pendingDeleteBottleIndex, 1);
+        
+        await setDoc(medDocRef, {
+          bottles: bottles,
+          stock: bottles.length
+        }, { merge: true });
+        
+        console.log('[Home] Deleted bottle from medication:', currentStockMedId);
+        
+      document.getElementById('delete-bottle-modal').classList.remove('show');
+        await renderStockList();
+      } catch (error) {
+        console.error('Error deleting bottle:', error);
+      }
+    });
+
+    document.getElementById('delete-bottle-no')
+            .addEventListener('click', () => {
+      document.getElementById('delete-bottle-modal').classList.remove('show');
+    });
+
+  });
+</script>
+
+<style>
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+</style>
+
+<script src="../schedule-utils.js"></script>
+<script type="module">
+  import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, onSnapshot, collection, getDocs, deleteDoc, deleteField, getDocsFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD6wbL8ubfOSlyodvwuh_1gTL-7FK065pk",
+    authDomain: "medtracker-8c467.firebaseapp.com",
+    projectId: "medtracker-8c467",
+    storageBucket: "medtracker-8c467.firebasestorage.app",
+    messagingSenderId: "847799899373",
+    appId: "1:847799899373:web:170bf9c693a78ec42168e4"
+  };
+
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  
+  const weekdaysConst = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  const formatTime12h = (time24) => {
+    if (!time24) return '';
+    const [hoursStr, minutesStr] = time24.split(':');
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return time24;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  };
+
+  let currentMedications = [];
+  let currentAgendaEntries = [];
+
+  const agendaModal = document.getElementById('agenda-modal');
+  const openAgendaBtn = document.getElementById('open-agenda-btn');
+  const closeAgendaBtn = document.getElementById('agenda-close');
+  const agendaListEl = document.getElementById('agenda-list');
+  const agendaDateEl = document.getElementById('agenda-date');
+  const agendaFooterEl = document.getElementById('agenda-footer');
+
+  if (agendaFooterEl) {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzAbbr = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' })
+        .formatToParts(new Date())
+        .find(p => p.type === 'timeZoneName')?.value;
+      const label = tzAbbr ? `9:00 AM ${tzAbbr}` : (tz ? `9:00 AM (${tz})` : '9:00 AM your local time');
+      agendaFooterEl.textContent = `Automatic daily agenda emails are sent at ${label}.`;
+    } catch (_) {
+    }
+  }
+
+  const buildAgendaEntries = (medications) => {
+    const entries = [];
+    const now = new Date();
+    medications.forEach(med => {
+      const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], now);
+      doses.forEach(dose => {
+        entries.push({
+          time: dose.time,
+          name: med.name,
+          dosage: med.dosage,
+          doseNumber: dose.doseNumber,
+          totalDoses: doses.length
+        });
+      });
+    });
+    entries.sort((a, b) => {
+      if (a.time === b.time) return (a.name || '').localeCompare(b.name || '');
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+    return entries;
+  };
+
+  const renderAgendaEntries = () => {
+    if (!agendaListEl) return;
+    if (!currentAgendaEntries.length) {
+      agendaListEl.innerHTML = `<div class="agenda-empty">No medications scheduled for today.</div>`;
+      return;
+    }
+
+    agendaListEl.innerHTML = currentAgendaEntries.map(entry => {
+      const timeLabel = entry.time ? formatTime12h(entry.time) : 'Any time';
+      const doseLabel = entry.totalDoses > 1 ? `Dose ${entry.doseNumber}` : 'Single dose';
+      const dosageLabel = entry.dosage ? `<div class="agenda-entry-dose">${entry.dosage}</div>` : '';
+      return `
+        <div class="agenda-entry">
+          <div class="agenda-entry-time">${timeLabel}</div>
+          <div>
+            <div class="agenda-entry-name">${entry.name} · ${doseLabel}</div>
+            ${dosageLabel}
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  const openAgendaModal = () => {
+    if (!agendaModal) return;
+    const now = new Date();
+    if (agendaDateEl) {
+      agendaDateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+    renderAgendaEntries();
+    agendaModal.classList.add('show');
+  };
+
+  const closeAgendaModal = () => {
+    if (!agendaModal) return;
+    agendaModal.classList.remove('show');
+  };
+
+  if (openAgendaBtn) {
+    openAgendaBtn.addEventListener('click', () => {
+      if (!currentAgendaEntries.length) {
+        currentAgendaEntries = buildAgendaEntries(currentMedications);
+      }
+      openAgendaModal();
+    });
+  }
+
+  if (closeAgendaBtn) {
+    closeAgendaBtn.addEventListener('click', closeAgendaModal);
+  }
+
+  if (agendaModal) {
+    agendaModal.addEventListener('click', (event) => {
+      if (event.target === agendaModal) {
+        closeAgendaModal();
+      }
+    });
+  }
+
+  window.auth = auth;
+  window.db = db;
+  window.collection = collection;
+  window.getDocs = getDocs;
+  window.doc = doc;
+  window.getDoc = getDoc;
+  window.setDoc = setDoc;
+  window.addDoc = addDoc;
+  window.deleteDoc = deleteDoc;
+  
+  async function renderList() {
+    try {
+      console.log('[Home] renderList() called');
+      const listEl = document.getElementById('med-list');
+      const user = window.auth.currentUser;
+      
+      console.log('[Home] Current user in renderList:', user ? `User: ${user.email}` : 'No user');
+      console.log('[Home] window.auth available:', !!window.auth);
+      
+      if (!window.auth) {
+        console.log('[Home] Auth not ready yet, retrying in 100ms');
+        setTimeout(window.renderList, 100);
+        return;
+      }
+      
+      if (!user) {
+        console.log('[Home] No user found, showing login message');
+        listEl.innerHTML = '<p style="text-align:center;color:#666">Please log in to view medications.</p>';
+        return;
+      }
+
+      const medicationsCollectionRef = collection(window.db, "users", user.uid, "medications");
+      const medicationsSnapshot = await getDocs(medicationsCollectionRef);
+      const medications = [];
+      
+        for (const docSnapshot of medicationsSnapshot.docs) {
+          const medData = docSnapshot.data();
+
+          if (!medData.deletedStatus) {
+            const med = {
+              id: docSnapshot.id,
+              name: medData.name,
+              dosage: medData.dosage,
+              schedules: medData.schedules || [],
+              startDate: medData.startDate === 'N/A' ? null : medData.startDate,
+              endDate: medData.endDate === 'N/A' ? null : medData.endDate,
+              reminder: (function(){
+                const chans = Array.isArray(medData.reminderChannels) && medData.reminderChannels.length > 0
+                  ? medData.reminderChannels
+                  : (medData.reminderMethod === 'E' ? ['email']
+                    : medData.reminderMethod === 'S' ? ['sms']
+                    : medData.reminderMethod === 'ES' ? ['email','sms']
+                    : []);
+                if (chans.length === 0) return 'None';
+                const label = { email: 'Email', sms: 'SMS', push: 'Push' };
+                return chans.map(c => label[c] || c).join(' + ');
+              })(),
+              reminderChannels: Array.isArray(medData.reminderChannels) ? medData.reminderChannels.slice() : [],
+              bottles: medData.bottles ? medData.bottles.map(bottleStr => {
+                const parts = bottleStr.split('/');
+                if (parts.length >= 4) {
+                  return {
+                    expiration: `${parts[0]}/${parts[1]}/${parts[2]}`,
+                    quantity: parts[3] === 'N/A' ? null : parseInt(parts[3])
+                  };
+                }
+                return null;
+              }).filter(Boolean) : [],
+              doses: medData.doses || {},
+              groups: medData.groups || [],
+              imageUrl: medData.imageUrl || null,
+              imageCanonical: medData.imageCanonical || null,
+              imageGenericName: medData.imageGenericName || null
+            };
+
+            if ((!med.schedules || med.schedules.length === 0) && (medData.daysOfWeek || medData.times)) {
+              const migrated = window.ScheduleUtils.migrateOldFormat(medData);
+              med.schedules = migrated.schedules;
+              try {
+                const medDocRef = doc(window.db, "users", user.uid, "medications", docSnapshot.id);
+                await setDoc(medDocRef, { schedules: migrated.schedules }, { merge: true });
+                console.log('[Home] Auto-migrated schedules for', med.name);
+              } catch (e) {
+                console.warn('[Home] Failed to save migrated schedules:', e);
+              }
+            }
+
+            medications.push(med);
+          }
+        }
+
+      listEl.innerHTML = '';
+
+      if (!medications.length) {
+        listEl.innerHTML = '<p style="text-align:center;color:#666">No medications yet.</p>';
+        return;
+      }
+
+      const now = new Date();
+
+      const getWeekdayIndex = (dayName) => weekdaysConst.indexOf(dayName.toLowerCase());
+
+      const computeNextDosage = (medication) => {
+        const result = ScheduleUtils.computeNextDose(medication.schedules || [], new Date(), medication.doses || {});
+        if (!result) return 'N/A';
+        if (result.time) {
+          return `${formatTime12h(result.time)} on ${result.weekday.charAt(0).toUpperCase() + result.weekday.slice(1)}`;
+        }
+        return result.weekday.charAt(0).toUpperCase() + result.weekday.slice(1);
+      };
+
+      const determineCurrentDose = (medication) => {
+        return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), medication.doses || {});
+      };
+
+      const determineDoseToToggle = (medication) => {
+        const strict = ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), medication.doses || {});
+        if (strict) return strict;
+        return ScheduleUtils.determineCurrentDose(medication.schedules || [], new Date(), {});
+      };
+
+      const medicationCurrentDoses = new Map();
+
+      const updateStockForDose = (medData, previousTaken, newTaken, dosage) => {
+          if (!medData.bottles || !Array.isArray(medData.bottles) || medData.bottles.length === 0) {
+            console.log('[Home] No bottles to update stock for');
+            return medData.bottles || [];
+          }
+
+          let stockChange = 0;
+          if (previousTaken !== true && newTaken === true) {
+            stockChange = -dosage;
+          } else if (previousTaken === true && newTaken === false) {
+            stockChange = dosage;
+          }
+
+          if (stockChange === 0) {
+            console.log('[Home] No stock change needed (status unchanged or not-taken to not-taken)');
+            return medData.bottles;
+          }
+
+          console.log(`[Home] Stock change: ${stockChange > 0 ? '+' : ''}${stockChange} (dosage: ${dosage})`);
+
+          const now = new Date();
+          const parsedBottles = medData.bottles.map((bottleStr, index) => {
+            const parts = bottleStr.split('/');
+            if (parts.length < 3) return null;
+            
+            const expirationStr = `${parts[0]}/${parts[1]}/${parts[2]}`;
+            const expirationDate = new Date(expirationStr);
+            const quantity = parts[3] && parts[3] !== 'N/A' ? parseInt(parts[3]) : null;
+            
+            return {
+              index,
+              expiration: expirationDate,
+              quantity: quantity,
+              original: bottleStr
+            };
+          }).filter(b => b !== null);
+
+          parsedBottles.sort((a, b) => a.expiration - b.expiration);
+
+          let activeBottle = parsedBottles.find(b => 
+            b.expiration >= now && (b.quantity === null || b.quantity > 0)
+          );
+
+          if (!activeBottle && parsedBottles.length > 0) {
+            activeBottle = parsedBottles[0];
+          }
+
+          if (!activeBottle) {
+            console.log('[Home] No active bottle found to update');
+            return medData.bottles;
+          }
+
+          console.log(`[Home] Updating bottle at index ${activeBottle.index}, expiration: ${activeBottle.expiration.toLocaleDateString()}`);
+
+          const newBottles = [...medData.bottles];
+          const bottleParts = newBottles[activeBottle.index].split('/');
+          
+          if (bottleParts.length >= 4) {
+            let newQuantity = activeBottle.quantity;
+            if (newQuantity === null) {
+              console.log('[Home] Bottle quantity is N/A, cannot update stock');
+              return medData.bottles;
+            }
+            
+            newQuantity = Math.max(0, newQuantity + stockChange);
+            
+            const expirationPart = `${bottleParts[0]}/${bottleParts[1]}/${bottleParts[2]}`;
+            newBottles[activeBottle.index] = `${expirationPart}/${newQuantity === 0 ? '0' : newQuantity}`;
+            
+            console.log(`[Home] Updated bottle quantity: ${activeBottle.quantity} -> ${newQuantity}`);
+          }
+
+          return newBottles;
+        };
+
+        const saveDoseToFirebase = async (medicationId, doseNumber, date, taken) => {
+          try {
+            const user = window.auth.currentUser;
+            if (!user) {
+              console.error('[Home] No user logged in');
+              return false;
+            }
+
+            const medDocRef = doc(window.db, "users", user.uid, "medications", medicationId);
+            const medDoc = await getDoc(medDocRef);
+            
+            if (!medDoc.exists()) {
+              console.error('[Home] Medication not found:', medicationId);
+              return false;
+            }
+
+            const medData = medDoc.data();
+            let doses = medData.doses || {};
+            if (Array.isArray(doses)) {
+              const dosesObj = {};
+              doses.forEach(dose => {
+                const key = `${String(dose.date || '')}_${Number(dose.doseNumber || 0)}`;
+                dosesObj[key] = {
+                  date: String(dose.date || ''),
+                  doseNumber: Number(dose.doseNumber || 0),
+                  taken: Boolean(dose.taken)
+                };
+              });
+              doses = dosesObj;
+              console.log('[Home] Migrated doses from array to object format');
+            }
+            
+            const dy = date.getFullYear();
+            const dm = String(date.getMonth() + 1).padStart(2, '0');
+            const dday = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${dy}-${dm}-${dday}`;
+            const doseNum = Number(doseNumber);
+            const doseKey = `${dateStr}_${doseNum}`;
+            
+            console.log('[Home] Looking for existing entry with key:', doseKey);
+            console.log('[Home] Current doses object:', doses);
+            
+            const existingEntry = doses[doseKey];
+            const previousTaken = existingEntry ? existingEntry.taken : undefined;
+            const statusChanged = !existingEntry || existingEntry.taken !== taken;
+            
+            const newDoseEntry = {
+              date: dateStr,
+              doseNumber: doseNum,
+              taken: taken,
+              autoMarked: false,
+              takenAt: taken 
+                ? (existingEntry && existingEntry.takenAt ? existingEntry.takenAt : new Date().toISOString())
+                : null
+            };
+
+            const exists = doses.hasOwnProperty(doseKey);
+            doses[doseKey] = newDoseEntry;
+
+            if (exists) {
+              console.log('[Home] Updated existing dose entry:', newDoseEntry);
+            } else {
+              console.log('[Home] Added new dose entry:', newDoseEntry);
+            }
+
+            const dosage = Number(medData.dosage) || 0;
+            const updatedBottles = updateStockForDose(medData, previousTaken, taken, dosage);
+
+            const updateData = { 
+              doses: doses,
+              bottles: updatedBottles
+            };
+            if (medData.doseStatus !== undefined) {
+              updateData.doseStatus = deleteField();
+              console.log('[Home] Removing old doseStatus field');
+            }
+            if (medData.doseHistory !== undefined) {
+              updateData.doseHistory = deleteField();
+              console.log('[Home] Removing old doseHistory field');
+            }
+            
+            await setDoc(medDocRef, updateData, { merge: true });
+            console.log('[Home] Saved doses and updated stock to Firebase for medication:', medicationId);
+            return statusChanged;
+          } catch (error) {
+            console.error('[Home] Error saving dose to Firebase:', error);
+            alert('Error saving dose: ' + error.message);
+            return false;
+          }
+        };
+
+      window.saveDoseToFirebase = saveDoseToFirebase;
+
+      const triggerFlash = (cardElement, color) => {
+        cardElement.classList.remove('flash-green', 'flash-red');
+        void cardElement.offsetWidth;
+        cardElement.classList.add(`flash-${color}`);
+        setTimeout(() => {
+          cardElement.classList.remove(`flash-${color}`);
+        }, 1000);
+      };
+
+      medications.forEach((med) => {
+        const perWeek = ScheduleUtils.getPerWeekCount(med.schedules || []);
+        const perDay = ScheduleUtils.getPerDayMax(med.schedules || []);
+
+        const nextDosage = computeNextDosage(med);
+
+        const currentDose = determineCurrentDose(med);
+
+        let currentDoseDisplay = '';
+        if (currentDose) {
+          const timeDisplay = currentDose.time ? formatTime12h(currentDose.time) : 'Any time';
+          const weekdayDisplay = currentDose.weekday ? currentDose.weekday.charAt(0).toUpperCase() + currentDose.weekday.slice(1) : '';
+          currentDoseDisplay = `<br><strong>Current Dosage:</strong> ${timeDisplay}${weekdayDisplay ? ` on ${weekdayDisplay}` : ''}, Dose #${currentDose.doseNumber}`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.medicationId = med.id;
+
+        card.innerHTML = `
+          <div class="med-card-header" style="display:flex; gap:1rem; align-items:flex-start; justify-content:space-between;">
+            <div style="flex:1; min-width:0;">
+              <h2 style="margin:0 0 .35rem 0;">${med.name}</h2>
+              <p style="margin:0;">
+                <strong>Per Week:</strong> ${perWeek} dosage${perWeek !== 1 ? 's' : ''}<br>
+                <strong>Per Day:</strong> ${perDay} dosage${perDay !== 1 ? 's' : ''}<br>
+                <strong>Next Dosage:</strong> ${nextDosage}${currentDoseDisplay}
+              </p>
+            </div>
+            <div class="med-card-image-slot" data-med-image-slot="1" style="flex-shrink:0;"></div>
+          </div>
+          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-sm btn-success taken-btn">Taken</button>
+            <button class="btn btn-sm btn-danger not-taken-btn">Not Taken</button>
+            <button class="btn btn-sm btn-secondary" onclick="location.href='add-medication.html?edit=${med.id}'">Edit</button>
+            <button class="btn btn-sm btn-secondary" onclick="openStock('${med.id}')">Stock</button>
+            <button class="btn btn-sm btn-secondary delete-btn">Delete</button>
+          </div>
+        `;
+
+        try {
+          if (med.imageUrl && window.MedImage) {
+            const slot = card.querySelector('.med-card-image-slot');
+            if (slot) slot.appendChild(window.MedImage.renderCardImage({
+              imageUrl: med.imageUrl,
+              alt: med.imageCanonical || med.name || 'Medication',
+            }));
+          }
+        } catch (_) {}
+
+        const takenBtn = card.querySelector('.taken-btn');
+        if (takenBtn) {
+          takenBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Home] Taken button clicked for:', med.name);
+            
+            const currentDose = determineCurrentDose(med);
+            if (currentDose) {
+              const doseDate = new Date(currentDose.dateTime);
+              doseDate.setHours(0, 0, 0, 0);
+              
+              const user = window.auth.currentUser;
+              let alreadyTaken = false;
+              if (user) {
+                try {
+                  const medDocRef = doc(window.db, "users", user.uid, "medications", med.id);
+                  const medDoc = await getDoc(medDocRef);
+                  if (medDoc.exists()) {
+                    const medData = medDoc.data();
+                    const doses = medData.doses || {};
+                    const yy = doseDate.getFullYear();
+                    const mm = String(doseDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(doseDate.getDate()).padStart(2, '0');
+                    const dateStr = `${yy}-${mm}-${dd}`;
+                    const doseKey = `${dateStr}_${currentDose.doseNumber}`;
+                    const existingEntry = doses[doseKey];
+                    if (existingEntry && existingEntry.taken === true) {
+                      alreadyTaken = true;
+                      console.log('[Home] Medication already marked as taken, not opening notes');
+                    }
+                  }
+                } catch (error) {
+                  console.error('[Home] Error checking existing status:', error);
+                }
+              }
+
+              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, true);
+
+              if (statusChanged) {
+                triggerFlash(card, 'green');
+              }
+
+              if (!alreadyTaken) {
+                const year = doseDate.getFullYear();
+                const month = String(doseDate.getMonth() + 1).padStart(2, '0');
+                const day = String(doseDate.getDate()).padStart(2, '0');
+                const dateString = `${year}-${month}-${day}`;
+
+                const timeParam = currentDose.time ? encodeURIComponent(currentDose.time) : 'no-time';
+                const url = `medication-action.html?medication=${encodeURIComponent(med.name)}&dose=${currentDose.doseNumber}&time=${timeParam}&date=${dateString}&medId=${encodeURIComponent(med.id)}`;
+
+                setTimeout(() => {
+                  window.location.href = url;
+                }, 400);
+              } else if (statusChanged) {
+                setTimeout(() => {
+                  window.renderList();
+                }, 600);
+              }
+            } else {
+              console.warn('[Home] Could not determine current dose for:', med.name);
+              alert('No upcoming or recent dose found for this medication. Make sure it has a schedule with valid dates.');
+            }
+          });
+        }
+
+        const notTakenBtn = card.querySelector('.not-taken-btn');
+        if (notTakenBtn) {
+          notTakenBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Home] Not Taken button clicked for:', med.name);
+
+            const currentDose = determineDoseToToggle(med);
+            if (currentDose) {
+              const doseDate = new Date(currentDose.dateTime);
+              doseDate.setHours(0, 0, 0, 0);
+              const statusChanged = await saveDoseToFirebase(med.id, currentDose.doseNumber, doseDate, false);
+
+              triggerFlash(card, 'red');
+              setTimeout(() => {
+                window.renderList();
+              }, 600);
+            } else {
+              console.warn('[Home] Could not determine current dose for:', med.name);
+              alert('No upcoming or recent dose found for this medication. Make sure it has a schedule with valid dates.');
+            }
+          });
+        }
+        
+        card.querySelector('.delete-btn')
+            .addEventListener('click', () => confirmDelete(med.id));
+        listEl.appendChild(card);
+      });
+
+      currentMedications = medications;
+      currentAgendaEntries = buildAgendaEntries(medications);
+      if (agendaModal && agendaModal.classList.contains('show')) {
+        renderAgendaEntries();
+      }
+      window.currentMedications = currentMedications;
+
+      const groupsCollectionRef = collection(window.db, "users", user.uid, "groups");
+      let groupsSnapshot;
+      try {
+        groupsSnapshot = await getDocsFromServer(groupsCollectionRef);
+      } catch (e) {
+        groupsSnapshot = await getDocs(groupsCollectionRef);
+      }
+      let groups = [];
+      groupsSnapshot.forEach(docSnap => {
+        groups.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      const migrated = await migrateGroupsIfNeeded(user, medications, groups);
+      if (migrated) {
+        const freshSnapshot = await getDocs(groupsCollectionRef);
+        groups = [];
+        freshSnapshot.forEach(docSnap => {
+          groups.push({ id: docSnap.id, ...docSnap.data() });
+        });
+      }
+
+      window.currentGroups = groups;
+
+      renderGroups(medications, groups);
+    } catch (error) {
+      console.error('Error in renderList:', error);
+      document.getElementById('med-list').innerHTML = '<p style="text-align:center;color:red;">Error loading medications: ' + error.message + '</p>';
+    }
+  }
+  
+  window.renderList = renderList;
+
+
+  function timeToMinutes(timeStr) {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + (m || 0);
+  }
+
+  function minutesToTime12h(totalMinutes) {
+    let mins = ((totalMinutes % 1440) + 1440) % 1440;
+    const hours = Math.floor(mins / 60);
+    const minutes = mins % 60;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  }
+
+  function showGroupToast(msg) {
+    const toast = document.getElementById('take-all-feedback');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  async function migrateGroupsIfNeeded(user, medications, existingGroups) {
+    const migrateKey = `groups_migrated_${user.uid}`;
+    if (localStorage.getItem(migrateKey)) return false;
+
+    if (existingGroups.length > 0) {
+      localStorage.setItem(migrateKey, '1');
+      return false;
+    }
+
+    const oldGroups = new Map();
+    for (const med of medications) {
+      for (const groupName of (med.groups || [])) {
+        if (!oldGroups.has(groupName)) oldGroups.set(groupName, []);
+        oldGroups.get(groupName).push(med.id);
+      }
+    }
+    if (oldGroups.size === 0) {
+      localStorage.setItem(migrateKey, '1');
+      return false;
+    }
+
+    for (const [groupName, medIds] of oldGroups) {
+      const members = [];
+      for (const medId of medIds) {
+        const med = medications.find(m => m.id === medId);
+        if (!med) continue;
+        const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], new Date());
+        if (todayDoses.length > 0) {
+          members.push({ medId, time: todayDoses[0].time });
+        } else {
+          const times = (med.schedules || []).map(s => s.time).filter(Boolean).sort();
+          if (times.length > 0) {
+            members.push({ medId, time: times[0] });
+          }
+        }
+      }
+      if (members.length > 0) {
+        const groupRef = doc(collection(window.db, "users", user.uid, "groups"));
+        await setDoc(groupRef, {
+          name: groupName,
+          members: members,
+          createdAt: new Date().toISOString()
+        });
+      }
+    }
+    console.log('[Home] Migrated', oldGroups.size, 'groups to new format');
+    localStorage.setItem(migrateKey, '1');
+    return true;
+  }
+
+  function renderGroups(medications, groups) {
+    const area = document.getElementById('groups-area');
+    const header = document.getElementById('groups-header');
+    if (!area) return;
+
+    if (header) header.style.display = 'flex';
+
+    if (!groups || groups.length === 0) {
+      area.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:0.9rem;padding:0.5rem 0;">No groups yet. Tap Manage to create one.</p>';
+      return;
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayISO = ScheduleUtils.toISODate(today);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    area.innerHTML = groups.map(group => {
+      const activeMembers = [];
+      const inactiveMembers = [];
+      for (const member of (group.members || [])) {
+        const med = medications.find(m => m.id === member.medId);
+        if (!med) continue;
+        const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], today);
+        const matchingDose = todayDoses.find(d => d.time === member.time);
+        if (matchingDose) {
+          const doseKey = `${todayISO}_${matchingDose.doseNumber}`;
+          const doseEntry = (med.doses || {})[doseKey];
+          const taken = doseEntry && doseEntry.taken === true;
+          activeMembers.push({ med, time: member.time, doseNumber: matchingDose.doseNumber, taken, doseKey });
+        } else {
+          inactiveMembers.push({ med, time: member.time });
+        }
+      }
+
+      let isLocked = true;
+      let lockReason = '';
+      if (activeMembers.length === 0) {
+        isLocked = true;
+        lockReason = 'No medications due today';
+      } else {
+        const times = activeMembers.map(m => timeToMinutes(m.time));
+        const earliestMin = Math.min(...times);
+        const latestMin = Math.max(...times);
+        const unlockAt = earliestMin - 60;
+        const lockAt = latestMin + 60;
+        if (nowMinutes < unlockAt) {
+          isLocked = true;
+          lockReason = `Unlocks at ${minutesToTime12h(unlockAt)}`;
+        } else if (nowMinutes > lockAt) {
+          isLocked = true;
+          lockReason = `Window closed at ${minutesToTime12h(lockAt)}`;
+        } else {
+          isLocked = false;
+        }
+      }
+
+      const allTaken = activeMembers.length > 0 && activeMembers.every(m => m.taken);
+      const takenCount = activeMembers.filter(m => m.taken).length;
+
+      const medRows = activeMembers.length > 0
+        ? activeMembers.map(am => {
+            const statusClass = am.taken ? 'taken' : 'pending';
+            const statusText = am.taken ? 'Taken' : formatTime12h(am.time);
+            return `<div class="group-med-item"><span class="med-label">${am.med.name}</span><span class="dose-status ${statusClass}">${statusText}</span></div>`;
+          }).join('')
+        : '<div style="color:var(--muted);font-size:0.85rem;">No medications due today.</div>';
+
+      const inactiveHtml = inactiveMembers.length > 0
+        ? `<div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);">
+             <div style="font-size:0.8rem;color:var(--muted);margin-bottom:0.25rem;">Not scheduled today:</div>
+             ${inactiveMembers.map(im => `<div class="group-med-item" style="opacity:0.5;"><span class="med-label">${im.med.name}</span><span class="dose-status no-dose">${formatTime12h(im.time)}</span></div>`).join('')}
+           </div>`
+        : '';
+
+      const lockIcon = isLocked ? '&#x1F512;' : '&#x1F513;';
+      const lockClass = isLocked ? 'group-locked' : 'group-unlocked';
+      const allTakenClass = allTaken ? ' group-all-taken' : '';
+      const takeAllDisabled = (isLocked || allTaken) ? 'disabled' : '';
+      const takeAllText = allTaken ? 'All Taken' : 'Take All';
+
+      let windowHtml = '';
+      if (activeMembers.length > 0) {
+        const times = activeMembers.map(m => timeToMinutes(m.time));
+        const earliest = Math.min(...times);
+        const latest = Math.max(...times);
+        windowHtml = `<span class="group-window">${minutesToTime12h(earliest - 60)} &ndash; ${minutesToTime12h(latest + 60)}</span>`;
+      }
+
+      return `
+        <div class="group-section ${lockClass}${allTakenClass}" data-group-id="${group.id}">
+          <div class="group-header">
+            <div>
+              <h3>${lockIcon} ${group.name}</h3>
+              <span class="group-count">${takenCount}/${activeMembers.length} taken ${windowHtml}</span>
+              ${lockReason ? `<div class="group-lock-reason">${lockReason}</div>` : ''}
+            </div>
+            <div class="group-actions">
+              <button class="btn btn-sm btn-success take-all-btn" data-group-id="${group.id}" ${takeAllDisabled}>${takeAllText}</button>
+            </div>
+          </div>
+          <div class="group-meds-list">${medRows}</div>
+          ${inactiveHtml}
+        </div>
+      `;
+    }).join('');
+
+    area.querySelectorAll('.take-all-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const groupId = btn.dataset.groupId;
+        btn.disabled = true;
+        btn.textContent = 'Marking...';
+        await takeAllForGroup(groupId, medications, groups);
+        btn.disabled = false;
+        btn.textContent = 'Take All';
+      });
+    });
+  }
+
+  async function takeAllForGroup(groupId, medications, groups) {
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayISO = ScheduleUtils.toISODate(today);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const activeMembers = [];
+    for (const member of (group.members || [])) {
+      const med = medications.find(m => m.id === member.medId);
+      if (!med) continue;
+      const todayDoses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], today);
+      const matchingDose = todayDoses.find(d => d.time === member.time);
+      if (matchingDose) {
+        activeMembers.push({ med, doseNumber: matchingDose.doseNumber, time: member.time });
+      }
+    }
+
+    if (activeMembers.length === 0) {
+      showGroupToast('No medications due today in this group');
+      return;
+    }
+
+    const times = activeMembers.map(m => timeToMinutes(m.time));
+    const earliestMin = Math.min(...times);
+    const latestMin = Math.max(...times);
+    if (nowMinutes < earliestMin - 60 || nowMinutes > latestMin + 60) {
+      showGroupToast('Group is currently locked');
+      return;
+    }
+
+    let updated = 0;
+    let alreadyTaken = 0;
+
+    for (const am of activeMembers) {
+      const doseKey = `${todayISO}_${am.doseNumber}`;
+      const existing = (am.med.doses || {})[doseKey];
+      if (existing && existing.taken === true) {
+        alreadyTaken++;
+        continue;
+      }
+      const statusChanged = await window.saveDoseToFirebase(am.med.id, am.doseNumber, today, true);
+      if (statusChanged) updated++;
+    }
+
+    let msg = '';
+    if (updated > 0 && alreadyTaken > 0) {
+      msg = `Marked ${updated} dose${updated !== 1 ? 's' : ''} as taken, ${alreadyTaken} already taken`;
+    } else if (updated > 0) {
+      msg = `Marked ${updated} dose${updated !== 1 ? 's' : ''} as taken`;
+    } else if (alreadyTaken > 0) {
+      msg = `All ${alreadyTaken} dose${alreadyTaken !== 1 ? 's' : ''} already taken`;
+    } else {
+      msg = 'No doses to mark right now';
+    }
+    showGroupToast(msg);
+
+    if (updated > 0) {
+      await window.renderList();
+    }
+  }
+
+
+  const groupsModal = document.getElementById('groups-modal');
+  const manageGroupsBtn = document.getElementById('manage-groups-btn');
+  const groupsModalClose = document.getElementById('groups-modal-close');
+  const groupsEditList = document.getElementById('groups-edit-list');
+  const newGroupInput = document.getElementById('new-group-name');
+
+  let wizardState = {
+    groupName: '',
+    anchorMedId: null,
+    anchorTime: null,
+    allDoseTimes: [],
+    editingGroupId: null
+  };
+
+  let pendingDeleteGroupId = null;
+
+  document.getElementById('delete-group-yes').addEventListener('click', async () => {
+    const groupIdToDelete = pendingDeleteGroupId;
+    if (!groupIdToDelete) return;
+    const user = window.auth.currentUser;
+    if (!user) return;
+    const btn = document.getElementById('delete-group-yes');
+    btn.disabled = true;
+    btn.textContent = 'Deleting...';
+    try {
+      const groupRef = doc(window.db, "users", user.uid, "groups", groupIdToDelete);
+      await deleteDoc(groupRef);
+
+      window.currentGroups = (window.currentGroups || []).filter(g => g.id !== groupIdToDelete);
+
+      pendingDeleteGroupId = null;
+      document.getElementById('delete-group-modal').classList.remove('show');
+
+      renderGroups(window.currentMedications || [], window.currentGroups);
+      renderGroupsEditList();
+      showGroupToast('Group deleted');
+    } catch (error) {
+      console.error('[Groups] Error deleting group:', error);
+      pendingDeleteGroupId = null;
+      document.getElementById('delete-group-modal').classList.remove('show');
+      showGroupToast('Error deleting group');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Delete';
+    }
+  });
+
+  document.getElementById('delete-group-no').addEventListener('click', () => {
+    pendingDeleteGroupId = null;
+    document.getElementById('delete-group-modal').classList.remove('show');
+  });
+
+  document.getElementById('delete-group-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'delete-group-modal') {
+      pendingDeleteGroupId = null;
+      document.getElementById('delete-group-modal').classList.remove('show');
+    }
+  });
+
+  function showWizardStep(stepId) {
+    ['groups-step-main', 'groups-step-1', 'groups-step-2', 'groups-step-3'].forEach(id => {
+      document.getElementById(id).style.display = (id === stepId) ? '' : 'none';
+    });
+    const title = document.getElementById('groups-modal-title');
+    if (stepId === 'groups-step-main') {
+      title.textContent = 'Manage Groups';
+    } else {
+      title.textContent = wizardState.editingGroupId ? 'Edit Group' : 'Create New Group';
+    }
+  }
+
+  if (manageGroupsBtn) {
+    manageGroupsBtn.addEventListener('click', () => {
+      renderGroupsEditList();
+      showWizardStep('groups-step-main');
+      groupsModal.classList.add('show');
+    });
+  }
+  if (groupsModalClose) {
+    groupsModalClose.addEventListener('click', () => groupsModal.classList.remove('show'));
+  }
+  if (groupsModal) {
+    groupsModal.addEventListener('click', (e) => {
+      if (e.target === groupsModal) groupsModal.classList.remove('show');
+    });
+  }
+
+  document.getElementById('start-create-group-btn').addEventListener('click', () => {
+    wizardState = { groupName: '', anchorMedId: null, anchorTime: null, allDoseTimes: [], editingGroupId: null };
+    newGroupInput.value = '';
+    showWizardStep('groups-step-1');
+  });
+
+  document.getElementById('wizard-back-to-main').addEventListener('click', () => {
+    showWizardStep('groups-step-main');
+  });
+
+  document.getElementById('wizard-to-step-2').addEventListener('click', () => {
+    const name = newGroupInput.value.trim();
+    if (!name) { newGroupInput.focus(); return; }
+    const groups = window.currentGroups || [];
+    const dupe = groups.find(g => g.name === name && g.id !== wizardState.editingGroupId);
+    if (dupe) { showGroupToast('A group with that name already exists'); return; }
+    wizardState.groupName = name;
+    showStep2_AnchorSelection();
+    showWizardStep('groups-step-2');
+  });
+
+  document.getElementById('wizard-back-to-step-1').addEventListener('click', () => {
+    showWizardStep('groups-step-1');
+  });
+
+  document.getElementById('wizard-back-to-step-2').addEventListener('click', () => {
+    showWizardStep('groups-step-2');
+  });
+
+  function showStep2_AnchorSelection() {
+    const meds = window.currentMedications || [];
+    const container = document.getElementById('anchor-med-list');
+
+    const allDoseTimes = [];
+    for (const med of meds) {
+      const seenTimes = new Set();
+      const today = new Date();
+      for (let offset = 0; offset < 7; offset++) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offset);
+        const doses = ScheduleUtils.getScheduledDosesForDate(med.schedules || [], d);
+        for (const dose of doses) {
+          if (dose.time && !seenTimes.has(dose.time)) {
+            seenTimes.add(dose.time);
+            allDoseTimes.push({
+              medId: med.id,
+              medName: med.name,
+              dosage: med.dosage,
+              time: dose.time
+            });
+          }
+        }
+      }
+    }
+
+    allDoseTimes.sort((a, b) => {
+      const tc = (a.time || '').localeCompare(b.time || '');
+      if (tc !== 0) return tc;
+      return a.medName.localeCompare(b.medName);
+    });
+
+    wizardState.allDoseTimes = allDoseTimes;
+
+    if (allDoseTimes.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem;">No medications with scheduled dose times found.</p>';
+      return;
+    }
+
+    container.innerHTML = allDoseTimes.map((dt, idx) => `
+      <label class="anchor-option">
+        <input type="radio" name="anchor-selection" value="${idx}"
+               data-med-id="${dt.medId}" data-time="${dt.time}">
+        <span class="option-name">${dt.medName}${dt.dosage ? ' (' + dt.dosage + ')' : ''}</span>
+        <span class="option-time">${formatTime12h(dt.time)}</span>
+      </label>
+    `).join('');
+
+    container.querySelectorAll('input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        wizardState.anchorMedId = radio.dataset.medId;
+        wizardState.anchorTime = radio.dataset.time;
+        showStep3_NearbySelection();
+        showWizardStep('groups-step-3');
+      });
+    });
+  }
+
+  function showStep3_NearbySelection() {
+    const anchorMinutes = timeToMinutes(wizardState.anchorTime);
+    const WINDOW_MINUTES = 120;
+
+    const nearby = wizardState.allDoseTimes.filter(dt => {
+      if (dt.medId === wizardState.anchorMedId && dt.time === wizardState.anchorTime) return false;
+      const dtMinutes = timeToMinutes(dt.time);
+      return Math.abs(dtMinutes - anchorMinutes) <= WINDOW_MINUTES;
+    });
+
+    const anchorMed = (window.currentMedications || []).find(m => m.id === wizardState.anchorMedId);
+    document.getElementById('anchor-summary').innerHTML =
+      `Anchor: <strong>${anchorMed?.name || '?'}</strong> at ${formatTime12h(wizardState.anchorTime)}. Showing medications within 2 hours:`;
+
+    const container = document.getElementById('nearby-med-list');
+    if (nearby.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:1rem;">No other medications scheduled within 2 hours of the anchor time.</p>';
+    } else {
+      container.innerHTML = nearby.map((dt, idx) => `
+        <label class="nearby-option">
+          <input type="checkbox" data-med-id="${dt.medId}" data-time="${dt.time}" checked>
+          <span class="option-name">${dt.medName}${dt.dosage ? ' (' + dt.dosage + ')' : ''}</span>
+          <span class="option-time">${formatTime12h(dt.time)}</span>
+        </label>
+      `).join('');
+    }
+
+    const saveBtn = document.getElementById('wizard-save-group');
+    saveBtn.textContent = wizardState.editingGroupId ? 'Save Group' : 'Create Group';
+  }
+
+  document.getElementById('wizard-save-group').addEventListener('click', async () => {
+    const user = window.auth.currentUser;
+    if (!user) return;
+
+    const saveBtn = document.getElementById('wizard-save-group');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+      const selectedNearby = [...document.querySelectorAll('#nearby-med-list input[type="checkbox"]:checked')]
+        .map(cb => ({ medId: cb.dataset.medId, time: cb.dataset.time }));
+
+      const members = [
+        { medId: wizardState.anchorMedId, time: wizardState.anchorTime },
+        ...selectedNearby
+      ];
+
+      const seen = new Set();
+      const dedupedMembers = members.filter(m => {
+        const key = `${m.medId}_${m.time}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const groupData = {
+        name: wizardState.groupName,
+        members: dedupedMembers,
+        createdAt: new Date().toISOString()
+      };
+
+      if (wizardState.editingGroupId) {
+        const groupRef = doc(window.db, "users", user.uid, "groups", wizardState.editingGroupId);
+        await setDoc(groupRef, groupData, { merge: true });
+      } else {
+        const groupRef = doc(collection(window.db, "users", user.uid, "groups"));
+        await setDoc(groupRef, groupData);
+      }
+
+      await window.renderList();
+      renderGroupsEditList();
+      showWizardStep('groups-step-main');
+    } catch (error) {
+      console.error('[Home] Error saving group:', error);
+      showGroupToast('Error saving group');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = wizardState.editingGroupId ? 'Save Group' : 'Create Group';
+    }
+  });
+
+  function renderGroupsEditList() {
+    const groups = window.currentGroups || [];
+    const meds = window.currentMedications || [];
+    const container = document.getElementById('groups-edit-list');
+
+    if (groups.length === 0) {
+      container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem;">No groups yet. Create one above.</p>';
+      return;
+    }
+
+    container.innerHTML = groups.map(group => {
+      const memberRows = (group.members || []).map(member => {
+        const med = meds.find(m => m.id === member.medId);
+        return `<div class="group-med-item" style="font-size:0.85rem;">
+          <span>${med?.name || 'Unknown'}</span>
+          <span style="color:var(--muted);">${formatTime12h(member.time)}</span>
+        </div>`;
+      }).join('');
+
+      return `
+        <div class="group-edit-card" data-group-id="${group.id}">
+          <div class="group-edit-header">
+            <input type="text" value="${group.name}" class="group-name-input">
+            <div style="display:flex;gap:0.25rem;">
+              <button class="btn btn-sm btn-secondary group-edit-members-btn" data-group-id="${group.id}">Edit</button>
+              <button class="btn btn-sm btn-danger group-delete-btn" data-group-id="${group.id}">Delete</button>
+            </div>
+          </div>
+          <div style="margin-top:0.5rem;">${memberRows || '<div style="color:var(--muted);">No members.</div>'}</div>
+          <button class="btn btn-sm btn-primary group-rename-btn" data-group-id="${group.id}" style="margin-top:0.75rem;width:100%;">Save Name</button>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.group-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const groupId = btn.dataset.groupId;
+        console.log('[Groups] Delete btn clicked, groupId:', groupId);
+        const group = (window.currentGroups || []).find(g => g.id === groupId);
+        if (!group) { console.error('[Groups] Group not found for id:', groupId); return; }
+        pendingDeleteGroupId = groupId;
+        document.getElementById('delete-group-name').textContent = group.name;
+        document.getElementById('delete-group-modal').classList.add('show');
+      });
+    });
+
+    container.querySelectorAll('.group-rename-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const card = btn.closest('.group-edit-card');
+        const newName = card.querySelector('.group-name-input').value.trim();
+        if (!newName) { showGroupToast('Group name cannot be blank'); return; }
+        const user = window.auth.currentUser;
+        if (!user) return;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        try {
+          const groupRef = doc(window.db, "users", user.uid, "groups", btn.dataset.groupId);
+          await setDoc(groupRef, { name: newName }, { merge: true });
+          await window.renderList();
+          renderGroupsEditList();
+        } catch (error) {
+          console.error('[Home] Error renaming group:', error);
+          showGroupToast('Error renaming group');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Save Name';
+        }
+      });
+    });
+
+    container.querySelectorAll('.group-edit-members-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const groupId = btn.dataset.groupId;
+        const group = (window.currentGroups || []).find(g => g.id === groupId);
+        if (!group) return;
+        wizardState = {
+          groupName: group.name,
+          anchorMedId: null,
+          anchorTime: null,
+          allDoseTimes: [],
+          editingGroupId: groupId
+        };
+        newGroupInput.value = group.name;
+        showWizardStep('groups-step-1');
+      });
+    });
+  }
+
+  console.log('[Home] Verification check initialized');
+  
+  window.renderList();
+
+  const currentUser = auth.currentUser;
+  console.log('[Home] Current user check:', currentUser ? `User: ${currentUser.email}` : 'No user signed in');
+
+  onAuthStateChanged(auth, async (user) => {
+    console.log('[Home] onAuthStateChanged triggered, user:', user ? `User: ${user.email}` : 'No user');
+
+    if (user) {
+      console.log('[Home] User authenticated, calling renderList()');
+      if (user && user.uid) {
+        await window.renderList();
+      } else {
+        console.log('[Home] User not properly authenticated, skipping renderList()');
+      }
+    } else {
+      localStorage.removeItem('medications');
+      localStorage.removeItem('historyMeds');
+    }
+  });
+
+  
+  window.saveMedicationsToFirestore = async function(medications) {
+    const user = auth.currentUser;
+    if (!user) {
+      console.warn('[Home] No user logged in, cannot save to Firestore');
+      return;
+    }
+
+    try {
+      console.log('[Home] Saving medications to Firestore (new structure):', medications.length, 'items');
+      
+      for (let i = 0; i < medications.length; i++) {
+        const med = medications[i];
+        const medId = med.id || `med_${Date.now()}_${i}`;
+        const medDocRef = doc(db, "users", user.uid, "medications", medId);
+        
+
+        const formatDate = (dateStr) => {
+          if (!dateStr) return 'N/A';
+          return new Date(dateStr).toLocaleDateString();
+        };
+
+        let reminderMethod = 'N';
+        if (med.reminder === 'Email') reminderMethod = 'E';
+        else if (med.reminder === 'SMS') reminderMethod = 'S';
+
+        const stock = med.bottles ? med.bottles.length : 0;
+        const bottles = [];
+        if (med.bottles && med.bottles.length > 0) {
+          med.bottles.forEach((bottle) => {
+            const expDate = formatDate(bottle.expiration);
+            const quantity = bottle.quantity || 'N/A';
+            bottles.push(`${expDate}/${quantity}`);
+          });
+        }
+
+        const existingMedDoc = await getDoc(medDocRef);
+        const existingData = existingMedDoc.exists() ? existingMedDoc.data() : {};
+        
+        const medData = {
+          name: med.name || '',
+          dosage: med.dosage || 0,
+          schedules: med.schedules || [],
+          startDate: formatDate(med.startDate),
+          endDate: formatDate(med.endDate),
+          reminderMethod: reminderMethod,
+          stock: stock,
+          bottles: bottles,
+          deletedStatus: med.deletedStatus || false,
+          notes: existingData.notes || {},
+          doses: existingData.doses || {},
+          id: medId,
+          updatedAt: new Date().toISOString()
+        };
+        
+        const updateData = { ...medData };
+        if (existingData.doseStatus !== undefined) {
+          updateData.doseStatus = deleteField();
+        }
+        if (existingData.doseHistory !== undefined) {
+          updateData.doseHistory = deleteField();
+        }
+        
+        await setDoc(medDocRef, updateData);
+        console.log(`[Home] Saved medication: ${med.name} (ID: ${medId})`);
+      }
+      
+      console.log('[Home] ✅ All medications saved to Firestore successfully!');
+    } catch (error) {
+      console.error('[Home] Error saving medications:', error);
+      console.error('[Home] Error details:', error.message);
+    }
+  };
+
+  window.saveHistoryToFirestore = async function(history) {
+    const user = auth.currentUser;
+    if (!user) {
+      console.warn('[Home] No user logged in, cannot save to Firestore');
+      return;
+    }
+
+    try {
+      const histDocRef = doc(db, "users", user.uid, "data", "history");
+      await setDoc(histDocRef, {
+        history: history,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.log('[Home] History saved to Firestore:', history.length, 'items');
+    } catch (error) {
+      console.error('[Home] Error saving history:', error);
+    }
+  };
+
+  
+  function logAllMedicationData() {
+    console.log('='.repeat(80));
+    console.log('📊 MEDICATION DATA LOG - ' + new Date().toLocaleTimeString());
+    console.log('='.repeat(80));
+    
+    const meds = JSON.parse(localStorage.getItem('medications') || '[]');
+    const history = JSON.parse(localStorage.getItem('historyMeds') || '[]');
+    
+    const allMedications = [
+      ...meds.map(med => ({ ...med, deletedStatus: false })),
+      ...history.map(med => ({ ...med, deletedStatus: true }))
+    ];
+    
+    if (allMedications.length === 0) {
+      console.log('No medications found.');
+      return;
+    }
+    
+    allMedications.forEach((med, index) => {
+      console.log(`\n💊 MEDICATION #${index + 1}:`);
+      console.log(`   name: "${med.name || ''}"`);
+      console.log(`   dosage: ${med.dosage || 'N/A'}`);
+      console.log(`   schedules:`, JSON.stringify(med.schedules || []));
+      
+      const startDate = med.startDate ? new Date(med.startDate).toLocaleDateString() : 'N/A';
+      const endDate = med.endDate ? new Date(med.endDate).toLocaleDateString() : 'N/A';
+      console.log(`   startdate: ${startDate}`);
+      console.log(`   enddate: ${endDate}`);
+      
+      let reminderMethod = 'N';
+      if (med.reminder === 'Email') reminderMethod = 'E';
+      else if (med.reminder === 'SMS') reminderMethod = 'S';
+      console.log(`   remindermethod: ${reminderMethod}`);
+      
+      console.log(`   stock: ${med.bottles ? med.bottles.length : 0}`);
+      if (med.bottles && med.bottles.length > 0) {
+        med.bottles.forEach((bottle, i) => {
+          const expDate = bottle.expiration ? new Date(bottle.expiration).toLocaleDateString() : 'N/A';
+          const quantity = bottle.quantity || 'N/A';
+          console.log(`      bottle#${i + 1}: ${expDate}/${quantity}`);
+        });
+      }
+      
+      console.log(`   deletedStatus: ${med.deletedStatus ? 'True' : 'False'}`);
+      
+      const notes = [];
+      if (!med.deletedStatus) {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('note_')) {
+            const noteValue = localStorage.getItem(key);
+            if (noteValue && noteValue.trim()) {
+              const dateStr = key.replace('note_', '');
+              const noteDate = new Date(dateStr).toLocaleDateString();
+              
+              const lines = noteValue.split('\n').filter(line => line.trim());
+              lines.forEach(line => {
+                const medName = med.name || 'Unknown';
+                notes.push(`${noteDate}, ${medName}, 1, ${line.trim()}`);
+              });
+            }
+          }
+        });
+      }
+      
+      console.log(`   notes: ${notes.length}`);
+      notes.forEach((note, i) => {
+        console.log(`      note#${i + 1}: ${note}`);
+      });
+      
+      console.log('   ' + '-'.repeat(50));
+    });
+    
+    console.log(`\n📈 SUMMARY: ${allMedications.filter(m => !m.deletedStatus).length} active, ${allMedications.filter(m => m.deletedStatus).length} deleted`);
+    console.log('='.repeat(80));
+  }
+  
+</script>
+
+  <div id="first-time-popup" class="first-time-popup" style="display: none;">
+    <div class="popup-progress-bar">
+      <div class="popup-progress-fill"></div>
+    </div>
+    <button class="popup-close-btn" id="close-first-time-popup">×</button>
+    <div class="popup-content-wrapper">
+      <p class="popup-main-text">Confused or need help on using this app?</p>
+      <p class="popup-sub-text">This guide can be found in profile</p>
+      <button class="popup-watch-btn" id="open-help-modal-from-popup">Click to watch</button>
+    </div>
+  </div>
+
+  <div id="help-modal" class="help-modal">
+    <div class="help-modal-content">
+      <button class="help-modal-close" id="close-help-modal">×</button>
+      <h2 class="help-modal-title">How to Use Everane</h2>
+      <div class="help-modal-slideshow">
+        <div class="slideshow-container">
+          <div class="slide active" data-slide="0">
+            <img src="../slideshow/1.png" alt="Slide 1: Check Your Home Screen" class="slide-image">
+          </div>
+          <div class="slide" data-slide="1">
+            <img src="../slideshow/2.png" alt="Slide 2: Add Your Bottles" class="slide-image">
+          </div>
+          <div class="slide" data-slide="2">
+            <img src="../slideshow/3.png" alt="Slide 3: Check Calendar For Your History" class="slide-image">
+          </div>
+          <div class="slide" data-slide="3">
+            <img src="../slideshow/4.png" alt="Slide 4: Access This Guide In Profile" class="slide-image">
+          </div>
+          <div class="slide" data-slide="4">
+            <img src="../slideshow/5.png" alt="Slide 5: Click A Medication To Change It" class="slide-image">
+          </div>
+          <div class="slide" data-slide="5">
+            <img src="../slideshow/6.png" alt="Slide 6: Mark A Dose When You Take It" class="slide-image">
+          </div>
+          <div class="slide" data-slide="6">
+            <img src="../slideshow/7.png" alt="Slide 7: Add Notes (Optional)" class="slide-image">
+          </div>
+          <div class="slide" data-slide="7">
+            <img src="../slideshow/8.png" alt="Slide 8: Choose Your Doses" class="slide-image">
+          </div>
+          <div class="slide" data-slide="8">
+            <img src="../slideshow/9.png" alt="Slide 9: Add Your First Medication" class="slide-image">
+          </div>
+          <div class="slide" data-slide="9">
+            <img src="../slideshow/10.png" alt="Slide 10: Get Alerts For Stock/Expiration" class="slide-image">
+          </div>
+        </div>
+        <button class="nav-arrow nav-arrow-left" id="nav-left" aria-label="Previous slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <button class="nav-arrow nav-arrow-right" id="nav-right" aria-label="Next slide">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <button class="finish-btn" id="finish-btn" style="display: none;">Finish</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    
+    .first-time-popup {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 320px;
+      max-width: calc(100vw - 40px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.3), 0 2px 10px rgba(0,0,0,.2);
+      padding: 1.25rem;
+      z-index: 10000;
+      animation: slideInUp 0.3s ease-out;
+      overflow: hidden;
+    }
+
+    @keyframes slideInUp {
+      from {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .popup-progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      overflow: hidden;
+    }
+
+    .popup-progress-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--success);
+      animation: progressBar 10s linear forwards;
+      transform-origin: left;
+    }
+
+    @keyframes progressBar {
+      from {
+        transform: scaleX(1);
+      }
+      to {
+        transform: scaleX(0);
+      }
+    }
+
+    .popup-close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+    }
+
+    .popup-close-btn:hover {
+      background: color-mix(in oklab, var(--border) 50%, transparent);
+      color: var(--text);
+    }
+
+    .popup-content-wrapper {
+      padding-top: 0.5rem;
+    }
+
+    .popup-main-text {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 0.5rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-sub-text {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 1rem 0;
+      line-height: 1.4;
+    }
+
+    .popup-watch-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+    }
+
+    .popup-watch-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .popup-watch-btn:active {
+      transform: translateY(0);
+    }
+
+    
+    .help-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      z-index: 20000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .help-modal.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .help-modal-content {
+      position: relative;
+      width: 90vw;
+      height: auto;
+      max-height: 90vh;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      animation: slideInScale 0.3s ease-out;
+    }
+
+    @keyframes slideInScale {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .help-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: color-mix(in oklab, var(--surface) 90%, var(--border));
+      color: var(--text);
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      z-index: 1;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+
+    .help-modal-close:hover {
+      background: var(--danger);
+      color: white;
+      transform: rotate(90deg);
+    }
+
+    .help-modal-title {
+      padding: 1rem 1.5rem;
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .help-modal-slideshow {
+      flex: 0 0 auto;
+      position: relative;
+      width: 100%;
+      height: 60vh;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .slideshow-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .slide.active {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    .slide-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .finish-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 48px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s ease;
+      opacity: 0.8;
+    }
+
+    .nav-arrow:hover {
+      background: rgba(0, 0, 0, 0.8);
+      border-color: rgba(255, 255, 255, 0.5);
+      opacity: 1;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .nav-arrow:active {
+      transform: translateY(-50%) scale(0.95);
+    }
+
+    .nav-arrow-left {
+      left: 10px;
+    }
+
+    .nav-arrow-right {
+      right: 10px;
+    }
+
+    .nav-arrow svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    
+    @media (max-width: 768px) {
+      .first-time-popup {
+        width: calc(100vw - 40px);
+        bottom: 15px;
+        right: 15px;
+        left: 15px;
+        max-width: none;
+      }
+
+      .help-modal-content {
+        width: 90vw;
+        height: auto;
+        max-height: 95vh;
+        margin: 0;
+        border-radius: var(--radius);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .help-modal-title {
+        padding: 0.75rem 1rem;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+      }
+
+      .help-modal-slideshow {
+        width: 100%;
+        height: 60vh;
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .slideshow-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slide-image {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: contain;
+      }
+
+      .popup-main-text {
+        font-size: 0.95rem;
+      }
+
+      .popup-sub-text {
+        font-size: 0.8rem;
+      }
+    }
+
+    .finish-btn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 0.75rem 2rem;
+      background: linear-gradient(180deg, var(--brand), var(--brand-600));
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 20;
+      box-shadow: 0 4px 12px rgba(79,140,255,.3);
+      transition: all 0.2s ease;
+    }
+
+    .finish-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(79,140,255,.4);
+    }
+
+    .finish-btn:active {
+      transform: translateY(0);
+    }
+
+    .nav-arrow {
+      width: 56px;
+      height: 56px;
+      opacity: 0.9;
+    }
+
+    .nav-arrow-left {
+      left: 5px;
+    }
+
+    .nav-arrow-right {
+      right: 5px;
+    }
+
+    .nav-arrow svg {
+      width: 24px;
+      height: 24px;
+    }
+  </style>
+
+  <script>
+    (function() {
+      const popup = document.getElementById('first-time-popup');
+      const closeBtn = document.getElementById('close-first-time-popup');
+      const watchBtn = document.getElementById('open-help-modal-from-popup');
+      const helpModal = document.getElementById('help-modal');
+      const closeModalBtn = document.getElementById('close-help-modal');
+      
+      const hasSeenPopup = localStorage.getItem('hasSeenFirstTimePopup');
+      
+      if (!hasSeenPopup) {
+        setTimeout(() => {
+          popup.style.display = 'block';
+          
+          setTimeout(() => {
+            hidePopup();
+          }, 10000);
+        }, 1500);
+      }
+
+      function hidePopup() {
+        popup.style.animation = 'slideInUp 0.3s ease-out reverse';
+        setTimeout(() => {
+          popup.style.display = 'none';
+          localStorage.setItem('hasSeenFirstTimePopup', 'true');
+        }, 300);
+      }
+
+      let currentSlide = 0;
+      const totalSlides = 10;
+      const slides = document.querySelectorAll('.slide');
+      const navLeft = document.getElementById('nav-left');
+      const navRight = document.getElementById('nav-right');
+      const finishBtn = document.getElementById('finish-btn');
+
+      function openHelpModal() {
+        helpModal.classList.add('show');
+        currentSlide = 0;
+        updateSlideshow();
+      }
+
+      function closeHelpModal() {
+        helpModal.classList.remove('show');
+      }
+
+      function updateSlideshow() {
+        slides.forEach((slide, index) => {
+          if (index === currentSlide) {
+            slide.classList.add('active');
+          } else {
+            slide.classList.remove('active');
+          }
+        });
+
+        if (currentSlide === 0) {
+          navLeft.style.display = 'none';
+        } else {
+          navLeft.style.display = 'flex';
+        }
+
+        if (currentSlide === totalSlides - 1) {
+          navRight.style.display = 'none';
+          finishBtn.style.display = 'block';
+        } else {
+          navRight.style.display = 'flex';
+          finishBtn.style.display = 'none';
+        }
+      }
+
+      if (navLeft) {
+        navLeft.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (currentSlide > 0) {
+            currentSlide--;
+            updateSlideshow();
+          }
+        });
+      }
+
+      if (navRight) {
+        navRight.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            updateSlideshow();
+          }
+        });
+      }
+
+      if (finishBtn) {
+        finishBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          closeHelpModal();
+        });
+      }
+
+      const slideImages = document.querySelectorAll('.slide-image');
+      slideImages.forEach((img, index) => {
+        img.onerror = function() {
+          console.error(`[Home] Failed to load slide ${index + 1}:`, img.src);
+          this.style.display = 'none';
+        };
+        img.onload = function() {
+          console.log(`[Home] Successfully loaded slide ${index + 1}`);
+        };
+      });
+      
+      updateSlideshow();
+
+      if (closeBtn) closeBtn.addEventListener('click', hidePopup);
+      if (watchBtn) watchBtn.addEventListener('click', () => {
+        hidePopup();
+        openHelpModal();
+      });
+      if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
+      
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+          closeHelpModal();
+        }
+      });
+
+      window.openHelpModal = openHelpModal;
+      window.closeHelpModal = closeHelpModal;
+    })();
+  </script>
+
+  <style>
+    /* Always-visible problem report. Deliberately not in settings: the people
+       most likely to hit a problem are the least likely to go looking for a
+       way to tell anyone about it. */
+    .report-fab {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 15000;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.15rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0,0,0,.28);
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .report-fab:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.34); }
+    .report-fab:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+    .report-fab__dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--danger); flex: none;
+    }
+    @media (max-width: 900px) {
+      .report-fab { bottom: 14px; right: 14px; padding: 0.7rem 1rem; font-size: 0.9rem; }
+    }
+    /* Keep the one-off welcome popup from sitting on top of the button. */
+    .first-time-popup { bottom: 92px !important; }
+
+    #report-modal .modal-content { max-width: 540px; width: 95%; text-align: left; }
+    .report-title { margin: 0 0 .35rem; font-size: 1.25rem; font-weight: 800; color: var(--text); }
+    .report-sub { margin: 0 0 1rem; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+    #report-text {
+      width: 100%; min-height: 140px; padding: 0.85rem 1rem;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 12px;
+      font: inherit; font-size: 1rem; line-height: 1.55; resize: vertical;
+    }
+    #report-text:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(79,140,255,.25); }
+    .report-foot { display: flex; gap: .6rem; justify-content: flex-end; margin-top: 1rem; flex-wrap: wrap; }
+    .report-note { margin-top: .75rem; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .report-msg { margin-top: .8rem; font-size: 0.95rem; display: none; }
+    .report-msg.show { display: block; }
+    .report-msg.ok { color: var(--success); }
+    .report-msg.err { color: var(--danger); }
+  </style>
+
+  
+
+  
+
+  <script>
+    (function wireProblemReport() {
+      var REPORT_URL = 'https://us-central1-medtracker-8c467.cloudfunctions.net/sendProblemReport';
+      var APP_VERSION = '1.0.0';
+
+      var fab = document.getElementById('report-fab');
+      var modal = document.getElementById('report-modal');
+      var text = document.getElementById('report-text');
+      var sendBtn = document.getElementById('report-send');
+      var cancelBtn = document.getElementById('report-cancel');
+      var msg = document.getElementById('report-msg');
+      if (!fab || !modal || !text || !sendBtn) return;
+
+      function setMsg(t, kind) {
+        msg.textContent = t || '';
+        msg.className = 'report-msg' + (t ? ' show ' + (kind || '') : '');
+      }
+      function open() {
+        setMsg('');
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send report';
+        modal.classList.add('show');
+        setTimeout(function () { text.focus(); }, 50);
+      }
+      function close() { modal.classList.remove('show'); }
+
+      fab.addEventListener('click', open);
+      cancelBtn.addEventListener('click', close);
+      modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) close();
+      });
+
+      sendBtn.addEventListener('click', async function () {
+        var body = (text.value || '').trim();
+        if (!body) { setMsg('Please describe the problem first.', 'err'); text.focus(); return; }
+
+        var auth = window.auth;
+        var user = auth && auth.currentUser;
+        if (!user) { setMsg('Please sign in again, then resend.', 'err'); return; }
+
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending…';
+        setMsg('');
+
+        try {
+          var idToken = await user.getIdToken();
+          var resp = await fetch(REPORT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+            body: JSON.stringify({
+              message: body,
+              context: {
+                page: location.pathname + location.search,
+                appVersion: APP_VERSION,
+                // document.lastModified is the deployed file's timestamp, so it
+                // identifies the build without anyone remembering to bump a number.
+                buildDate: document.lastModified,
+                viewport: window.innerWidth + 'x' + window.innerHeight,
+                userAgent: navigator.userAgent
+              }
+            })
+          });
+          var data = await resp.json().catch(function () { return {}; });
+          if (!resp.ok) throw new Error(data.error || 'Could not send your report.');
+
+          text.value = '';
+          setMsg('Thank you — your report was sent. We read every one.', 'ok');
+          sendBtn.textContent = 'Sent';
+          setTimeout(close, 2200);
+        } catch (e) {
+          setMsg((e && e.message) || 'Could not send your report. Please try again.', 'err');
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send report';
+        }
+      });
+    })();
+  </script>
+  <script>
+    // Anything outside the demo set is inert rather than a 404.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[data-demo-disabled]');
+      if (!a) return;
+      e.preventDefault();
+      alert('This part of Everane is not included in the demo.');
+    }, true);
+  </script>
+</body>
+</html>
