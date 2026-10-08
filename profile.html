@@ -1447,7 +1447,7 @@
         </div>
       
       <div class="modal-actions">
-        <button type="button" id="phone-resend-btn" class="btn-secondary" onclick="resendPhoneCode()" disabled>Resend Code (60s)</button>
+        <button type="button" id="phone-resend-btn" class="btn-secondary" disabled>Resend Code (60s)</button>
         <button type="button" class="btn-primary" onclick="verifyPhoneCode()">Verify</button>
       </div>
       <p id="phone-verify-message" class="msg" role="status" aria-live="polite"></p>
@@ -2583,7 +2583,6 @@
     
     document.addEventListener('DOMContentLoaded', () => {
       updateEmailResendButton();
-      updatePhoneResendButton();
     });
 
 

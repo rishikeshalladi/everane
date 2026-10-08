@@ -51,6 +51,22 @@ const BANNER_CSS = `  <style>
       background:transparent; border:0; color:#fff; font-size:1.1rem; cursor:pointer; opacity:.85;
     }
     @media (max-width:640px){ .demo-banner{font-size:.76rem; padding:.45rem .5rem} }
+
+    /* Controls the demo blocks: visibly inert, but still clickable so the
+       guard can explain itself rather than appearing broken. */
+    button[data-demo-inert], a[data-demo-disabled]{
+      opacity:.42 !important; cursor:not-allowed !important; filter:grayscale(.45);
+    }
+    button[data-demo-inert]:hover, a[data-demo-disabled]:hover{ transform:none !important; }
+    .demo-toast{
+      position:fixed; left:50%; bottom:24px; transform:translate(-50%,14px); z-index:40000;
+      max-width:min(92vw,420px); padding:.7rem 1.1rem; border-radius:12px; text-align:center;
+      background:rgba(17,20,32,.96); color:#fff;
+      font:600 .88rem/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+    }
+    .demo-toast--on{ opacity:1; transform:translate(-50%,0); }
   </style>
 `;
 
@@ -60,17 +76,9 @@ const BANNER_HTML = `  <div class="demo-banner" role="status">
   </div>
 `;
 
-// Pages that exist in the real app but not in the demo.
-const NEUTRALISE_NOTE = `  <script>
-    // Anything outside the demo set is inert rather than a 404.
-    document.addEventListener('click', function (e) {
-      var a = e.target.closest && e.target.closest('a[data-demo-disabled]');
-      if (!a) return;
-      e.preventDefault();
-      alert('This part of Everane is not included in the demo.');
-    }, true);
-  </script>
-`;
+// Loaded last so it sees the finished DOM; it keeps watching for the cards
+// and rows the pages render afterwards.
+const GUARD = `  <script src="demo-guard.js"></script>\n`;
 
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
 
@@ -109,11 +117,11 @@ for (const page of PAGES) {
 
   // 5. Sibling assets live one level up from /demo/. Rewrite every relative
   //    reference except the demo's own files and the import-map entries.
-  const OWN = /^(demo-data|fb-app|fb-auth|fb-firestore|fb-functions)\.js$/;
+  const OWN = /^(demo-data|demo-guard|fb-app|fb-auth|fb-firestore|fb-functions)\.js$/;
   out = out.replace(/\b(src|href)="(?!https?:|\/\/|\.\.\/|#|data:|mailto:)([^"]+\.(?:js|css|svg|png|jpg|json|webmanifest))"/g,
     (m, attr, file) => (OWN.test(file) ? m : `${attr}="../${file}"`));
 
-  out = out.replace(/<\/body>/i, NEUTRALISE_NOTE + '</body>');
+  out = out.replace(/<\/body>/i, GUARD + '</body>');
 
   fs.writeFileSync(path.join(OUT, page), out);
   report.push({ page, bytes: out.length, disabledLinks: disabled });
