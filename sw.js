@@ -132,9 +132,6 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         c.postMessage({ type: 'EVERANE_PUSH_RESUBSCRIBED', endpoint: sub && sub.endpoint });
       }
     } catch (e) {
-      // No page is open to persist the new endpoint. The page-load self-heal in
-      // push-subscribe.js stores it on the next visit; until then the server
-      // prunes the stale endpoint on its first 410.
     }
   })());
 });

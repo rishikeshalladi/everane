@@ -1,6 +1,3 @@
-/* Stand-in for firebase-auth.js. Presents a permanently signed-in, verified
- * demo user so auth-guard.js lets the page render without a real account.
- */
 const user = {
   uid: 'demo-user',
   email: 'margaret.demo@everane.live',

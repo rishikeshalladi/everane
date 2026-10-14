@@ -1,9 +1,3 @@
-/* Minimal in-memory stand-in for firebase-firestore.js, serving the demo
- * dataset. Reads resolve against window.EVERANE_DEMO; every write is a no-op,
- * which is what makes the demo uneditable without touching page code.
- *
- * Paths are modelled as "users/<uid>", "users/<uid>/medications/<id>", etc.
- */
 const DEMO = () => window.EVERANE_DEMO || { profile: {}, medications: {}, doctorEdits: {}, groups: {} };
 
 function warnWrite(op, path) {
@@ -85,7 +79,6 @@ export function onSnapshot(ref, next) {
   return () => {};
 }
 
-// Queries: the demo collections are tiny, so filters are a pass-through.
 export function query(ref, ...clauses) { return { ...ref, __target: ref, __clauses: clauses }; }
 export function where() { return { __clause: 'where' }; }
 export function orderBy() { return { __clause: 'orderBy' }; }

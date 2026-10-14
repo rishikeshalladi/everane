@@ -1,15 +1,6 @@
-/* Everane demo dataset.
- *
- * Deterministic, and anchored to "today" so the demo always looks current no
- * matter when someone opens the link. Three ordinary medications, three weeks
- * of adherence that is mostly kept but believably imperfect, a few dose notes,
- * and a short doctor conversation.
- */
 (function () {
   'use strict';
 
-  // An already-running tour resumes from sessionStorage on every page, so the
-  // profile flag alone is not enough to keep it out of the demo.
   try { sessionStorage.removeItem('everaneTutorialState'); } catch (_) {}
   try { localStorage.setItem('hasSeenFirstTimePopup', 'true'); } catch (_) {}
 
@@ -27,7 +18,6 @@
     const c = new Date(d); c.setHours(h, m, 0, 0); return c;
   };
 
-  // Small deterministic PRNG so the same day always renders the same history.
   function rng(seed) {
     let s = seed >>> 0;
     return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
@@ -89,10 +79,6 @@
     }
   ];
 
-  // Notes a real person might actually leave. Stored the way notes.html reads
-  // them: medication.notes["YYYY-MM-DD_<dose>"] = [doseNumber, text, feeling 1-5].
-  // Keyed here by days-back so the demo always has recent entries, including
-  // today, rather than landing a visitor on an empty page.
   const NOTES = {
     'demo-metformin': {
       '0_1': [1, 'Took it with breakfast. No stomach upset this morning.', 4],
@@ -124,11 +110,9 @@
         const key = `${dayIso}_${doseNumber}`;
         const when = atTime(day, time);
 
-        // Doses still in the future today simply have no record yet.
         if (when > new Date()) return;
 
         const taken = rand() < spec.adherence;
-        // A believable "took it, but late" spread.
         const minsLate = Math.floor(rand() * 26) - 4;
         const takenAt = new Date(when.getTime() + minsLate * 60000);
 
@@ -139,7 +123,6 @@
       });
     }
 
-    // Translate the days-back note keys into real dated keys.
     const notes = {};
     Object.keys(NOTES[spec.id] || {}).forEach(k => {
       const [back, doseNumber] = k.split('_').map(Number);
@@ -224,12 +207,7 @@
     patientId: '4821903',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
     notification_reminders: ['30_minutes_before', 'at_time'],
-    // The onboarding tour auto-starts for anyone who has not completed it.
-    // A demo visitor should land on the finished product, not step 1 of 10.
     tutorialCompleted: true,
-    // auth-guard bounces medicom.html to the profile unless doctor access is
-    // set up, so the demo account has it enabled. Never used to authenticate
-    // anything here: the demo has no backend.
     doctorPassword: 'demo-not-a-real-password',
     pushSubscriptions: [],
     caregivers: [],

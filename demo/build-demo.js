@@ -1,15 +1,3 @@
-/*
- * Build /demo/ from the real pages.
- *
- * Each page is copied verbatim, then:
- *   1. an import map redirects every Firebase SDK URL to the local fakes,
- *   2. the demo dataset is loaded before anything else,
- *   3. a read-only banner is added,
- *   4. links to pages not in the demo are neutralised so nothing 404s.
- *
- * Copying rather than rewriting means the demo renders the real UI, and a
- * change to the real app is one re-run away from being reflected here.
- */
 const fs = require('fs');
 const path = require('path');
 
@@ -52,8 +40,6 @@ const BANNER_CSS = `  <style>
     }
     @media (max-width:640px){ .demo-banner{font-size:.76rem; padding:.45rem .5rem} }
 
-    /* Controls the demo blocks: visibly inert, but still clickable so the
-       guard can explain itself rather than appearing broken. */
     button[data-demo-inert], a[data-demo-disabled]{
       opacity:.42 !important; cursor:not-allowed !important; filter:grayscale(.45);
     }
@@ -76,8 +62,6 @@ const BANNER_HTML = `  <div class="demo-banner" role="status">
   </div>
 `;
 
-// Loaded last so it sees the finished DOM; it keeps watching for the cards
-// and rows the pages render afterwards.
 const GUARD = `  <script src="demo-guard.js"></script>\n`;
 
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
@@ -87,19 +71,16 @@ for (const page of PAGES) {
   const src = fs.readFileSync(path.join(ROOT, page), 'utf8');
   let out = src;
 
-  // 1 + 2. Inject the import map and dataset as the first thing in <head>.
   const headMatch = out.match(/<head[^>]*>/i);
   if (!headMatch) { console.error(`ABORT ${page}: no <head>`); process.exit(1); }
   const headEnd = out.indexOf(headMatch[0]) + headMatch[0].length;
   out = out.slice(0, headEnd) + '\n' + NOINDEX + IMPORT_MAP + BANNER_CSS + out.slice(headEnd);
 
-  // 3. Banner right after <body>.
   const bodyMatch = out.match(/<body[^>]*>/i);
   if (!bodyMatch) { console.error(`ABORT ${page}: no <body>`); process.exit(1); }
   const bodyEnd = out.indexOf(bodyMatch[0]) + bodyMatch[0].length;
   out = out.slice(0, bodyEnd) + '\n' + BANNER_HTML + out.slice(bodyEnd);
 
-  // 4. Neutralise links to pages we did not build.
   let disabled = 0;
   out = out.replace(/href="([a-zA-Z0-9_-]+\.html)"/g, (m, target) => {
     if (IN_DEMO.has(target)) return m;
@@ -107,16 +88,12 @@ for (const page of PAGES) {
     return `href="#" data-demo-disabled="${target}"`;
   });
 
-  // Drop the problem-report button: it posts to the real backend.
   out = out.replace(/<button type="button" id="report-fab"[\s\S]*?<\/button>/, '');
   out = out.replace(/<div id="report-modal"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/, '');
 
-  // Strip service-worker / push registration — irrelevant and noisy in a demo.
   out = out.replace(/<script src="push-subscribe\.js"><\/script>/g, '');
   out = out.replace(/<script src="(\.\.\/)?push-subscribe\.js"><\/script>/g, '');
 
-  // 5. Sibling assets live one level up from /demo/. Rewrite every relative
-  //    reference except the demo's own files and the import-map entries.
   const OWN = /^(demo-data|demo-guard|fb-app|fb-auth|fb-firestore|fb-functions)\.js$/;
   out = out.replace(/\b(src|href)="(?!https?:|\/\/|\.\.\/|#|data:|mailto:)([^"]+\.(?:js|css|svg|png|jpg|json|webmanifest))"/g,
     (m, attr, file) => (OWN.test(file) ? m : `${attr}="../${file}"`));

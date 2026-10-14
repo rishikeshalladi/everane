@@ -44,8 +44,6 @@ function getMedChannels(med) {
 const gmailEmail = functions.config().gmail?.email || process.env.GMAIL_EMAIL;
 const gmailPassword = functions.config().gmail?.password || process.env.GMAIL_PASSWORD;
 
-// Where in-app problem reports go. Override with:
-//   firebase functions:config:set report.to="you@example.com"
 const PROBLEM_REPORT_TO = functions.config().report?.to || process.env.PROBLEM_REPORT_TO || 'rishikeshalladi@gmail.com';
 
 const APP_BASE_URL = functions.config().app?.baseurl || process.env.APP_BASE_URL || 'https://everane.live';
@@ -282,8 +280,6 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
   };
   for (const sub of subscriptions) {
     if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
-      // Previously skipped silently: never sent, never pruned, never logged,
-      // yet still counted toward the device total shown in the profile panel.
       malformed++;
       outcomes.push('malformed');
       continue;
@@ -294,12 +290,6 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
         body,
         {
           urgency: 'high',
-          // Matches MAX_SEND_LATENESS_MINUTES (180), the cap the email path
-          // already uses. At the old 1 hour, a phone that was off or out of
-          // signal past the hour had its reminder DISCARDED by the push
-          // service - and because the service had already accepted it, the
-          // dose was marked delivered and never retried. Push and email now
-          // agree on how late is too late.
           TTL: 3 * 60 * 60,
           headers: {
             Urgency: 'high'
@@ -2238,11 +2228,6 @@ exports.sendMedicationReminders = functions
           const smsDelivered = {};
           const pushDelivered = {};
 
-          // Push goes FIRST. It is the most latency-sensitive channel (a lock
-          // screen alert at the dose time) and the cheapest to send - a single
-          // HTTP POST. It used to run last, behind an SMTP round-trip and a
-          // 2.5s blocking Twilio delivery poll, which pushed real notifications
-          // to ~20s after the dose time instead of ~3s.
           if (group.pushMeds && group.pushMeds.length > 0 && userPushSubscriptions.length > 0) {
             console.log(`\n>>> ATTEMPTING TO SEND PUSH (one per med) <<<`);
             console.log(`  Group key: ${groupKey}`);
@@ -2607,9 +2592,6 @@ exports.sendMedicationReminders = functions
           console.error(`Failed to check missed doses for ${userId}:`, error);
         }
         
-        // Only print the per-user summary when this cycle actually did
-        // something. At one run per minute the idle version buried real
-        // events under ~150 lines/minute, making a whole day unreadable.
         if (Object.keys(sendGroups).length > 0) {
           console.log(`\n=== SUMMARY FOR USER ${userId} ===`);
           console.log(`  Email: ${userEmail}`);
@@ -4293,16 +4275,6 @@ async function consumeAiQuota(uid, kind, limit) {
   }
 }
 
-/**
- * sendProblemReport
- * In-app "something is wrong" button. Authenticated, so the identifying
- * context is taken from the server side rather than trusted from the client -
- * the whole point is not having to interview someone about which screen they
- * were on.
- *
- * POST { message, context: { page, userAgent, viewport, buildDate, appVersion } }
- * Authorization: Bearer <firebase id token>
- */
 exports.sendProblemReport = functions
   .runWith({ timeoutSeconds: 60, memory: '256MB' })
   .https.onRequest((req, res) => {
@@ -4338,7 +4310,6 @@ exports.sendProblemReport = functions
         const ctx = (req.body && typeof req.body.context === 'object' && req.body.context) || {};
         const str = (v, n = 300) => (typeof v === 'string' ? v.slice(0, n) : '');
 
-        // Everything below comes from the server, not the browser.
         const db = admin.firestore();
         let profile = {};
         let medCount = 0, activeMeds = 0, pushDevices = 0;
@@ -4419,7 +4390,6 @@ exports.sendProblemReport = functions
           600
         );
 
-        // Keep a copy so reports are not lost if the mailbox is missed.
         try {
           await db.collection('problemReports').add({
             uid: decoded.uid,
@@ -5248,36 +5218,12 @@ exports.extractMedicationFromImages = functions.runWith({ timeoutSeconds: 60, me
   });
 });
 
-
-// ============================================================================
-// EXACT-TIME PUSH DELIVERY VIA CLOUD TASKS
-// ----------------------------------------------------------------------------
-// The every-minute scheduler cannot hit a dose time precisely: Cloud Scheduler
-// delivers its trigger a median of 1s past the minute but drifts to 8s at p90
-// and has been measured at 30s. Nothing inside the function can compensate for
-// a trigger that arrives late.
-//
-// So push - the one latency-sensitive channel - is additionally scheduled
-// through Cloud Tasks, which honours an absolute scheduleTime to within about a
-// second. enqueuePushTasks runs every 5 minutes and books a task for each push
-// dose falling in the next ~11 minutes; firePushTask delivers it at the exact
-// instant.
-//
-// The per-minute loop deliberately still sends push. Both paths write the SAME
-// lastSentReminders key, so whichever runs first wins and the other skips. If
-// Cloud Tasks is unavailable the loop still delivers within a minute: the
-// failure mode is lost precision, never a lost reminder.
-// ============================================================================
-
 const { CloudTasksClient } = require('@google-cloud/tasks');
 
 const TASKS_LOCATION = 'us-central1';
 const TASKS_QUEUE = 'push-reminders';
 const TASK_LOOKAHEAD_MINUTES = 11;
 
-// Cloud Tasks mints an OIDC token as this identity. The App Engine default
-// service account exists in every Firebase project and normally already holds
-// the permissions needed to invoke a function in the same project.
 function taskInvokerServiceAccount() {
   return functions.config().tasks?.invoker ||
     process.env.TASK_INVOKER_SA ||
@@ -5295,7 +5241,6 @@ function getTasksClient() {
   return _tasksClient;
 }
 
-// Shared secret so firePushTask only accepts bodies this project produced.
 const pushTaskSecret =
   functions.config().tasks?.secret ||
   process.env.PUSH_TASK_SECRET ||
@@ -5341,8 +5286,6 @@ async function ensurePushQueue() {
   }
 }
 
-// Deterministic task id. Cloud Tasks rejects a duplicate name, which gives us
-// idempotent enqueueing for free across overlapping scheduler windows.
 function pushTaskId(uid, medId, dateIso, doseNumber) {
   const h = crypto.createHash('sha256')
     .update(`${uid}|${medId}|${dateIso}|${doseNumber}`).digest('hex').slice(0, 48);
@@ -5381,7 +5324,7 @@ exports.enqueuePushTasks = functions
         const rawPrefs = Array.isArray(userData.notification_reminders) ? userData.notification_reminders : [];
         let prefs = Array.from(new Set(rawPrefs.filter(p => REMINDER_OPTIONS[p])));
         if (prefs.length === 0) prefs = ['30_minutes_before', 'at_time'];
-        if (!prefs.includes('at_time')) continue; // push only ever fires at_time
+        if (!prefs.includes('at_time')) continue;
 
         const tz = userData.timezone || DEFAULT_TIME_ZONE;
         const medsSnapshot = await db.collection('users').doc(userDoc.id).collection('medications').get();
@@ -5404,7 +5347,6 @@ exports.enqueuePushTasks = functions
           }
           if (!schedules || schedules.length === 0) continue;
 
-          // The look-ahead window can cross local midnight, so check both days.
           for (const dayOffset of [0, 1]) {
             const day = DateTime.now().setZone(tz).plus({ days: dayOffset });
             const dayIso = day.toISODate();
@@ -5420,7 +5362,7 @@ exports.enqueuePushTasks = functions
               if (fireMs <= nowMs || fireMs > windowEndMs) continue;
 
               const dedupKey = `${medDoc.id}|${dose.time}|d${dose.doseNumber}|at_time|${dayIso}|push`;
-              if (lastSent[dedupKey]) continue; // already delivered
+              if (lastSent[dedupKey]) continue;
 
               const payload = {
                 uid: userDoc.id,
@@ -5442,9 +5384,6 @@ exports.enqueuePushTasks = functions
                       url: handlerUrl,
                       headers: { 'Content-Type': 'application/json' },
                       body: Buffer.from(JSON.stringify(body)).toString('base64'),
-                      // Authenticate as a service account instead of requiring
-                      // firePushTask to be invokable by allUsers. The HMAC in the
-                      // body is still checked; this is defence in depth.
                       oidcToken: {
                         serviceAccountEmail: taskInvokerServiceAccount(),
                         audience: handlerUrl
@@ -5467,25 +5406,13 @@ exports.enqueuePushTasks = functions
       }
     }
 
-    // Always log, even on an idle window. Without this there is no way to tell
-    // "ran and found nothing due" apart from "never ran at all".
     console.log(`[Tasks] scan: users=${usersSnapshot.size} window=${TASK_LOOKAHEAD_MINUTES}min enqueued=${enqueued} duplicate=${duplicate} failed=${failed}`);
     return null;
   });
 
-/**
- * Diagnostic: book a Cloud Task a few seconds out so the delivery path can be
- * exercised without waiting for a real dose. Gated on the same shared secret
- * as the task bodies. Uses a deliberately non-existent medication id, so
- * firePushTask runs its full auth + re-validation path and then stops at the
- * "no-med" guard without sending anything to a real device.
- */
 exports.debugEnqueueTestTask = functions
   .runWith({ timeoutSeconds: 60, memory: '256MB' })
   .https.onRequest(async (req, res) => {
-    // Deliberately NOT the Authorization header: Google's front end tries to
-    // validate that as a Google credential and rejects the request before any
-    // of this code runs.
     const provided = req.get('x-task-secret') || (req.query && req.query.secret) || '';
     if (!pushTaskSecret || provided !== pushTaskSecret) {
       res.status(403).json({ error: 'forbidden' });
@@ -5556,9 +5483,6 @@ exports.firePushTask = functions
     console.log(`[Tasks] fired: med=${medId} d${doseNumber} @${doseTime} ${dateIso}`);
 
     try {
-      // Re-validate at fire time. Tasks are booked up to 11 minutes ahead, so
-      // the medication may have been edited, deleted, or already taken since.
-      // This is why stale tasks need no cancellation.
       const userSnap = await db.collection('users').doc(uid).get();
       if (!userSnap.exists) { console.log('[Tasks] skip: no-user'); res.status(200).send('no-user'); return; }
       const userData = userSnap.data() || {};
@@ -5605,13 +5529,10 @@ exports.firePushTask = functions
         return;
       }
 
-      // Nothing delivered. Leave the dedup key unset so the per-minute loop
-      // retries within the minute.
       console.warn(`[Tasks] No device accepted push for ${med.name} d${doseNumber}; leaving to the minute loop`);
       res.status(200).send('no-delivery');
     } catch (e) {
       console.error('[Tasks] firePushTask error:', e.message);
-      // 500 makes Cloud Tasks retry; the minute loop is the backstop either way.
       res.status(500).send('error');
     }
   });

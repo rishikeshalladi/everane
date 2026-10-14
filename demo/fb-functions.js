@@ -1,5 +1,3 @@
-/* Stand-in for firebase-functions.js (client callables). Everything resolves
- * to an empty, harmless result so demo pages never hit the real backend. */
 export function getFunctions() { return { __fns: true }; }
 export function httpsCallable(_fns, name) {
   return async () => {

@@ -30,8 +30,6 @@
     }
     @media (max-width:640px){ .demo-banner{font-size:.76rem; padding:.45rem .5rem} }
 
-    /* Controls the demo blocks: visibly inert, but still clickable so the
-       guard can explain itself rather than appearing broken. */
     button[data-demo-inert], a[data-demo-disabled]{
       opacity:.42 !important; cursor:not-allowed !important; filter:grayscale(.45);
     }
@@ -3811,9 +3809,6 @@
   </script>
 
   <style>
-    /* Always-visible problem report. Deliberately not in settings: the people
-       most likely to hit a problem are the least likely to go looking for a
-       way to tell anyone about it. */
     .report-fab {
       position: fixed;
       bottom: 20px;
@@ -3843,7 +3838,6 @@
     @media (max-width: 900px) {
       .report-fab { bottom: 14px; right: 14px; padding: 0.7rem 1rem; font-size: 0.9rem; }
     }
-    /* Keep the one-off welcome popup from sitting on top of the button. */
     .first-time-popup { bottom: 92px !important; }
 
     #report-modal .modal-content { max-width: 540px; width: 95%; text-align: left; }
@@ -3923,8 +3917,6 @@
               context: {
                 page: location.pathname + location.search,
                 appVersion: APP_VERSION,
-                // document.lastModified is the deployed file's timestamp, so it
-                // identifies the build without anyone remembering to bump a number.
                 buildDate: document.lastModified,
                 viewport: window.innerWidth + 'x' + window.innerHeight,
                 userAgent: navigator.userAgent

@@ -1089,8 +1089,6 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // push-subscribe.js is a classic script and reads these off window; without
-  // them Everane.Push.subscribe() fails with "auth.currentUser is null".
   window.auth = auth;
   window.db = db;
   window.doc = doc;

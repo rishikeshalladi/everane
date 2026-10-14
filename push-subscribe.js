@@ -326,9 +326,6 @@
 
     navigator.serviceWorker.addEventListener('message', async (event) => {
       if (event && event.data && event.data.type === 'EVERANE_PUSH_RESUBSCRIBED') {
-        // The browser rotated the subscription and the service worker created a
-        // replacement. Persist it now so the server stops pushing to the dead
-        // endpoint.
         selfHeal();
         return;
       }
