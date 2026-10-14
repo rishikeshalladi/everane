@@ -1,4 +1,3 @@
-/* styles.css */
 
 :root {
   --primary-color:   #005f73;
@@ -132,7 +131,6 @@ textarea:focus {
 }
 
 
-/* Confirmation modal (hidden by default) */
 .modal {
   display: none;
   position: fixed;
