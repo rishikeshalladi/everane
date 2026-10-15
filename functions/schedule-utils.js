@@ -72,6 +72,20 @@ function normalizeDate(dateStr) {
 }
 
 
+function inferredStartDate(medData) {
+  const explicit = normalizeDate(medData.startDate);
+  if (explicit) return explicit;
+  const created = normalizeDate(medData.createdAt);
+  if (created) return created;
+  const doseKeys = Object.keys(medData.doses || {});
+  if (doseKeys.length > 0) {
+    const earliest = doseKeys.map(k => String(k).split('_')[0]).filter(Boolean).sort()[0];
+    const fromDoses = normalizeDate(earliest);
+    if (fromDoses) return fromDoses;
+  }
+  return toISODate(new Date());
+}
+
 function migrateOldFormat(medData) {
   const schedules = [];
 
@@ -97,7 +111,7 @@ function migrateOldFormat(medData) {
   }
   times.sort();
 
-  const startDate = normalizeDate(medData.startDate);
+  const startDate = inferredStartDate(medData);
   const endDate = normalizeDate(medData.endDate);
 
   for (const dayNum of dayNumbers) {

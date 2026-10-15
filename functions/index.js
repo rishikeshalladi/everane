@@ -329,6 +329,25 @@ async function sendPushToSubscriptions(db, userId, subscriptions, payload) {
   return { sent, pruned: dead.length, malformed, total: subscriptions.length };
 }
 
+const LATE_PUSH_THRESHOLD_MINUTES = 5;
+
+function describeLateness(minutes) {
+  const m = Math.max(0, Math.round(minutes));
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest ? `${h}h ${rest}m ago` : `${h}h ago`;
+}
+
+function doseDueEpochMs(reminderTime, dateIso, userTimezone) {
+  if (!reminderTime || !dateIso) return null;
+  const [h, m] = String(reminderTime).split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const dt = DateTime.fromISO(dateIso, { zone: userTimezone || DEFAULT_TIME_ZONE })
+    .set({ hour: h, minute: m, second: 0, millisecond: 0 });
+  return dt.isValid ? dt.toMillis() : null;
+}
+
 function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, todayIso) {
   const time12 = format12Hour(reminderTime);
   const isAtTime = offsetKey === 'at_time';
@@ -336,15 +355,22 @@ function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, t
   const dosage = med.dosage ? ` — ${med.dosage}` : '';
   const name = med.name || 'Medication';
 
+  const dueAt = doseDueEpochMs(reminderTime, todayIso, userTimezone);
+  const lateMinutes = dueAt === null ? 0 : (Date.now() - dueAt) / 60000;
+  const isLate = isAtTime && !med._isAlreadyTaken && lateMinutes > LATE_PUSH_THRESHOLD_MINUTES;
+
   let title;
   if (isAtTime) {
-    title = med._isAlreadyTaken ? `${name} (already taken)` : `Time for ${name}`;
+    if (med._isAlreadyTaken) title = `${name} (already taken)`;
+    else if (isLate) title = `Missed dose: ${name}`;
+    else title = `Time for ${name}`;
   } else {
     title = `Reminder: ${name} at ${time12}`;
   }
 
   const bodyLines = [`${name}${dosage}`];
-  if (doseNumber) bodyLines.push(`Dose #${doseNumber} at ${time12}`);
+  if (isLate) bodyLines.push(`Was due ${time12} (${describeLateness(lateMinutes)})`);
+  else if (doseNumber) bodyLines.push(`Dose #${doseNumber} at ${time12}`);
   if (med._isAlreadyTaken) bodyLines.push('Already marked taken.');
 
   const url = `${APP_BASE_URL}/email-action.html?medication=${encodeURIComponent(name)}&dose=${doseNumber}&time=${encodeURIComponent(reminderTime || '')}&date=${todayIso}&medId=${encodeURIComponent(med.id || '')}`;
@@ -364,7 +390,10 @@ function buildSingleMedPushPayload(med, reminderTime, offsetKey, userTimezone, t
       medName: name,
       doseNumber,
       doseTime: reminderTime,
+      doseTime12: time12,
       doseDate: todayIso,
+      dueAt,
+      lateThresholdMinutes: LATE_PUSH_THRESHOLD_MINUTES,
       actionable: showActions
     },
     actions: showActions ? [

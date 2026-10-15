@@ -1237,6 +1237,14 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       intervalFields.style.display = type === 'INTERVAL' ? 'block' : 'none';
     });
 
+
+    function todayLocalISODate() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
     function renderSchedulesList() {
       const schedulesList = document.getElementById('schedules-list');
       schedulesList.innerHTML = '';
@@ -1317,7 +1325,8 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         schedule.weekday = parseInt(weekday);
         schedule.time = time;
         schedule.everyWeeks = everyWeeks;
-        if (startDate) schedule.startDate = new Date(startDate).toISOString();
+        const effectiveStart = startDate || todayLocalISODate();
+        schedule.startDate = new Date(effectiveStart).toISOString();
         if (endDate) schedule.endDate = new Date(endDate).toISOString();
       } else if (type === 'INTERVAL') {
         const intervalValue = parseInt(document.getElementById('interval-value').value);

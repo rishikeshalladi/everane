@@ -1,5 +1,14 @@
 
-const SW_VERSION = 'everane-sw-v3';
+const SW_VERSION = 'everane-sw-v4';
+const LATE_PUSH_THRESHOLD_MINUTES = 5;
+
+function describeLateness(minutes) {
+  const m = Math.max(0, Math.round(minutes));
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return rest ? `${h}h ${rest}m ago` : `${h}h ago`;
+}
 
 let cachedIdToken = null;
 let cachedIdTokenExpiresAt = 0;
@@ -36,9 +45,29 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = payload.title || 'Everane';
+  const data = payload.data || {};
+  let title = payload.title || 'Everane';
+  let body = payload.body || '';
+
+  const dueAt = typeof data.dueAt === 'number' ? data.dueAt : null;
+  const threshold = typeof data.lateThresholdMinutes === 'number'
+    ? data.lateThresholdMinutes
+    : LATE_PUSH_THRESHOLD_MINUTES;
+
+  if (dueAt && data.actionable === true && !/^Missed dose:/.test(title)) {
+    const lateMinutes = (Date.now() - dueAt) / 60000;
+    if (lateMinutes > threshold) {
+      const medName = data.medName || 'your medication';
+      const when = data.doseTime12 || data.doseTime || '';
+      title = `Missed dose: ${medName}`;
+      const firstLine = body.split('\n')[0];
+      body = [firstLine, `Was due ${when} (${describeLateness(lateMinutes)})`]
+        .filter(Boolean).join('\n');
+    }
+  }
+
   const options = {
-    body: payload.body || '',
+    body,
     icon: payload.icon || '/logo.svg',
     badge: payload.badge || '/logo.svg',
     tag: payload.tag || undefined,
@@ -46,8 +75,8 @@ self.addEventListener('push', (event) => {
     requireInteraction: payload.requireInteraction === true,
     vibrate: payload.vibrate || [200, 100, 200, 100, 200],
     silent: false,
-    timestamp: Date.now(),
-    data: payload.data || {},
+    timestamp: dueAt || Date.now(),
+    data,
     actions: Array.isArray(payload.actions) ? payload.actions : []
   };
 
