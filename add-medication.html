@@ -991,6 +991,7 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
             </div>
 
             <button type="button" id="add-schedule-btn" class="btn-primary" style="width: 100%; margin-top: 1rem;">Add Schedule</button>
+            <button type="button" id="cancel-edit-schedule-btn" class="btn-secondary" style="width: 100%; margin-top: 0.5rem; display: none;">Cancel Edit</button>
           </div>
 
           <div id="schedule-error" class="error-message" style="margin-bottom: 1rem;"></div>
@@ -1226,6 +1227,15 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
     }
 
     let schedules = [];
+    let editingScheduleIndex = null;
+
+    function toDateInputValue(value) {
+      if (!value) return '';
+      const direct = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+      if (direct) return direct[1];
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+    }
 
     const scheduleTypeSelect = document.getElementById('schedule-type');
     const weeklyFields = document.getElementById('weekly-fields');
@@ -1245,6 +1255,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
     }
+    function formatDateForDisplay(value) {
+      const ymd = toDateInputValue(value);
+      if (!ymd) return '';
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString();
+    }
+
     function renderSchedulesList() {
       const schedulesList = document.getElementById('schedules-list');
       schedulesList.innerHTML = '';
@@ -1261,6 +1278,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         const card = document.createElement('div');
         card.className = 'card';
         card.style.marginBottom = '1rem';
+        if (index === editingScheduleIndex) {
+          card.style.borderColor = 'var(--brand)';
+          card.style.boxShadow = '0 0 0 2px color-mix(in oklab, var(--brand) 35%, transparent)';
+        }
 
         let scheduleText = '';
         if (schedule.type === 'WEEKLY') {
@@ -1281,10 +1302,13 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
           <div style="display: flex; justify-content: space-between; align-items: start;">
             <div>
               <strong>${scheduleText}</strong>
-              ${schedule.startDate ? `<br><small class="muted">Start: ${new Date(schedule.startDate).toLocaleDateString()}</small>` : ''}
-              ${schedule.endDate ? `<br><small class="muted">End: ${new Date(schedule.endDate).toLocaleDateString()}</small>` : ''}
+              ${schedule.startDate ? `<br><small class="muted">Start: ${formatDateForDisplay(schedule.startDate)}</small>` : ''}
+              ${schedule.endDate ? `<br><small class="muted">End: ${formatDateForDisplay(schedule.endDate)}</small>` : ''}
             </div>
-            <button type="button" class="btn-danger btn-sm" onclick="removeSchedule(${index})">Remove</button>
+            <div style="display: flex; gap: 0.4rem; flex-shrink: 0;">
+              <button type="button" class="btn-secondary btn-sm" onclick="editSchedule(${index})">Edit</button>
+              <button type="button" class="btn-danger btn-sm" onclick="removeSchedule(${index})">Remove</button>
+            </div>
           </div>
         `;
         schedulesList.appendChild(card);
@@ -1293,6 +1317,10 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
     window.removeSchedule = function(index) {
       schedules.splice(index, 1);
+      if (editingScheduleIndex !== null) {
+        if (editingScheduleIndex === index) resetScheduleForm();
+        else if (editingScheduleIndex > index) editingScheduleIndex--;
+      }
       renderSchedulesList();
     };
 
@@ -1305,8 +1333,11 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
 
       document.getElementById('schedule-error').textContent = '';
 
+      const editingExisting = editingScheduleIndex !== null && schedules[editingScheduleIndex];
       let schedule = {
-        scheduleId: `sch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        scheduleId: editingExisting
+          ? schedules[editingScheduleIndex].scheduleId
+          : `sch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: type
       };
 
@@ -1351,9 +1382,18 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
         if (endDate) schedule.endDate = new Date(endDate).toISOString();
       }
 
-      schedules.push(schedule);
-      renderSchedulesList();
+      if (editingExisting) {
+        schedules[editingScheduleIndex] = schedule;
+      } else {
+        schedules.push(schedule);
+      }
 
+      resetScheduleForm();
+      renderSchedulesList();
+    });
+
+    function resetScheduleForm() {
+      editingScheduleIndex = null;
       scheduleTypeSelect.value = '';
       weeklyFields.style.display = 'none';
       intervalFields.style.display = 'none';
@@ -1367,6 +1407,46 @@ button.back:hover, .back-btn:hover, .btn.back:hover, a.back:hover, #back:hover, 
       document.getElementById('interval-anchor-date').value = '';
       document.getElementById('interval-anchor-time').value = '';
       document.getElementById('interval-end-date').value = '';
+      document.getElementById('schedule-error').textContent = '';
+      document.getElementById('add-schedule-btn').textContent = 'Add Schedule';
+      document.getElementById('cancel-edit-schedule-btn').style.display = 'none';
+    }
+
+    window.editSchedule = function(index) {
+      const schedule = schedules[index];
+      if (!schedule) return;
+
+      editingScheduleIndex = index;
+      scheduleTypeSelect.value = schedule.type;
+      weeklyFields.style.display = schedule.type === 'WEEKLY' ? 'block' : 'none';
+      intervalFields.style.display = schedule.type === 'INTERVAL' ? 'block' : 'none';
+
+      if (schedule.type === 'WEEKLY') {
+        document.getElementById('schedule-weekday').value = String(schedule.weekday);
+        document.getElementById('schedule-time').value = schedule.time || '';
+        document.getElementById('schedule-every-weeks').value = schedule.everyWeeks || 1;
+        document.getElementById('schedule-start-date').value = toDateInputValue(schedule.startDate);
+        document.getElementById('schedule-end-date').value = toDateInputValue(schedule.endDate);
+      } else if (schedule.type === 'INTERVAL') {
+        const interval = schedule.interval || {};
+        document.getElementById('interval-value').value = interval.value || 1;
+        document.getElementById('interval-unit').value = interval.unit || 'HOUR';
+        const anchor = String(schedule.anchorDateTime || '');
+        document.getElementById('interval-anchor-date').value = anchor.split('T')[0] || '';
+        document.getElementById('interval-anchor-time').value = (anchor.split('T')[1] || '').slice(0, 5);
+        document.getElementById('interval-end-date').value = toDateInputValue(schedule.endDate);
+      }
+
+      document.getElementById('schedule-error').textContent = '';
+      document.getElementById('add-schedule-btn').textContent = 'Save Changes';
+      document.getElementById('cancel-edit-schedule-btn').style.display = 'block';
+      renderSchedulesList();
+      scheduleTypeSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    document.getElementById('cancel-edit-schedule-btn').addEventListener('click', () => {
+      resetScheduleForm();
+      renderSchedulesList();
     });
 
     function clearErr(id){ const el = document.getElementById(id); if (el) el.textContent=''; }
