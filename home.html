@@ -1927,6 +1927,18 @@
               } catch (e) {
                 console.warn('[Home] Failed to save migrated schedules:', e);
               }
+            } else if (window.ScheduleUtils.backfillStartDates) {
+              const repaired = window.ScheduleUtils.backfillStartDates({ ...medData, schedules: med.schedules });
+              if (repaired.changed) {
+                med.schedules = repaired.schedules;
+                try {
+                  const medDocRef = doc(window.db, "users", user.uid, "medications", docSnapshot.id);
+                  await setDoc(medDocRef, { schedules: repaired.schedules }, { merge: true });
+                  console.log('[Home] Backfilled schedule start dates for', med.name);
+                } catch (e) {
+                  console.warn('[Home] Failed to save backfilled start dates:', e);
+                }
+              }
             }
 
             medications.push(med);

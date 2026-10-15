@@ -73,17 +73,22 @@ function normalizeDate(dateStr) {
 
 
 function inferredStartDate(medData) {
-  const explicit = normalizeDate(medData.startDate);
+    const explicit = normalizeDate(medData.startDate);
   if (explicit) return explicit;
-  const created = normalizeDate(medData.createdAt);
-  if (created) return created;
+
+  const candidates = [];
+  if (medData.createdAt) {
+    const created = new Date(medData.createdAt);
+    if (!isNaN(created.getTime())) candidates.push(toISODate(created));
+  }
   const doseKeys = Object.keys(medData.doses || {});
   if (doseKeys.length > 0) {
     const earliest = doseKeys.map(k => String(k).split('_')[0]).filter(Boolean).sort()[0];
     const fromDoses = normalizeDate(earliest);
-    if (fromDoses) return fromDoses;
+    if (fromDoses) candidates.push(fromDoses);
   }
-  return toISODate(new Date());
+  if (candidates.length === 0) return toISODate(new Date());
+  return candidates.sort()[0];
 }
 
 function migrateOldFormat(medData) {
@@ -132,6 +137,23 @@ function migrateOldFormat(medData) {
   return { schedules };
 }
 
+
+function backfillStartDates(medData) {
+  const schedules = Array.isArray(medData && medData.schedules) ? medData.schedules : [];
+  if (schedules.length === 0) return { schedules, changed: false };
+
+  const fallback = inferredStartDate(medData);
+  if (!fallback) return { schedules, changed: false };
+
+  let changed = false;
+  const out = schedules.map(s => {
+    if (!s || s.type === 'INTERVAL') return s;
+    if (s.startDate) return s;
+    changed = true;
+    return Object.assign({}, s, { startDate: fallback });
+  });
+  return { schedules: out, changed };
+}
 
 function weeklyMatchesDate(schedule, date) {
   const d = toJsDate(date);
@@ -388,6 +410,7 @@ function getPerDayMax(schedules) {
 
 module.exports = {
   migrateOldFormat,
+  backfillStartDates,
   getScheduledDosesForDate,
   isScheduledForDate,
   computeNextDose,

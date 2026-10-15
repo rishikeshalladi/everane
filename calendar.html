@@ -823,6 +823,8 @@
               } catch (e) {
                 console.warn('[Calendar] Failed to save migrated schedules:', e);
               }
+            } else if (window.ScheduleUtils && ScheduleUtils.backfillStartDates) {
+              med.schedules = ScheduleUtils.backfillStartDates({ ...medData, schedules: med.schedules }).schedules;
             }
 
             medications.push(med);
