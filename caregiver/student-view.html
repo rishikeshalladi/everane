@@ -482,7 +482,7 @@
       width: 100%;
       flex: 1;
     }
-    #trend-chart { height: 360px !important; }
+    #med-breakdown-chart { height: 360px !important; }
     #adherence-chart {
       max-width: 200px;
       max-height: 200px;
@@ -512,13 +512,13 @@
       .stat-value { font-size: 1.5rem; }
       .stat-label { font-size: 0.75rem; }
       .chart-container { height: 160px; }
-      .stats-card:has(#trend-chart) .chart-container { height: 200px !important; }
-      #trend-chart { height: 180px !important; }
+      .stats-card:has(#med-breakdown-chart) .chart-container { height: 200px !important; }
+      #med-breakdown-chart { height: 180px !important; }
       #adherence-chart { max-width: 120px; max-height: 120px; }
       .stats-card { padding: 1rem; }
       .stats-card h2 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-      .stats-card:has(#trend-chart) h2 { margin-bottom: 0.5rem; }
-      .stats-card:has(#trend-chart) .chart-container { margin-top: 0.5rem; }
+      .stats-card:has(#med-breakdown-chart) h2 { margin-bottom: 0.5rem; }
+      .stats-card:has(#med-breakdown-chart) .chart-container { margin-top: 0.5rem; }
     }
 
     @media (max-width: 900px) {
@@ -775,7 +775,7 @@
       margin-inline: auto;
       padding: 0.55rem clamp(0.75rem, 2vw, 1.5rem);
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 0.5rem;
     }
 
@@ -783,8 +783,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.55rem;
-      padding: 0.7rem 0.65rem;
+      gap: 0.4rem;
+      padding: 0.7rem 0.45rem;
       border-radius: 14px;
       border: 1px solid transparent;
       color: var(--muted);
@@ -808,7 +808,7 @@
     }
 
     .bottom-label {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       letter-spacing: 0.1px;
       white-space: nowrap;
     }
@@ -818,6 +818,169 @@
       .bottom-label { display: none; }
       .tab-icon { width: 28px; height: 28px; flex-basis: 28px; }
       .bottom-link { padding: 0.85rem 0.65rem; }
+    }
+  
+.msg-feed {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+      max-width: 720px;
+    }
+.msg-loading {
+      text-align: center;
+      padding: 3rem 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+.msg-empty {
+      text-align: center;
+      padding: 4rem 0;
+      color: var(--muted);
+    }
+.msg-empty-icon {
+      width: 56px; height: 56px;
+      margin: 0 auto .85rem;
+      border-radius: 50%;
+      background: color-mix(in oklab, var(--brand) 10%, transparent);
+      display: grid;
+      place-items: center;
+    }
+.msg-empty-icon svg { width: 28px; height: 28px; color: var(--brand); opacity: .5; }
+.msg-empty p { font-size: .95rem; }
+.msg-empty .msg-empty-sub { font-size: .82rem; margin-top: .25rem; opacity: .65; }
+.msg-date-sep {
+      text-align: center;
+      padding: .4rem 0;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      opacity: .55;
+    }
+.msg-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem 1.15rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      animation: msgIn .3s var(--ease) both;
+    }
+.msg-card.patient-msg {
+      border-left: 3px solid var(--accent);
+      background: color-mix(in oklab, var(--accent) 4%, var(--surface));
+    }
+.msg-source-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      padding: .15rem .55rem;
+      border-radius: 6px;
+      margin-bottom: .45rem;
+    }
+.msg-source-tag.doctor-tag {
+      background: color-mix(in oklab, var(--brand) 12%, transparent);
+      color: var(--brand);
+    }
+.msg-source-tag.patient-tag {
+      background: color-mix(in oklab, var(--accent) 12%, transparent);
+      color: var(--accent);
+    }
+.msg-top {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .55rem;
+    }
+.msg-type-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+.msg-type-dot[data-type="Add Medication"] { background: var(--success); }
+.msg-type-dot[data-type="Remove Medication"] { background: var(--danger); }
+.msg-type-dot[data-type="Change Dosage"] { background: var(--brand); }
+.msg-type-dot[data-type="Change Schedule"] { background: var(--accent); }
+.msg-type-dot[data-type="Pause Medication"] { background: #f59e0b; }
+.msg-type-dot[data-type="Change Instructions"] { background: #a78bfa; }
+.msg-type-dot[data-type="Add Warning / Precaution"] { background: #f472b6; }
+.msg-type-dot[data-type="Add Follow-Up Requirement"] { background: #38bdf8; }
+.msg-type-dot[data-type="Other"] { background: var(--muted); }
+.msg-type-dot[data-type="Stopped Medication"] { background: var(--danger); }
+.msg-type-dot[data-type="Started New Medication"] { background: var(--success); }
+.msg-type-dot[data-type="Missed Doses"] { background: #f59e0b; }
+.msg-type-dot[data-type="Taking a Break"] { background: var(--brand); }
+.msg-type-dot[data-type="Picked Up / Refilled"] { background: var(--accent); }
+.msg-type-dot[data-type="Side Effects"] { background: #f472b6; }
+.msg-type-label {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+.msg-time {
+      margin-left: auto;
+      font-size: .72rem;
+      font-weight: 500;
+      color: var(--muted);
+      opacity: .7;
+      white-space: nowrap;
+    }
+.msg-body {
+      font-size: .95rem;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+.msg-from {
+      margin-top: .6rem;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      opacity: .6;
+    }
+.msg-replies {
+      margin-top: .6rem;
+      padding-top: .5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+.msg-reply {
+      padding: .5rem .7rem;
+      background: color-mix(in oklab, var(--brand) 5%, transparent);
+      border-radius: 10px;
+      border-left: 3px solid var(--brand);
+    }
+.msg-reply-body {
+      font-size: .88rem;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+.msg-reply-meta {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      margin-top: .25rem;
+    }
+.msg-reply-doctor {
+      font-size: .72rem;
+      font-weight: 600;
+      color: var(--muted);
+      opacity: .7;
+    }
+.msg-reply-time {
+      font-size: .68rem;
+      color: var(--muted);
+      opacity: .5;
+      margin-left: auto;
     }
   </style>
   <script src="../auth-guard.js" type="module"></script>
@@ -869,6 +1032,14 @@
         </span>
         <span class="bottom-label">Notes</span>
       </a>
+      <a class="bottom-link" data-tab="communication" href="student-view.html?tab=communication">
+        <span class="tab-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" focusable="false">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </span>
+        <span class="bottom-label">Messages</span>
+      </a>
       <a class="bottom-link" data-tab="stats" href="student-view.html?tab=stats">
         <span class="tab-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" role="img" focusable="false">
@@ -913,7 +1084,8 @@
         home: 'Home',
         calendar: 'Calendar',
         notes: 'Notes',
-        stats: 'Stats'
+        stats: 'Stats',
+        communication: 'Messages'
       };
       if (subtitle) subtitle.textContent = labelMap[tab] || 'Blank for now';
     })();
@@ -1155,6 +1327,9 @@
                   medData.schedules = migrated.schedules;
                   console.log(`[Student View] Auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
                 }
+              }
+              if (window.ScheduleUtils && ScheduleUtils.backfillStartDates) {
+                medData.schedules = ScheduleUtils.backfillStartDates(medData).schedules;
               }
               return medData;
             });
@@ -1476,6 +1651,9 @@
                   console.log(`[Student View] Auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
                 }
               }
+              if (window.ScheduleUtils && ScheduleUtils.backfillStartDates) {
+                medData.schedules = ScheduleUtils.backfillStartDates(medData).schedules;
+              }
               return medData;
             });
             renderCalendarTab(patientName, meds);
@@ -1771,12 +1949,159 @@
                   console.log(`[Student View] Notes auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
                 }
               }
+              if (window.ScheduleUtils && ScheduleUtils.backfillStartDates) {
+                medData.schedules = ScheduleUtils.backfillStartDates(medData).schedules;
+              }
               return medData;
             });
             renderNotesTab(patientName, meds);
           }, (err) => {
             console.warn('[Student View] notes meds snapshot error:', err);
             showError('Could not load notes data (permission denied or network issue).');
+          });
+        });
+      }
+    }
+
+    if (tab === 'communication') {
+      if (!patientId) {
+        showError('Missing patientId. Please go back and open a patient from the caregiver home page.');
+      } else {
+        root.innerHTML = `
+          <div class="msg-feed" id="msg-feed">
+            <div class="msg-loading" id="msg-loading">Loading messages…</div>
+          </div>
+        `;
+
+        const feedEl = document.getElementById('msg-feed');
+        const loadingEl = document.getElementById('msg-loading');
+
+        function formatDate(isoStr) {
+              const d = new Date(isoStr);
+              if (isNaN(d.getTime())) return '';
+              const now = new Date();
+              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+              const dateDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+              const diff = today - dateDay;
+              if (diff === 0) return 'Today';
+              if (diff === 86400000) return 'Yesterday';
+              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+
+        function formatTime(isoStr) {
+              const d = new Date(isoStr);
+              if (isNaN(d.getTime())) return '';
+              return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+
+        function escapeHtml(str) {
+              if (!str) return '';
+              return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+        function renderMessages(edits) {
+              loadingEl.style.display = 'none';
+
+              if (!edits || edits.length === 0) {
+                feedEl.innerHTML = `
+                  <div class="msg-empty">
+                    <div class="msg-empty-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                      </svg>
+                    </div>
+                    <p>No messages yet</p>
+                    <p class="msg-empty-sub">Nothing has been sent between this patient and their doctor yet.</p>
+                  </div>
+                `;
+                return;
+              }
+
+              let html = '';
+              let lastDateStr = '';
+
+              edits.forEach((edit, i) => {
+                const dateStr = formatDate(edit.createdAt);
+                if (dateStr && dateStr !== lastDateStr) {
+                  html += `<div class="msg-date-sep">${dateStr}</div>`;
+                  lastDateStr = dateStr;
+                }
+
+                const time = formatTime(edit.createdAt);
+                const isPatient = edit.source === 'patient' || !!edit.patientName;
+
+                const sourceTag = isPatient
+                  ? '<div class="msg-source-tag patient-tag">Patient</div>'
+                  : '<div class="msg-source-tag doctor-tag">Doctor</div>';
+
+                const fromLine = isPatient
+                  ? ''
+                  : `<div class="msg-from">— ${escapeHtml(edit.doctorName || 'Doctor')}</div>`;
+
+                const replies = edit.replies || [];
+                let repliesHtml = '';
+                if (replies.length > 0) {
+                  repliesHtml = '<div class="msg-replies">' + replies.map(r => {
+                    const rTime = formatTime(r.createdAt);
+                    return `
+                      <div class="msg-reply">
+                        <div class="msg-reply-body">${escapeHtml(r.message)}</div>
+                        <div class="msg-reply-meta">
+                          <span class="msg-reply-doctor">— ${escapeHtml(r.doctorName || 'Doctor')}</span>
+                          <span class="msg-reply-time">${rTime}</span>
+                        </div>
+                      </div>
+                    `;
+                  }).join('') + '</div>';
+                }
+
+                html += `
+                  <div class="msg-card${isPatient ? ' patient-msg' : ''}" style="animation-delay:${i * 0.04}s">
+                    ${sourceTag}
+                    <div class="msg-top">
+                      <span class="msg-type-dot" data-type="${escapeHtml(edit.type)}"></span>
+                      <span class="msg-type-label">${escapeHtml(edit.type)}</span>
+                      <span class="msg-time">${time}</span>
+                    </div>
+                    <div class="msg-body">${escapeHtml(edit.details)}</div>
+                    ${fromLine}
+                    ${repliesHtml}
+                  </div>
+                `;
+              });
+
+              feedEl.innerHTML = html;
+            }
+
+        onAuthStateChanged(auth, async (user) => {
+          if (!user) {
+            window.location.href = '../login.html';
+            return;
+          }
+
+          let patientName = 'Patient';
+          try {
+            const pSnap = await getDoc(doc(db, 'users', patientId));
+            if (pSnap.exists()) {
+              const p = pSnap.data() || {};
+              patientName = p.name || p.email || 'Patient';
+            }
+          } catch (e) {
+            showError('You do not have permission to view this patient (or the link is invalid).');
+            return;
+          }
+
+          const subtitle = document.getElementById('tab-subtitle');
+          if (subtitle) subtitle.textContent = `Messages \u2014 ${patientName}`;
+
+          onSnapshot(collection(db, 'users', patientId, 'doctorEdits'), (snap) => {
+            const edits = [];
+            snap.forEach(d => edits.push({ id: d.id, ...d.data() }));
+            edits.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+            renderMessages(edits);
+          }, (err) => {
+            console.warn('[Student View] messages snapshot error:', err);
+            if (loadingEl) loadingEl.textContent = 'Could not load messages.';
           });
         });
       }
@@ -1819,10 +2144,10 @@
                 </div>
               </div>
 
-              <div class="stats-card">
-                <h2>Daily Adherence Trend</h2>
-                <div class="chart-container">
-                  <canvas id="trend-chart"></canvas>
+              <div class="stats-card" id="med-breakdown-card">
+                <h2>Medication Breakdown</h2>
+                <div class="chart-container" id="med-breakdown-container">
+                  <canvas id="med-breakdown-chart"></canvas>
                 </div>
               </div>
             </div>
@@ -1834,7 +2159,7 @@
         `;
 
         let adherenceChart = null;
-        let trendChart = null;
+        let medBreakdownChart = null;
         let currentTimeRange = 'week';
         let latestMedDocs = [];
 
@@ -2020,100 +2345,171 @@
           });
         }
 
-        function updateTrendChart(dailyData) {
-          const canvas = document.getElementById('trend-chart');
-          if (!canvas || typeof Chart === 'undefined') return;
-          const ctx = canvas.getContext('2d');
-          if (trendChart) trendChart.destroy();
+        function isLightMode() {
+              return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+            }
 
-          const labels = dailyData.map(d => {
-            const date = new Date(d.date);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          });
-          const adherenceData = dailyData.map(d => d.adherence);
+        function calculatePerMedAdherence(filteredLogs) {
+              const medData = {};
 
-          trendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{
-                label: 'Adherence %',
-                data: adherenceData,
-                borderColor: 'rgba(34, 197, 94, 1)',
-                backgroundColor: 'rgba(34, 197, 94, 0.15)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 5,
-                pointHoverRadius: 8,
-                pointBackgroundColor: 'rgba(34, 197, 94, 1)',
-                pointBorderColor: 'rgba(255, 255, 255, 1)',
-                pointBorderWidth: 2,
-                pointHoverBackgroundColor: 'rgba(34, 197, 94, 1)',
-                pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
-                pointHoverBorderWidth: 3
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: true,
-              layout: { padding: { top: 30, bottom: 10 } },
-              interaction: { intersect: false, mode: 'index' },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  max: 110,
-                  ticks: {
-                    stepSize: 20,
-                    callback: (value) => (value > 100 ? '' : value + '%'),
-                    color: '#ffffff',
-                    font: { size: 12 },
-                    padding: 12
-                  },
-                  grid: { color: 'var(--border)', drawBorder: false },
-                  border: { display: false }
-                },
-                x: {
-                  ticks: {
-                    color: '#ffffff',
-                    font: { size: 11 },
-                    maxRotation: 45,
-                    minRotation: 0,
-                    padding: 10
-                  },
-                  grid: { display: false },
-                  border: { display: false }
+              filteredLogs.forEach(log => {
+                const name = log.medicationName;
+                if (!medData[name]) {
+                  medData[name] = { taken: 0, notTaken: 0, total: 0 };
                 }
-              },
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                  padding: 14,
-                  titleColor: '#ffffff',
-                  bodyColor: '#ffffff',
-                  titleFont: { size: 14, weight: '600' },
-                  bodyFont: { size: 13 },
-                  borderColor: 'rgba(255, 255, 255, 0.1)',
-                  borderWidth: 1,
-                  cornerRadius: 8,
-                  displayColors: false,
-                  callbacks: {
-                    title: (context) => context[0].label,
-                    label: function(context) {
-                      const index = context.dataIndex;
-                      const day = dailyData[index];
-                      return [
-                        `Adherence: ${day.adherence.toFixed(1)}%`,
-                        `${day.taken} of ${day.total} doses taken`
-                      ];
+                medData[name].total++;
+                if (log.status === 'taken') {
+                  medData[name].taken++;
+                } else {
+                  medData[name].notTaken++;
+                }
+              });
+
+              return Object.keys(medData)
+                .map(name => ({
+                  name,
+                  taken: medData[name].taken,
+                  notTaken: medData[name].notTaken,
+                  total: medData[name].total,
+                  adherence: medData[name].total > 0
+                    ? (medData[name].taken / medData[name].total) * 100
+                    : 0
+                }))
+                .sort((a, b) => a.adherence - b.adherence);
+            }
+
+        function updateMedBreakdownChart(filteredLogs) {
+              const ctx = document.getElementById('med-breakdown-chart').getContext('2d');
+
+              if (medBreakdownChart) {
+                medBreakdownChart.destroy();
+              }
+
+              const perMed = calculatePerMedAdherence(filteredLogs);
+
+              if (perMed.length === 0) return;
+
+              const barHeight = 48;
+              const minHeight = 160;
+              const calculatedHeight = Math.max(minHeight, perMed.length * barHeight + 60);
+              const container = document.getElementById('med-breakdown-container');
+              container.style.height = calculatedHeight + 'px';
+
+              const labels = perMed.map(m => m.name);
+              const takenData = perMed.map(m => m.taken);
+              const notTakenData = perMed.map(m => m.notTaken);
+
+              const light = isLightMode();
+              const tickColor = light ? '#1a1a1a' : '#b1bad4';
+              const gridColor = light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)';
+
+              medBreakdownChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: labels,
+                  datasets: [
+                    {
+                      label: 'Taken',
+                      data: takenData,
+                      backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                      borderColor: 'rgba(34, 197, 94, 1)',
+                      borderWidth: 1,
+                      borderRadius: 4,
+                      borderSkipped: false
+                    },
+                    {
+                      label: 'Not Taken',
+                      data: notTakenData,
+                      backgroundColor: 'rgba(255, 107, 107, 0.8)',
+                      borderColor: 'rgba(255, 107, 107, 1)',
+                      borderWidth: 1,
+                      borderRadius: 4,
+                      borderSkipped: false
+                    }
+                  ]
+                },
+                options: {
+                  indexAxis: 'y',
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  layout: {
+                    padding: {
+                      right: 16,
+                      left: 4,
+                      top: 8,
+                      bottom: 4
+                    }
+                  },
+                  scales: {
+                    x: {
+                      stacked: true,
+                      beginAtZero: true,
+                      ticks: {
+                        stepSize: 1,
+                        color: tickColor,
+                        font: { size: 12 },
+                        precision: 0
+                      },
+                      grid: {
+                        color: gridColor,
+                        drawBorder: false
+                      },
+                      border: { display: false },
+                      title: {
+                        display: true,
+                        text: 'Doses',
+                        color: tickColor,
+                        font: { size: 12, weight: '500' }
+                      }
+                    },
+                    y: {
+                      stacked: true,
+                      ticks: {
+                        color: tickColor,
+                        font: { size: 13, weight: '600' },
+                        padding: 8
+                      },
+                      grid: { display: false },
+                      border: { display: false }
+                    }
+                  },
+                  plugins: {
+                    legend: {
+                      display: true,
+                      position: 'top',
+                      align: 'end',
+                      labels: {
+                        color: tickColor,
+                        usePointStyle: true,
+                        pointStyle: 'rectRounded',
+                        font: { size: 12, weight: '500' },
+                        padding: 16,
+                        boxWidth: 12,
+                        boxHeight: 12
+                      }
+                    },
+                    tooltip: {
+                      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                      padding: 14,
+                      titleColor: '#ffffff',
+                      bodyColor: '#ffffff',
+                      titleFont: { size: 14, weight: '600' },
+                      bodyFont: { size: 13 },
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderWidth: 1,
+                      cornerRadius: 8,
+                      callbacks: {
+                        afterBody: function(context) {
+                          const idx = context[0].dataIndex;
+                          const med = perMed[idx];
+                          return `Adherence: ${med.adherence.toFixed(1)}%`;
+                        }
+                      }
                     }
                   }
                 }
-              }
+              });
             }
-          });
-        }
 
         async function updateCharts() {
           const chartContainers = document.querySelectorAll('.chart-container, .adherence-numbers, .charts-grid');
@@ -2150,8 +2546,7 @@
             if (adhEl) adhEl.textContent = adherencePercent + '%';
 
             updateAdherenceChart(taken, notTaken);
-            const dailyData = calculateDailyAdherence(filteredLogs);
-            updateTrendChart(dailyData);
+            updateMedBreakdownChart(filteredLogs);
 
             setTimeout(() => {
               chartContainers.forEach(container => {
@@ -2161,7 +2556,7 @@
             }, 50);
 
             if (adherenceChart) adherenceChart.update('active');
-            if (trendChart) trendChart.update('active');
+            if (medBreakdownChart) medBreakdownChart.update('active');
           }, 150);
         }
 
@@ -2199,6 +2594,9 @@
                   medData.schedules = migrated.schedules;
                   console.log(`[Student View] Stats auto-migrated ${medData.name} to schedules format (${migrated.schedules.length} entries)`);
                 }
+              }
+              if (window.ScheduleUtils && ScheduleUtils.backfillStartDates) {
+                medData.schedules = ScheduleUtils.backfillStartDates(medData).schedules;
               }
               return { id: d.id, data: medData };
             });
