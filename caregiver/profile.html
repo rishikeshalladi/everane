@@ -1086,6 +1086,18 @@
               <div class="email-reminders-selected-summary" id="email-reminders-selected-summary">No emails selected.</div>
             </div>
 
+            <div class="form-group full-width">
+              <label>Popup notifications</label>
+              <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center; justify-content:space-between;">
+                <div style="flex:1 1 260px; font-size:0.88rem; line-height:1.45; color:var(--muted, #6b7280);">
+                  Get the alerts you selected above as a popup on this device, as well as by email.
+                  Each browser or phone is enabled separately.
+                </div>
+                <button type="button" id="cg-push-btn" class="btn btn-primary">Enable on this device</button>
+              </div>
+              <div id="cg-push-msg" style="margin-top:0.5rem; font-size:0.88rem; color:var(--muted, #6b7280);">Checking&hellip;</div>
+            </div>
+
             <p id="message" class="msg" role="status" aria-live="polite"></p>
           </form>
         </div>
@@ -2415,5 +2427,66 @@
       });
     })();
   </script>
+<script src="../push-subscribe.js"></script>
+<script>
+  (function wireCaregiverPush() {
+    var btn = document.getElementById('cg-push-btn');
+    var msg = document.getElementById('cg-push-msg');
+    if (!btn || !msg) return;
+
+    function say(t) { msg.textContent = t || ''; }
+    function api() { return window.Everane && window.Everane.Push; }
+
+    async function refresh() {
+      var P = api();
+      if (!P || !P.isSupported()) {
+        btn.disabled = true;
+        say('This browser does not support popup notifications.');
+        return;
+      }
+      if (P.isIosSafariNotInstalled && P.isIosSafariNotInstalled()) {
+        btn.disabled = true;
+        say('On iPhone, add Everane to your Home Screen first, then enable popups here.');
+        return;
+      }
+      if (P.getPermissionState && P.getPermissionState() === 'denied') {
+        btn.disabled = true;
+        say('Notifications are blocked for this site in your browser settings.');
+        return;
+      }
+      var sub = null;
+      try { sub = await P.getCurrentSubscription(); } catch (e) {}
+      btn.disabled = false;
+      if (sub) {
+        btn.textContent = 'Turn off on this device';
+        btn.dataset.on = '1';
+        say('Popups are on for this device.');
+      } else {
+        btn.textContent = 'Enable on this device';
+        btn.dataset.on = '';
+        say('Popups are off for this device.');
+      }
+    }
+
+    btn.addEventListener('click', async function () {
+      var P = api();
+      if (!P) return;
+      btn.disabled = true;
+      say('Working\u2026');
+      try {
+        if (btn.dataset.on) await P.unsubscribe(window.auth, window.db);
+        else await P.subscribe(window.auth, window.db);
+      } catch (e) {
+        say((e && e.message) || 'Could not change this setting.');
+        btn.disabled = false;
+        return;
+      }
+      await refresh();
+    });
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
+    else refresh();
+  })();
+</script>
 </body>
 </html>

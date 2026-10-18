@@ -2166,7 +2166,7 @@ exports.sendMedicationReminders = functions
 
                 const needEmail = isEmailReminder && !lastSentReminders[emailKey];
                 const needSMS   = isAtTimePref && isSMSReminder  && !lastSentReminders[smsKey];
-                const needPush  = isAtTimePref && isPushReminder && !lastSentReminders[pushKey];
+                const needPush  = isPushReminder && !lastSentReminders[pushKey];
 
                 if (!needEmail && !needSMS && !needPush) continue;
 
@@ -3451,10 +3451,38 @@ async function sendCaregiverEmail(to, subject, htmlBody, textBody) {
   await transporter.sendMail(mailOptions);
 }
 
-async function sendCaregiverNotification(caregiverData, subject, htmlBody, textBody) {
+function buildCaregiverPushPayload(subject, textBody) {
+  const title = String(subject || 'Everane').replace(/^Everane:\s*/i, '').trim() || 'Everane';
+  const lines = String(textBody || '')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !/^[-=_*]{3,}$/.test(l));
+  return {
+    title,
+    body: lines.slice(0, 3).join('\n') || 'Open Everane for details.',
+    tag: `caregiver-${title}`,
+    renotify: true,
+    requireInteraction: false,
+    data: { url: `${APP_BASE_URL}/caregiver/home.html` },
+    actions: []
+  };
+}
+
+async function sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverId) {
   const caregiverEmail = caregiverData.email;
   if (caregiverEmail) {
     await sendCaregiverEmail(caregiverEmail, subject, htmlBody, textBody);
+  }
+
+  const subs = Array.isArray(caregiverData.pushSubscriptions) ? caregiverData.pushSubscriptions : [];
+  if (!caregiverId || subs.length === 0) return;
+  try {
+    const result = await sendPushToSubscriptions(
+      admin.firestore(), caregiverId, subs, buildCaregiverPushPayload(subject, textBody)
+    );
+    console.log(`[Caregiver] push sent=${result.sent} pruned=${result.pruned} to ${caregiverId}`);
+  } catch (e) {
+    console.warn('[Caregiver] push failed:', e && e.message);
   }
 }
 
@@ -3553,7 +3581,7 @@ exports.sendCaregiverExpirationDatesEmails = functions
       ].join('\n');
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverId);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
         console.error(`[Caregiver] expiration digest failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3645,7 +3673,7 @@ exports.sendCaregiverAdherenceBelow80Alerts = functions
       const textBody = ['Adherence below 80% (last 7 days)', '', ...linesText].join('\n');
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverId);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
         console.error(`[Caregiver] adherence<80 alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3736,7 +3764,7 @@ exports.sendCaregiverWeeklyReports = functions
       const textBody = ['Weekly patient report (last 7 days)', '', ...linesText].join('\n');
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverId);
         await markCaregiverEmailSent(db, caregiverId, weekKey);
       } catch (cgErr) {
         console.error(`[Caregiver] weekly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3827,7 +3855,7 @@ exports.sendCaregiverMonthlyReports = functions
       const textBody = ['Monthly patient report (last 30 days)', '', ...linesText].join('\n');
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverId);
         await markCaregiverEmailSent(db, caregiverId, monthKey);
       } catch (cgErr) {
         console.error(`[Caregiver] monthly report failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -3890,7 +3918,7 @@ exports.onPatientMedicationCreated = functions.firestore
       const textBody = `${patient.name} added a new medication: ${medName}${medData.dosage ? ` (${medData.dosage})` : ''}`;
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverDoc.id);
         console.log(`[Caregiver] Sent new-med alert to ${caregiverEmail} for patient ${patientId}`);
       } catch (err) {
         console.error(`[Caregiver] Failed new-med alert to ${caregiverEmail}:`, err.message);
@@ -3987,7 +4015,7 @@ exports.sendCaregiverNothingRecordedAlerts = functions
       const textBody = ['Nothing recorded today', '', ...linesText].join('\n');
 
       try {
-        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody);
+        await sendCaregiverNotification(caregiverData, subject, htmlBody, textBody, caregiverId);
         await markCaregiverEmailSent(db, caregiverId, todayKey);
       } catch (cgErr) {
         console.error(`[Caregiver] nothing-recorded alert failed for ${caregiverEmail} (${caregiverId}):`, cgErr.message);
@@ -5252,7 +5280,7 @@ const { CloudTasksClient } = require('@google-cloud/tasks');
 
 const TASKS_LOCATION = 'us-central1';
 const TASKS_QUEUE = 'push-reminders';
-const TASK_LOOKAHEAD_MINUTES = 11;
+const TASK_LOOKAHEAD_MINUTES = 3;
 
 function taskInvokerServiceAccount() {
   return functions.config().tasks?.invoker ||
@@ -5325,7 +5353,7 @@ function pushTaskId(uid, medId, dateIso, doseNumber) {
 exports.enqueuePushTasks = functions
   .runWith({ timeoutSeconds: 300, memory: '512MB', maxInstances: 1 })
   .pubsub
-  .schedule('every 5 minutes')
+  .schedule('every 1 minutes')
   .timeZone('UTC')
   .onRun(async () => {
     if (!pushTaskSecret) {
